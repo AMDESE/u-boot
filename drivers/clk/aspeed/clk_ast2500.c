@@ -489,6 +489,42 @@ static ulong ast2500_clk_set_rate(struct clk *clk, ulong rate)
 	return new_rate;
 }
 
+static ulong ast2500_enable_usbahclk(struct ast2500_scu *scu)
+{
+	u32 reset_bit;
+	u32 clkstop_bit;
+
+	reset_bit = BIT(ASPEED_RESET_EHCI_P1);
+	clkstop_bit = BIT(14);
+
+	setbits_le32(&scu->sysreset_ctrl1, reset_bit);
+	udelay(100);
+	setbits_le32(&scu->clk_stop_ctrl1, clkstop_bit);
+	mdelay(20);
+
+	clrbits_le32(&scu->sysreset_ctrl1, reset_bit);
+
+	return 0;
+}
+
+static ulong ast2500_enable_usbbhclk(struct ast2500_scu *scu)
+{
+	u32 reset_bit;
+	u32 clkstop_bit;
+
+	reset_bit = BIT(ASPEED_RESET_EHCI_P2);
+	clkstop_bit = BIT(7);
+
+	setbits_le32(&scu->sysreset_ctrl1, reset_bit);
+	udelay(100);
+	clrbits_le32(&scu->clk_stop_ctrl1, clkstop_bit);
+	mdelay(20);
+
+	clrbits_le32(&scu->sysreset_ctrl1, reset_bit);
+
+	return 0;
+}
+
 static int ast2500_clk_enable(struct clk *clk)
 {
 	struct ast2500_clk_priv *priv = dev_get_priv(clk->dev);
@@ -526,6 +562,12 @@ static int ast2500_clk_enable(struct clk *clk)
 		break;
 	case ASPEED_CLK_GATE_SDCLK:
 		ast2500_enable_sdclk(priv->scu);
+		break;
+	case ASPEED_CLK_GATE_USBPORT1CLK:
+		ast2500_enable_usbahclk(priv->scu);
+		break;
+	case ASPEED_CLK_GATE_USBPORT2CLK:
+		ast2500_enable_usbbhclk(priv->scu);
 		break;
 	default:
 		debug("%s: unknown clk %ld\n", __func__, clk->id);
