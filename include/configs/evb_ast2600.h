@@ -21,4 +21,8 @@
 	"echo Error loading kernel FIT image\0" \
 	""
 
+#if CONFIG_IS_ENABLED(OPTEE_IMAGE)
+#define CONFIG_ARMV7_SECURE_BASE	0x88000000
+#endif
+
 #endif	/* __CONFIG_H */

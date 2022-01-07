@@ -224,7 +224,15 @@ poll_mailbox_smp_go:
 	bne	poll_mailbox_smp_go
 
 	/* SMP GO signal confirmed, release cpuN */
+#if CONFIG_IS_ENABLED(OPTEE_IMAGE)
+	ldr	lr, [r1]
+	mov	r0, #0
+	mov	r1, #0
+	mov	r2, #0
+	ldr	pc, =CONFIG_ARMV7_SECURE_BASE
+#else
 	ldr	pc, [r1]
+#endif
 
 mailbox_insn_end:
 	/* should never reach */
