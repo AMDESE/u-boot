@@ -11,6 +11,7 @@
 #include "mkimage.h"
 #include "imximage.h"
 #include <fit_common.h>
+#include <getopt.h>
 #include <image.h>
 #include <version.h>
 #ifdef __linux__
@@ -84,7 +85,8 @@ static void usage(const char *msg)
 	fprintf(stderr, "Error: %s\n", msg);
 	fprintf(stderr, "Usage: %s [-T type] -l image\n"
 			 "          -l ==> list image header information\n"
-			 "          -T ==> parse image file as 'type'\n",
+			 "          -T ==> parse image file as 'type'\n"
+			 "          -q ==> quiet\n",
 		params.cmdname);
 	fprintf(stderr,
 		"       %s [-x] -A arch -O os -T type -C comp -a addr -e ep -n name -d data_file[:data_file...] image\n"
@@ -95,8 +97,11 @@ static void usage(const char *msg)
 		"          -a ==> set load address to 'addr' (hex)\n"
 		"          -e ==> set entry point to 'ep' (hex)\n"
 		"          -n ==> set image name to 'name'\n"
+		"          -R ==> set second image name to 'name'\n"
 		"          -d ==> use image data from 'datafile'\n"
-		"          -x ==> set XIP (execute in place)\n",
+		"          -x ==> set XIP (execute in place)\n"
+		"          -s ==> create an image with no data\n"
+		"          -v ==> verbose\n",
 		params.cmdname);
 	fprintf(stderr,
 		"       %s [-D dtc_options] [-f fit-image.its|-f auto|-F] [-b <dtb> [-b <dtb>]] [-E] [-B size] [-i <ramdisk.cpio.gz>] fit-image\n"
@@ -107,18 +112,22 @@ static void usage(const char *msg)
 		"          -f => input filename for FIT source\n"
 		"          -i => input filename for ramdisk file\n"
 		"          -E => place data outside of the FIT structure\n"
-		"          -B => align size in hex for FIT structure and header\n");
+		"          -B => align size in hex for FIT structure and header\n"
+		"          -b => append the device tree binary to the FIT\n"
+		"          -t => update the timestamp in the FIT\n");
 #ifdef CONFIG_FIT_SIGNATURE
 	fprintf(stderr,
 		"Signing / verified boot options: [-k keydir] [-K dtb] [ -c <comment>] [-p addr] [-r] [-N engine]\n"
 		"          -k => set directory containing private keys\n"
 		"          -K => write public keys to this .dtb file\n"
+		"          -g => set key name hint\n"
 		"          -G => use this signing key (in lieu of -k)\n"
 		"          -c => add comment in signature node\n"
 		"          -F => re-sign existing FIT image\n"
 		"          -p => place external data at a static position\n"
 		"          -r => mark keys used as 'required' in dtb\n"
-		"          -N => openssl engine to use for signing\n");
+		"          -N => openssl engine to use for signing\n"
+		"          -o => algorithm to use for signing\n");
 #else
 	fprintf(stderr,
 		"Signing / verified boot not supported (CONFIG_FIT_SIGNATURE undefined)\n");
@@ -126,6 +135,7 @@ static void usage(const char *msg)
 	fprintf(stderr, "       %s -V ==> print version information and exit\n",
 		params.cmdname);
 	fprintf(stderr, "Use '-T list' to see a list of available image types\n");
+	fprintf(stderr, "Long options are available; read the man page for details\n");
 
 	exit(EXIT_FAILURE);
 }
@@ -148,6 +158,45 @@ static int add_content(int type, const char *fname)
 	return 0;
 }
 
+static const char optstring[] =
+	"a:A:b:B:c:C:d:D:e:Ef:Fg:G:i:k:K:ln:N:o:O:p:qrR:stT:vVx";
+
+static const struct option longopts[] = {
+	{ "load-address", required_argument, NULL, 'a' },
+	{ "architecture", required_argument, NULL, 'A' },
+	{ "device-tree", required_argument, NULL, 'b' },
+	{ "alignment", required_argument, NULL, 'B' },
+	{ "comment", required_argument, NULL, 'c' },
+	{ "compression", required_argument, NULL, 'C' },
+	{ "image", required_argument, NULL, 'd' },
+	{ "dtcopts", required_argument, NULL, 'D' },
+	{ "entry-point", required_argument, NULL, 'e' },
+	{ "external", no_argument, NULL, 'E' },
+	{ "fit", required_argument, NULL, 'f' },
+	{ "update", no_argument, NULL, 'F' },
+	{ "key-name-hint", required_argument, NULL, 'g' },
+	{ "key-file", required_argument, NULL, 'G' },
+	{ "help", no_argument, NULL, 'h' },
+	{ "initramfs", required_argument, NULL, 'i' },
+	{ "key-dir", required_argument, NULL, 'k' },
+	{ "key-dest", required_argument, NULL, 'K' },
+	{ "list", no_argument, NULL, 'l' },
+	{ "config", required_argument, NULL, 'n' },
+	{ "engine", required_argument, NULL, 'N' },
+	{ "algo", required_argument, NULL, 'o' },
+	{ "os", required_argument, NULL, 'O' },
+	{ "position", required_argument, NULL, 'p' },
+	{ "quiet", no_argument, NULL, 'q' },
+	{ "key-required", no_argument, NULL, 'r' },
+	{ "secondary-config", required_argument, NULL, 'R' },
+	{ "no-copy", no_argument, NULL, 's' },
+	{ "touch", no_argument, NULL, 't' },
+	{ "type", required_argument, NULL, 'T' },
+	{ "verbose", no_argument, NULL, 'v' },
+	{ "version", no_argument, NULL, 'V' },
+	{ "xip", no_argument, NULL, 'x' },
+};
+
 static void process_args(int argc, char **argv)
 {
 	char *ptr;
@@ -155,8 +204,8 @@ static void process_args(int argc, char **argv)
 	char *datafile = NULL;
 	int opt;
 
-	while ((opt = getopt(argc, argv,
-		   "a:A:b:B:c:C:d:D:e:Ef:FG:k:i:K:ln:N:p:o:O:rR:qstT:vVx")) != -1) {
+	while ((opt = getopt_long(argc, argv, optstring,
+				  longopts, NULL)) != -1) {
 		switch (opt) {
 		case 'a':
 			params.addr = strtoull(optarg, &ptr, 16);
@@ -232,6 +281,8 @@ static void process_args(int argc, char **argv)
 			params.type = IH_TYPE_FLATDT;
 			params.fflag = 1;
 			break;
+		case 'g':
+			params.keyname = optarg;
 		case 'G':
 			params.keyfile = optarg;
 			break;

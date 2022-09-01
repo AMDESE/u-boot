@@ -79,8 +79,8 @@ static int do_adc_single(struct cmd_tbl *cmdtp, int flag, int argc,
 	if (argc < 3)
 		return CMD_RET_USAGE;
 
-	if (argc >= 3)
-		varname = argv[2];
+	if (argc >= 4)
+		varname = argv[3];
 
 	ret = adc_channel_single_shot(argv[1], simple_strtol(argv[2], NULL, 0),
 				      &data);
@@ -165,5 +165,5 @@ static char adc_help_text[] =
 U_BOOT_CMD_WITH_SUBCMDS(adc, "ADC sub-system", adc_help_text,
 	U_BOOT_SUBCMD_MKENT(list, 1, 1, do_adc_list),
 	U_BOOT_SUBCMD_MKENT(info, 2, 1, do_adc_info),
-	U_BOOT_SUBCMD_MKENT(single, 3, 1, do_adc_single),
+	U_BOOT_SUBCMD_MKENT(single, 4, 1, do_adc_single),
 	U_BOOT_SUBCMD_MKENT(scan, 3, 1, do_adc_scan));

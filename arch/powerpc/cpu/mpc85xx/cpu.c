@@ -12,6 +12,7 @@
 #include <common.h>
 #include <cpu_func.h>
 #include <clock_legacy.h>
+#include <display_options.h>
 #include <init.h>
 #include <irq_func.h>
 #include <log.h>
@@ -143,8 +144,10 @@ int checkcpu (void)
 	printf("Core:  ");
 	switch(ver) {
 	case PVR_VER_E500_V1:
+		puts("e500v1");
+		break;
 	case PVR_VER_E500_V2:
-		puts("e500");
+		puts("e500v2");
 		break;
 	case PVR_VER_E500MC:
 		puts("e500mc");
@@ -331,9 +334,6 @@ int do_reset(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 /*
  * Get timebase clock frequency
  */
-#ifndef CONFIG_SYS_FSL_TBCLK_DIV
-#define CONFIG_SYS_FSL_TBCLK_DIV 8
-#endif
 __weak unsigned long get_tbclk(void)
 {
 	unsigned long tbclk_div = CONFIG_SYS_FSL_TBCLK_DIV;
@@ -342,6 +342,7 @@ __weak unsigned long get_tbclk(void)
 }
 
 
+#ifndef CONFIG_WDT
 #if defined(CONFIG_WATCHDOG)
 #define WATCHDOG_MASK (TCR_WP(63) | TCR_WRC(3) | TCR_WIE)
 void
@@ -370,6 +371,7 @@ watchdog_reset(void)
 		enable_interrupts();
 }
 #endif	/* CONFIG_WATCHDOG */
+#endif
 
 /*
  * Initializes on-chip MMC controllers.

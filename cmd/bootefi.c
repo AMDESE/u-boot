@@ -35,6 +35,18 @@ static void *image_addr;
 static size_t image_size;
 
 /**
+ * efi_get_image_parameters() - return image parameters
+ *
+ * @img_addr:		address of loaded image in memory
+ * @img_size:		size of loaded image
+ */
+void efi_get_image_parameters(void **img_addr, size_t *img_size)
+{
+	*img_addr = image_addr;
+	*img_size = image_size;
+}
+
+/**
  * efi_clear_bootdev() - clear boot device
  */
 static void efi_clear_bootdev(void)
@@ -107,9 +119,9 @@ void efi_set_bootdev(const char *dev, const char *devnr, const char *path,
 			efi_free_pool(image_tmp);
 		}
 		bootefi_image_path = image;
-		log_debug("- recorded device %ls\n", efi_dp_str(device));
+		log_debug("- boot device %pD\n", device);
 		if (image)
-			log_debug("- and image %ls\n", efi_dp_str(image));
+			log_debug("- image %pD\n", image);
 	} else {
 		log_debug("- efi_dp_from_name() failed, err=%lx\n", ret);
 		efi_clear_bootdev();
@@ -649,6 +661,7 @@ static int do_bootefi(struct cmd_tbl *cmdtp, int flag, int argc,
 		      char *const argv[])
 {
 	efi_status_t ret;
+	char *img_addr, *img_size, *str_copy, *pos;
 	void *fdt;
 
 	if (argc < 2)
@@ -662,7 +675,7 @@ static int do_bootefi(struct cmd_tbl *cmdtp, int flag, int argc,
 		return CMD_RET_FAILURE;
 	}
 
-	if (argc > 2 && strcmp(argv[2], "-")) {
+	if (argc > 2) {
 		uintptr_t fdt_addr;
 
 		fdt_addr = hextoul(argv[2], NULL);
@@ -684,16 +697,24 @@ static int do_bootefi(struct cmd_tbl *cmdtp, int flag, int argc,
 	if (!strcmp(argv[1], "selftest"))
 		return do_efi_selftest();
 #endif
+	str_copy = strdup(argv[1]);
+	if (!str_copy) {
+		log_err("Out of memory\n");
+		return CMD_RET_FAILURE;
+	}
+	pos = str_copy;
+	img_addr = strsep(&pos, ":");
+	img_size = strsep(&pos, ":");
+	ret = do_bootefi_image(img_addr, img_size);
+	free(str_copy);
 
-	return do_bootefi_image(argv[1], argc > 3 ? argv[3] : NULL);
+	return ret;
 }
 
 #ifdef CONFIG_SYS_LONGHELP
 static char bootefi_help_text[] =
-	"<image address> [fdt address [image size]]\n"
-	"  - boot EFI payload stored at <image address>\n"
-	"    fdt address, address of device-tree or '-'\n"
-	"    image size, required if image not preloaded\n"
+	"<image address>[:<image size>] [<fdt address>]\n"
+	"  - boot EFI payload\n"
 #ifdef CONFIG_CMD_BOOTEFI_HELLO
 	"bootefi hello\n"
 	"  - boot a sample Hello World application stored within U-Boot\n"

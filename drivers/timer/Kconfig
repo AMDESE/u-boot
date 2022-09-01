@@ -27,6 +27,16 @@ config TPL_TIMER
 	  function. This enables the drivers in drivers/timer as part of an
 	  TPL build.
 
+config VPL_TIMER
+	bool "Enable driver model for timer drivers in VPL"
+	depends on TIMER && VPL
+	default y if TPL_TIMER
+	help
+	  Enable support for timer drivers in VPL. These can be used to get
+	  a timer value when in VPL, or perhaps for implementing a delay
+	  function. This enables the drivers in drivers/timer as part of an
+	  TPL build.
+
 config TIMER_EARLY
 	bool "Allow timer to be used early in U-Boot"
 	depends on TIMER
@@ -129,6 +139,13 @@ config DESIGNWARE_APB_TIMER
 	  Enables support for the Designware APB Timer driver. This timer is
 	  present on Altera SoCFPGA SoCs.
 
+config GXP_TIMER
+	bool "HPE GXP Timer"
+	depends on TIMER
+	help
+	  Enables support for the GXP Timer driver. This timer is
+	  present on HPE GXP SoCs.
+
 config MPC83XX_TIMER
 	bool "MPC83xx timer support"
 	depends on TIMER
@@ -162,11 +179,26 @@ config NOMADIK_MTU_TIMER
 	  The MTU provides 4 decrementing free-running timers.
 	  At the moment, only the first timer is used by the driver.
 
+config NPCM_TIMER
+	bool "Nuvoton NPCM timer support"
+	depends on TIMER
+	help
+	  Select this to enable a timer on Nuvoton NPCM SoCs.
+	  NPCM timer module has 5 down-counting timers, only the first timer
+	  is used to implement timer ops. No support for early timer and
+	  boot timer.
+
 config OMAP_TIMER
 	bool "Omap timer support"
 	depends on TIMER
 	help
 	  Select this to enable an timer for Omap devices.
+
+config ORION_TIMER
+	bool "Orion timer support"
+	depends on TIMER
+	help
+	  Select this to enable an timer for Orion devices.
 
 config RISCV_TIMER
 	bool "RISC-V timer support"
@@ -252,5 +284,14 @@ config IMX_GPT_TIMER
 	help
 	  Select this to enable support for the timer found on
 	  NXP i.MX devices.
+
+config XILINX_TIMER
+	bool "Xilinx timer support"
+	depends on TIMER
+	select REGMAP
+	select SPL_REGMAP if SPL
+	help
+	  Select this to enable support for the timer found on
+	  any Xilinx boards (axi timer).
 
 endmenu

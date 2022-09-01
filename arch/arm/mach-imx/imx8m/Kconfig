@@ -8,6 +8,7 @@ config IMX8M
 config IMX8MQ
 	bool
 	select IMX8M
+	select CLK_IMX8MQ
 
 config IMX8MM
 	bool
@@ -68,6 +69,7 @@ config TARGET_IMX8MM_EVK
 
 config TARGET_IMX8MM_ICORE_MX8MM
 	bool "Engicam i.Core MX8M Mini SOM"
+	select BINMAN
 	select IMX8MM
 	select SUPPORT_SPL
 	select IMX8M_LPDDR4
@@ -106,6 +108,9 @@ config TARGET_KONTRON_MX8MM
 	select IMX8MM
 	select SUPPORT_SPL
 	select IMX8M_LPDDR4
+	select FSL_CAAM
+	select ARCH_MISC_INIT
+	select SPL_CRYPTO if SPL
 
 config TARGET_IMX8MN_BSH_SMM_S2
 	bool "imx8mn-bsh-smm-s2"
@@ -147,6 +152,13 @@ config TARGET_IMX8MN_VENICE
 	select IMX8M_LPDDR4
 	select GATEWORKS_SC
 	select MISC
+
+config TARGET_IMX8MP_DH_DHCOM_PDK2
+	bool "DH electronics DHCOM Premium Developer Kit (2) i.MX8M Plus"
+	select BINMAN
+	select IMX8MP
+	select IMX8M_LPDDR4
+	select SUPPORT_SPL
 
 config TARGET_IMX8MP_EVK
 	bool "imx8mp LPDDR4 EVK board"
@@ -265,6 +277,7 @@ source "board/beacon/imx8mn/Kconfig"
 source "board/bsh/imx8mn_smm_s2/Kconfig"
 source "board/compulab/imx8mm-cl-iot-gate/Kconfig"
 source "board/data_modul/imx8mm_edm_sbc/Kconfig"
+source "board/dhelectronics/dh_imx8mp/Kconfig"
 source "board/engicam/imx8mm/Kconfig"
 source "board/freescale/imx8mq_evk/Kconfig"
 source "board/freescale/imx8mm_evk/Kconfig"

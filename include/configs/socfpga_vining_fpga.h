@@ -11,7 +11,6 @@
 #define PHYS_SDRAM_1_SIZE		0x40000000	/* 1GiB on VINING_FPGA */
 
 /* Booting Linux */
-#define CONFIG_SYS_BOOTM_LEN	0x2000000	/* 32 MiB */
 
 /* Extra Environment */
 #define CONFIG_HOSTNAME			"socfpga_vining_fpga"
@@ -116,7 +115,8 @@
 	"addargs=run addcons addmtd addmisc\0"				\
 	"ubiload="							\
 		"ubi part ${ubimtd} ; ubifsmount ${ubipart} ; "		\
-		"ubifsload ${kernel_addr_r} /boot/${bootfile}\0"	\
+		"ubifsload ${kernel_addr_r} /boot/${bootfile} ; "	\
+		"ubifsumount ; ubi detach\0"				\
 	"netload="							\
 		"tftp ${kernel_addr_r} ${hostname}/${bootfile}\0"	\
 	"miscargs=nohlt panic=1\0"					\

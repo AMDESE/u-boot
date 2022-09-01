@@ -243,11 +243,8 @@ efi_status_t efi_init_obj_list(void)
 			goto out;
 	}
 
-	if (IS_ENABLED(CONFIG_EFI_RNG_PROTOCOL)) {
-		ret = efi_rng_register();
-		if (ret != EFI_SUCCESS)
-			goto out;
-	}
+	/* Set up console modes */
+	efi_setup_console_size();
 
 	/* Initialize variable services */
 	ret = efi_init_variables();
@@ -282,6 +279,13 @@ efi_status_t efi_init_obj_list(void)
 
 		ret = efi_tcg2_do_initial_measurement();
 		if (ret == EFI_SECURITY_VIOLATION)
+			goto out;
+	}
+
+	/* Install EFI_RNG_PROTOCOL */
+	if (IS_ENABLED(CONFIG_EFI_RNG_PROTOCOL)) {
+		ret = efi_rng_register();
+		if (ret != EFI_SUCCESS)
 			goto out;
 	}
 

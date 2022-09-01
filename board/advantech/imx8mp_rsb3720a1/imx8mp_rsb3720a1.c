@@ -28,18 +28,6 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define UART_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_FSEL1)
-#define WDOG_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_ODE | PAD_CTL_PUE | PAD_CTL_PE)
-
-static const iomux_v3_cfg_t uart_pads[] = {
-	MX8MP_PAD_ECSPI1_SCLK__UART3_DCE_RX | MUX_PAD_CTRL(UART_PAD_CTRL),
-	MX8MP_PAD_ECSPI1_MOSI__UART3_DCE_TX | MUX_PAD_CTRL(UART_PAD_CTRL),
-};
-
-static const iomux_v3_cfg_t wdog_pads[] = {
-	MX8MP_PAD_GPIO1_IO02__WDOG1_WDOG_B  | MUX_PAD_CTRL(WDOG_PAD_CTRL),
-};
-
 #ifdef CONFIG_NAND_MXS
 static void setup_gpmi_nand(void)
 {
@@ -75,14 +63,6 @@ u8 num_image_type_guids = ARRAY_SIZE(fw_images);
 
 int board_early_init_f(void)
 {
-	struct wdog_regs *wdog = (struct wdog_regs *)WDOG1_BASE_ADDR;
-
-	imx_iomux_v3_setup_multiple_pads(wdog_pads, ARRAY_SIZE(wdog_pads));
-
-	set_wdog_reset(wdog);
-
-	imx_iomux_v3_setup_multiple_pads(uart_pads, ARRAY_SIZE(uart_pads));
-
 	init_uart_clk(2);
 
 	return 0;
@@ -226,7 +206,7 @@ int board_late_init(void)
 	return 0;
 }
 
-#ifdef CONFIG_SPL_MMC_SUPPORT
+#ifdef CONFIG_SPL_MMC
 #define UBOOT_RAW_SECTOR_OFFSET 0x40
 unsigned long spl_mmc_get_uboot_raw_sector(struct mmc *mmc)
 {
@@ -239,4 +219,4 @@ unsigned long spl_mmc_get_uboot_raw_sector(struct mmc *mmc)
 		return CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR;
 	}
 }
-#endif /* CONFIG_SPL_MMC_SUPPORT */
+#endif /* CONFIG_SPL_MMC */

@@ -14,7 +14,9 @@ config EFI_LOADER
 	depends on DM_ETH || !NET
 	depends on !EFI_APP
 	default y if !ARM || SYS_CPU = armv7 || SYS_CPU = armv8
+	select CHARSET
 	select DM_EVENT
+	select EVENT
 	select EVENT_DYNAMIC
 	select LIB_UUID
 	imply PARTITION_UUIDS
@@ -35,6 +37,7 @@ if EFI_LOADER
 config CMD_BOOTEFI_BOOTMGR
 	bool "UEFI Boot Manager"
 	default y
+	select BOOTMETH_GLOBAL if BOOTSTD
 	help
 	  Select this option if you want to select the UEFI binary to be booted
 	  via UEFI variables Boot####, BootOrder, and BootNext. This enables the
@@ -364,6 +367,7 @@ config EFI_SECURE_BOOT
 	select X509_CERTIFICATE_PARSER
 	select PKCS7_MESSAGE_PARSER
 	select PKCS7_VERIFY
+	select MSCODE_PARSER
 	select EFI_SIGNATURE_SUPPORT
 	help
 	  Select this option to enable EFI secure boot support.

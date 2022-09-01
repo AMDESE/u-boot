@@ -79,6 +79,11 @@ __weak int xilinx_pm_request(u32 api_id, u32 arg0, u32 arg1, u32 arg2,
 	return 0;
 }
 
+__weak int zynqmp_pm_is_function_supported(const u32 api_id, const u32 id)
+{
+	return 1;
+}
+
 #if defined(CONFIG_ARCH_ZYNQMP) || defined(CONFIG_ARCH_VERSAL)
 /* Default settings for ZynqMP Clock Phases */
 static const u32 zynqmp_iclk_phases[] = {0, 63, 63, 0, 63,  0,
@@ -96,8 +101,8 @@ static const u8 mode2timing[] = {
 	[MMC_LEGACY] = MMC_TIMING_LEGACY,
 	[MMC_HS] = MMC_TIMING_MMC_HS,
 	[SD_HS] = MMC_TIMING_SD_HS,
-	[MMC_HS_52] = MMC_TIMING_UHS_SDR50,
-	[MMC_DDR_52] = MMC_TIMING_UHS_DDR50,
+	[MMC_HS_52] = MMC_TIMING_MMC_HS,
+	[MMC_DDR_52] = MMC_TIMING_MMC_DDR52,
 	[UHS_SDR12] = MMC_TIMING_UHS_SDR12,
 	[UHS_SDR25] = MMC_TIMING_UHS_SDR25,
 	[UHS_SDR50] = MMC_TIMING_UHS_SDR50,

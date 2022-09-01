@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * Copyright 2019-2020 NXP
+ * Copyright 2019-2021 NXP
  */
 
 #ifndef __LS1028A_QDS_H
@@ -60,7 +60,6 @@
 
 /* SATA */
 
-#define CONFIG_SYS_SATA1			AHCI_BASE_ADDR1
 #ifndef SPL_NO_ENV
 #undef CONFIG_EXTRA_ENV_SETTINGS
 #define CONFIG_EXTRA_ENV_SETTINGS \
@@ -68,7 +67,6 @@
 	"hwconfig=fsl_ddr:bank_intlv=auto\0" \
 	"ramdisk_addr=0x800000\0" \
 	"ramdisk_size=0x2000000\0" \
-	"fdt_addr=0x00f00000\0" \
 	"kernel_addr=0x01000000\0" \
 	"scriptaddr=0x80000000\0" \
 	"scripthdraddr=0x80080000\0" \
@@ -89,7 +87,6 @@
 	"kernelhdr_addr_sd=0x3000\0" \
 	"kernelhdr_size_sd=0x10\0" \
 	"console=ttyS0,115200\0" \
-	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0" \
 	BOOTENV \
 	"boot_scripts=ls1028aqds_boot.scr\0" \
 	"boot_script_hdr=hdr_ls1028aqds_bs.out\0" \

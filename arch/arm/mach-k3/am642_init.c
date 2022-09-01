@@ -23,7 +23,6 @@
 #include <mmc.h>
 #include <dm/root.h>
 
-#if defined(CONFIG_SPL_BUILD)
 #define MCU_CTRL_MMR0_BASE			0x04500000
 #define CTRLMMR_MCU_RST_CTRL			0x04518170
 
@@ -47,6 +46,9 @@ static void ctrl_mmr_unlock(void)
 	mmr_unlock(CTRL_MMR0_BASE, 3);
 	mmr_unlock(CTRL_MMR0_BASE, 5);
 	mmr_unlock(CTRL_MMR0_BASE, 6);
+
+	/* Unlock all MCU_PADCFG_MMR1 module registers */
+	mmr_unlock(MCU_PADCFG_MMR1_BASE, 1);
 }
 
 /*
@@ -345,7 +347,6 @@ u32 spl_boot_device(void)
 	else
 		return __get_backup_bootmedia(devstat);
 }
-#endif
 
 #if defined(CONFIG_SYS_K3_SPL_ATF)
 

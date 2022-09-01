@@ -28,7 +28,10 @@
 
 #include <common.h>
 #include <command.h>
+#include <display_options.h>
+#ifdef CONFIG_SYS_DIRECT_FLASH_NFS
 #include <flash.h>
+#endif
 #include <image.h>
 #include <log.h>
 #include <net.h>
@@ -52,7 +55,7 @@ static const ulong nfs_timeout = CONFIG_NFS_TIMEOUT;
 
 static char dirfh[NFS_FHSIZE];	/* NFSv2 / NFSv3 file handle of directory */
 static char filefh[NFS3_FHSIZE]; /* NFSv2 / NFSv3 file handle */
-static int filefh3_length;	/* (variable) length of filefh when NFSv3 */
+static unsigned int filefh3_length;	/* (variable) length of filefh when NFSv3 */
 
 static enum net_loop_state nfs_download_state;
 static struct in_addr nfs_server_ip;
@@ -573,8 +576,6 @@ static int nfs_lookup_reply(uchar *pkt, unsigned len)
 		filefh3_length = ntohl(rpc_pkt.u.reply.data[1]);
 		if (filefh3_length > NFS3_FHSIZE)
 			filefh3_length  = NFS3_FHSIZE;
-		if (((uchar *)&(rpc_pkt.u.reply.data[0]) - (uchar *)(&rpc_pkt) + filefh3_length) > len)
-			return -NFS_RPC_DROP;
 		memcpy(filefh, rpc_pkt.u.reply.data + 2, filefh3_length);
 	}
 

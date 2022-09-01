@@ -149,12 +149,20 @@ static int caam_hash_finish(void *hash_ctx, void *dest_buf,
 				  driver_hash[caam_algo].digestsize,
 				  1);
 
+	flush_dcache_range((ulong)ctx->sg_tbl, (ulong)(ctx->sg_tbl) + len);
+	flush_dcache_range((ulong)ctx->sha_desc,
+			   (ulong)(ctx->sha_desc) + (sizeof(uint32_t) * MAX_CAAM_DESCSIZE));
+	flush_dcache_range((ulong)ctx->hash,
+			   (ulong)(ctx->hash) + driver_hash[caam_algo].digestsize);
+
 	ret = run_descriptor_jr(ctx->sha_desc);
 
 	if (ret) {
 		debug("Error %x\n", ret);
 		return ret;
 	} else {
+		invalidate_dcache_range((ulong)ctx->hash,
+					(ulong)(ctx->hash) + driver_hash[caam_algo].digestsize);
 		memcpy(dest_buf, ctx->hash, sizeof(ctx->hash));
 	}
 	free(ctx);
@@ -167,12 +175,6 @@ int caam_hash(const unsigned char *pbuf, unsigned int buf_len,
 	int ret = 0;
 	uint32_t *desc;
 	unsigned int size;
-
-	if (!IS_ALIGNED((uintptr_t)pbuf, ARCH_DMA_MINALIGN) ||
-	    !IS_ALIGNED((uintptr_t)pout, ARCH_DMA_MINALIGN)) {
-		puts("Error: Address arguments are not aligned\n");
-		return -EINVAL;
-	}
 
 	desc = malloc_cache_aligned(sizeof(int) * MAX_CAAM_DESCSIZE);
 	if (!desc) {

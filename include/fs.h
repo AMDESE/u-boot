@@ -46,7 +46,7 @@ int do_fat_fsload(struct cmd_tbl *cmdtp, int flag, int argc,
 int do_ext2load(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[]);
 
 /*
- * Tell the fs layer which block device an partition to use for future
+ * Tell the fs layer which block device and partition to use for future
  * commands. This also internally identifies the filesystem that is present
  * within the partition. The identification process may be limited to a
  * specific filesystem type by passing FS_* in the fstype parameter.
@@ -174,6 +174,8 @@ int fs_write(const char *filename, ulong addr, loff_t offset, loff_t len,
 #define FS_DT_REG  8         /* regular file */
 #define FS_DT_LNK  10        /* symbolic link */
 
+#define FS_DIRENT_NAME_LEN 256
+
 /**
  * struct fs_dirent - directory entry
  *
@@ -194,7 +196,7 @@ struct fs_dirent {
 	/** change_time:	time of last modification */
 	struct rtc_time change_time;
 	/** name:		file name */
-	char name[256];
+	char name[FS_DIRENT_NAME_LEN];
 };
 
 /* Note: fs_dir_stream should be treated as opaque to the user of fs layer */

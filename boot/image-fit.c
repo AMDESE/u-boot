@@ -477,7 +477,7 @@ void fit_print_contents(const void *fit)
 void fit_image_print(const void *fit, int image_noffset, const char *p)
 {
 	char *desc;
-	uint8_t type, arch, os, comp;
+	uint8_t type, arch, os, comp = IH_COMP_NONE;
 	size_t size;
 	ulong load, entry;
 	const void *data;
@@ -794,7 +794,6 @@ int fit_image_get_comp(const void *fit, int noffset, uint8_t *comp)
 	data = fdt_getprop(fit, noffset, FIT_COMP_PROP, &len);
 	if (data == NULL) {
 		fit_get_debug(fit, noffset, FIT_COMP_PROP, len);
-		*comp = -1;
 		return -1;
 	}
 
@@ -1264,8 +1263,7 @@ int calculate_hash(const void *data, int data_len, const char *name,
 static int fit_image_check_hash(const void *fit, int noffset, const void *data,
 				size_t size, char **err_msgp)
 {
-	DEFINE_ALIGN_BUFFER(uint8_t, value, FIT_MAX_HASH_LEN,
-			    ARCH_DMA_MINALIGN);
+	ALLOC_CACHE_ALIGN_BUFFER(uint8_t, value, FIT_MAX_HASH_LEN);
 	int value_len;
 	const char *algo;
 	uint8_t *fit_value;

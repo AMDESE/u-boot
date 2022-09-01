@@ -158,7 +158,7 @@ config UDP_CHECKSUM
 	default y if SANDBOX
 	help
 	  Enable this to verify the checksum on UDP packets. If the checksum
-	  is wrong then the packet is discussed and an error is shown, like
+	  is wrong then the packet is discarded and an error is shown, like
 	  "UDP wrong checksum 29374a23 30ff3826"
 
 config BOOTP_SERVERIP
@@ -167,6 +167,12 @@ config BOOTP_SERVERIP
 	  Enable this if the TFTP server will be the 'serverip' environment
 	  variable, not the BOOTP server. This affects the operation of both
 	  bootp and tftp.
+
+config BOOTP_MAX_ROOT_PATH_LEN
+	int "Option 17 root path length"
+	default 64
+	help
+	  Select maximal length of option 17 root path.
 
 endif   # if NET
 

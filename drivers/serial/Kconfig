@@ -74,36 +74,20 @@ config TPL_SERIAL_PRESENT
 	  This option enables the full UART in TPL, so if is it disabled,
 	  the full UART driver will be omitted, thus saving space.
 
-# Logic to allow us to use the imply keyword to set what the default port
-# should be.  The default is otherwise 1.
-config CONS_INDEX_0
-	bool
-
-config CONS_INDEX_2
-	bool
-
-config CONS_INDEX_3
-	bool
-
-config CONS_INDEX_4
-	bool
-
-config CONS_INDEX_5
-	bool
-
-config CONS_INDEX_6
-	bool
+config VPL_SERIAL_PRESENT
+	bool "Provide a serial driver in VPL"
+	depends on DM_SERIAL && VPL
+	default y
+	help
+	  In very space-constrained devices even the full UART driver is too
+	  large. In this case the debug UART can still be used in some cases.
+	  This option enables the full UART in TPL, so if is it disabled,
+	  the full UART driver will be omitted, thus saving space.
 
 config CONS_INDEX
 	int "UART used for console"
 	depends on SPECIFY_CONSOLE_INDEX
 	range 0 6
-	default 0 if CONS_INDEX_0
-	default 2 if CONS_INDEX_2
-	default 3 if CONS_INDEX_3
-	default 4 if CONS_INDEX_4
-	default 5 if CONS_INDEX_5
-	default 6 if CONS_INDEX_6
 	default 1
 	help
 	  Set this to match the UART number of the serial console.
@@ -191,6 +175,16 @@ config TPL_DM_SERIAL
 	default y if TPL && DM_SERIAL
 	help
 	  Enable driver model for serial in TPL. This replaces
+	  drivers/serial/serial.c with the serial uclass, which
+	  implements serial_putc() etc. The uclass interface is
+	  defined in include/serial.h.
+
+config VPL_DM_SERIAL
+	bool "Enable Driver Model for serial drivers in VPL"
+	depends on DM_SERIAL
+	default y if VPL && DM_SERIAL
+	help
+	  Enable driver model for serial in VPL. This replaces
 	  drivers/serial/serial.c with the serial uclass, which
 	  implements serial_putc() etc. The uclass interface is
 	  defined in include/serial.h.
@@ -482,11 +476,27 @@ config DEBUG_UART_BASE
 	depends on DEBUG_UART
 	default 0 if DEBUG_SBI_CONSOLE
 	default 0 if DEBUG_UART_SANDBOX
+	default 0xff000000 if DEBUG_UART_ZYNQ && ARCH_ZYNQMP
+	default 0xe0000000 if DEBUG_UART_ZYNQ && ARCH_ZYNQ
 	help
 	  This is the base address of your UART for memory-mapped UARTs.
 
 	  A default should be provided by your board, but if not you will need
 	  to use the correct value here.
+
+config SPL_DEBUG_UART_BASE
+	hex "Base address of UART for SPL"
+	depends on SPL && DEBUG_UART
+	default DEBUG_UART_BASE
+	help
+	  This is the base address of your UART for memory-mapped UARTs for SPL.
+
+config TPL_DEBUG_UART_BASE
+	hex "Base address of UART for TPL"
+	depends on TPL && DEBUG_UART
+	default DEBUG_UART_BASE
+	help
+	  This is the base address of your UART for memory-mapped UARTs for TPL.
 
 config DEBUG_UART_CLOCK
 	int "UART input clock"
@@ -494,6 +504,8 @@ config DEBUG_UART_CLOCK
 	default 0 if DEBUG_SBI_CONSOLE
 	default 0 if DEBUG_UART_SANDBOX
 	default 0 if DEBUG_MVEBU_A3700_UART
+	default 100000000 if DEBUG_UART_ZYNQ && ARCH_ZYNQMP
+	default 50000000 if DEBUG_UART_ZYNQ && ARCH_ZYNQ
 	help
 	  The UART input clock determines the speed of the internal UART
 	  circuitry. The baud rate is derived from this by dividing the input
@@ -928,12 +940,6 @@ config OWL_SERIAL
 	  serial port, say Y to this option. If unsure, say N.
 	  Single baudrate is supported in current implementation (115200).
 
-config PXA_SERIAL
-	bool "PXA serial port support"
-	help
-	  If you have a machine based on a Marvell XScale PXA2xx CPU you
-	  can enable its onboard serial ports by enabling this option.
-
 config HTIF_CONSOLE
 	bool "RISC-V HTIF console support"
 	depends on DM_SERIAL && 64BIT
@@ -995,6 +1001,15 @@ config MPC8XX_CONS
 	bool "Console driver for MPC8XX"
 	depends on MPC8xx
 	default y
+
+config NPCM_SERIAL
+	bool "Nuvoton NPCM UART driver"
+	depends on DM_SERIAL
+	help
+	  Select this to enable UART support for Nuvoton BMCs
+	  (NPCM7xx and NPCM8xx).
+	  The driver enables the onboard serial port with 8-N-1
+	  configuration.
 
 config XEN_SERIAL
 	bool "XEN serial support"

@@ -4,6 +4,8 @@
  * (C) Copyright 2020-2021 Samuel Holland <samuel@sholland.org>
  */
 
+#define OPENSSL_API_COMPAT 0x10101000L
+
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -11,6 +13,7 @@
 #include <string.h>
 
 #include <openssl/asn1t.h>
+#include <openssl/bn.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 
@@ -30,6 +33,12 @@
 #define pr_err(fmt, args...)	fprintf(stderr, pr_fmt(fmt), "error", ##args)
 #define pr_warn(fmt, args...)	fprintf(stderr, pr_fmt(fmt), "warning", ##args)
 #define pr_info(fmt, args...)	fprintf(stderr, pr_fmt(fmt), "info", ##args)
+
+#if defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x3050000fL
+#define RSA_get0_n(key) (key)->n
+#define RSA_get0_e(key) (key)->e
+#define RSA_get0_d(key) (key)->d
+#endif
 
 struct __packed toc0_key_item {
 	__le32  vendor_id;

@@ -361,6 +361,28 @@ void *dm_priv_to_rw(void *priv)
 }
 #endif
 
+static int dm_probe_devices(struct udevice *dev, bool pre_reloc_only)
+{
+	u32 mask = DM_FLAG_PROBE_AFTER_BIND;
+	u32 flags = dev_get_flags(dev);
+	struct udevice *child;
+	int ret;
+
+	if (pre_reloc_only)
+		mask |= DM_FLAG_PRE_RELOC;
+
+	if ((flags & mask) == mask) {
+		ret = device_probe(dev);
+		if (ret)
+			return ret;
+	}
+
+	list_for_each_entry(child, &dev->child_head, sibling_node)
+		dm_probe_devices(child, pre_reloc_only);
+
+	return 0;
+}
+
 /**
  * dm_scan() - Scan tables to bind devices
  *
@@ -393,7 +415,7 @@ static int dm_scan(bool pre_reloc_only)
 	if (ret)
 		return ret;
 
-	return 0;
+	return dm_probe_devices(gd->dm_root, pre_reloc_only);
 }
 
 int dm_init_and_scan(bool pre_reloc_only)
@@ -425,6 +447,59 @@ void dm_get_stats(int *device_countp, int *uclass_countp)
 {
 	*device_countp = device_get_decendent_count(gd->dm_root);
 	*uclass_countp = uclass_get_count();
+}
+
+void dev_collect_stats(struct dm_stats *stats, const struct udevice *parent)
+{
+	const struct udevice *dev;
+	int i;
+
+	stats->dev_count++;
+	stats->dev_size += sizeof(struct udevice);
+	stats->dev_name_size += strlen(parent->name) + 1;
+	for (i = 0; i < DM_TAG_ATTACH_COUNT; i++) {
+		int size = dev_get_attach_size(parent, i);
+
+		if (size ||
+		    (i == DM_TAG_DRIVER_DATA && parent->driver_data)) {
+			stats->attach_count[i]++;
+			stats->attach_size[i] += size;
+			stats->attach_count_total++;
+			stats->attach_size_total += size;
+		}
+	}
+
+	list_for_each_entry(dev, &parent->child_head, sibling_node)
+		dev_collect_stats(stats, dev);
+}
+
+void uclass_collect_stats(struct dm_stats *stats)
+{
+	struct uclass *uc;
+
+	list_for_each_entry(uc, gd->uclass_root, sibling_node) {
+		int size;
+
+		stats->uc_count++;
+		stats->uc_size += sizeof(struct uclass);
+		size = uc->uc_drv->priv_auto;
+		if (size) {
+			stats->uc_attach_count++;
+			stats->uc_attach_size += size;
+		}
+	}
+}
+
+void dm_get_mem(struct dm_stats *stats)
+{
+	memset(stats, '\0', sizeof(*stats));
+	dev_collect_stats(stats, gd->dm_root);
+	uclass_collect_stats(stats);
+	dev_tag_collect_stats(stats);
+
+	stats->total_size = stats->dev_size + stats->uc_size +
+		stats->attach_size_total + stats->uc_attach_size +
+		stats->tag_size;
 }
 
 #ifdef CONFIG_ACPIGEN

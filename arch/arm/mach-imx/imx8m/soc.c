@@ -72,15 +72,13 @@ void enable_tzc380(void)
 	 * According to TRM, TZASC_ID_SWAP_BYPASS should be set in
 	 * order to avoid AXI Bus errors when GPU is in use
 	 */
-	if (is_imx8mq() || is_imx8mm() || is_imx8mn() || is_imx8mp())
-		setbits_le32(&gpr->gpr[10], GPR_TZASC_ID_SWAP_BYPASS);
+	setbits_le32(&gpr->gpr[10], GPR_TZASC_ID_SWAP_BYPASS);
 
 	/*
 	 * imx8mn and imx8mp implements the lock bit for
 	 * TZASC_ID_SWAP_BYPASS, enable it to lock settings
 	 */
-	if (is_imx8mn() || is_imx8mp())
-		setbits_le32(&gpr->gpr[10], GPR_TZASC_ID_SWAP_BYPASS_LOCK);
+	setbits_le32(&gpr->gpr[10], GPR_TZASC_ID_SWAP_BYPASS_LOCK);
 
 	/*
 	 * set Region 0 attribute to allow secure and non-secure
@@ -601,53 +599,6 @@ int arch_cpu_init(void)
 
 #if defined(CONFIG_IMX8MN) || defined(CONFIG_IMX8MP)
 struct rom_api *g_rom_api = (struct rom_api *)0x980;
-
-enum boot_device get_boot_device(void)
-{
-	volatile gd_t *pgd = gd;
-	int ret;
-	u32 boot;
-	u16 boot_type;
-	u8 boot_instance;
-	enum boot_device boot_dev = SD1_BOOT;
-
-	ret = g_rom_api->query_boot_infor(QUERY_BT_DEV, &boot,
-					  ((uintptr_t)&boot) ^ QUERY_BT_DEV);
-	set_gd(pgd);
-
-	if (ret != ROM_API_OKAY) {
-		puts("ROMAPI: failure at query_boot_info\n");
-		return -1;
-	}
-
-	boot_type = boot >> 16;
-	boot_instance = (boot >> 8) & 0xff;
-
-	switch (boot_type) {
-	case BT_DEV_TYPE_SD:
-		boot_dev = boot_instance + SD1_BOOT;
-		break;
-	case BT_DEV_TYPE_MMC:
-		boot_dev = boot_instance + MMC1_BOOT;
-		break;
-	case BT_DEV_TYPE_NAND:
-		boot_dev = NAND_BOOT;
-		break;
-	case BT_DEV_TYPE_FLEXSPINOR:
-		boot_dev = QSPI_BOOT;
-		break;
-	case BT_DEV_TYPE_SPI_NOR:
-		boot_dev = SPI_NOR_BOOT;
-		break;
-	case BT_DEV_TYPE_USB:
-		boot_dev = USB_BOOT;
-		break;
-	default:
-		break;
-	}
-
-	return boot_dev;
-}
 #endif
 
 #if defined(CONFIG_IMX8M)
@@ -1205,6 +1156,48 @@ static int cleanup_nodes_for_efi(void *blob)
 	return 0;
 }
 
+static int fixup_thermal_trips(void *blob, const char *name)
+{
+	int minc, maxc;
+	int node, trip;
+
+	node = fdt_path_offset(blob, "/thermal-zones");
+	if (node < 0)
+		return node;
+
+	node = fdt_subnode_offset(blob, node, name);
+	if (node < 0)
+		return node;
+
+	node = fdt_subnode_offset(blob, node, "trips");
+	if (node < 0)
+		return node;
+
+	get_cpu_temp_grade(&minc, &maxc);
+
+	fdt_for_each_subnode(trip, blob, node) {
+		const char *type;
+		int temp, ret;
+
+		type = fdt_getprop(blob, trip, "type", NULL);
+		if (!type)
+			continue;
+
+		temp = 0;
+		if (!strcmp(type, "critical"))
+			temp = 1000 * maxc;
+		else if (!strcmp(type, "passive"))
+			temp = 1000 * (maxc - 10);
+		if (temp) {
+			ret = fdt_setprop_u32(blob, trip, "temperature", temp);
+			if (ret)
+				return ret;
+		}
+	}
+
+	return 0;
+}
+
 int ft_system_setup(void *blob, struct bd_info *bd)
 {
 #ifdef CONFIG_IMX8MQ
@@ -1347,6 +1340,13 @@ usb_modify_speed:
 #endif
 
 	cleanup_nodes_for_efi(blob);
+
+	if (fixup_thermal_trips(blob, "cpu-thermal"))
+		printf("Failed to update cpu-thermal trip(s)");
+	if (IS_ENABLED(CONFIG_IMX8MP) &&
+	    fixup_thermal_trips(blob, "soc-thermal"))
+		printf("Failed to update soc-thermal trip(s)");
+
 	return 0;
 }
 #endif
@@ -1410,7 +1410,7 @@ int arch_misc_init(void)
 
 		ret = uclass_get_device_by_driver(UCLASS_MISC, DM_DRIVER_GET(caam_jr), &dev);
 		if (ret)
-			printf("Failed to initialize %s: %d\n", dev->name, ret);
+			printf("Failed to initialize caam_jr: %d\n", ret);
 	}
 
 	return 0;
@@ -1535,6 +1535,16 @@ enum env_location arch_env_get_location(enum env_operation op, int prio)
 		return ENVL_UNKNOWN;
 
 	switch (dev) {
+	case USB_BOOT:
+		if (IS_ENABLED(CONFIG_ENV_IS_IN_SPI_FLASH))
+			return ENVL_SPI_FLASH;
+		if (IS_ENABLED(CONFIG_ENV_IS_IN_NAND))
+			return ENVL_NAND;
+		if (IS_ENABLED(CONFIG_ENV_IS_IN_MMC))
+			return ENVL_MMC;
+		if (IS_ENABLED(CONFIG_ENV_IS_NOWHERE))
+			return ENVL_NOWHERE;
+		return ENVL_UNKNOWN;
 	case QSPI_BOOT:
 	case SPI_NOR_BOOT:
 		if (IS_ENABLED(CONFIG_ENV_IS_IN_SPI_FLASH))
@@ -1562,4 +1572,30 @@ enum env_location arch_env_get_location(enum env_operation op, int prio)
 	}
 }
 
+#endif
+
+#ifdef CONFIG_IMX_BOOTAUX
+const struct rproc_att hostmap[] = {
+	/* aux core , host core,  size */
+	{ 0x00000000, 0x007e0000, 0x00020000 },
+	/* OCRAM_S */
+	{ 0x00180000, 0x00180000, 0x00008000 },
+	/* OCRAM */
+	{ 0x00900000, 0x00900000, 0x00020000 },
+	/* OCRAM */
+	{ 0x00920000, 0x00920000, 0x00020000 },
+	/* QSPI Code - alias */
+	{ 0x08000000, 0x08000000, 0x08000000 },
+	/* DDR (Code) - alias */
+	{ 0x10000000, 0x80000000, 0x0FFE0000 },
+	/* TCML */
+	{ 0x1FFE0000, 0x007E0000, 0x00040000 },
+	/* OCRAM_S */
+	{ 0x20180000, 0x00180000, 0x00008000 },
+	/* OCRAM */
+	{ 0x20200000, 0x00900000, 0x00040000 },
+	/* DDR (Data) */
+	{ 0x40000000, 0x40000000, 0x80000000 },
+	{ /* sentinel */ }
+};
 #endif
