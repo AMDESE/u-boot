@@ -1027,7 +1027,6 @@ static void ast2600_sdrammc_update_size(struct dram_info *info)
 	info->info.size = hw_size;
 }
 
-#ifdef CONFIG_ASPEED_ECC
 static void ast2600_sdrammc_ecc_enable(struct dram_info *info, u32 conf_size_mb)
 {
 	struct ast2600_sdrammc_regs *regs = info->regs;
@@ -1057,7 +1056,6 @@ static void ast2600_sdrammc_ecc_enable(struct dram_info *info, u32 conf_size_mb)
 	writel(BIT(31), &regs->intr_ctrl);
 	writel(0, &regs->intr_ctrl);
 }
-#endif
 
 static int ast2600_sdrammc_probe(struct udevice *dev)
 {
@@ -1119,14 +1117,12 @@ L_ast2600_sdramphy_train:
 	}
 #endif
 
-#ifdef CONFIG_ASPEED_ECC
 	if (dev_read_bool(dev, "aspeed,ecc-enabled")) {
 		u32 ecc_size;
 
 		ecc_size = dev_read_u32_default(dev, "aspeed,ecc-size-mb", 0);
 		ast2600_sdrammc_ecc_enable(priv, ecc_size);
 	}
-#endif
 
 	writel(readl(&priv->scu->dram_hdshk) | SCU_DRAM_HDSHK_RDY,
 	       &priv->scu->dram_hdshk);
