@@ -41,6 +41,7 @@ void aspeed_print_soc_id(void)
 
 int aspeed_get_mac_phy_interface(u8 num)
 {
+	return 0;
 }
 
 void aspeed_print_security_info(void)

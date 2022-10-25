@@ -1177,6 +1177,9 @@ dtb-$(CONFIG_ASPEED_AST2600) += \
 	ast2600-evb.dtb \
 	ast2600-evb-tee.dtb
 
+dtb-$(CONFIG_ASPEED_AST2700) += \
+	ast2700-fpga.dtb
+
 dtb-$(CONFIG_ARCH_STI) += stih410-b2260.dtb
 
 dtb-$(CONFIG_STM32MP13x) += \
