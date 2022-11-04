@@ -274,7 +274,7 @@
 
 		mac0: ftgmac@1e660000 {
 			compatible = "aspeed,ast2600-mac", "faraday,ftgmac100";
-			reg = <0x1e660000 0x180>, <0x1e650000 0x4>;
+			reg = <0x1e660000 0x180>;
 			interrupts = <GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&scu ASPEED_CLK_GATE_MAC1CLK>;
 			status = "disabled";
@@ -282,7 +282,7 @@
 
 		mac1: ftgmac@1e680000 {
 			compatible = "aspeed,ast2600-mac", "faraday,ftgmac100";
-			reg = <0x1e680000 0x180>, <0x1e650008 0x4>;
+			reg = <0x1e680000 0x180>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			interrupts = <GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH>;
@@ -292,7 +292,7 @@
 
 		mac2: ftgmac@1e670000 {
 			compatible = "aspeed,ast2600-mac", "faraday,ftgmac100";
-			reg = <0x1e670000 0x180>, <0x1e650010 0x4>;
+			reg = <0x1e670000 0x180>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			interrupts = <GIC_SPI 32 IRQ_TYPE_LEVEL_HIGH>;
@@ -302,7 +302,7 @@
 
 		mac3: ftgmac@1e690000 {
 			compatible = "aspeed,ast2600-mac", "faraday,ftgmac100";
-			reg = <0x1e690000 0x180>, <0x1e650018 0x4>;
+			reg = <0x1e690000 0x180>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			interrupts = <GIC_SPI 33 IRQ_TYPE_LEVEL_HIGH>;
