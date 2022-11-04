@@ -14,6 +14,10 @@
 		stdout-path = &uart5;
 	};
 
+	aliases {
+		ethernet0 = &mac0;
+	};
+
 	cpus {
 		cpu@0 {
 			clock-frequency = <50000000>;
@@ -35,3 +39,17 @@
 	status = "okay";
 };
 
+&mdio0 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	ethphy0: ethernet-phy@0 {
+		reg = <0>;
+	};
+};
+
+&mac0 {
+	status = "okay";
+	phy-mode = "rgmii";
+	phy-handle = <&ethphy0>;
+};
