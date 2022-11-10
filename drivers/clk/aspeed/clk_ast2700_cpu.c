@@ -1,0 +1,276 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (C) ASPEED Technology Inc.
+ */
+
+#include <common.h>
+#include <clk-uclass.h>
+#include <dm.h>
+#include <asm/io.h>
+#include <dm/lists.h>
+#include <linux/delay.h>
+#include <asm/arch/clk_ast2700.h>
+#include <asm/global_data.h>
+#include <dt-bindings/clock/ast2700-clock.h>
+#include <dt-bindings/reset/ast2700-reset.h>
+
+#define ASPEED_FPGA
+
+DECLARE_GLOBAL_DATA_PTR;
+
+#define CLKIN_25M 25000000UL
+
+/*
+ * 3-bit encode of CPU freqeucy
+ * Some code is duplicated
+ */
+enum ast2700_cpu_freq {
+	CPU_FREQ_1200M_1,
+	CPU_FREQ_1600M_1,
+	CPU_FREQ_1200M_2,
+	CPU_FREQ_1600M_2,
+	CPU_FREQ_800M_1,
+	CPU_FREQ_800M_2,
+	CPU_FREQ_800M_3,
+	CPU_FREQ_800M_4,
+};
+
+struct ast2700_cpu_clk_priv {
+	struct ast2700_cpu_clk *clk;
+};
+
+extern uint32_t ast2700_get_pll_rate(struct ast2700_cpu_clk *clk, int pll_idx)
+{
+#ifdef ASPEED_FPGA
+	return 24000000;
+#else
+	union ast2700_pll_reg pll_reg;
+	uint32_t hwstrap1;
+	uint32_t cpu_freq;
+	uint32_t mul = 1, div = 1;
+
+	switch (pll_idx) {
+	case ASPEED_CLK_HPLL:
+		pll_reg.w = readl(clk->hpll);
+		break;
+	case ASPEED_CLK_MPLL:
+		pll_reg.w = readl(&clk->mpll);
+		break;
+	}
+
+	if (!pll_reg.b.bypass) {
+		/* F = 25Mhz * [(M + 2) / (n + 1)] / (p + 1)
+		 * HPLL Numerator (M) = fix 0x5F when SCU500[10]=1
+		 * Fixed 0xBF when SCU500[10]=0 and SCU500[8]=1
+		 * SCU200[12:0] (default 0x8F) when SCU510[10]=0 and SCU510[8]=0
+		 * HPLL Denumerator (N) =	SCU200[18:13] (default 0x2)
+		 * HPLL Divider (P)	 =	SCU200[22:19] (default 0x0)
+		 * HPLL Bandwidth Adj (NB) =  fix 0x2F when SCU500[10]=1
+		 * Fixed 0x5F when SCU500[10]=0 and SCU500[8]=1
+		 * SCU204[11:0] (default 0x31) when SCU500[10]=0 and SCU500[8]=0
+		 */
+
+		mul = (pll_reg.b.m + 1) / (pll_reg.b.n + 1);
+		div = (pll_reg.b.p + 1);
+	}
+
+	return ((CLKIN_25M * mul) / div);
+#endif
+}
+
+static uint32_t ast2700_get_hclk_rate(struct ast2700_cpu_clk *clk)
+{
+#ifdef ASPEED_FPGA
+	return 50000000;
+#else
+	uint32_t rate = ast2700_get_pll_rate(clk, ASPEED_CLK_HPLL);
+	uint32_t axi_div, ahb_div;
+
+	return (rate / axi_div / ahb_div);
+#endif
+}
+
+static uint32_t ast2700_get_pclk_rate(struct ast2700_cpu_clk *clk)
+{
+#ifdef ASPEED_FPGA
+	//hpll/4
+	return 6000000;
+#else
+	uint32_t rate = ast2700_get_pll_rate(clk, ASPEED_CLK_HPLL);
+	uint32_t clksrc1 = readl(&clk->clksrc1);
+	uint32_t pclk_div = (clksrc1 & SCU_CLKSRC1_PCLK_DIV_MASK) >>
+			    SCU_CLKSRC1_PCLK_DIV_SHIFT;
+
+	return (rate / ((pclk_div + 1) * 4));
+#endif
+}
+
+static ulong ast2700_clk_get_rate(struct clk *clk)
+{
+	struct ast2700_cpu_clk_priv *priv = dev_get_priv(clk->dev);
+	ulong rate = 0;
+
+	switch (clk->id) {
+	case ASPEED_CLK_HPLL:
+	case ASPEED_CLK_MPLL:
+		rate = ast2700_get_pll_rate(priv->clk, clk->id);
+		break;
+	case ASPEED_CLK_AHB:
+		rate = ast2700_get_hclk_rate(priv->clk);
+		break;
+	case ASPEED_CLK_APB1:
+		rate = ast2700_get_pclk_rate(priv->clk);
+		break;
+	default:
+		debug("%s: unknown clk %ld\n", __func__, clk->id);
+		return -ENOENT;
+	}
+
+	return rate;
+}
+
+/**
+ * @brief	lookup PLL divider config by input/output rate
+ * @param[in]	*pll - PLL descriptor
+ * Return:	true - if PLL divider config is found, false - else
+ * The function caller shall fill "pll->in" and "pll->out",
+ * then this function will search the lookup table
+ * to find a valid PLL divider configuration.
+ */
+static bool ast2700_search_clock_config(struct ast2700_pll_desc *pll)
+{
+	uint32_t i;
+	const struct ast2700_pll_desc *def_desc;
+	bool is_found = false;
+
+	for (i = 0; i < ARRAY_SIZE(ast2700_pll_lookup); i++) {
+		def_desc = &ast2700_pll_lookup[i];
+
+		if (def_desc->in == pll->in && def_desc->out == pll->out) {
+			is_found = true;
+			pll->cfg.reg.w = def_desc->cfg.reg.w;
+			pll->cfg.ext_reg = def_desc->cfg.ext_reg;
+			break;
+		}
+	}
+	return is_found;
+}
+
+static uint32_t ast2700_configure_pll(struct ast2700_cpu_clk *clk,
+				      struct ast2700_pll_cfg *p_cfg,
+				      int pll_idx)
+{
+	void __iomem *addr, *addr_ext;
+	uint32_t reg;
+
+	switch (pll_idx) {
+	case ASPEED_CLK_HPLL:
+		addr = (void __iomem *)(&clk->hpll);
+		addr_ext = (void __iomem *)(&clk->hpll_ext);
+		break;
+	case ASPEED_CLK_MPLL:
+		addr = (void __iomem *)(&clk->mpll);
+		addr_ext = (void __iomem *)(&clk->mpll_ext);
+		break;
+	default:
+		debug("unknown PLL index\n");
+		return 1;
+	}
+
+	p_cfg->reg.b.bypass = 0;
+	p_cfg->reg.b.off = 1;
+	p_cfg->reg.b.reset = 1;
+
+	reg = readl(addr);
+	reg &= ~GENMASK(25, 0);
+	reg |= p_cfg->reg.w;
+	writel(reg, addr);
+
+	/* write extend parameter */
+	writel(p_cfg->ext_reg, addr_ext);
+	udelay(100);
+	p_cfg->reg.b.off = 0;
+	p_cfg->reg.b.reset = 0;
+	reg &= ~GENMASK(25, 0);
+	reg |= p_cfg->reg.w;
+	writel(reg, addr);
+
+	while (!(readl(addr_ext) & BIT(31)))
+		;
+
+	return 0;
+}
+
+static uint32_t ast2700_configure_ddr(struct ast2700_cpu_clk *clk, ulong rate)
+{
+	struct ast2700_pll_desc mpll;
+
+	mpll.in = CLKIN_25M;
+	mpll.out = rate;
+	if (ast2700_search_clock_config(&mpll) == false) {
+		printf("error!! unable to find valid DDR clock setting\n");
+		return 0;
+	}
+	ast2700_configure_pll(clk, &mpll.cfg, ASPEED_CLK_MPLL);
+
+	return ast2700_get_pll_rate(clk, ASPEED_CLK_MPLL);
+}
+
+static ulong ast2700_clk_set_rate(struct clk *clk, ulong rate)
+{
+	struct ast2700_cpu_clk_priv *priv = dev_get_priv(clk->dev);
+	ulong new_rate;
+
+	switch (clk->id) {
+	case ASPEED_CLK_MPLL:
+		new_rate = ast2700_configure_ddr(priv->clk, rate);
+		break;
+	default:
+		return -ENOENT;
+	}
+
+	return new_rate;
+}
+
+struct clk_ops ast2700_cpu_clk_ops = {
+	.get_rate = ast2700_clk_get_rate,
+	.set_rate = ast2700_clk_set_rate,
+};
+
+static int ast2700_cpu_clk_probe(struct udevice *dev)
+{
+	struct ast2700_cpu_clk_priv *priv = dev_get_priv(dev);
+
+	priv->clk = devfdt_get_addr_ptr(dev);
+	if (IS_ERR(priv->clk))
+		return PTR_ERR(priv->clk);
+
+	return 0;
+}
+
+static int ast2700_cpu_clk_bind(struct udevice *dev)
+{
+	int ret;
+
+	/* The reset driver does not have a device node, so bind it here */
+	ret = device_bind_driver(gd->dm_root, "ast_sysreset", "reset", &dev);
+	if (ret)
+		debug("Warning: No reset driver: ret=%d\n", ret);
+
+	return 0;
+}
+
+static const struct udevice_id ast2700_cpu_clk_ids[] = {
+	{ .compatible = "aspeed,ast2700_cpu-clk", },
+	{ },
+};
+
+U_BOOT_DRIVER(aspeed_ast2700_cpu_clk) = {
+	.name = "aspeed_ast2700_cpu_clk",
+	.id = UCLASS_CLK,
+	.of_match = ast2700_cpu_clk_ids,
+	.priv_auto = sizeof(struct ast2700_cpu_clk_priv),
+	.ops = &ast2700_cpu_clk_ops,
+	.bind = ast2700_cpu_clk_bind,
+	.probe = ast2700_cpu_clk_probe,
+};
