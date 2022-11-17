@@ -66,7 +66,7 @@ struct ftgmac100 {
 	unsigned int	rx_runt;	/* 0xc0 */
 	unsigned int	rx_crcer_ftl;	/* 0xc4 */
 	unsigned int	rx_col_lost;	/* 0xc8 */
-	unsigned int	reserved[42];	/* 0xcc - 0x174 */
+	unsigned int	reserved[43];	/* 0xcc - 0x174 */
 	unsigned int	txr_badr_lo;	/* 0x178, defined in ast2700 */
 	unsigned int	txr_badr_hi;	/* 0x17c, defined in ast2700 */
 	unsigned int	hptxr_badr_lo;	/* 0x180, defined in ast2700 */
