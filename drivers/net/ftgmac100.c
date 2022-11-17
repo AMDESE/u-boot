@@ -450,9 +450,11 @@ static int ftgmac100_recv(struct udevice *dev, int flags, uchar **packetp)
 	ulong des_start = ((ulong)curr_des) & ~(ARCH_DMA_MINALIGN - 1);
 	ulong des_end = des_start +
 		roundup(sizeof(*curr_des), ARCH_DMA_MINALIGN);
-	ulong data_start = curr_des->rxdes3;
+	union ftgmac100_dma_addr data_start = { .lo = 0, .hi = 0 };
 	ulong data_end;
 
+	data_start.hi = FIELD_GET(FTGMAC100_RXDES2_RXBUF_BADR_HI, curr_des->rxdes2);
+	data_start.lo = curr_des->rxdes3;
 	invalidate_dcache_range(des_start, des_end);
 
 	if (!(curr_des->rxdes0 & FTGMAC100_RXDES0_RXPKT_RDY))
@@ -472,9 +474,9 @@ static int ftgmac100_recv(struct udevice *dev, int flags, uchar **packetp)
 	       __func__, priv->rx_index, rxlen);
 
 	/* Invalidate received data */
-	data_end = data_start + roundup(rxlen, ARCH_DMA_MINALIGN);
-	invalidate_dcache_range(data_start, data_end);
-	*packetp = (uchar *)data_start;
+	data_end = data_start.addr + roundup(rxlen, ARCH_DMA_MINALIGN);
+	invalidate_dcache_range(data_start.addr, data_end);
+	*packetp = (uchar *)data_start.addr;
 
 	return rxlen;
 }
