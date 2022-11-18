@@ -55,9 +55,38 @@ static void bcm_phy_write_misc(struct phy_device *phydev,
 /* Broadcom BCM5461S */
 static int bcm5461_config(struct phy_device *phydev)
 {
-	genphy_config_aneg(phydev);
+	u32 reg18, reg1c;
 
 	phy_reset(phydev);
+	/*
+	 * RX interface delay: reg 0x18, shadow value b'0111: misc control
+	 * bit[8] RGMII RXD to RXC skew
+	 */
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_BCM54xx_AUXCNTL,
+		  MIIM_BCM54xx_AUXCNTL_ENCODE(0x7));
+	reg18 = phy_read(phydev, MDIO_DEVAD_NONE, MIIM_BCM54xx_AUXCNTL);
+	reg18 &= ~(MIIM_BCM54xx_AUXCNTL_ENCODE(0x7) | BIT(8));
+	reg18 |= BIT(15) | MIIM_BCM54xx_AUXCNTL_ENCODE(0x7);
+	if (phydev->interface == PHY_INTERFACE_MODE_RGMII_ID ||
+	    phydev->interface == PHY_INTERFACE_MODE_RGMII_RXID)
+		reg18 |= BIT(8);
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_BCM54xx_AUXCNTL, reg18);
+
+	/*
+	 * TX interface delay: reg 0x1c, shadow value b'0011: clock alignment control
+	 * bit[9] GTXCLK clock delay enable
+	 */
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_BCM54XX_SHD,
+		  MIIM_BCM54XX_SHD_VAL(0x3));
+	reg1c = phy_read(phydev, MDIO_DEVAD_NONE, MIIM_BCM54XX_SHD);
+	reg1c &= ~(MIIM_BCM54XX_SHD_VAL(0x1f) | BIT(9));
+	reg1c |= BIT(15) | MIIM_BCM54XX_SHD_VAL(0x3);
+	if (phydev->interface == PHY_INTERFACE_MODE_RGMII_ID ||
+	    phydev->interface == PHY_INTERFACE_MODE_RGMII_TXID)
+		reg1c |= BIT(9);
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_BCM54XX_SHD, reg1c);
+
+	genphy_config_aneg(phydev);
 
 	return 0;
 }
@@ -323,6 +352,26 @@ static int bcm5482_startup(struct phy_device *phydev)
 	return bcm54xx_parse_status(phydev);
 }
 
+static struct phy_driver BCM54616S_driver = {
+	.name = "Broadcom BCM54616S",
+	.uid = 0x03625d12,
+	.mask = 0xffffffff,
+	.features = PHY_GBIT_FEATURES,
+	.config = &bcm5461_config,
+	.startup = &bcm54xx_startup,
+	.shutdown = &genphy_shutdown,
+};
+
+static struct phy_driver BCM54612_driver = {
+	.name = "Broadcom BCM54612",
+	.uid = 0x03625e6a,
+	.mask = 0xffffffff,
+	.features = PHY_GBIT_FEATURES,
+	.config = &bcm5461_config,
+	.startup = &bcm54xx_startup,
+	.shutdown = &genphy_shutdown,
+};
+
 static struct phy_driver BCM5461S_driver = {
 	.name = "Broadcom BCM5461S",
 	.uid = 0x2060c0,
@@ -365,6 +414,8 @@ static struct phy_driver BCM_CYGNUS_driver = {
 
 int phy_broadcom_init(void)
 {
+	phy_register(&BCM54616S_driver);
+	phy_register(&BCM54612_driver);
 	phy_register(&BCM5482S_driver);
 	phy_register(&BCM5464S_driver);
 	phy_register(&BCM5461S_driver);
