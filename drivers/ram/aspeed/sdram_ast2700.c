@@ -301,10 +301,9 @@ struct dramc_ac_timing ac_table[] = {
 
 };
 
-u32 ac_timing[7];
-
-void dramc_convert_actiming_table(struct dramc_ac_timing *tbl)
+void dramc_convert_actiming_table(struct dramc_regs *regs, struct dramc_ac_timing *tbl)
 {
+	u32 ac_timing[7];
 	u8 t_zqcs  = 80; //TBD
 	u8 t_rfcsb = 0;
 	u8 t_mrd   = 4;
@@ -337,17 +336,15 @@ void dramc_convert_actiming_table(struct dramc_ac_timing *tbl)
 				(((tbl->t_xp >> 1) - 1) << 8) +
 				((tbl->t_cksre >> 1) - 1);
 	ac_timing[6] = (tbl->t_dllk >> 1) - 1;
+
+	for (i = 0; i < ARRAY_SIZE(ac_timing); ++i)
+		writel(ac_timing[i], &regs->ac_timing[i]);
 }
 
 void dramc_configure_ac_timing(struct dramc_regs *regs)
 {
-	u32 i;
-
 	/* load controller setting */
-	dramc_convert_actiming_table(ac_table);
-
-	for (i = 0; i < ARRAY_SIZE(ac_timing); ++i)
-		writel(ac_timing[i], &regs->ac_timing[i]);
+	dramc_convert_actiming_table(regs, ac_table);
 }
 
 void dramc_configure_register(struct dramc_regs *regs, int ddr5_mode)
