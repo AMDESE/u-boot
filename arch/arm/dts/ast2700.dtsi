@@ -27,19 +27,19 @@
 		i2c13 = &i2c13;
 		i2c14 = &i2c14;
 		i2c15 = &i2c15;
-		serial0 = &uart0;
+		serial0 = &uart5;
 		serial1 = &uart1;
 		serial2 = &uart2;
 		serial3 = &uart3;
 		serial4 = &uart4;
-		serial5 = &uart5;
-		serial6 = &uart6;
-		serial7 = &uart7;
-		serial8 = &uart8;
-		serial9 = &uart9;
-		serial10 = &uart10;
-		serial11 = &uart11;
-		serial12 = &uart12;
+		serial5 = &uart6;
+		serial6 = &uart7;
+		serial7 = &uart8;
+		serial8 = &uart9;
+		serial9 = &uart10;
+		serial10 = &uart11;
+		serial11 = &uart12;
+		serial12 = &uart13;
 		ethernet0 = &mac0;
 		ethernet1 = &mac1;
 		ethernet2 = &mac2;
@@ -111,7 +111,7 @@
 			ranges;
 			u-boot,dm-pre-reloc;
 
-			uart0: serial@12c1a000 {
+			uart5: serial@12c1a000 {
 				compatible = "ns16550a";
 				reg = <0x12c1a000 0x1000>;
 				reg-shift = <2>;
@@ -228,7 +228,7 @@
 				status = "disabled";
 			};
 
-			uart5: serial@14c33400 {
+			uart6: serial@14c33400 {
 				compatible = "ns16550a";
 				reg = <0x14c33400 0x20>;
 				reg-shift = <2>;
@@ -239,7 +239,7 @@
 				status = "disabled";
 			};
 
-			uart6: serial@14c33500 {
+			uart7: serial@14c33500 {
 				compatible = "ns16550a";
 				reg = <0x14c33500 0x20>;
 				reg-shift = <2>;
@@ -250,7 +250,7 @@
 				status = "disabled";
 			};
 
-			uart7: serial@14c33600 {
+			uart8: serial@14c33600 {
 				compatible = "ns16550a";
 				reg = <0x14c33600 0x20>;
 				reg-shift = <2>;
@@ -261,7 +261,7 @@
 				status = "disabled";
 			};
 
-			uart8: serial@14c33700 {
+			uart9: serial@14c33700 {
 				compatible = "ns16550a";
 				reg = <0x14c33800 0x20>;
 				reg-shift = <2>;
@@ -272,7 +272,7 @@
 				status = "disabled";
 			};
 
-			uart9: serial@14c33800 {
+			uart10: serial@14c33800 {
 				compatible = "ns16550a";
 				reg = <0x14c33800 0x20>;
 				reg-shift = <2>;
@@ -283,7 +283,7 @@
 				status = "disabled";
 			};
 
-			uart10: serial@14c33900 {
+			uart11: serial@14c33900 {
 				compatible = "ns16550a";
 				reg = <0x14c33900 0x20>;
 				reg-shift = <2>;
@@ -294,7 +294,7 @@
 				status = "disabled";
 			};
 
-			uart11: serial@14c33a00 {
+			uart12: serial@14c33a00 {
 				compatible = "ns16550a";
 				reg = <0x14c33a00 0x20>;
 				reg-shift = <2>;
@@ -305,7 +305,7 @@
 				status = "disabled";
 			};
 
-			uart12: serial@14c33b00 {
+			uart13: serial@14c33b00 {
 				compatible = "ns16550a";
 				reg = <0x14c33b00 0x20>;
 				reg-shift = <2>;
