@@ -52,3 +52,30 @@
 	phy-mode = "rgmii";
 	phy-handle = <&ethphy0>;
 };
+
+&fmc {
+	status = "disabled";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_fmcquad_default>;
+
+	flash@0 {
+		status = "disabled";
+		spi-max-frequency = <12500000>;
+		spi-tx-bus-width = <4>;
+		spi-rx-bus-width = <4>;
+	};
+
+	flash@1 {
+		status = "disabled";
+		spi-max-frequency = <12500000>;
+		spi-tx-bus-width = <4>;
+		spi-rx-bus-width = <4>;
+	};
+
+	flash@2 {
+		status = "disabled";
+		spi-max-frequency = <12500000>;
+		spi-tx-bus-width = <4>;
+		spi-rx-bus-width = <4>;
+	};
+};

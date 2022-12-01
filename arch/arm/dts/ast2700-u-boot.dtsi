@@ -7,34 +7,33 @@
 / {
 	clk0: clock-controller@12c00200 {
 		compatible = "aspeed,ast2700_cpu-clk";
-		reg = <0x12c00200 0x400>;
+		reg = <0 0x12c00200 0 0x400>;
 		#clock-cells = <1>;
 	};
 
 	clk1: clock-controller@14c00200 {
 		compatible = "aspeed,ast2700_io-clk";
-		reg = <0x14c00400 0x400>;
+		reg = <0 0x14c00400 0 0x400>;
 		#clock-cells = <1>;
 	};
 
 	rst0: reset-controller {
 		compatible = "aspeed,ast2700-reset";
-		reg = <0x12c00200 0x40>;
+		reg = <0 0x0 0x12c00200 0 0x40>;
 		#reset-cells = <1>;
 	};
 
 	rst1: reset-controller {
 		u-boot,dm-pre-reloc;
 		compatible = "aspeed,ast2700-reset";
-		reg = <0x14c00200 0x40>;
+		reg = <0 0x14c00200 0 0x40>;
 		#reset-cells = <1>;
 	};
 
 	sdrammc: sdrammc@12c00000 {
 		u-boot,dm-pre-reloc;
 		compatible = "aspeed,ast2700-sdrammc";
-		reg = <0x12c00000 0x3000
-			0x13000000 0x300 >;
+		reg = <0 0x12c00000 0 0x3000 0 0x13000000 0 0x300 >;
 		clocks = <&clk0 ASPEED_CLK_MPLL>;
 		resets = <&rst0 ASPEED_RESET_SDRAM>;
 	};
