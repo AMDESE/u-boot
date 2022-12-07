@@ -111,6 +111,27 @@
 			ranges;
 			u-boot,dm-pre-reloc;
 
+			emmc_controller: sdc@12090000 {
+				compatible = "aspeed,ast2600-sd-controller";
+				#address-cells = <2>;
+				#size-cells = <2>;
+				reg = <0 0x12090000 0 0x100>;
+				ranges = <0 0 0 0x12090000 0 0x10000>;
+				clocks = <&clk0 ASPEED_CLK_GATE_EMMCCLK>;
+				status = "okay";
+
+				emmc: sdhci@12090100 {
+					compatible = "aspeed,ast2600-sdhci";
+					reg = <0 0x100 0 0x100>;
+					sdhci,auto-cmd12;
+					#interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
+					clocks = <&clk0 ASPEED_CLK_EMMC>;
+					resets = <&rst0 ASPEED_RESET_EMMC>;
+					pinctrl-names = "default";
+					pinctrl-0 = <&pinctrl_emmc_default>;
+				};
+			};
+
 			uart5: serial@12c1a000 {
 				compatible = "ns16550a";
 				reg = <0x0 0x12c1a000 0x0 0x1000>;
@@ -1693,4 +1714,3 @@
 		groups = "PCIE1RC";
 	};
 };
-
