@@ -232,9 +232,78 @@ static ulong ast2700_clk_set_rate(struct clk *clk, ulong rate)
 	return new_rate;
 }
 
+static ulong ast2700_enable_emmcclk(struct ast2700_cpu_clk *clk)
+{
+	u32 reset_bit;
+	u32 clkgate_bit;
+
+	reset_bit = BIT(ASPEED_RESET_EMMC);
+	clkgate_bit = ASPEED_CLK_GATE_EMMCCLK;
+
+	writel(reset_bit, &clk->modrst_ctrl);
+	udelay(100);
+	writel(clkgate_bit, &clk->clkgate_clr);
+	mdelay(10);
+	writel(reset_bit, &clk->modrst_clr);
+
+	return 0;
+}
+
+#define SCU_CLKSRC1_MAC_DIV_MASK		GENMASK(18, 16)
+#define SCU_CLKSRC1_MAC_DIV_SHIFT		16
+#define SCU_CLKSRC1_EMMC_EN			BIT(15)
+#define SCU_CLKSRC1_EMMC_DIV_MASK		GENMASK(14, 12)
+#define SCU_CLKSRC1_EMMC_DIV_SHIFT		12
+#define SCU_CLKSRC1_EMMC			BIT(11)
+
+static ulong ast2700_enable_extemmcclk(struct ast2700_cpu_clk *clk)
+{
+	int i = 0;
+	u32 div = 0;
+	u32 rate = 0;
+	u32 clksrc1 = readl(&clk->clk_sel1);
+
+	rate = ast2700_get_pll_rate(clk, ASPEED_CLK_MPLL);
+	for (i = 0; i < 8; i++) {
+		div = (i + 1) * 2;
+		if ((rate / div) <= 200000000)
+			break;
+	}
+
+	clksrc1 &= ~SCU_CLKSRC1_EMMC_DIV_MASK;
+	clksrc1 |= (i << SCU_CLKSRC1_EMMC_DIV_SHIFT);
+	clksrc1 |= SCU_CLKSRC1_EMMC;
+	writel(clksrc1, &clk->clk_sel1);
+
+	setbits_le32(&clk->clk_sel1, SCU_CLKSRC1_EMMC_EN);
+
+	return 0;
+}
+
+static int ast2700_clk_enable(struct clk *clk)
+{
+	struct ast2700_cpu_clk_priv *priv = dev_get_priv(clk->dev);
+	struct ast2700_cpu_clk *cpu_clk = priv->clk;
+
+	switch (clk->id) {
+	case ASPEED_CLK_GATE_EMMCCLK:
+		ast2700_enable_emmcclk(cpu_clk);
+		break;
+	case ASPEED_CLK_EMMC:
+		ast2700_enable_extemmcclk(cpu_clk);
+		break;
+	default:
+		debug("%s: unknown clk %ld\n", __func__, clk->id);
+		return -ENOENT;
+	}
+
+	return 0;
+}
+
 struct clk_ops ast2700_cpu_clk_ops = {
 	.get_rate = ast2700_clk_get_rate,
 	.set_rate = ast2700_clk_set_rate,
+	.enable = ast2700_clk_enable,
 };
 
 static int ast2700_cpu_clk_probe(struct udevice *dev)
