@@ -300,8 +300,72 @@ static ulong ast2700_clk_get_rate(struct clk *clk)
 	return rate;
 }
 
+static uint32_t ast2700_configure_mac(struct ast2700_io_clk *clk, int index)
+{
+	u32 reset_bit;
+	u32 clkgate_bit;
+
+	switch (index) {
+	case 0:
+		reset_bit = BIT(ASPEED_RESET_MAC0);
+		clkgate_bit = BIT(ASPEED_CLK_GATE_MAC0CLK - 32);
+		writel(reset_bit, &clk->modrst_ctrl1);
+		udelay(100);
+		writel(clkgate_bit, &clk->clkgate_clr1);
+		mdelay(10);
+		writel(reset_bit, &clk->modrst_clr1);
+		break;
+	case 1:
+		reset_bit = BIT(ASPEED_RESET_MAC1);
+		clkgate_bit = BIT(ASPEED_CLK_GATE_MAC1CLK - 32);
+		writel(reset_bit, &clk->modrst_ctrl1);
+		udelay(100);
+		writel(clkgate_bit, &clk->clkgate_clr1);
+		mdelay(10);
+		writel(reset_bit, &clk->modrst_clr1);
+		break;
+	case 2:
+		reset_bit = BIT(ASPEED_RESET_MAC2);
+		clkgate_bit = BIT(ASPEED_CLK_GATE_MAC2CLK - 32);
+		writel(reset_bit, &clk->modrst_ctrl2);
+		udelay(100);
+		writel(clkgate_bit, &clk->clkgate_clr2);
+		mdelay(10);
+		writel(reset_bit, &clk->modrst_clr2);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int ast2700_clk_enable(struct clk *clk)
+{
+	struct ast2700_io_clk_priv *priv = dev_get_priv(clk->dev);
+	struct ast2700_io_clk *io_clk = priv->clk;
+
+	switch (clk->id) {
+	case ASPEED_CLK_GATE_MAC0CLK:
+		ast2700_configure_mac(io_clk, 0);
+		break;
+	case ASPEED_CLK_GATE_MAC1CLK:
+		ast2700_configure_mac(io_clk, 1);
+		break;
+	case ASPEED_CLK_GATE_MAC2CLK:
+		ast2700_configure_mac(io_clk, 2);
+		break;
+	default:
+		debug("%s: unknown clk %ld\n", __func__, clk->id);
+		return -ENOENT;
+	}
+
+	return 0;
+}
+
 struct clk_ops ast2700_io_clk_ops = {
 	.get_rate = ast2700_clk_get_rate,
+	.enable = ast2700_clk_enable,
 };
 
 static int ast2700_io_clk_probe(struct udevice *dev)

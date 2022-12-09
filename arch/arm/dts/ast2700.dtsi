@@ -182,6 +182,7 @@
 			mac0: ftgmac@14050000 {
 				compatible = "aspeed,ast2700-mac", "faraday,ftgmac100";
 				reg = <0x0 0x14050000 0x0 0x180>;
+				clocks = <&clk1 ASPEED_CLK_GATE_MAC0CLK>;
 				resets = <&rst1 ASPEED_RESET_MAC0>;
 				status = "disabled";
 			};
@@ -189,6 +190,7 @@
 			mac1: ftgmac@14060000 {
 				compatible = "aspeed,ast2700-mac", "faraday,ftgmac100";
 				reg = <0x0 0x14060000 0x0 0x180>;
+				clocks = <&clk1 ASPEED_CLK_GATE_MAC1CLK>;
 				resets = <&rst1 ASPEED_RESET_MAC1>;
 				status = "disabled";
 			};
@@ -196,6 +198,7 @@
 			mac2: ftgmac@14070000 {
 				compatible = "aspeed,ast2700-mac", "faraday,ftgmac100";
 				reg = <0x0 0x14070000 0x0 0x180>;
+				clocks = <&clk1 ASPEED_CLK_GATE_MAC2CLK>;
 				resets = <&rst1 ASPEED_RESET_MAC2>;
 				status = "disabled";
 			};
