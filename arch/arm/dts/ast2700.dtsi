@@ -382,7 +382,10 @@
 
 &i2c {
 	i2cglobal: i2cg@00 {
-		compatible = "aspeed,ast2600-i2c-global";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+		compatible = "aspeed,ast2700-i2c-global";
 		reg = <0 0x0 0 0x40>;
 		resets = <&rst1 ASPEED_RESET_I2C>;
 		new-mode;
@@ -394,7 +397,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0 0x100 0 0x80>;
-		compatible = "aspeed,ast2600-i2c-bus";
+		compatible = "aspeed,ast2700-i2c-bus";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 110 IRQ_TYPE_LEVEL_HIGH>;
 		resets = <&rst1 ASPEED_RESET_I2C>;
@@ -410,7 +413,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0 0x200 0 0x80>;
-		compatible = "aspeed,ast2600-i2c-bus";
+		compatible = "aspeed,ast2700-i2c-bus";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>;
 		resets = <&rst1 ASPEED_RESET_I2C>;
@@ -426,7 +429,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0 0x300 0 0x80>;
-		compatible = "aspeed,ast2600-i2c-bus";
+		compatible = "aspeed,ast2700-i2c-bus";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>;
 		resets = <&rst1 ASPEED_RESET_I2C>;
@@ -442,7 +445,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0 0x400 0 0x80>;
-		compatible = "aspeed,ast2600-i2c-bus";
+		compatible = "aspeed,ast2700-i2c-bus";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>;
 		resets = <&rst1 ASPEED_RESET_I2C>;
@@ -458,7 +461,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0 0x500 0 0x80>;
-		compatible = "aspeed,ast2600-i2c-bus";
+		compatible = "aspeed,ast2700-i2c-bus";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 114 IRQ_TYPE_LEVEL_HIGH>;
 		resets = <&rst1 ASPEED_RESET_I2C>;
@@ -474,7 +477,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0 0x600 0 0x40>;
-		compatible = "aspeed,ast2600-i2c-bus";
+		compatible = "aspeed,ast2700-i2c-bus";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 115 IRQ_TYPE_LEVEL_HIGH>;
 		resets = <&rst1 ASPEED_RESET_I2C>;
@@ -490,7 +493,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0 0x700 0 0x80>;
-		compatible = "aspeed,ast2600-i2c-bus";
+		compatible = "aspeed,ast2700-i2c-bus";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 116 IRQ_TYPE_LEVEL_HIGH>;
 		resets = <&rst1 ASPEED_RESET_I2C>;
@@ -506,7 +509,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0 0x800 0 0x80>;
-		compatible = "aspeed,ast2600-i2c-bus";
+		compatible = "aspeed,ast2700-i2c-bus";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 117 IRQ_TYPE_LEVEL_HIGH>;
 		resets = <&rst1 ASPEED_RESET_I2C>;
@@ -522,7 +525,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0 0x900 0 0x80>;
-		compatible = "aspeed,ast2600-i2c-bus";
+		compatible = "aspeed,ast2700-i2c-bus";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 118 IRQ_TYPE_LEVEL_HIGH>;
 		resets = <&rst1 ASPEED_RESET_I2C>;
@@ -538,7 +541,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0 0xa00 0 0x80>;
-		compatible = "aspeed,ast2600-i2c-bus";
+		compatible = "aspeed,ast2700-i2c-bus";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 119 IRQ_TYPE_LEVEL_HIGH>;
 		resets = <&rst1 ASPEED_RESET_I2C>;
@@ -554,7 +557,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0 0xb00 0 0x80>;
-		compatible = "aspeed,ast2600-i2c-bus";
+		compatible = "aspeed,ast2700-i2c-bus";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>;
 		resets = <&rst1 ASPEED_RESET_I2C>;
@@ -570,7 +573,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0 0xc00 0 0x80>;
-		compatible = "aspeed,ast2600-i2c-bus";
+		compatible = "aspeed,ast2700-i2c-bus";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 121 IRQ_TYPE_LEVEL_HIGH>;
 		resets = <&rst1 ASPEED_RESET_I2C>;
@@ -586,7 +589,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0 0xd00 0 0x80>;
-		compatible = "aspeed,ast2600-i2c-bus";
+		compatible = "aspeed,ast2700-i2c-bus";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 122 IRQ_TYPE_LEVEL_HIGH>;
 		resets = <&rst1 ASPEED_RESET_I2C>;
@@ -602,7 +605,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0 0xe00 0 0x80>;
-		compatible = "aspeed,ast2600-i2c-bus";
+		compatible = "aspeed,ast2700-i2c-bus";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>;
 		resets = <&rst1 ASPEED_RESET_I2C>;
@@ -618,7 +621,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0 0xf00 0 0x80>;
-		compatible = "aspeed,ast2600-i2c-bus";
+		compatible = "aspeed,ast2700-i2c-bus";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 124 IRQ_TYPE_LEVEL_HIGH>;
 		resets = <&rst1 ASPEED_RESET_I2C>;
@@ -634,7 +637,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0 0x1000 0 0x80>;
-		compatible = "aspeed,ast2600-i2c-bus";
+		compatible = "aspeed,ast2700-i2c-bus";
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>;
 		resets = <&rst1 ASPEED_RESET_I2C>;
