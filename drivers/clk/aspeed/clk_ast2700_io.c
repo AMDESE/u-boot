@@ -103,7 +103,7 @@ static uint32_t ast2700_get_pclk2_rate(struct ast2700_io_clk *clk)
 {
 #ifdef ASPEED_FPGA
 	//hpll/4
-	return 6000000;
+	return 12000000;
 #else
 	uint32_t rate = ast2700_io_get_hclk_rate(clk);
 	uint32_t clksrc4 = readl(&clk->clksrc4);
