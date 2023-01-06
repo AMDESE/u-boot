@@ -82,6 +82,7 @@ static const struct udevice_id aspeed_sdhci_ids[] = {
 	{ .compatible = "aspeed,ast2400-sdhci" },
 	{ .compatible = "aspeed,ast2500-sdhci" },
 	{ .compatible = "aspeed,ast2600-sdhci" },
+	{ .compatible = "aspeed,ast2700-sdhci" },
 	{ }
 };
 
@@ -121,6 +122,7 @@ static const struct udevice_id aspeed_sdc_ids[] = {
 	{ .compatible = "aspeed,ast2400-sd-controller" },
 	{ .compatible = "aspeed,ast2500-sd-controller" },
 	{ .compatible = "aspeed,ast2600-sd-controller" },
+	{ .compatible = "aspeed,ast2700-sd-controller" },
 	{ }
 };
 
