@@ -526,7 +526,7 @@ static int ftgmac100_send(struct udevice *dev, void *packet, int length)
 	curr_des->txdes3 = dma_addr.lo;
 
 	/* Flush data to be sent */
-	data_start = curr_des->txdes3;
+	data_start = (ulong)dma_addr.addr;
 	data_end = data_start + roundup(length, ARCH_DMA_MINALIGN);
 	flush_dcache_range(data_start, data_end);
 
