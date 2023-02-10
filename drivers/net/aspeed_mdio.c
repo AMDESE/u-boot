@@ -103,11 +103,30 @@ static int aspeed_mdio_probe(struct udevice *dev)
 	struct aspeed_mdio_priv *priv = dev_get_priv(dev);
 	struct reset_ctl reset_ctl;
 	int ret = 0;
+	u32 reg;
 
 	priv->base = dev_read_addr_ptr(dev);
 
 	ret = reset_get_by_index(dev, 0, &reset_ctl);
 	reset_deassert(&reset_ctl);
+
+	/*
+	 * The maximum permitted frequency of MDC is set at 2.5 MHz
+	 *
+	 * In Aspeed SOC:
+	 * MDC period = (ASPEED_MDIO_DATA_MDC_THRES + 1) * 2 * HCLK period >= (1 / 2.5MHz)
+	 *
+	 * Given HCLK period = 5ns
+	 * We can derive
+	 *   (ASPEED_MDIO_DATA_MDC_THRES + 1) * 2 * 5ns >= 400ns
+	 *   ASPEED_MDIO_DATA_MDC_THRES >= 39
+	 *
+	 * Choose ASPEED_MDIO_DATA_MDC_THRES = 48 > 39
+	 */
+	reg = readl(priv->base + ASPEED_MDIO_DATA);
+	reg &= ~ASPEED_MDIO_DATA_MDC_THRES;
+	reg |= FIELD_PREP(ASPEED_MDIO_DATA_MDC_THRES, 48);
+	writel(reg, priv->base + ASPEED_MDIO_DATA);
 
 	return 0;
 }
