@@ -4,10 +4,10 @@
  * Ryan Chen <ryan_chen@aspeedtech.com>
  */
 
-#include <asm/io.h>
 #include <common.h>
-#include <errno.h>
-#include <asm/arch/aspeed_scu_info.h>
+#include <command.h>
+#include <asm/io.h>
+#include <asm/arch/platform.h>
 
 /* SoC mapping Table */
 #define SOC_ID(str, rev) { .name = str, .rev_id = rev, }
@@ -53,7 +53,7 @@ static struct soc_id soc_map_table[] = {
 	SOC_ID("AST2600-A0", 0x05000303),
 };
 
-void aspeed_print_soc_id(void)
+void ast2500_print_soc_id(void)
 {
 	int i;
 	u32 rev_id = readl(ASPEED_REVISION_ID);
@@ -68,7 +68,7 @@ void aspeed_print_soc_id(void)
 		printf("SOC : %4s\n", soc_map_table[i].name);
 }
 
-int aspeed_get_mac_phy_interface(u8 num)
+int ast2500_get_mac_phy_interface(u8 num)
 {
 	u32 strap1 = readl(ASPEED_HW_STRAP1);
 #ifdef ASPEED_HW_STRAP2
@@ -105,7 +105,7 @@ int aspeed_get_mac_phy_interface(u8 num)
 	return -1;
 }
 
-void aspeed_print_security_info(void)
+void ast2500_print_security_info(void)
 {
 	switch ((readl(ASPEED_HW_STRAP2) >> 18) & 0x3) {
 	case 1:
@@ -127,7 +127,7 @@ void aspeed_print_security_info(void)
 #define SYS_EXT_RESET			BIT(1)
 #define SYS_PWR_RESET_FLAG		BIT(0)
 
-void aspeed_print_sysrst_info(void)
+void ast2500_print_sysrst_info(void)
 {
 	u32 rest = readl(ASPEED_SYS_RESET_CTRL);
 
@@ -159,7 +159,7 @@ void aspeed_print_sysrst_info(void)
 
 #define SOC_FW_INIT_DRAM		BIT(7)
 
-void aspeed_print_dram_initializer(void)
+void ast2500_print_dram_initializer(void)
 {
 	if (readl(ASPEED_VGA_HANDSHAKE0) & SOC_FW_INIT_DRAM)
 		printf("[init by SOC]\n");
@@ -167,17 +167,13 @@ void aspeed_print_dram_initializer(void)
 		printf("[init by VBIOS]\n");
 }
 
-void aspeed_print_2nd_wdt_mode(void)
+void ast2500_print_2nd_wdt_mode(void)
 {
 	if (readl(ASPEED_HW_STRAP1) & BIT(17))
 		printf("2nd Boot : Enable\n");
 }
 
-void aspeed_print_spi_strap_mode(void)
-{
-}
-
-void aspeed_print_espi_mode(void)
+void ast2500_print_espi_mode(void)
 {
 	int espi_mode = 0;
 	int sio_disable = 0;
@@ -205,7 +201,7 @@ void aspeed_print_espi_mode(void)
 		printf("\n");
 }
 
-void aspeed_print_mac_info(void)
+void ast2500_print_mac_info(void)
 {
 	int i;
 
@@ -218,4 +214,15 @@ void aspeed_print_mac_info(void)
 			printf(", ");
 	}
 	printf("\n");
+}
+
+int print_cpuinfo(void)
+{
+	ast2500_print_soc_id();
+	ast2500_print_sysrst_info();
+	ast2500_print_security_info();
+	ast2500_print_2nd_wdt_mode();
+	ast2500_print_espi_mode();
+	ast2500_print_mac_info();
+	return 0;
 }
