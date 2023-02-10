@@ -103,3 +103,7 @@
 &i2c4 {
 	status = "okay";
 };
+
+&wdt0 {
+	status = "okay";
+};

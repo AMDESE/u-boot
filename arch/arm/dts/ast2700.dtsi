@@ -232,6 +232,61 @@
 				no-loopback-test;
 				status = "disabled";
 			};
+
+			wdt0: watchdog@14c37000 {
+				compatible = "aspeed,ast2700-wdt";
+				reg = <0x0 0x14c37000 0x0 0x40>;
+				status = "disabled";
+			};
+
+			wdt1: watchdog@14c37080 {
+				compatible = "aspeed,ast2700-wdt";
+				reg = <0x0 0x14c37080 0x0 0x40>;
+				status = "disabled";
+			};
+
+			wdt2: watchdog@14c37100 {
+				compatible = "aspeed,ast2700-wdt";
+				reg = <0x0 0x14c37100 0x0 0x40>;
+				status = "disabled";
+			};
+
+			wdt3: watchdog@14c37180 {
+				compatible = "aspeed,ast2700-wdt";
+				reg = <0x0 0x14c37180 0x0 0x40>;
+				status = "disabled";
+			};
+
+			wdt4: watchdog@14c37200 {
+				compatible = "aspeed,ast2700-wdt";
+				reg = <0x0 0x14c37200 0x0 0x40>;
+				status = "disabled";
+			};
+
+			wdt5: watchdog@14c37280 {
+				compatible = "aspeed,ast2700-wdt";
+				reg = <0x0 0x14c37280 0x0 0x40>;
+				status = "disabled";
+			};
+
+			wdt6: watchdog@14c37300 {
+				compatible = "aspeed,ast2700-wdt";
+				reg = <0x0 0x14c37300 0x0 0x40>;
+				status = "disabled";
+			};
+
+			wdt7: watchdog@14c37380 {
+				compatible = "aspeed,ast2700-wdt";
+				reg = <0x0 0x14c37380 0x0 0x40>;
+				status = "disabled";
+			};
+
+			wdt_abr: watchdog@14c37400 {
+				compatible = "aspeed,ast2700-wdt";
+				reg = <0x0 0x14c37400 0x0 0x40>;
+				status = "disabled";
+			};
+
 			i2c: bus@14c0f000 {
 				compatible = "simple-bus";
 				#address-cells = <2>;
