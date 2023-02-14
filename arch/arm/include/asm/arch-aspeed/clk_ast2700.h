@@ -132,7 +132,8 @@ struct ast2700_cpu_clk {
 	u32 rsv_0x2f4[3];		/* 0x2f4 */
 	u32 hpll;			/* 0x300 */
 	u32 hpll_ext;		/* 0x304 */
-	u32 rsv_0x308[2];		/* 0x308 ~ 0x30C */
+	u32 dpll;			/* 0x308 */
+	u32 dpll_ext;		/* 0x30C */
 	u32 mpll;			/* 0x310 */
 	u32 mpll_ext;		/* 0x314 */
 	u32 rsv_0x318[2];		/* 0x318 ~ 0x31C */

@@ -34,7 +34,7 @@
 		u-boot,dm-pre-reloc;
 		compatible = "aspeed,ast2700-sdrammc";
 		reg = <0 0x12c00000 0 0x3000 0 0x13000000 0 0x300 >;
-		clocks = <&clk0 ASPEED_CLK_MPLL>;
+		clocks = <&clk0 AST2700_CPU_CLK_MPLL>;
 		resets = <&rst0 ASPEED_RESET_SDRAM>;
 	};
 

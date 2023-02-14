@@ -85,36 +85,43 @@ extern uint32_t ast2700_io_get_pll_rate(struct ast2700_io_clk *clk, int pll_idx)
 #endif
 }
 
-static uint32_t ast2700_get_bclk_rate(struct ast2700_io_clk *clk)
-{
-#ifdef ASPEED_FPGA
-	return 50000000;
-#else
-	uint32_t rate = ast2700_io_get_pll_rate(clk, ASPEED_CLK_HPLL);
-	uint32_t clksrc1 = readl(&clk->clksrc1);
-	uint32_t bclk_div = (clksrc1 & SCU_CLKSRC1_BCLK_DIV_MASK) >>
-			     SCU_CLKSRC1_BCLK_DIV_SHIFT;
+#define SCU_CLKSEL2_HCLK_DIV_MASK		GENMASK(22, 20)
+#define SCU_CLKSEL2_HCLK_DIV_SHIFT		20
 
-	return (rate / ((bclk_div + 1) * 4));
-#endif
-}
-
-static uint32_t ast2700_get_pclk2_rate(struct ast2700_io_clk *clk)
+static uint32_t ast2700_io_get_hclk_rate(struct ast2700_io_clk *clk)
 {
 #ifdef ASPEED_FPGA
 	//hpll/4
 	return 12000000;
 #else
-	uint32_t rate = ast2700_io_get_hclk_rate(clk);
-	uint32_t clksrc4 = readl(&clk->clksrc4);
-	uint32_t pclk_div = (clksrc4 & SCU_CLKSRC4_PCLK_DIV_MASK) >>
+	u32 rate = ast2700_io_get_pll_rate(clk, ASPEED_CLK_HPLL);
+	u32 clk_sel2 = readl(&clk->clk_sel2);
+	u32 hclk_div = (clk_sel2 & SCU_CLKSEL2_HCLK_DIV_MASK) >>
+			     SCU_CLKSEL2_HCLK_DIV_SHIFT;
+
+	if (!hclk_div)
+		hclk_div++;
+
+	return (rate / ((hclk_div + 1) * 2));
+#endif
+}
+
+static uint32_t ast2700_io_get_pclk_rate(struct ast2700_io_clk *clk)
+{
+#ifdef ASPEED_FPGA
+	//hpll/4
+	return 12000000;
+#else
+	u32 rate = ast2700_io_get_hclk_rate(clk);
+	u32 clksrc4 = readl(&clk->clksrc4);
+	u32 pclk_div = (clksrc4 & SCU_CLKSRC4_PCLK_DIV_MASK) >>
 			     SCU_CLKSRC4_PCLK_DIV_SHIFT;
 
 	return (rate / ((pclk_div + 1) * 2));
 #endif
 }
 
-static uint32_t ast2700_get_uart_uxclk_rate(struct ast2700_io_clk *clk)
+static uint32_t ast2700_io_get_uart_uxclk_rate(struct ast2700_io_clk *clk)
 {
 #ifdef ASPEED_FPGA
 	return 24000000;
@@ -130,7 +137,7 @@ static uint32_t ast2700_get_uart_uxclk_rate(struct ast2700_io_clk *clk)
 #endif
 }
 
-static uint32_t ast2700_get_uart_huxclk_rate(struct ast2700_io_clk *clk)
+static uint32_t ast2700_io_get_uart_huxclk_rate(struct ast2700_io_clk *clk)
 {
 #ifdef ASPEED_FPGA
 	return 24000000;
@@ -146,7 +153,7 @@ static uint32_t ast2700_get_uart_huxclk_rate(struct ast2700_io_clk *clk)
 #endif
 }
 
-static uint32_t ast2700_get_sdio_clk_rate(struct ast2700_io_clk *clk)
+static uint32_t ast2700_io_get_sdio_clk_rate(struct ast2700_io_clk *clk)
 {
 #ifdef ASPEED_FPGA
 	return 50000000;
@@ -165,22 +172,8 @@ static uint32_t ast2700_get_sdio_clk_rate(struct ast2700_io_clk *clk)
 #endif
 }
 
-static uint32_t ast2700_get_emmc_clk_rate(struct ast2700_io_clk *clk)
-{
-#ifdef ASPEED_FPGA
-	return 50000000;
-#else
-	uint32_t rate = ast2700_io_get_pll_rate(clk, ASPEED_CLK_HPLL);
-	uint32_t clksrc1 = readl(&clk->clksrc1);
-	uint32_t emmc_div = (clksrc1 & SCU_CLKSRC1_EMMC_DIV_MASK) >>
-			     SCU_CLKSRC1_EMMC_DIV_SHIFT;
-
-	return (rate / ((emmc_div + 1) * 4));
-#endif
-}
-
-static uint32_t ast2700_get_uart_clk_rate(struct ast2700_io_clk *clk,
-					  int uart_idx)
+static uint32_t
+ast2700_io_get_uart_clk_rate(struct ast2700_io_clk *clk, int uart_idx)
 {
 #ifdef ASPEED_FPGA
 	return (24000000 / 13);
@@ -248,49 +241,43 @@ static uint32_t ast2700_get_uart_clk_rate(struct ast2700_io_clk *clk,
 #endif
 }
 
-static ulong ast2700_clk_get_rate(struct clk *clk)
+static ulong ast2700_io_clk_get_rate(struct clk *clk)
 {
 	struct ast2700_io_clk_priv *priv = dev_get_priv(clk->dev);
 	ulong rate = 0;
 
 	switch (clk->id) {
-	case ASPEED_CLK_EPLL:
-	case ASPEED_CLK_DPLL:
-	case ASPEED_CLK_APLL:
+	case AST2700_IO_CLK_HPLL:
+	case AST2700_IO_CLK_APLL:
+	case AST2700_IO_CLK_DPLL:
 		rate = ast2700_io_get_pll_rate(priv->clk, clk->id);
 		break;
-	case ASPEED_CLK_APB2:
-		rate = ast2700_get_pclk2_rate(priv->clk);
+	case AST2700_IO_CLK_AHB:
+		rate = ast2700_io_get_hclk_rate(priv->clk);
 		break;
-	case ASPEED_CLK_GATE_UART1CLK:
-		rate = ast2700_get_uart_clk_rate(priv->clk, 1);
+	case AST2700_IO_CLK_APB:
+		rate = ast2700_io_get_pclk_rate(priv->clk);
 		break;
-	case ASPEED_CLK_GATE_UART2CLK:
-		rate = ast2700_get_uart_clk_rate(priv->clk, 2);
+	case AST2700_IO_CLK_GATE_UART1CLK:
+		rate = ast2700_io_get_uart_clk_rate(priv->clk, 1);
 		break;
-	case ASPEED_CLK_GATE_UART3CLK:
-		rate = ast2700_get_uart_clk_rate(priv->clk, 3);
+	case AST2700_IO_CLK_GATE_UART2CLK:
+		rate = ast2700_io_get_uart_clk_rate(priv->clk, 2);
 		break;
-	case ASPEED_CLK_GATE_UART4CLK:
-		rate = ast2700_get_uart_clk_rate(priv->clk, 4);
+	case AST2700_IO_CLK_GATE_UART3CLK:
+		rate = ast2700_io_get_uart_clk_rate(priv->clk, 3);
 		break;
-	case ASPEED_CLK_GATE_UART5CLK:
-		rate = ast2700_get_uart_clk_rate(priv->clk, 5);
+	case AST2700_IO_CLK_GATE_UART4CLK:
+		rate = ast2700_io_get_uart_clk_rate(priv->clk, 4);
 		break;
-	case ASPEED_CLK_BCLK:
-		rate = ast2700_get_bclk_rate(priv->clk);
+	case AST2700_IO_CLK_SDIO:
+		rate = ast2700_io_get_sdio_clk_rate(priv->clk);
 		break;
-	case ASPEED_CLK_SDIO:
-		rate = ast2700_get_sdio_clk_rate(priv->clk);
+	case AST2700_IO_CLK_UARTX:
+		rate = ast2700_io_get_uart_uxclk_rate(priv->clk);
 		break;
-	case ASPEED_CLK_EMMC:
-		rate = ast2700_get_emmc_clk_rate(priv->clk);
-		break;
-	case ASPEED_CLK_UARTX:
-		rate = ast2700_get_uart_uxclk_rate(priv->clk);
-		break;
-	case ASPEED_CLK_HUARTX:
-		rate = ast2700_get_uart_huxclk_rate(priv->clk);
+	case AST2700_IO_CLK_HUARTX:
+		rate = ast2700_io_get_uart_huxclk_rate(priv->clk);
 		break;
 	default:
 		debug("%s: unknown clk %ld\n", __func__, clk->id);
@@ -308,7 +295,7 @@ static uint32_t ast2700_configure_mac(struct ast2700_io_clk *clk, int index)
 	switch (index) {
 	case 0:
 		reset_bit = BIT(ASPEED_RESET_MAC0);
-		clkgate_bit = BIT(ASPEED_CLK_GATE_MAC0CLK - 32);
+		clkgate_bit = BIT(AST2700_IO_CLK_GATE_MAC0CLK - AST2700_IO_CLK_GATE);
 		writel(reset_bit, &clk->modrst_ctrl1);
 		udelay(100);
 		writel(clkgate_bit, &clk->clkgate_clr1);
@@ -317,7 +304,7 @@ static uint32_t ast2700_configure_mac(struct ast2700_io_clk *clk, int index)
 		break;
 	case 1:
 		reset_bit = BIT(ASPEED_RESET_MAC1);
-		clkgate_bit = BIT(ASPEED_CLK_GATE_MAC1CLK - 32);
+		clkgate_bit = BIT(AST2700_IO_CLK_GATE_MAC1CLK - AST2700_IO_CLK_GATE);
 		writel(reset_bit, &clk->modrst_ctrl1);
 		udelay(100);
 		writel(clkgate_bit, &clk->clkgate_clr1);
@@ -326,7 +313,7 @@ static uint32_t ast2700_configure_mac(struct ast2700_io_clk *clk, int index)
 		break;
 	case 2:
 		reset_bit = BIT(ASPEED_RESET_MAC2);
-		clkgate_bit = BIT(ASPEED_CLK_GATE_MAC2CLK - 32);
+		clkgate_bit = BIT(AST2700_IO_CLK_GATE_MAC2CLK - AST2700_IO_CLK_GATE);
 		writel(reset_bit, &clk->modrst_ctrl2);
 		udelay(100);
 		writel(clkgate_bit, &clk->clkgate_clr2);
@@ -340,19 +327,19 @@ static uint32_t ast2700_configure_mac(struct ast2700_io_clk *clk, int index)
 	return 0;
 }
 
-static int ast2700_clk_enable(struct clk *clk)
+static int ast2700_io_clk_enable(struct clk *clk)
 {
 	struct ast2700_io_clk_priv *priv = dev_get_priv(clk->dev);
 	struct ast2700_io_clk *io_clk = priv->clk;
 
 	switch (clk->id) {
-	case ASPEED_CLK_GATE_MAC0CLK:
+	case AST2700_IO_CLK_GATE_MAC0CLK:
 		ast2700_configure_mac(io_clk, 0);
 		break;
-	case ASPEED_CLK_GATE_MAC1CLK:
+	case AST2700_IO_CLK_GATE_MAC1CLK:
 		ast2700_configure_mac(io_clk, 1);
 		break;
-	case ASPEED_CLK_GATE_MAC2CLK:
+	case AST2700_IO_CLK_GATE_MAC2CLK:
 		ast2700_configure_mac(io_clk, 2);
 		break;
 	default:
@@ -364,8 +351,8 @@ static int ast2700_clk_enable(struct clk *clk)
 }
 
 struct clk_ops ast2700_io_clk_ops = {
-	.get_rate = ast2700_clk_get_rate,
-	.enable = ast2700_clk_enable,
+	.get_rate = ast2700_io_clk_get_rate,
+	.enable = ast2700_io_clk_enable,
 };
 
 static int ast2700_io_clk_probe(struct udevice *dev)

@@ -20,26 +20,11 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define CLKIN_25M 25000000UL
 
-/*
- * 3-bit encode of CPU freqeucy
- * Some code is duplicated
- */
-enum ast2700_cpu_freq {
-	CPU_FREQ_1200M_1,
-	CPU_FREQ_1600M_1,
-	CPU_FREQ_1200M_2,
-	CPU_FREQ_1600M_2,
-	CPU_FREQ_800M_1,
-	CPU_FREQ_800M_2,
-	CPU_FREQ_800M_3,
-	CPU_FREQ_800M_4,
-};
-
 struct ast2700_cpu_clk_priv {
 	struct ast2700_cpu_clk *clk;
 };
 
-extern uint32_t ast2700_get_pll_rate(struct ast2700_cpu_clk *clk, int pll_idx)
+extern uint32_t ast2700_cpu_get_pll_rate(struct ast2700_cpu_clk *clk, int pll_idx)
 {
 #ifdef ASPEED_FPGA
 	return 24000000;
@@ -50,76 +35,100 @@ extern uint32_t ast2700_get_pll_rate(struct ast2700_cpu_clk *clk, int pll_idx)
 	uint32_t mul = 1, div = 1;
 
 	switch (pll_idx) {
-	case ASPEED_CLK_HPLL:
+	case AST2700_CPU_CLK_HPLL:
 		pll_reg.w = readl(clk->hpll);
 		break;
-	case ASPEED_CLK_MPLL:
+	case AST2700_CPU_CLK_DPLL:
+		pll_reg.w = readl(&clk->dpll);
+		break;
+	}
+	case AST2700_CPU_CLK_MPLL:
 		pll_reg.w = readl(&clk->mpll);
 		break;
 	}
 
 	if (!pll_reg.b.bypass) {
-		/* F = 25Mhz * [(M + 2) / (n + 1)] / (p + 1)
-		 * HPLL Numerator (M) = fix 0x5F when SCU500[10]=1
-		 * Fixed 0xBF when SCU500[10]=0 and SCU500[8]=1
-		 * SCU200[12:0] (default 0x8F) when SCU510[10]=0 and SCU510[8]=0
-		 * HPLL Denumerator (N) =	SCU200[18:13] (default 0x2)
-		 * HPLL Divider (P)	 =	SCU200[22:19] (default 0x0)
-		 * HPLL Bandwidth Adj (NB) =  fix 0x2F when SCU500[10]=1
-		 * Fixed 0x5F when SCU500[10]=0 and SCU500[8]=1
-		 * SCU204[11:0] (default 0x31) when SCU500[10]=0 and SCU500[8]=0
-		 */
-
-		mul = (pll_reg.b.m + 1) / (pll_reg.b.n + 1);
-		div = (pll_reg.b.p + 1);
+		if (pll_idx == AST2700_CPU_CLK_MPLL) {
+			/* F = 25Mhz * [M / (n + 1)] / (p + 1) */
+			mul = (pll_reg.b.m) / ((pll_reg.b.n + 1));
+			div = (pll_reg.b.p + 1);
+		} else {
+			/* F = 25Mhz * [(M + 2) / 2 * (n + 1)] / (p + 1) */
+			mul = (pll_reg.b.m + 1) / ((pll_reg.b.n + 1) * 2);
+			div = (pll_reg.b.p + 1);
+		}
 	}
 
 	return ((CLKIN_25M * mul) / div);
 #endif
 }
 
-static uint32_t ast2700_get_hclk_rate(struct ast2700_cpu_clk *clk)
+static uint32_t ast2700_cpu_get_hclk_rate(struct ast2700_cpu_clk *clk)
 {
 #ifdef ASPEED_FPGA
 	return 50000000;
 #else
-	uint32_t rate = ast2700_get_pll_rate(clk, ASPEED_CLK_HPLL);
-	uint32_t axi_div, ahb_div;
+	u32 rate = ast2700_cpu_get_pll_rate(clk, AST2700_CPU_CLK_HPLL);
+	u32 fixed_div = 4;
 
-	return (rate / axi_div / ahb_div);
+	return (rate / fixed_div);
 #endif
 }
 
-static uint32_t ast2700_get_pclk_rate(struct ast2700_cpu_clk *clk)
+#define SCU_CLKSEL1_PCLK_DIV_MASK		GENMASK(25, 23)
+#define SCU_CLKSEL1_PCLK_DIV_SHIFT		23
+
+static uint32_t ast2700_cpu_get_pclk_rate(struct ast2700_cpu_clk *clk)
 {
 #ifdef ASPEED_FPGA
 	//hpll/4
 	return 6000000;
 #else
-	uint32_t rate = ast2700_get_pll_rate(clk, ASPEED_CLK_HPLL);
-	uint32_t clksrc1 = readl(&clk->clksrc1);
-	uint32_t pclk_div = (clksrc1 & SCU_CLKSRC1_PCLK_DIV_MASK) >>
-			    SCU_CLKSRC1_PCLK_DIV_SHIFT;
+	u32 rate = ast2700_cpu_get_pll_rate(clk, AST2700_CPU_CLK_HPLL);
+	u32 clksel1 = readl(&clk->clk_sel1);
+	u32 pclk_div = (clksel1 & SCU_CLKSEL1_PCLK_DIV_MASK) >>
+			    SCU_CLKSEL1_PCLK_DIV_SHIFT;
 
 	return (rate / ((pclk_div + 1) * 4));
 #endif
 }
 
-static ulong ast2700_clk_get_rate(struct clk *clk)
+#define SCU_CLKSEL1_BCLK_DIV_MASK		GENMASK(22, 20)
+#define SCU_CLKSEL1_BCLK_DIV_SHIFT		20
+
+static uint32_t ast2700_cpu_get_bclk_rate(struct ast2700_cpu_clk *clk)
+{
+#ifdef ASPEED_FPGA
+	return 50000000;
+#else
+	u32 rate = ast2700_cpu_get_pll_rate(clk, AST2700_CPU_CLK_HPLL);
+	u32 clksel1 = readl(&clk->clk_sel1);
+	u32 bclk_div = (clksel1 & SCU_CLKSEL1_BCLK_DIV_MASK) >>
+			     SCU_CLKSEL1_BCLK_DIV_SHIFT;
+
+	return (rate / ((bclk_div + 1) * 4));
+#endif
+}
+
+static ulong ast2700_cpu_clk_get_rate(struct clk *clk)
 {
 	struct ast2700_cpu_clk_priv *priv = dev_get_priv(clk->dev);
 	ulong rate = 0;
 
 	switch (clk->id) {
-	case ASPEED_CLK_HPLL:
-	case ASPEED_CLK_MPLL:
-		rate = ast2700_get_pll_rate(priv->clk, clk->id);
+	case AST2700_CPU_CLK_HPLL:
+	case AST2700_CPU_CLK_DPLL:
+	case AST2700_CPU_CLK_MPLL:
+		rate = ast2700_cpu_get_pll_rate(priv->clk, clk->id);
 		break;
-	case ASPEED_CLK_AHB:
-		rate = ast2700_get_hclk_rate(priv->clk);
+	case AST2700_CPU_CLK_AHB:
+		rate = ast2700_cpu_get_hclk_rate(priv->clk);
 		break;
-	case ASPEED_CLK_APB1:
-		rate = ast2700_get_pclk_rate(priv->clk);
+	case AST2700_CPU_CLK_APB:
+		rate = ast2700_cpu_get_pclk_rate(priv->clk);
+		break;
+	case AST2700_CPU_CLK_BCLK:
+		rate = ast2700_cpu_get_bclk_rate(priv->clk);
 		break;
 	default:
 		debug("%s: unknown clk %ld\n", __func__, clk->id);
@@ -164,11 +173,11 @@ static uint32_t ast2700_configure_pll(struct ast2700_cpu_clk *clk,
 	uint32_t reg;
 
 	switch (pll_idx) {
-	case ASPEED_CLK_HPLL:
+	case AST2700_CPU_CLK_HPLL:
 		addr = (void __iomem *)(&clk->hpll);
 		addr_ext = (void __iomem *)(&clk->hpll_ext);
 		break;
-	case ASPEED_CLK_MPLL:
+	case AST2700_CPU_CLK_MPLL:
 		addr = (void __iomem *)(&clk->mpll);
 		addr_ext = (void __iomem *)(&clk->mpll_ext);
 		break;
@@ -211,18 +220,18 @@ static uint32_t ast2700_configure_ddr(struct ast2700_cpu_clk *clk, ulong rate)
 		printf("error!! unable to find valid DDR clock setting\n");
 		return 0;
 	}
-	ast2700_configure_pll(clk, &mpll.cfg, ASPEED_CLK_MPLL);
+	ast2700_configure_pll(clk, &mpll.cfg, AST2700_CPU_CLK_MPLL);
 
-	return ast2700_get_pll_rate(clk, ASPEED_CLK_MPLL);
+	return ast2700_cpu_get_pll_rate(clk, AST2700_CPU_CLK_MPLL);
 }
 
-static ulong ast2700_clk_set_rate(struct clk *clk, ulong rate)
+static ulong ast2700_cpu_clk_set_rate(struct clk *clk, ulong rate)
 {
 	struct ast2700_cpu_clk_priv *priv = dev_get_priv(clk->dev);
 	ulong new_rate;
 
 	switch (clk->id) {
-	case ASPEED_CLK_MPLL:
+	case AST2700_CPU_CLK_MPLL:
 		new_rate = ast2700_configure_ddr(priv->clk, rate);
 		break;
 	default:
@@ -238,7 +247,7 @@ static ulong ast2700_enable_emmcclk(struct ast2700_cpu_clk *clk)
 	u32 clkgate_bit;
 
 	reset_bit = BIT(ASPEED_RESET_EMMC);
-	clkgate_bit = ASPEED_CLK_GATE_EMMCCLK;
+	clkgate_bit = AST2700_CPU_CLK_GATE_EMMCCLK;
 
 	writel(reset_bit, &clk->modrst_ctrl);
 	udelay(100);
@@ -263,7 +272,7 @@ static ulong ast2700_enable_extemmcclk(struct ast2700_cpu_clk *clk)
 	u32 rate = 0;
 	u32 clksrc1 = readl(&clk->clk_sel1);
 
-	rate = ast2700_get_pll_rate(clk, ASPEED_CLK_MPLL);
+	rate = ast2700_cpu_get_pll_rate(clk, AST2700_CPU_CLK_MPLL);
 	for (i = 0; i < 8; i++) {
 		div = (i + 1) * 2;
 		if ((rate / div) <= 200000000)
@@ -280,16 +289,16 @@ static ulong ast2700_enable_extemmcclk(struct ast2700_cpu_clk *clk)
 	return 0;
 }
 
-static int ast2700_clk_enable(struct clk *clk)
+static int ast2700_cpu_clk_enable(struct clk *clk)
 {
 	struct ast2700_cpu_clk_priv *priv = dev_get_priv(clk->dev);
 	struct ast2700_cpu_clk *cpu_clk = priv->clk;
 
 	switch (clk->id) {
-	case ASPEED_CLK_GATE_EMMCCLK:
+	case AST2700_CPU_CLK_GATE_EMMCCLK:
 		ast2700_enable_emmcclk(cpu_clk);
 		break;
-	case ASPEED_CLK_EMMC:
+	case AST2700_CPU_CLK_EMMC:
 		ast2700_enable_extemmcclk(cpu_clk);
 		break;
 	default:
@@ -301,9 +310,9 @@ static int ast2700_clk_enable(struct clk *clk)
 }
 
 struct clk_ops ast2700_cpu_clk_ops = {
-	.get_rate = ast2700_clk_get_rate,
-	.set_rate = ast2700_clk_set_rate,
-	.enable = ast2700_clk_enable,
+	.get_rate = ast2700_cpu_clk_get_rate,
+	.set_rate = ast2700_cpu_clk_set_rate,
+	.enable = ast2700_cpu_clk_enable,
 };
 
 static int ast2700_cpu_clk_probe(struct udevice *dev)
