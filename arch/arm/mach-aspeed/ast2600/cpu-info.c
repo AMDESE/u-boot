@@ -429,12 +429,9 @@ int print_cpuinfo(void)
 	ast2600_print_sysrst_info();
 	ast2600_print_security_info();
 	ast2600_print_2nd_wdt_mode();
-	if (ast2600_print_fmc_aux_ctrl)
-		ast2600_print_fmc_aux_ctrl();
-	if (ast2600_print_spi1_abr_mode)
-		ast2600_print_spi1_abr_mode();
-	if (ast2600_print_spi1_aux_ctrl)
-		ast2600_print_spi1_aux_ctrl();
+	ast2600_print_fmc_aux_ctrl();
+	ast2600_print_spi1_abr_mode();
+	ast2600_print_spi1_aux_ctrl();
 	ast2600_print_spi_strap_mode();
 	ast2600_print_espi_mode();
 	ast2600_print_mac_info();
