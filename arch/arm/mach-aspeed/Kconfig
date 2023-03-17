@@ -40,6 +40,7 @@ config ASPEED_AST2700
 	bool "Support Aspeed AST2700 SoC"
 	select ARM64
 	select SYS_ARCH_TIMER
+	select SUPPORT_SPL
 	help
 	  The Aspeed AST2700 is a ARM-based SoC with Cortex-A35 CPU.
 	  It is used as Board Management Controller on many server boards,
