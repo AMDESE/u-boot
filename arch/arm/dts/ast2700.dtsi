@@ -92,6 +92,16 @@
 			ranges;
 			u-boot,dm-pre-reloc;
 
+			pinctrl0: pinctrl@12c00400 {
+				compatible = "aspeed,g7_cpu-pinctrl";
+				reg = <0 0x12c02200 0 0x400>;
+			};
+
+			pinctrl1: pinctrl@14c00400 {
+				compatible = "aspeed,g7_io-pinctrl";
+				reg = <0 0x14c02200 0 0x400>;
+			};
+
 			emmc_controller: sdc@12090000 {
 				compatible = "aspeed,ast2700-sd-controller";
 				reg = <0 0x12090000 0 0x100>;
@@ -162,7 +172,7 @@
 
 			mac0: ftgmac@14050000 {
 				compatible = "aspeed,ast2700-mac", "faraday,ftgmac100";
-				reg = <0x0 0x14050000 0x0 0x180>;
+				reg = <0x0 0x14050000 0x0 0x200>;
 				clocks = <&clk1 AST2700_IO_CLK_GATE_MAC0CLK>;
 				resets = <&rst1 ASPEED_RESET_MAC0>;
 				status = "disabled";
@@ -170,7 +180,7 @@
 
 			mac1: ftgmac@14060000 {
 				compatible = "aspeed,ast2700-mac", "faraday,ftgmac100";
-				reg = <0x0 0x14060000 0x0 0x180>;
+				reg = <0x0 0x14060000 0x0 0x200>;
 				clocks = <&clk1 AST2700_IO_CLK_GATE_MAC1CLK>;
 				resets = <&rst1 ASPEED_RESET_MAC1>;
 				status = "disabled";
@@ -178,7 +188,7 @@
 
 			mac2: ftgmac@14070000 {
 				compatible = "aspeed,ast2700-mac", "faraday,ftgmac100";
-				reg = <0x0 0x14070000 0x0 0x180>;
+				reg = <0x0 0x14070000 0x0 0x200>;
 				clocks = <&clk1 AST2700_IO_CLK_GATE_MAC2CLK>;
 				resets = <&rst1 ASPEED_RESET_MAC2>;
 				status = "disabled";
@@ -417,12 +427,14 @@
 	};
 };
 
-&pinctrl {
-	pinctrl_fmcquad_default: fmcquad_default {
-		function = "FMCQUAD";
-		groups = "FMCQUAD";
+&pinctrl0 {
+	pinctrl_emmc_default: emmc_default {
+		function = "EMMC";
+		groups = "EMMC";
 	};
+};
 
+&pinctrl1 {
 	pinctrl_i2c1_default: i2c1_default {
 		function = "I2C1";
 		groups = "I2C1";
@@ -458,33 +470,19 @@
 		groups = "MAC3LINK";
 	};
 
-	pinctrl_mac4link_default: mac4link_default {
-		function = "MAC4LINK";
-		groups = "MAC4LINK";
+	pinctrl_mdio1_default: mdio0_default {
+		function = "MDIO0";
+		groups = "MDIO0";
 	};
 
-	pinctrl_mdio1_default: mdio1_default {
+	pinctrl_mdio2_default: mdio1_default {
 		function = "MDIO1";
 		groups = "MDIO1";
 	};
 
-	pinctrl_mdio2_default: mdio2_default {
+	pinctrl_mdio3_default: mdio2_default {
 		function = "MDIO2";
 		groups = "MDIO2";
 	};
 
-	pinctrl_mdio3_default: mdio3_default {
-		function = "MDIO3";
-		groups = "MDIO3";
-	};
-
-	pinctrl_mdio4_default: mdio4_default {
-		function = "MDIO4";
-		groups = "MDIO4";
-	};
-
-	pinctrl_emmc_default: emmc_default {
-		function = "EMMC";
-		groups = "EMMC";
-	};
 };

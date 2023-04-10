@@ -55,8 +55,6 @@
 
 &fmc {
 	status = "okay";
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_fmcquad_default>;
 
 	flash@0 {
 		status = "okay";
