@@ -78,7 +78,7 @@
 	};
 };
 
-&emmc_controller {
+&emmc {
 	status = "okay";
 };
 

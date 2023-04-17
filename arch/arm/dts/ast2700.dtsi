@@ -102,7 +102,7 @@
 				reg = <0 0x14c02200 0 0x400>;
 			};
 
-			emmc_controller: sdc@12090000 {
+			emmc: sdc@12090000 {
 				compatible = "aspeed,ast2700-sd-controller";
 				reg = <0 0x12090000 0 0x100>;
 				#address-cells = <2>;
@@ -111,15 +111,15 @@
 				clocks = <&clk0 AST2700_CPU_CLK_GATE_EMMCCLK>;
 				status = "disable";
 
-				emmc: sdhci@12090100 {
+				sdhci: sdhci@12090100 {
 					compatible = "aspeed,ast2700-sdhci";
 					reg = <0 0x100 0 0x100>;
 					sdhci,auto-cmd12;
 					#interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
 					clocks = <&clk0 AST2700_CPU_CLK_EMMC>;
 					resets = <&rst0 ASPEED_RESET_EMMC>;
-					pinctrl-names = "default";
-					pinctrl-0 = <&pinctrl_emmc_default>;
+					//pinctrl-names = "default";
+					//pinctrl-0 = <&pinctrl_emmc_default>;
 				};
 			};
 
