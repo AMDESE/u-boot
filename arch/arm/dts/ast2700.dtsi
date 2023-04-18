@@ -102,6 +102,27 @@
 				reg = <0 0x14c02200 0 0x400>;
 			};
 
+			ufs: ufs-wrapper@12c08000 {
+				compatible = "aspeed,ast2700-ufs";
+				reg = <0x0 0x12c08000 0x0 0x100>;
+				#address-cells = <2>;
+				#size-cells = <2>;
+				ranges = <0 0 0 0x12c08000 0 0x400>;
+				clocks = <&clk0 AST2700_CPU_CLK_GATE_UFSCLK>;
+				resets = <&rst0 ASPEED_RESET_UFS>;
+				status = "disable";
+
+				ufshc: ufshc@12c08200 {
+					compatible = "cdns,ufshc-m31-16nm", "jedec,ufs-2.0";
+					reg = <0x0 0x200 0x0 0x100>;
+					interrupts = <GIC_SPI 118 IRQ_TYPE_LEVEL_HIGH>;
+					freq-table-hz = <24000000 24000000>;
+					clocks = <&clk0 AST2700_CPU_CLK_MPLL>;
+					clock-names = "core_clk";
+					dma-coherent;
+				};
+			};
+
 			emmc: sdc@12090000 {
 				compatible = "aspeed,ast2700-sd-controller";
 				reg = <0 0x12090000 0 0x100>;

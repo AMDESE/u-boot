@@ -17,13 +17,13 @@
 		#clock-cells = <1>;
 	};
 
-	rst0: reset-controller {
+	rst0: reset-controller@12c02000 {
 		compatible = "aspeed,ast2700-reset";
 		reg = <0 0x12c02200 0 0x40>;
 		#reset-cells = <1>;
 	};
 
-	rst1: reset-controller {
+	rst1: reset-controller@14c02000 {
 		u-boot,dm-pre-reloc;
 		compatible = "aspeed,ast2700-reset";
 		reg = <0 0x14c02200 0 0x40>;
@@ -47,4 +47,3 @@
 
 	};
 };
-

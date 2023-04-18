@@ -82,6 +82,10 @@
 	status = "okay";
 };
 
+&ufs {
+	status = "okay";
+};
+
 &i2c0 {
 	status = "okay";
 };
