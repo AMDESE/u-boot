@@ -270,13 +270,13 @@ static ulong ast2700_io_clk_get_rate(struct clk *clk)
 	case AST2700_IO_CLK_GATE_UART4CLK:
 		rate = ast2700_io_get_uart_clk_rate(priv->clk, 4);
 		break;
-	case AST2700_IO_CLK_SDIO:
+	case AST2700_IO_CLK_GATE_SDCLK:
 		rate = ast2700_io_get_sdio_clk_rate(priv->clk);
 		break;
-	case AST2700_IO_CLK_UARTX:
+	case AST2700_IO_CLK_UXCLK:
 		rate = ast2700_io_get_uart_uxclk_rate(priv->clk);
 		break;
-	case AST2700_IO_CLK_HUARTX:
+	case AST2700_IO_CLK_HUXCLK:
 		rate = ast2700_io_get_uart_huxclk_rate(priv->clk);
 		break;
 	default:
@@ -295,7 +295,7 @@ static uint32_t ast2700_configure_mac(struct ast2700_io_clk *clk, int index)
 	switch (index) {
 	case 0:
 		reset_bit = BIT(ASPEED_RESET_MAC0);
-		clkgate_bit = BIT(AST2700_IO_CLK_GATE_MAC0CLK - AST2700_IO_CLK_GATE);
+		clkgate_bit = BIT(AST2700_IO_CLK_GATE_MAC0CLK);
 		writel(reset_bit, &clk->modrst_ctrl1);
 		udelay(100);
 		writel(clkgate_bit, &clk->clkgate_clr1);
@@ -304,7 +304,7 @@ static uint32_t ast2700_configure_mac(struct ast2700_io_clk *clk, int index)
 		break;
 	case 1:
 		reset_bit = BIT(ASPEED_RESET_MAC1);
-		clkgate_bit = BIT(AST2700_IO_CLK_GATE_MAC1CLK - AST2700_IO_CLK_GATE);
+		clkgate_bit = BIT(AST2700_IO_CLK_GATE_MAC1CLK);
 		writel(reset_bit, &clk->modrst_ctrl1);
 		udelay(100);
 		writel(clkgate_bit, &clk->clkgate_clr1);
@@ -313,7 +313,7 @@ static uint32_t ast2700_configure_mac(struct ast2700_io_clk *clk, int index)
 		break;
 	case 2:
 		reset_bit = BIT(ASPEED_RESET_MAC2);
-		clkgate_bit = BIT(AST2700_IO_CLK_GATE_MAC2CLK - AST2700_IO_CLK_GATE);
+		clkgate_bit = BIT(AST2700_IO_CLK_GATE_MAC2CLK);
 		writel(reset_bit, &clk->modrst_ctrl2);
 		udelay(100);
 		writel(clkgate_bit, &clk->clkgate_clr2);

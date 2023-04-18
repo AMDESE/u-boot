@@ -241,70 +241,14 @@ static ulong ast2700_cpu_clk_set_rate(struct clk *clk, ulong rate)
 	return new_rate;
 }
 
-static ulong ast2700_enable_emmcclk(struct ast2700_cpu_clk *clk)
-{
-	u32 reset_bit;
-	u32 clkgate_bit;
-
-	reset_bit = BIT(ASPEED_RESET_EMMC);
-	clkgate_bit = AST2700_CPU_CLK_GATE_EMMCCLK;
-
-	writel(reset_bit, &clk->modrst_ctrl);
-	udelay(100);
-	writel(clkgate_bit, &clk->clkgate_clr);
-	mdelay(10);
-	writel(reset_bit, &clk->modrst_clr);
-
-	return 0;
-}
-
-#define SCU_CLKSRC1_MAC_DIV_MASK		GENMASK(18, 16)
-#define SCU_CLKSRC1_MAC_DIV_SHIFT		16
-#define SCU_CLKSRC1_EMMC_EN			BIT(15)
-#define SCU_CLKSRC1_EMMC_DIV_MASK		GENMASK(14, 12)
-#define SCU_CLKSRC1_EMMC_DIV_SHIFT		12
-#define SCU_CLKSRC1_EMMC			BIT(11)
-
-static ulong ast2700_enable_extemmcclk(struct ast2700_cpu_clk *clk)
-{
-	int i = 0;
-	u32 div = 0;
-	u32 rate = 0;
-	u32 clksrc1 = readl(&clk->clk_sel1);
-
-	rate = ast2700_cpu_get_pll_rate(clk, AST2700_CPU_CLK_MPLL);
-	for (i = 0; i < 8; i++) {
-		div = (i + 1) * 2;
-		if ((rate / div) <= 200000000)
-			break;
-	}
-
-	clksrc1 &= ~SCU_CLKSRC1_EMMC_DIV_MASK;
-	clksrc1 |= (i << SCU_CLKSRC1_EMMC_DIV_SHIFT);
-	clksrc1 |= SCU_CLKSRC1_EMMC;
-	writel(clksrc1, &clk->clk_sel1);
-
-	setbits_le32(&clk->clk_sel1, SCU_CLKSRC1_EMMC_EN);
-
-	return 0;
-}
-
 static int ast2700_cpu_clk_enable(struct clk *clk)
 {
 	struct ast2700_cpu_clk_priv *priv = dev_get_priv(clk->dev);
 	struct ast2700_cpu_clk *cpu_clk = priv->clk;
+	u32 clkgate_bit = BIT(clk->id);
 
-	switch (clk->id) {
-	case AST2700_CPU_CLK_GATE_EMMCCLK:
-		ast2700_enable_emmcclk(cpu_clk);
-		break;
-	case AST2700_CPU_CLK_EMMC:
-		ast2700_enable_extemmcclk(cpu_clk);
-		break;
-	default:
-		debug("%s: unknown clk %ld\n", __func__, clk->id);
-		return -ENOENT;
-	}
+	if (readl(&cpu_clk->clkgate_ctrl) & clkgate_bit)
+		writel(clkgate_bit, &cpu_clk->clkgate_clr);
 
 	return 0;
 }
@@ -315,13 +259,36 @@ struct clk_ops ast2700_cpu_clk_ops = {
 	.enable = ast2700_cpu_clk_enable,
 };
 
+#define SCU_CLKSRC1_EMMC_DIV_MASK		GENMASK(14, 12)
+#define SCU_CLKSRC1_EMMC_DIV_SHIFT		12
+
 static int ast2700_cpu_clk_probe(struct udevice *dev)
 {
 	struct ast2700_cpu_clk_priv *priv = dev_get_priv(dev);
+	struct ast2700_cpu_clk *cpu_clk;
+	u32 rate = 0;
+	u32 div = 0;
+	int i = 0;
+	u32 clksrc1;
 
 	priv->clk = devfdt_get_addr_ptr(dev);
 	if (IS_ERR(priv->clk))
 		return PTR_ERR(priv->clk);
+
+	cpu_clk = priv->clk;
+	/* emmc clk div initial */
+	clksrc1 = readl(&cpu_clk->clk_sel1);
+
+	rate = ast2700_cpu_get_pll_rate(cpu_clk, AST2700_CPU_CLK_MPLL);
+	for (i = 0; i < 8; i++) {
+		div = (i + 1) * 2;
+		if ((rate / div) <= 200000000)
+			break;
+	}
+
+	clksrc1 &= ~SCU_CLKSRC1_EMMC_DIV_MASK;
+	clksrc1 |= (i << SCU_CLKSRC1_EMMC_DIV_SHIFT);
+	writel(clksrc1, &cpu_clk->clk_sel1);
 
 	return 0;
 }

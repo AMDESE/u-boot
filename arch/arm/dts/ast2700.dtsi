@@ -128,7 +128,7 @@
 				reg = <0x0 0x12c1a000 0x0 0x1000>;
 				reg-shift = <2>;
 				interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&clk1 AST2700_CPU_CLK_GATE_UART5CLK>;
+				clocks = <&clk1 AST2700_CPU_CLK_GATE_UART4CLK>;
 				clock-frequency = <1846154>;
 				no-loopback-test;
 				u-boot,dm-pre-reloc;
