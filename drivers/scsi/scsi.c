@@ -17,6 +17,8 @@
 #include <dm/device-internal.h>
 #include <dm/uclass-internal.h>
 
+#define FPGA_ASPEED
+
 #if !defined(CONFIG_DM_SCSI)
 # ifdef CONFIG_SCSI_DEV_LIST
 #  define SCSI_DEV_LIST CONFIG_SCSI_DEV_LIST
@@ -355,6 +357,9 @@ static int scsi_read_capacity(struct udevice *dev, struct scsi_cmd *pccb,
 	*capacity = 0;
 
 	memset(pccb->cmd, '\0', sizeof(pccb->cmd));
+#ifdef FPGA_ASPEED
+	pccb->dma_dir = DMA_FROM_DEVICE;
+#endif
 	pccb->cmd[0] = SCSI_RD_CAPAC10;
 	pccb->cmd[1] = pccb->lun << 5;
 	pccb->cmdlen = 10;
@@ -417,6 +422,9 @@ static int scsi_read_capacity(struct udevice *dev, struct scsi_cmd *pccb,
  */
 static void scsi_setup_test_unit_ready(struct scsi_cmd *pccb)
 {
+#ifdef FPGA_ASPEED
+	pccb->dma_dir = 0;
+#endif
 	pccb->cmd[0] = SCSI_TST_U_RDY;
 	pccb->cmd[1] = pccb->lun << 5;
 	pccb->cmd[2] = 0;
