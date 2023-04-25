@@ -6,10 +6,13 @@
 
 #include <common.h>
 #include <clk.h>
+#include <reset.h>
 #include <dm.h>
+#include <dm/device_compat.h>
 #include <malloc.h>
 #include <sdhci.h>
 #include <linux/err.h>
+#include <linux/delay.h>
 #include <dm/lists.h>
 
 struct aspeed_sdhci_plat {
@@ -22,21 +25,32 @@ static int aspeed_sdhci_probe(struct udevice *dev)
 	struct mmc_uclass_priv *upriv = dev_get_uclass_priv(dev);
 	struct aspeed_sdhci_plat *plat = dev_get_plat(dev);
 	struct sdhci_host *host = dev_get_priv(dev);
+	struct reset_ctl rst_ctl;
 	u32 max_clk;
 	struct clk clk;
 	int ret;
 
 	ret = clk_get_by_index(dev, 0, &clk);
 	if (ret) {
-		debug("%s: clock get failed %d\n", __func__, ret);
+		dev_err(dev, "clock get failed\n");
 		return ret;
 	}
 
 	ret = clk_enable(&clk);
 	if (ret) {
-		debug("%s: clock enable failed %d\n", __func__, ret);
+		dev_err(dev, "clock enable failed");
 		goto free;
 	}
+
+	ret = reset_get_by_index(dev, 0, &rst_ctl);
+	if (ret) {
+		dev_err(dev, "failed to get SDHCI reset\n");
+		goto free;
+	}
+
+	reset_assert(&rst_ctl);
+	udelay(2);
+	reset_deassert(&rst_ctl);
 
 	host->name = dev->name;
 	host->ioaddr = dev_read_addr_ptr(dev);
@@ -44,7 +58,7 @@ static int aspeed_sdhci_probe(struct udevice *dev)
 	max_clk = clk_get_rate(&clk);
 	if (IS_ERR_VALUE(max_clk)) {
 		ret = max_clk;
-		debug("%s: clock rate get failed %d\n", __func__, ret);
+		dev_err(dev, "clock rate get failed\n");
 		goto err;
 	}
 
@@ -98,24 +112,29 @@ U_BOOT_DRIVER(aspeed_sdhci_drv) = {
 };
 
 
-static int aspeed_sdc_probe(struct udevice *parent)
+static int aspeed_sdc_probe(struct udevice *dev)
 {
 	struct clk clk;
 	int ret;
 
-	ret = clk_get_by_index(parent, 0, &clk);
+	ret = clk_get_by_index(dev, 0, &clk);
 	if (ret) {
-		debug("%s: clock get failed %d\n", __func__, ret);
+		dev_err(dev, "clock get failed\n");
 		return ret;
 	}
 
 	ret = clk_enable(&clk);
 	if (ret) {
-		debug("%s: clock enable failed %d\n", __func__, ret);
-		return ret;
+		dev_err(dev, "clock enable failed");
+		goto free;
 	}
 
 	return 0;
+
+free:
+	clk_free(&clk);
+
+	return ret;
 }
 
 static const struct udevice_id aspeed_sdc_ids[] = {
