@@ -819,9 +819,6 @@ static int ufshcd_send_command(struct ufs_hba *hba, unsigned int task_tag)
 	u32 intr_status;
 	u32 enabled_intr_status;
 
-#ifdef FPGA_ASPEED
-	flush_dcache_all();
-#endif
 	ufshcd_writel(hba, 1 << task_tag, REG_UTP_TRANSFER_REQ_DOOR_BELL);
 
 	start = get_timer(0);
@@ -932,9 +929,7 @@ static int ufshcd_exec_dev_cmd(struct ufs_hba *hba, enum dev_cmd_type cmd_type,
 	err = ufshcd_send_command(hba, TASK_TAG);
 	if (err)
 		return err;
-#ifdef FPGA_ASPEED
-	invalidate_dcache_all();
-#endif
+
 	err = ufshcd_get_tr_ocs(hba);
 	if (err) {
 		dev_err(hba->dev, "Error in OCS:%d\n", err);
@@ -1465,9 +1460,7 @@ static int ufs_scsi_exec(struct udevice *scsi_dev, struct scsi_cmd *pccb)
 	prepare_prdt_table(hba, pccb);
 
 	ufshcd_send_command(hba, TASK_TAG);
-#ifdef FPGA_ASPEED
-	invalidate_dcache_all();
-#endif
+
 	ocs = ufshcd_get_tr_ocs(hba);
 	switch (ocs) {
 	case OCS_SUCCESS:
