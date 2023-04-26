@@ -8,6 +8,8 @@
 #include <dm.h>
 #include <spl.h>
 #include <init.h>
+#include <hang.h>
+#include <image.h>
 #include <linux/err.h>
 #include <asm/io.h>
 #include <asm/arch/scu_ast2600.h>
@@ -32,9 +34,9 @@ void board_init_f(ulong dummy)
 	dram_init();
 }
 
-struct legacy_img_hdr *spl_get_load_buffer(ssize_t offset, size_t size)
+struct image_header *spl_get_load_buffer(ssize_t offset, size_t size)
 {
-	return (struct legacy_img_hdr *)(CONFIG_SYS_LOAD_ADDR);
+	return (struct image_header *)(CONFIG_SYS_LOAD_ADDR);
 }
 
 /*
@@ -44,4 +46,23 @@ struct legacy_img_hdr *spl_get_load_buffer(ssize_t offset, size_t size)
 u32 spl_boot_device(void)
 {
 	return BOOT_DEVICE_RAM;
+}
+
+void *board_spl_fit_buffer_addr(ulong fit_size, int sectors, int bl_len)
+{
+	return spl_get_load_buffer(0, sectors * bl_len);
+}
+
+void board_fit_image_post_process(const void *fit, int node, void **p_image, size_t *p_size)
+{
+	uint8_t os;
+
+	fit_image_get_os(fit, node, &os);
+
+	/* skip if no TEE */
+	if (os != IH_OS_TEE)
+		return;
+
+	/* reserve 4MB TEE OS memory */
+	gd->bd->bi_dram[0].start += 0x400000;
 }

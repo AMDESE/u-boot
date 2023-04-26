@@ -5,6 +5,7 @@
 #include <common.h>
 #include <dm.h>
 #include <ram.h>
+#include <init.h>
 #include <timer.h>
 #include <asm/io.h>
 #include <asm/arch/timer.h>
@@ -33,6 +34,15 @@ int dram_init(void)
 	}
 
 	gd->ram_size = ram.size;
+	return 0;
+}
+
+int dram_init_banksize(void)
+{
+	/* always reserve 4MB ATF region */
+	gd->bd->bi_dram[0].start = gd->ram_base + 0x400000;
+	gd->bd->bi_dram[0].size = get_effective_memsize();
+
 	return 0;
 }
 
