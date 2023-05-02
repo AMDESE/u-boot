@@ -14,7 +14,7 @@
 	};
 
 	chosen {
-		stdout-path = &uart5;
+		stdout-path = &uart4;
 	};
 
 	cpus {
@@ -33,7 +33,7 @@
 	};
 };
 
-&uart5 {
+&uart4 {
 	u-boot,dm-pre-reloc;
 	status = "okay";
 };

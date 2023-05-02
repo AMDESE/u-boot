@@ -258,16 +258,16 @@ static ulong ast2700_io_clk_get_rate(struct clk *clk)
 	case AST2700_IO_CLK_APB:
 		rate = ast2700_io_get_pclk_rate(priv->clk);
 		break;
-	case AST2700_IO_CLK_GATE_UART1CLK:
+	case AST2700_IO_CLK_GATE_UART0CLK:
 		rate = ast2700_io_get_uart_clk_rate(priv->clk, 1);
 		break;
-	case AST2700_IO_CLK_GATE_UART2CLK:
+	case AST2700_IO_CLK_GATE_UART1CLK:
 		rate = ast2700_io_get_uart_clk_rate(priv->clk, 2);
 		break;
-	case AST2700_IO_CLK_GATE_UART3CLK:
+	case AST2700_IO_CLK_GATE_UART2CLK:
 		rate = ast2700_io_get_uart_clk_rate(priv->clk, 3);
 		break;
-	case AST2700_IO_CLK_GATE_UART4CLK:
+	case AST2700_IO_CLK_GATE_UART3CLK:
 		rate = ast2700_io_get_uart_clk_rate(priv->clk, 4);
 		break;
 	case AST2700_IO_CLK_GATE_SDCLK:
