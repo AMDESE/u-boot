@@ -39,8 +39,8 @@ int dram_init(void)
 
 int dram_init_banksize(void)
 {
-	/* always reserve 4MB ATF region */
-	gd->bd->bi_dram[0].start = gd->ram_base + 0x400000;
+	/* always reserve 4MB + 4MB TrustZone region */
+	gd->bd->bi_dram[0].start = gd->ram_base + 0x800000;
 	gd->bd->bi_dram[0].size = get_effective_memsize();
 
 	return 0;

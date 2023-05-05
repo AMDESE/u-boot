@@ -62,7 +62,4 @@ void board_fit_image_post_process(const void *fit, int node, void **p_image, siz
 	/* skip if no TEE */
 	if (os != IH_OS_TEE)
 		return;
-
-	/* reserve 4MB TEE OS memory */
-	gd->bd->bi_dram[0].start += 0x400000;
 }
