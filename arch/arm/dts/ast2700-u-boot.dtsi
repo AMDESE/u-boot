@@ -1,49 +1,32 @@
 // SPDX-License-Identifier: GPL-2.0+
-#include <dt-bindings/clock/ast2700-clock.h>
-#include <dt-bindings/reset/ast2700-reset.h>
-
-#include "ast2700.dtsi"
 
 / {
-	clk0: clock-controller@12c00200 {
-		compatible = "aspeed,ast2700_cpu-clk";
-		reg = <0 0x12c02200 0 0x400>;
-		#clock-cells = <1>;
-	};
+};
 
-	clk1: clock-controller@14c00200 {
-		compatible = "aspeed,ast2700_io-clk";
-		reg = <0 0x14c02200 0 0x400>;
-		#clock-cells = <1>;
-	};
+&soc0 {
+	u-boot,dm-pre-reloc;
+};
 
-	rst0: reset-controller@12c02000 {
-		compatible = "aspeed,ast2700-reset";
-		reg = <0 0x12c02200 0 0x40>;
-		#reset-cells = <1>;
-	};
+&sdrammc {
+	u-boot,dm-pre-reloc;
+};
 
-	rst1: reset-controller@14c02000 {
-		u-boot,dm-pre-reloc;
-		compatible = "aspeed,ast2700-reset";
-		reg = <0 0x14c02200 0 0x40>;
-		#reset-cells = <1>;
-	};
+&clk0 {
+	u-boot,dm-pre-reloc;
+};
 
-	sdrammc: sdrammc@12c00000 {
-		u-boot,dm-pre-reloc;
-		compatible = "aspeed,ast2700-sdrammc";
-		reg = <0 0x12c00000 0 0x3000 0 0x13000000 0 0x300 >;
-		clocks = <&clk0 AST2700_CPU_CLK_MPLL>;
-		resets = <&rst0 ASPEED_RESET_SDRAM>;
-	};
+&rst0 {
+	u-boot,dm-pre-reloc;
+};
 
-	ahb {
-		u-boot,dm-pre-reloc;
+&soc1 {
+	u-boot,dm-pre-reloc;
+};
 
-		apb {
-			u-boot,dm-pre-reloc;
-		};
+&clk1 {
+	u-boot,dm-pre-reloc;
+};
 
-	};
+&rst1 {
+	u-boot,dm-pre-reloc;
 };

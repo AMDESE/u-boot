@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0+
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/gpio/aspeed-gpio.h>
+#include <dt-bindings/clock/ast2700-clock.h>
+#include <dt-bindings/reset/ast2700-reset.h>
 #include "skeleton.dtsi"
 
 / {
@@ -11,11 +13,6 @@
 	interrupt-parent = <&gic>;
 
 	aliases {
-		i2c0 = &i2c0;
-		i2c1 = &i2c1;
-		i2c2 = &i2c2;
-		i2c3 = &i2c3;
-		i2c4 = &i2c4;
 		serial0 = &uart0;
 		serial1 = &uart1;
 		serial2 = &uart2;
@@ -29,6 +26,11 @@
 		serial10 = &uart10;
 		serial11 = &uart11;
 		serial12 = &uart12;
+		i2c0 = &i2c0;
+		i2c1 = &i2c1;
+		i2c2 = &i2c2;
+		i2c3 = &i2c3;
+		i2c4 = &i2c4;
 		ethernet0 = &mac0;
 		ethernet1 = &mac1;
 		ethernet2 = &mac2;
@@ -65,6 +67,18 @@
 
 	};
 
+	gic: interrupt-controller@12200000 {
+		compatible = "arm,gic-v3";
+		interrupts = <GIC_PPI 9 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_HIGH)>;
+		#interrupt-cells = <3>;
+		interrupt-controller;
+		interrupt-parent = <&gic>;
+		#redistributor-regions = <1>;
+		reg =	<0 0x12200000 0 0x10000>,		//GICD
+			<0 0x12280000 0 0x80000>,		//GICR
+			<0 0x40440000 0 0x1000>;		//GICC
+	};
+
 	timer {
 		compatible = "arm,armv8-timer";
 		interrupt-parent = <&gic>;
@@ -74,375 +88,391 @@
 				<GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_LOW)>;
 	};
 
-	ahb {
-		compatible = "simple-bus";
+	soc0: soc@10000000 {
+		compatible = "aspeed,soc0","simple-bus";
 		#address-cells = <2>;
 		#size-cells = <2>;
-		device_type = "soc";
 		ranges;
 
-		gic: interrupt-controller@12200000 {
-				compatible = "arm,gic-v3";
-				interrupts = <GIC_PPI 9 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_HIGH)>;
-				#interrupt-cells = <3>;
-				interrupt-controller;
-				interrupt-parent = <&gic>;
-				#redistributor-regions = <1>;
-				reg =	<0 0x12200000 0 0x10000>,		//GICD
-					<0 0x12280000 0 0x80000>,		//GICR
-					<0 0x40440000 0 0x1000>;		//GICC
+		emmc: sdc@12090000 {
+			compatible = "aspeed,ast2700-sd-controller";
+			reg = <0 0x12090000 0 0x100>;
+			#address-cells = <2>;
+			#size-cells = <2>;
+			ranges = <0 0 0 0x12090000 0 0x10000>;
+			clocks = <&clk0 AST2700_CPU_CLK_GATE_EMMCCLK>;
+			status = "disable";
+
+			sdhci: sdhci@12090100 {
+				compatible = "aspeed,ast2700-sdhci";
+				reg = <0 0x100 0 0x100>;
+				sdhci,auto-cmd12;
+				#interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&clk0 AST2700_CPU_CLK_EMMC>;
+				resets = <&rst0 ASPEED_RESET_EMMC>;
+				//pinctrl-names = "default";
+				//pinctrl-0 = <&pinctrl_emmc_default>;
+			};
 		};
 
-		apb {
+		sdrammc: sdrammc@12c00000 {
+			compatible = "aspeed,ast2700-sdrammc";
+			reg = <0 0x12c00000 0 0x3000 0 0x13000000 0 0x300 >;
+			clocks = <&clk0 AST2700_CPU_CLK_MPLL>;
+			resets = <&rst0 ASPEED_RESET_SDRAM>;
+		};
+
+		clk0: clock-controller@12c02200 {
+			compatible = "aspeed,ast2700_cpu-clk";
+			reg = <0 0x12c02200 0 0x400>;
+			#clock-cells = <1>;
+		};
+
+		rst0: reset-controller@12c02200 {
+			compatible = "aspeed,ast2700-reset";
+			reg = <0 0x12c02200 0 0x40>;
+			#reset-cells = <1>;
+		};
+
+		pinctrl0: pinctrl@12c00400 {
+			compatible = "aspeed,g7_cpu-pinctrl";
+			reg = <0 0x12c00400 0 0x400>;
+		};
+
+		ufs: ufs-wrapper@12c08000 {
+			compatible = "aspeed,ast2700-ufs";
+			reg = <0x0 0x12c08000 0x0 0x100>;
+			#address-cells = <2>;
+			#size-cells = <2>;
+			ranges = <0 0 0 0x12c08000 0 0x400>;
+			clocks = <&clk0 AST2700_CPU_CLK_GATE_UFSCLK>;
+			resets = <&rst0 ASPEED_RESET_UFS>;
+			status = "disable";
+
+			ufshc: ufshc@12c08200 {
+				compatible = "cdns,ufshc-m31-16nm", "jedec,ufs-2.0";
+				reg = <0x0 0x200 0x0 0x100>;
+				interrupts = <GIC_SPI 118 IRQ_TYPE_LEVEL_HIGH>;
+				freq-table-hz = <24000000 24000000>;
+				clocks = <&clk0 AST2700_CPU_CLK_MPLL>;
+				clock-names = "core_clk";
+				dma-coherent;
+			};
+		};
+
+		uart4: serial@12c1a000 {
+			compatible = "ns16550a";
+			reg = <0x0 0x12c1a000 0x0 0x1000>;
+			reg-shift = <2>;
+			interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clk1 AST2700_CPU_CLK_GATE_UART4CLK>;
+			clock-frequency = <1846154>;
+			no-loopback-test;
+			status = "disabled";
+		};
+	};
+
+	soc1: soc@14000000 {
+		compatible = "aspeed,soc1","simple-bus";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		fmc: flash-controller@14000000 {
+			reg = <0x0 0x14000000 0x0 0xc4>,
+			      <0x1 0x00000000 0x0 0x80000000>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			compatible = "aspeed,ast2700-fmc";
+			status = "disabled";
+			clocks = <&clk1 AST2700_IO_CLK_AHB>;
+			num-cs = <3>;
+
+			flash@0 {
+				reg = <0>;
+				compatible = "jedec,spi-nor";
+				status = "disabled";
+			};
+
+			flash@1 {
+				reg = <1>;
+				compatible = "jedec,spi-nor";
+				status = "disabled";
+			};
+
+			flash@2 {
+				reg = <2>;
+				compatible = "jedec,spi-nor";
+				status = "disabled";
+			};
+		};
+
+		mdio: bus@14040000 {
 			compatible = "simple-bus";
 			#address-cells = <2>;
 			#size-cells = <2>;
-			ranges;
-			u-boot,dm-pre-reloc;
+			ranges = <0 0 0 0x14040000 0 0x100>;
 
-			pinctrl0: pinctrl@12c00400 {
-				compatible = "aspeed,g7_cpu-pinctrl";
-				reg = <0 0x12c02200 0 0x400>;
-			};
-
-			pinctrl1: pinctrl@14c00400 {
-				compatible = "aspeed,g7_io-pinctrl";
-				reg = <0 0x14c02200 0 0x400>;
-			};
-
-			ufs: ufs-wrapper@12c08000 {
-				compatible = "aspeed,ast2700-ufs";
-				reg = <0x0 0x12c08000 0x0 0x100>;
-				#address-cells = <2>;
-				#size-cells = <2>;
-				ranges = <0 0 0 0x12c08000 0 0x400>;
-				clocks = <&clk0 AST2700_CPU_CLK_GATE_UFSCLK>;
-				resets = <&rst0 ASPEED_RESET_UFS>;
-				status = "disable";
-
-				ufshc: ufshc@12c08200 {
-					compatible = "cdns,ufshc-m31-16nm", "jedec,ufs-2.0";
-					reg = <0x0 0x200 0x0 0x100>;
-					interrupts = <GIC_SPI 118 IRQ_TYPE_LEVEL_HIGH>;
-					freq-table-hz = <24000000 24000000>;
-					clocks = <&clk0 AST2700_CPU_CLK_MPLL>;
-					clock-names = "core_clk";
-					dma-coherent;
-				};
-			};
-
-			emmc: sdc@12090000 {
-				compatible = "aspeed,ast2700-sd-controller";
-				reg = <0 0x12090000 0 0x100>;
-				#address-cells = <2>;
-				#size-cells = <2>;
-				ranges = <0 0 0 0x12090000 0 0x10000>;
-				clocks = <&clk0 AST2700_CPU_CLK_GATE_EMMCCLK>;
-				status = "disable";
-
-				sdhci: sdhci@12090100 {
-					compatible = "aspeed,ast2700-sdhci";
-					reg = <0 0x100 0 0x100>;
-					sdhci,auto-cmd12;
-					#interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
-					clocks = <&clk0 AST2700_CPU_CLK_EMMC>;
-					resets = <&rst0 ASPEED_RESET_EMMC>;
-					//pinctrl-names = "default";
-					//pinctrl-0 = <&pinctrl_emmc_default>;
-				};
-			};
-
-			uart4: serial@12c1a000 {
-				compatible = "ns16550a";
-				reg = <0x0 0x12c1a000 0x0 0x1000>;
-				reg-shift = <2>;
-				interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&clk1 AST2700_CPU_CLK_GATE_UART4CLK>;
-				clock-frequency = <1846154>;
-				no-loopback-test;
-				u-boot,dm-pre-reloc;
+			mdio0: mdio@0 {
+				compatible = "aspeed,ast2700-mdio";
+				reg = <0 0 0 0x8>;
+				resets = <&rst1 ASPEED_RESET_MII>;
 				status = "disabled";
 			};
 
-			mdio: bus@14040000 {
-				compatible = "simple-bus";
-				#address-cells = <2>;
-				#size-cells = <2>;
-				ranges = <0 0 0 0x14040000 0 0x100>;
-
-				mdio0: mdio@0 {
-					compatible = "aspeed,ast2700-mdio";
-					reg = <0 0 0 0x8>;
-					resets = <&rst1 ASPEED_RESET_MII>;
-					status = "disabled";
-				};
-
-				mdio1: mdio@8 {
-					compatible = "aspeed,ast2700-mdio";
-					reg = <0 0x8 0 0x8>;
-					resets = <&rst1 ASPEED_RESET_MII>;
-					status = "disabled";
-				};
-
-				mdio2: mdio@10 {
-					compatible = "aspeed,ast2700-mdio";
-					reg = <0 0x10 0 0x8>;
-					resets = <&rst1 ASPEED_RESET_MII>;
-					status = "disabled";
-				};
-
-				mdio3: mdio@18 {
-					compatible = "aspeed,ast2700-mdio";
-					reg = <0 0x18 0 0x8>;
-					resets = <&rst1 ASPEED_RESET_MII>;
-					status = "disabled";
-				};
-			};
-
-			mac0: ftgmac@14050000 {
-				compatible = "aspeed,ast2700-mac", "faraday,ftgmac100";
-				reg = <0x0 0x14050000 0x0 0x200>;
-				clocks = <&clk1 AST2700_IO_CLK_GATE_MAC0CLK>;
-				resets = <&rst1 ASPEED_RESET_MAC0>;
+			mdio1: mdio@8 {
+				compatible = "aspeed,ast2700-mdio";
+				reg = <0 0x8 0 0x8>;
+				resets = <&rst1 ASPEED_RESET_MII>;
 				status = "disabled";
 			};
 
-			mac1: ftgmac@14060000 {
-				compatible = "aspeed,ast2700-mac", "faraday,ftgmac100";
-				reg = <0x0 0x14060000 0x0 0x200>;
-				clocks = <&clk1 AST2700_IO_CLK_GATE_MAC1CLK>;
-				resets = <&rst1 ASPEED_RESET_MAC1>;
+			mdio2: mdio@10 {
+				compatible = "aspeed,ast2700-mdio";
+				reg = <0 0x10 0 0x8>;
+				resets = <&rst1 ASPEED_RESET_MII>;
 				status = "disabled";
 			};
 
-			mac2: ftgmac@14070000 {
-				compatible = "aspeed,ast2700-mac", "faraday,ftgmac100";
-				reg = <0x0 0x14070000 0x0 0x200>;
-				clocks = <&clk1 AST2700_IO_CLK_GATE_MAC2CLK>;
-				resets = <&rst1 ASPEED_RESET_MAC2>;
+			mdio3: mdio@18 {
+				compatible = "aspeed,ast2700-mdio";
+				reg = <0 0x18 0 0x8>;
+				resets = <&rst1 ASPEED_RESET_MII>;
 				status = "disabled";
 			};
+		};
 
-			pinctrl: pinctrl@14c02400 {
-				compatible = "aspeed,g7-pinctrl";
-				reg = <0x0 0x14c02400 0x0 0x80>;
-			};
+		mac0: ftgmac@14050000 {
+			compatible = "aspeed,ast2700-mac", "faraday,ftgmac100";
+			reg = <0x0 0x14050000 0x0 0x200>;
+			clocks = <&clk1 AST2700_IO_CLK_GATE_MAC0CLK>;
+			resets = <&rst1 ASPEED_RESET_MAC0>;
+			status = "disabled";
+		};
 
-			uart0: serial@14c33000 {
-				compatible = "ns16550a";
-				reg = <0x0 0x14c33000 0x0 0x20>;
-				reg-shift = <2>;
-				clocks = <&clk1 AST2700_IO_CLK_GATE_UART0CLK>;
-				clock-frequency = <1846154>;
-				no-loopback-test;
-				status = "disabled";
-			};
+		mac1: ftgmac@14060000 {
+			compatible = "aspeed,ast2700-mac", "faraday,ftgmac100";
+			reg = <0x0 0x14060000 0x0 0x200>;
+			clocks = <&clk1 AST2700_IO_CLK_GATE_MAC1CLK>;
+			resets = <&rst1 ASPEED_RESET_MAC1>;
+			status = "disabled";
+		};
 
-			uart1: serial@14c33100 {
-				compatible = "ns16550a";
-				reg = <0x0 0x14c33100 0x0 0x20>;
-				reg-shift = <2>;
-				clocks = <&clk1 AST2700_IO_CLK_GATE_UART1CLK>;
-				clock-frequency = <1846154>;
-				no-loopback-test;
-				status = "disabled";
-			};
+		mac2: ftgmac@14070000 {
+			compatible = "aspeed,ast2700-mac", "faraday,ftgmac100";
+			reg = <0x0 0x14070000 0x0 0x200>;
+			clocks = <&clk1 AST2700_IO_CLK_GATE_MAC2CLK>;
+			resets = <&rst1 ASPEED_RESET_MAC2>;
+			status = "disabled";
+		};
 
-			uart2: serial@14c33200 {
-				compatible = "ns16550a";
-				reg = <0x0 0x14c33200 0x0 0x20>;
-				reg-shift = <2>;
-				clocks = <&clk1 AST2700_IO_CLK_GATE_UART2CLK>;
-				clock-frequency = <1846154>;
-				no-loopback-test;
-				status = "disabled";
-			};
+		pinctrl1: pinctrl@14c02200 {
+			compatible = "aspeed,g7_io-pinctrl";
+			reg = <0 0x14c02200 0 0x400>;
+		};
 
-			uart3: serial@14c33300 {
-				compatible = "ns16550a";
-				reg = <0x0 0x14c33300 0x0 0x20>;
-				reg-shift = <2>;
-				clocks = <&clk1 AST2700_IO_CLK_GATE_UART3CLK>;
-				clock-frequency = <1846154>;
-				no-loopback-test;
-				status = "disabled";
-			};
+		clk1: clock-controller@14c02200 {
+			compatible = "aspeed,ast2700_io-clk";
+			reg = <0 0x14c02200 0 0x400>;
+			#clock-cells = <1>;
+		};
 
-			uart5: serial@14c33400 {
-				compatible = "ns16550a";
-				reg = <0x0 0x14c33400 0x0 0x20>;
-				reg-shift = <2>;
-				clocks = <&clk1 AST2700_IO_CLK_GATE_UART5CLK>;
-				clock-frequency = <1846154>;
-				no-loopback-test;
-				status = "disabled";
-			};
+		rst1: reset-controller@14c02200 {
+			compatible = "aspeed,ast2700-reset";
+			reg = <0 0x14c02200 0 0x40>;
+			#reset-cells = <1>;
+		};
 
-			uart6: serial@14c33500 {
-				compatible = "ns16550a";
-				reg = <0x0 0x14c33500 0x0 0x20>;
-				reg-shift = <2>;
-				clocks = <&clk1 AST2700_IO_CLK_GATE_UART6CLK>;
-				clock-frequency = <1846154>;
-				no-loopback-test;
-				status = "disabled";
-			};
+		pinctrl: pinctrl@14c02400 {
+			compatible = "aspeed,g7-pinctrl";
+			reg = <0x0 0x14c02400 0x0 0x80>;
+		};
 
-			uart7: serial@14c33600 {
-				compatible = "ns16550a";
-				reg = <0x0 0x14c33600 0x0 0x20>;
-				reg-shift = <2>;
-				clocks = <&clk1 AST2700_IO_CLK_GATE_UART7CLK>;
-				clock-frequency = <1846154>;
-				no-loopback-test;
-				status = "disabled";
-			};
+		uart0: serial@14c33000 {
+			compatible = "ns16550a";
+			reg = <0x0 0x14c33000 0x0 0x20>;
+			reg-shift = <2>;
+			clocks = <&clk1 AST2700_IO_CLK_GATE_UART0CLK>;
+			clock-frequency = <1846154>;
+			no-loopback-test;
+			status = "disabled";
+		};
 
-			uart8: serial@14c33700 {
-				compatible = "ns16550a";
-				reg = <0x0 0x14c33700 0x0 0x20>;
-				reg-shift = <2>;
-				clocks = <&clk1 AST2700_IO_CLK_GATE_UART8CLK>;
-				clock-frequency = <1846154>;
-				no-loopback-test;
-				status = "disabled";
-			};
+		uart1: serial@14c33100 {
+			compatible = "ns16550a";
+			reg = <0x0 0x14c33100 0x0 0x20>;
+			reg-shift = <2>;
+			clocks = <&clk1 AST2700_IO_CLK_GATE_UART1CLK>;
+			clock-frequency = <1846154>;
+			no-loopback-test;
+			status = "disabled";
+		};
 
-			uart9: serial@14c33800 {
-				compatible = "ns16550a";
-				reg = <0x0 0x14c33800 0x0 0x20>;
-				reg-shift = <2>;
-				clocks = <&clk1 AST2700_IO_CLK_GATE_UART9CLK>;
-				clock-frequency = <1846154>;
-				no-loopback-test;
-				status = "disabled";
-			};
+		uart2: serial@14c33200 {
+			compatible = "ns16550a";
+			reg = <0x0 0x14c33200 0x0 0x20>;
+			reg-shift = <2>;
+			clocks = <&clk1 AST2700_IO_CLK_GATE_UART2CLK>;
+			clock-frequency = <1846154>;
+			no-loopback-test;
+			status = "disabled";
+		};
 
-			uart10: serial@14c33900 {
-				compatible = "ns16550a";
-				reg = <0x0 0x14c33900 0x0 0x20>;
-				reg-shift = <2>;
-				clocks = <&clk1 AST2700_IO_CLK_GATE_UART10CLK>;
-				clock-frequency = <1846154>;
-				no-loopback-test;
-				status = "disabled";
-			};
+		uart3: serial@14c33300 {
+			compatible = "ns16550a";
+			reg = <0x0 0x14c33300 0x0 0x20>;
+			reg-shift = <2>;
+			clocks = <&clk1 AST2700_IO_CLK_GATE_UART3CLK>;
+			clock-frequency = <1846154>;
+			no-loopback-test;
+			status = "disabled";
+		};
 
-			uart11: serial@14c33a00 {
-				compatible = "ns16550a";
-				reg = <0x0 0x14c33a00 0x0 0x20>;
-				reg-shift = <2>;
-				clocks = <&clk1 AST2700_IO_CLK_GATE_UART11CLK>;
-				clock-frequency = <1846154>;
-				no-loopback-test;
-				status = "disabled";
-			};
+		uart5: serial@14c33400 {
+			compatible = "ns16550a";
+			reg = <0x0 0x14c33400 0x0 0x20>;
+			reg-shift = <2>;
+			clocks = <&clk1 AST2700_IO_CLK_GATE_UART5CLK>;
+			clock-frequency = <1846154>;
+			no-loopback-test;
+			status = "disabled";
+		};
 
-			uart12: serial@14c33b00 {
-				compatible = "ns16550a";
-				reg = <0x0 0x14c33b00 0x0 0x20>;
-				reg-shift = <2>;
-				clocks = <&clk1 AST2700_IO_CLK_GATE_UART12CLK>;
-				clock-frequency = <1846154>;
-				no-loopback-test;
-				status = "disabled";
-			};
+		uart6: serial@14c33500 {
+			compatible = "ns16550a";
+			reg = <0x0 0x14c33500 0x0 0x20>;
+			reg-shift = <2>;
+			clocks = <&clk1 AST2700_IO_CLK_GATE_UART6CLK>;
+			clock-frequency = <1846154>;
+			no-loopback-test;
+			status = "disabled";
+		};
 
-			wdt0: watchdog@14c37000 {
-				compatible = "aspeed,ast2700-wdt";
-				reg = <0x0 0x14c37000 0x0 0x40>;
-				status = "disabled";
-			};
+		uart7: serial@14c33600 {
+			compatible = "ns16550a";
+			reg = <0x0 0x14c33600 0x0 0x20>;
+			reg-shift = <2>;
+			clocks = <&clk1 AST2700_IO_CLK_GATE_UART7CLK>;
+			clock-frequency = <1846154>;
+			no-loopback-test;
+			status = "disabled";
+		};
 
-			wdt1: watchdog@14c37080 {
-				compatible = "aspeed,ast2700-wdt";
-				reg = <0x0 0x14c37080 0x0 0x40>;
-				status = "disabled";
-			};
+		uart8: serial@14c33700 {
+			compatible = "ns16550a";
+			reg = <0x0 0x14c33700 0x0 0x20>;
+			reg-shift = <2>;
+			clocks = <&clk1 AST2700_IO_CLK_GATE_UART8CLK>;
+			clock-frequency = <1846154>;
+			no-loopback-test;
+			status = "disabled";
+		};
 
-			wdt2: watchdog@14c37100 {
-				compatible = "aspeed,ast2700-wdt";
-				reg = <0x0 0x14c37100 0x0 0x40>;
-				status = "disabled";
-			};
+		uart9: serial@14c33800 {
+			compatible = "ns16550a";
+			reg = <0x0 0x14c33800 0x0 0x20>;
+			reg-shift = <2>;
+			clocks = <&clk1 AST2700_IO_CLK_GATE_UART9CLK>;
+			clock-frequency = <1846154>;
+			no-loopback-test;
+			status = "disabled";
+		};
 
-			wdt3: watchdog@14c37180 {
-				compatible = "aspeed,ast2700-wdt";
-				reg = <0x0 0x14c37180 0x0 0x40>;
-				status = "disabled";
-			};
+		uart10: serial@14c33900 {
+			compatible = "ns16550a";
+			reg = <0x0 0x14c33900 0x0 0x20>;
+			reg-shift = <2>;
+			clocks = <&clk1 AST2700_IO_CLK_GATE_UART10CLK>;
+			clock-frequency = <1846154>;
+			no-loopback-test;
+			status = "disabled";
+		};
 
-			wdt4: watchdog@14c37200 {
-				compatible = "aspeed,ast2700-wdt";
-				reg = <0x0 0x14c37200 0x0 0x40>;
-				status = "disabled";
-			};
+		uart11: serial@14c33a00 {
+			compatible = "ns16550a";
+			reg = <0x0 0x14c33a00 0x0 0x20>;
+			reg-shift = <2>;
+			clocks = <&clk1 AST2700_IO_CLK_GATE_UART11CLK>;
+			clock-frequency = <1846154>;
+			no-loopback-test;
+			status = "disabled";
+		};
 
-			wdt5: watchdog@14c37280 {
-				compatible = "aspeed,ast2700-wdt";
-				reg = <0x0 0x14c37280 0x0 0x40>;
-				status = "disabled";
-			};
+		uart12: serial@14c33b00 {
+			compatible = "ns16550a";
+			reg = <0x0 0x14c33b00 0x0 0x20>;
+			reg-shift = <2>;
+			clocks = <&clk1 AST2700_IO_CLK_GATE_UART12CLK>;
+			clock-frequency = <1846154>;
+			no-loopback-test;
+			status = "disabled";
+		};
 
-			wdt6: watchdog@14c37300 {
-				compatible = "aspeed,ast2700-wdt";
-				reg = <0x0 0x14c37300 0x0 0x40>;
-				status = "disabled";
-			};
+		wdt0: watchdog@14c37000 {
+			compatible = "aspeed,ast2700-wdt";
+			reg = <0x0 0x14c37000 0x0 0x40>;
+			status = "disabled";
+		};
 
-			wdt7: watchdog@14c37380 {
-				compatible = "aspeed,ast2700-wdt";
-				reg = <0x0 0x14c37380 0x0 0x40>;
-				status = "disabled";
-			};
+		wdt1: watchdog@14c37080 {
+			compatible = "aspeed,ast2700-wdt";
+			reg = <0x0 0x14c37080 0x0 0x40>;
+			status = "disabled";
+		};
 
-			wdt_abr: watchdog@14c37400 {
-				compatible = "aspeed,ast2700-wdt";
-				reg = <0x0 0x14c37400 0x0 0x40>;
-				status = "disabled";
-			};
+		wdt2: watchdog@14c37100 {
+			compatible = "aspeed,ast2700-wdt";
+			reg = <0x0 0x14c37100 0x0 0x40>;
+			status = "disabled";
+		};
 
-			i2c: bus@14c0f000 {
-				compatible = "simple-bus";
-				#address-cells = <2>;
-				#size-cells = <2>;
-				ranges = <0 0 0 0x14c0f000 0 0x1100>;
-			};
+		wdt3: watchdog@14c37180 {
+			compatible = "aspeed,ast2700-wdt";
+			reg = <0x0 0x14c37180 0x0 0x40>;
+			status = "disabled";
+		};
 
-			fmc: flash-controller@14000000 {
-				reg = <0x0 0x14000000 0x0 0xc4>,
-				      <0x1 0x00000000 0x0 0x80000000>;
-				#address-cells = <1>;
-				#size-cells = <0>;
-				compatible = "aspeed,ast2700-fmc";
-				status = "disabled";
-				clocks = <&clk1 AST2700_IO_CLK_AHB>;
-				num-cs = <3>;
+		wdt4: watchdog@14c37200 {
+			compatible = "aspeed,ast2700-wdt";
+			reg = <0x0 0x14c37200 0x0 0x40>;
+			status = "disabled";
+		};
 
-				flash@0 {
-					reg = <0>;
-					compatible = "jedec,spi-nor";
-					status = "disabled";
-				};
+		wdt5: watchdog@14c37280 {
+			compatible = "aspeed,ast2700-wdt";
+			reg = <0x0 0x14c37280 0x0 0x40>;
+			status = "disabled";
+		};
 
-				flash@1 {
-					reg = <1>;
-					compatible = "jedec,spi-nor";
-					status = "disabled";
-				};
+		wdt6: watchdog@14c37300 {
+			compatible = "aspeed,ast2700-wdt";
+			reg = <0x0 0x14c37300 0x0 0x40>;
+			status = "disabled";
+		};
 
-				flash@2 {
-					reg = <2>;
-					compatible = "jedec,spi-nor";
-					status = "disabled";
-				};
-			};
+		wdt7: watchdog@14c37380 {
+			compatible = "aspeed,ast2700-wdt";
+			reg = <0x0 0x14c37380 0x0 0x40>;
+			status = "disabled";
+		};
+
+		wdt_abr: watchdog@14c37400 {
+			compatible = "aspeed,ast2700-wdt";
+			reg = <0x0 0x14c37400 0x0 0x40>;
+			status = "disabled";
+		};
+
+		i2c: bus@14c0f000 {
+			compatible = "simple-bus";
+			#address-cells = <2>;
+			#size-cells = <2>;
+			ranges = <0 0 0 0x14c0f000 0 0x1100>;
 		};
 	};
 };
 
 &i2c {
-	i2cglobal: i2cg@00 {
+	i2cglobal: i2cg@0 {
 	#address-cells = <1>;
 	#size-cells = <0>;
 

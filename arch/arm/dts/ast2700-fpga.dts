@@ -2,6 +2,7 @@
 
 /dts-v1/;
 
+#include "ast2700.dtsi"
 #include "ast2700-u-boot.dtsi"
 
 / {
