@@ -14,8 +14,8 @@
 #define CONFIG_SYS_UBOOT_BASE		CONFIG_SYS_TEXT_BASE
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
-	"bootspi=fdt addr 100180000 && fdt header get fitsize totalsize && " \
-	"cp.b 100180000 ${loadaddr} ${fitsize} && bootm; " \
+	"bootspi=fdt addr 100200000 && fdt header get fitsize totalsize && " \
+	"cp.b 100200000 ${loadaddr} ${fitsize} && bootm; " \
 	"echo Error loading kernel FIT image\0" \
 	""
 
