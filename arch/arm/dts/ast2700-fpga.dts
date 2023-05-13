@@ -36,6 +36,7 @@
 
 &uart12 {
 	u-boot,dm-pre-reloc;
+	clock-frequency = <1846154>;
 	status = "okay";
 };
 
