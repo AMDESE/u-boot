@@ -166,7 +166,6 @@
 			reg-shift = <2>;
 			interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&cpu_clk AST2700_CPU_CLK_GATE_UART4CLK>;
-			clock-frequency = <1846154>;
 			no-loopback-test;
 			status = "disabled";
 		};
@@ -392,7 +391,6 @@
 			reg = <0x0 0x14c33b00 0x0 0x20>;
 			reg-shift = <2>;
 			clocks = <&io_clk AST2700_IO_CLK_GATE_UART12CLK>;
-			clock-frequency = <1846154>;
 			no-loopback-test;
 			status = "disabled";
 		};
