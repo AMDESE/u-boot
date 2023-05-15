@@ -124,6 +124,22 @@ static uint32_t ast2700_cpu_get_emmcclk_rate(struct ast2700_cpu_clk *clk)
 #endif
 }
 
+static uint32_t ast2700_cpu_get_uartclk_rate(struct ast2700_cpu_clk *clk)
+{
+	u32 clksel2 = readl(&clk->clk_sel2);
+	u32 div = 1;
+	u32 rate;
+
+	if (clksel2 & BIT(15))
+		rate = 192000000;
+	else
+		rate = 24000000;
+
+	if (clksel2 & BIT(30))
+		div = 13;
+	return (rate / div);
+}
+
 static ulong ast2700_cpu_clk_get_rate(struct clk *clk)
 {
 	struct ast2700_cpu_clk_priv *priv = dev_get_priv(clk->dev);
@@ -146,6 +162,9 @@ static ulong ast2700_cpu_clk_get_rate(struct clk *clk)
 		break;
 	case AST2700_CPU_CLK_EMMC:
 		rate = ast2700_cpu_get_emmcclk_rate(priv->clk);
+		break;
+	case AST2700_CPU_CLK_GATE_UART4CLK:
+		rate = ast2700_cpu_get_uartclk_rate(priv->clk);
 		break;
 	default:
 		debug("%s: unknown clk %ld\n", __func__, clk->id);

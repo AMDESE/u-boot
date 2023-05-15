@@ -186,17 +186,17 @@ ast2700_io_get_uart_clk_rate(struct ast2700_io_clk *clk, int uart_idx)
 	uint32_t misc_ctrl1 = readl(&clk->misc_ctrl1);
 
 	switch (uart_idx) {
+	case 0:
 	case 1:
 	case 2:
 	case 3:
-	case 4:
-	case 6:
-		if (clksrc4 & BIT(uart_idx - 1))
-			rate = ast2700_get_uart_huxclk_rate(clk);
-		else
-			rate = ast2700_get_uart_uxclk_rate(clk);
-		break;
 	case 5:
+		if (clksrc4 & BIT(uart_idx - 1))
+			rate = ast2700_io_get_uart_huxclk_rate(clk);
+		else
+			rate = ast2700_io_get_uart_uxclk_rate(clk);
+		break;
+	case 6:
 		/*
 		 * SCU0C[12] and SCU304[14] together decide
 		 * the UART5 clock generation
@@ -229,11 +229,10 @@ ast2700_io_get_uart_clk_rate(struct ast2700_io_clk *clk, int uart_idx)
 	case 10:
 	case 11:
 	case 12:
-	case 13:
 		if (clksrc5 & BIT(uart_idx - 1))
-			rate = ast2700_get_uart_huxclk_rate(clk);
+			rate = ast2700_io_get_uart_huxclk_rate(clk);
 		else
-			rate = ast2700_get_uart_uxclk_rate(clk);
+			rate = ast2700_io_get_uart_uxclk_rate(clk);
 		break;
 	}
 
@@ -259,16 +258,40 @@ static ulong ast2700_io_clk_get_rate(struct clk *clk)
 		rate = ast2700_io_get_pclk_rate(priv->clk);
 		break;
 	case AST2700_IO_CLK_GATE_UART0CLK:
-		rate = ast2700_io_get_uart_clk_rate(priv->clk, 1);
+		rate = ast2700_io_get_uart_clk_rate(priv->clk, 0);
 		break;
 	case AST2700_IO_CLK_GATE_UART1CLK:
-		rate = ast2700_io_get_uart_clk_rate(priv->clk, 2);
+		rate = ast2700_io_get_uart_clk_rate(priv->clk, 1);
 		break;
 	case AST2700_IO_CLK_GATE_UART2CLK:
-		rate = ast2700_io_get_uart_clk_rate(priv->clk, 3);
+		rate = ast2700_io_get_uart_clk_rate(priv->clk, 2);
 		break;
 	case AST2700_IO_CLK_GATE_UART3CLK:
-		rate = ast2700_io_get_uart_clk_rate(priv->clk, 4);
+		rate = ast2700_io_get_uart_clk_rate(priv->clk, 3);
+		break;
+	case AST2700_IO_CLK_GATE_UART5CLK:
+		rate = ast2700_io_get_uart_clk_rate(priv->clk, 5);
+		break;
+	case AST2700_IO_CLK_GATE_UART6CLK:
+		rate = ast2700_io_get_uart_clk_rate(priv->clk, 6);
+		break;
+	case AST2700_IO_CLK_GATE_UART7CLK:
+		rate = ast2700_io_get_uart_clk_rate(priv->clk, 7);
+		break;
+	case AST2700_IO_CLK_GATE_UART8CLK:
+		rate = ast2700_io_get_uart_clk_rate(priv->clk, 8);
+		break;
+	case AST2700_IO_CLK_GATE_UART9CLK:
+		rate = ast2700_io_get_uart_clk_rate(priv->clk, 9);
+		break;
+	case AST2700_IO_CLK_GATE_UART10CLK:
+		rate = ast2700_io_get_uart_clk_rate(priv->clk, 10);
+		break;
+	case AST2700_IO_CLK_GATE_UART11CLK:
+		rate = ast2700_io_get_uart_clk_rate(priv->clk, 11);
+		break;
+	case AST2700_IO_CLK_GATE_UART12CLK:
+		rate = ast2700_io_get_uart_clk_rate(priv->clk, 12);
 		break;
 	case AST2700_IO_CLK_GATE_SDCLK:
 		rate = ast2700_io_get_sdio_clk_rate(priv->clk);
