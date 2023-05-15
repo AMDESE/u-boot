@@ -22,61 +22,27 @@ struct ast2700_io_clk_priv {
 	struct ast2700_io_clk *clk;
 };
 
-extern uint32_t ast2700_io_get_pll_rate(struct ast2700_io_clk *clk, int pll_idx)
+static uint32_t ast2700_io_get_pll_rate(struct ast2700_io_clk *clk, int pll_idx)
 {
 #ifdef ASPEED_FPGA
 	return 24000000;
 #else
 	union ast2700_pll_reg pll_reg;
-	uint32_t hwstrap1;
-	uint32_t cpu_freq;
 	uint32_t mul = 1, div = 1;
 
 	switch (pll_idx) {
-	case ASPEED_CLK_APLL:
+	case AST2700_IO_CLK_HPLL:
+		pll_reg.w = readl(&clk->hpll);
+		break;
+	case AST2700_IO_CLK_APLL:
 		pll_reg.w = readl(&clk->apll);
 		break;
-	case ASPEED_CLK_DPLL:
+	case AST2700_IO_CLK_DPLL:
 		pll_reg.w = readl(&clk->dpll);
-		break;
-	case ASPEED_CLK_EPLL:
-		pll_reg.w = readl(&clk->epll);
 		break;
 	}
 
 	if (!pll_reg.b.bypass) {
-		/* F = 25Mhz * [(M + 2) / (n + 1)] / (p + 1)s
-		 * HPLL Numerator (M) = fix 0x5F when SCU500[10]=1
-		 * Fixed 0xBF when SCU500[10]=0 and SCU500[8]=1
-		 * SCU200[12:0] (default 0x8F) when SCU510[10]=0 and SCU510[8]=0
-		 * HPLL Denumerator (N) =	SCU200[18:13] (default 0x2)
-		 * HPLL Divider (P)	 =	SCU200[22:19] (default 0x0)
-		 * HPLL Bandwidth Adj (NB) =  fix 0x2F when SCU500[10]=1
-		 * Fixed 0x5F when SCU500[10]=0 and SCU500[8]=1
-		 * SCU204[11:0] (default 0x31) when SCU500[10]=0 and SCU500[8]=0
-		 */
-		if (pll_idx == ASPEED_CLK_HPLL) {
-			hwstrap1 = readl(&clk->hwstrap1);
-			cpu_freq = (hwstrap1 & SCU_HWSTRAP1_CPU_FREQ_MASK) >>
-				    SCU_HWSTRAP1_CPU_FREQ_SHIFT;
-
-			switch (cpu_freq) {
-			case CPU_FREQ_800M_1:
-			case CPU_FREQ_800M_2:
-			case CPU_FREQ_800M_3:
-			case CPU_FREQ_800M_4:
-				pll_reg.b.m = 0x5f;
-				break;
-			case CPU_FREQ_1600M_1:
-			case CPU_FREQ_1600M_2:
-				pll_reg.b.m = 0xbf;
-				break;
-			default:
-				pll_reg.b.m = 0x8f;
-				break;
-			}
-		}
-
 		mul = (pll_reg.b.m + 1) / (pll_reg.b.n + 1);
 		div = (pll_reg.b.p + 1);
 	}
@@ -94,7 +60,7 @@ static uint32_t ast2700_io_get_hclk_rate(struct ast2700_io_clk *clk)
 	//hpll/4
 	return 12000000;
 #else
-	u32 rate = ast2700_io_get_pll_rate(clk, ASPEED_CLK_HPLL);
+	u32 rate = ast2700_io_get_pll_rate(clk, AST2700_IO_CLK_HPLL);
 	u32 clk_sel2 = readl(&clk->clk_sel2);
 	u32 hclk_div = (clk_sel2 & SCU_CLKSEL2_HCLK_DIV_MASK) >>
 			     SCU_CLKSEL2_HCLK_DIV_SHIFT;
@@ -106,6 +72,9 @@ static uint32_t ast2700_io_get_hclk_rate(struct ast2700_io_clk *clk)
 #endif
 }
 
+#define SCU_CLKSEL1_PCLK_DIV_MASK		GENMASK(20, 18)
+#define SCU_CLKSEL1_PCLK_DIV_SHIFT		18
+
 static uint32_t ast2700_io_get_pclk_rate(struct ast2700_io_clk *clk)
 {
 #ifdef ASPEED_FPGA
@@ -113,9 +82,9 @@ static uint32_t ast2700_io_get_pclk_rate(struct ast2700_io_clk *clk)
 	return 12000000;
 #else
 	u32 rate = ast2700_io_get_hclk_rate(clk);
-	u32 clksrc4 = readl(&clk->clksrc4);
-	u32 pclk_div = (clksrc4 & SCU_CLKSRC4_PCLK_DIV_MASK) >>
-			     SCU_CLKSRC4_PCLK_DIV_SHIFT;
+	u32 clk_sel1 = readl(&clk->clk_sel1);
+	u32 pclk_div = (clk_sel1 & SCU_CLKSEL1_PCLK_DIV_MASK) >>
+			     SCU_CLKSEL1_PCLK_DIV_SHIFT;
 
 	return (rate / ((pclk_div + 1) * 2));
 #endif
@@ -196,22 +165,30 @@ static uint32_t ast2700_io_get_uart_huxclk_rate(struct ast2700_io_clk *clk)
 #endif
 }
 
+#define SCU_CLKSRC4_SDIO_DIV_MASK		GENMASK(16, 14)
+#define SCU_CLKSRC4_SDIO_DIV_SHIFT		14
+
 static uint32_t ast2700_io_get_sdio_clk_rate(struct ast2700_io_clk *clk)
 {
 #ifdef ASPEED_FPGA
 	return 50000000;
 #else
 	uint32_t rate = 0;
-	uint32_t clksrc4 = readl(&clk->clksrc4);
-	uint32_t sdio_div = (clksrc4 & SCU_CLKSRC4_SDIO_DIV_MASK) >>
+	uint32_t clk_sel1 = readl(&clk->clk_sel1);
+	uint32_t div = (clk_sel1 & SCU_CLKSRC4_SDIO_DIV_MASK) >>
 			     SCU_CLKSRC4_SDIO_DIV_SHIFT;
 
-	if (clksrc4 & SCU_CLKSRC4_SDIO)
-		rate = ast2700_io_get_pll_rate(clk, ASPEED_CLK_APLL);
+	if (clk_sel1 & BIT(13))
+		rate = ast2700_io_get_pll_rate(clk, AST2700_IO_CLK_HPLL);
 	else
-		rate = ast2700_io_get_hclk_rate(clk);
+		rate = ast2700_io_get_pll_rate(clk, AST2700_IO_CLK_APLL);
 
-	return (rate / ((sdio_div + 1) * 2));
+	if (!div)
+		div = 1;
+	else
+		div++;
+
+	return (rate / div);
 #endif
 }
 

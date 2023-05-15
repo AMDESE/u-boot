@@ -30,18 +30,15 @@ extern uint32_t ast2700_cpu_get_pll_rate(struct ast2700_cpu_clk *clk, int pll_id
 	return 24000000;
 #else
 	union ast2700_pll_reg pll_reg;
-	uint32_t hwstrap1;
-	uint32_t cpu_freq;
 	uint32_t mul = 1, div = 1;
 
 	switch (pll_idx) {
 	case AST2700_CPU_CLK_HPLL:
-		pll_reg.w = readl(clk->hpll);
+		pll_reg.w = readl(&clk->hpll);
 		break;
 	case AST2700_CPU_CLK_DPLL:
 		pll_reg.w = readl(&clk->dpll);
 		break;
-	}
 	case AST2700_CPU_CLK_MPLL:
 		pll_reg.w = readl(&clk->mpll);
 		break;
