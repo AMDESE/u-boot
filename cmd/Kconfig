@@ -926,6 +926,13 @@ config CMD_ADC
 	  Shows ADC device info and permit printing one-shot analog converted
 	  data from a named Analog to Digital Converter.
 
+config CMD_ASPEED_FLASH_STRAP
+	bool "ASPEED Flash Strap"
+	depends on DM_SPI_FLASH || SPI_FLASH
+	default y
+	help
+	  Enable ASPEED flash strap operation.
+
 config CMD_BCB
 	bool "bcb"
 	depends on MMC

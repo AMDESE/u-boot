@@ -18,6 +18,7 @@ obj-$(CONFIG_CMD_AES) += aes.o
 obj-$(CONFIG_CMD_AB_SELECT) += ab_select.o
 obj-$(CONFIG_CMD_ADC) += adc.o
 obj-$(CONFIG_CMD_ARMFLASH) += armflash.o
+obj-$(CONFIG_CMD_ASPEED_FLASH_STRAP) += aspeed_flash_strap.o
 obj-$(CONFIG_HAVE_BLOCK_DEVICE) += blk_common.o
 obj-$(CONFIG_CMD_BOOTDEV) += bootdev.o
 obj-$(CONFIG_CMD_BOOTFLOW) += bootflow.o
