@@ -9,6 +9,7 @@
 #include <asm/io.h>
 #include <common.h>
 #include <command.h>
+#include <console.h>
 #include <display_options.h>
 #include <dm/device-internal.h>
 #include <div64.h>
@@ -17,6 +18,7 @@
 #include <log.h>
 #include <malloc.h>
 #include <mapmem.h>
+#include <mmc.h>
 #include <spi.h>
 #include <spi_flash.h>
 
@@ -28,7 +30,9 @@ static struct spi_flash *flash;
 static uint32_t g_flash_strap_content[8] __aligned(8) = {0};
 static uint8_t *g_buf;
 
-bool g_strap_sf_read;
+bool g_strap_flash_read;
+
+static int curr_mmc_device = -1;
 
 struct flash_strap {
 	char *idx_mark;
@@ -587,7 +591,7 @@ static int do_strap_sf_read(void)
 	bool re_init = false;
 	uint32_t checksum;
 
-	if (g_strap_sf_read)
+	if (g_strap_flash_read)
 		return 0;
 
 	ret = strap_spi_flash_probe();
@@ -595,6 +599,9 @@ static int do_strap_sf_read(void)
 		cmd_ret = CMD_RET_FAILURE;
 		goto end;
 	}
+
+	if (g_buf)
+		free(g_buf);
 
 	/* allocate 128kB */
 	g_buf = memalign(ARCH_DMA_MINALIGN, 0x20000);
@@ -646,10 +653,10 @@ static int do_strap_sf_read(void)
 	}
 
 	strap_value_calc();
-	g_strap_sf_read = true;
+	g_strap_flash_read = true;
 
 end:
-	if (!g_strap_sf_read && g_buf)
+	if (!g_strap_flash_read && g_buf)
 		free(g_buf);
 
 	return cmd_ret;
@@ -709,8 +716,243 @@ end:
 	return cmd_ret;
 }
 
+static struct mmc *init_mmc_device(int dev, bool force_init)
+{
+	struct mmc *mmc;
+
+	mmc = find_mmc_device(dev);
+	if (!mmc) {
+		printf("no mmc device at slot %x\n", dev);
+		return NULL;
+	}
+
+	if (!mmc_getcd(mmc))
+		force_init = true;
+
+	if (force_init)
+		mmc->has_init = 0;
+
+	if (mmc_init(mmc))
+		return NULL;
+
+	if (IS_ENABLED(CONFIG_BLOCK_CACHE)) {
+		struct blk_desc *bd = mmc_get_blk_desc(mmc);
+
+		blkcache_invalidate(bd->if_type, bd->devnum);
+	}
+
+	return mmc;
+}
+
+static int do_mmc_write(uint32_t mmc_blk, uint32_t mmc_cnt, void *buf)
+{
+	struct mmc *mmc;
+	uint32_t n;
+
+	mmc = init_mmc_device(curr_mmc_device, false);
+	if (!mmc)
+		return CMD_RET_FAILURE;
+
+	printf("\nMMC write: dev # %d, block # %d, count %d ... ",
+	       curr_mmc_device, mmc_blk, mmc_cnt);
+
+	if (mmc_getwp(mmc) == 1) {
+		printf("Error: eMMC is write protected!\n");
+		return CMD_RET_FAILURE;
+	}
+
+	n = blk_dwrite(mmc_get_blk_desc(mmc), mmc_blk, mmc_cnt, buf);
+	printf("%d blocks written: %s\n", n, (n == mmc_cnt) ? "OK" : "ERROR");
+
+	return (n == mmc_cnt) ? CMD_RET_SUCCESS : CMD_RET_FAILURE;
+}
+
+static int do_mmc_dev(void)
+{
+	int dev = 0, part = 1, ret;
+	struct mmc *mmc;
+
+	mmc = init_mmc_device(dev, true);
+	if (!mmc)
+		return CMD_RET_FAILURE;
+
+	ret = blk_select_hwpart_devnum(IF_TYPE_MMC, dev, part);
+	printf("switch to partitions #%d, %s\n",
+	       part, (!ret) ? "OK" : "ERROR");
+	if (ret != 0)
+		return 1;
+
+	curr_mmc_device = dev;
+	if (mmc->part_config == MMCPART_NOAVAILABLE)
+		printf("mmc%d is current device\n", curr_mmc_device);
+	else
+		printf("mmc%d(part %d) is current device\n",
+		       curr_mmc_device, mmc_get_blk_desc(mmc)->hwpart);
+
+	return 0;
+}
+
+static int do_strap_mmc_read(void)
+{
+	int ret;
+	struct mmc *mmc;
+	enum command_ret_t cmd_ret = CMD_RET_SUCCESS;
+	int i;
+	bool re_init = false;
+	uint32_t checksum;
+	uint32_t mmc_blk = 0;
+	uint32_t mmc_cnt = (128 * 1024) / 512;
+	uint32_t n;
+
+	if (g_strap_flash_read)
+		return 0;
+
+	ret = do_mmc_dev();
+	if (ret != 0) {
+		cmd_ret = CMD_RET_FAILURE;
+		goto end;
+	}
+
+	mmc = init_mmc_device(curr_mmc_device, false);
+	if (!mmc) {
+		cmd_ret = CMD_RET_FAILURE;
+		goto end;
+	}
+
+	if (g_buf)
+		free(g_buf);
+
+	/* allocate 128kB */
+	g_buf = memalign(ARCH_DMA_MINALIGN, 0x20000);
+	if (!g_buf) {
+		cmd_ret = CMD_RET_FAILURE;
+		goto end;
+	}
+
+	printf("\nMMC read: dev # %d, block # %d, count %d ... ",
+	       curr_mmc_device, mmc_blk, mmc_cnt);
+	n = blk_dread(mmc_get_blk_desc(mmc), mmc_blk, mmc_cnt, (void *)g_buf);
+	printf("%d blocks read:", n);
+	if (n == mmc_cnt) {
+		printf("OK\n");
+	} else {
+		printf("ERROR\n");
+		cmd_ret = CMD_RET_FAILURE;
+		goto end;
+	}
+
+	for (i = 0; i < 8; i++)
+		g_flash_strap_content[i] = *(uint32_t *)(g_buf + 0x1F000 + i * 4);
+
+	checksum = strap_checksum_calc((g_flash_strap_content + 2), 4);
+
+	if (g_flash_strap_content[0] != FLASH_STRAP_MAGIC) {
+		printf("invalid strap magic 0x%08x\n",
+		       g_flash_strap_content[0]);
+		re_init = true;
+	} else if ((g_flash_strap_content[1] & 0xffff) != 0x18) {
+		printf("invalid strap image size 0x%04x\n",
+		       g_flash_strap_content[1] & 0xffff);
+		re_init = true;
+	} else if ((g_flash_strap_content[1] & 0xffff0000) != 0x00010000) {
+		printf("non-checksum algorithm 0x%08x\n",
+		       g_flash_strap_content[1] & 0xffff0000);
+		re_init = true;
+	} else if (checksum != g_flash_strap_content[6]) {
+		printf("unexpected checksum val: 0x%08x (0x%08x)\n",
+		       g_flash_strap_content[6], checksum);
+		re_init = true;
+	}
+
+	if (re_init) {
+		printf("reinitialize the flash strap.\n");
+		g_flash_strap_content[0] = FLASH_STRAP_MAGIC;
+		g_flash_strap_content[1] = FLASH_STRAP_SZ_ALG;
+		g_flash_strap_content[2] = 0x0;
+		g_flash_strap_content[3] = 0x0;
+		g_flash_strap_content[4] = 0x0;
+		g_flash_strap_content[5] = 0x0;
+		g_flash_strap_content[6] =
+			strap_checksum_calc((g_flash_strap_content + 2), 4);
+	}
+
+	strap_value_calc();
+	g_strap_flash_read = true;
+
+end:
+	if (!g_strap_flash_read && g_buf)
+		free(g_buf);
+
+	return cmd_ret;
+}
+
+static int do_strap_mmc_update(uint8_t *buf)
+{
+	int ret;
+	uint32_t i;
+
+	for (i = 0; i < 8; i++)
+		*(uint32_t *)(buf + 0x1F000 + i * 4) = g_flash_strap_content[i];
+
+	printf("update strap into eMMC offset 0x1F000...");
+	ret = do_mmc_write(0x0, (128 * 1024) / 512, buf);
+	if (ret != 0)
+		printf("failed.\n");
+	else
+		printf("done.\n");
+
+	return ret;
+}
+
+static int do_flash_strap_mmc(struct cmd_tbl *cmdtp, int flag,
+			      int argc, char *const argv[])
+{
+	int ret;
+	enum command_ret_t cmd_ret = CMD_RET_SUCCESS;
+	uint32_t strap_num;
+	uint32_t strap_val;
+
+	if (argc != 2 && argc != 4) {
+		cmd_ret = CMD_RET_USAGE;
+		goto end;
+	}
+
+	ret = do_strap_mmc_read();
+	if (ret != 0) {
+		cmd_ret = CMD_RET_USAGE;
+		goto end;
+	}
+
+	if (!strcmp(argv[1], "read")) {
+		do_strap_dump_info();
+	} else if (!strcmp(argv[1], "conf")) {
+		strap_num = simple_strtoul(argv[2], NULL, 10);
+		strap_val = simple_strtoul(argv[3], NULL, 16);
+		ret = do_strap_info_conf(strap_num, strap_val);
+		if (ret != 0) {
+			cmd_ret = CMD_RET_FAILURE;
+			goto end;
+		}
+	} else if (!strcmp(argv[1], "update")) {
+		if (!g_buf) {
+			cmd_ret = CMD_RET_FAILURE;
+			goto end;
+		}
+
+		ret = do_strap_mmc_update(g_buf);
+		if (ret != 0) {
+			cmd_ret = CMD_RET_FAILURE;
+			goto end;
+		}
+	}
+
+end:
+	return cmd_ret;
+}
+
 static struct cmd_tbl cmd_flash_strap[] = {
 	U_BOOT_CMD_MKENT(sf, 4, 0, do_flash_strap_sf, "", ""),
+	U_BOOT_CMD_MKENT(mmc, 4, 0, do_flash_strap_mmc, "", ""),
 };
 
 static int do_flash_strap(struct cmd_tbl *cmdtp, int flag, int argc,
