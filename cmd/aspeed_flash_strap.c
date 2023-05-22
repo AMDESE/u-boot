@@ -121,7 +121,7 @@ char spi_aux_pin_info[2][32] = {
 };
 
 char spi_crtm_sz_info[4][32] = {
-	"FWSPI CRTM is Disabled",
+	"CRTM is Disabled",
 	"256KB", "512KB", "1MB",
 };
 
@@ -454,8 +454,9 @@ static int strap_spi_flash_update(struct spi_flash *flash, u32 offset,
 	} else {
 		err_oper = "malloc";
 	}
+
 	free(cmp_buf);
-	putc('\r');
+
 	if (err_oper) {
 		printf("SPI flash failed in %s step\n", err_oper);
 		return 1;
@@ -475,9 +476,9 @@ static int do_strap_sf_update(uint8_t *buf)
 	printf("update strap into SPI flsah offset 0x1F000...");
 	ret = strap_spi_flash_update(flash, 0x0, 0x20000, buf);
 	if (ret != 0)
-		printf("done.\n");
-	else
 		printf("failed.\n");
+	else
+		printf("done.\n");
 
 	return ret;
 }
@@ -535,7 +536,7 @@ static int do_strap_info_conf(uint32_t strap_num, uint32_t value)
 			bit_offset = g_strap_info[idx].bit_offset;
 			mask = BIT(g_strap_info[idx].len) - 1;
 			value &= mask;
-			printf("modify %s: %s to value: 0x%x...\n",
+			printf("modify %s: %s to value: 0x%x...",
 			       g_strap_info[idx].idx_mark,
 			       g_strap_info[idx].name, value);
 
