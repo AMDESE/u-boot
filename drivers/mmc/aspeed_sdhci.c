@@ -25,7 +25,6 @@ static int aspeed_sdhci_probe(struct udevice *dev)
 	struct mmc_uclass_priv *upriv = dev_get_uclass_priv(dev);
 	struct aspeed_sdhci_plat *plat = dev_get_plat(dev);
 	struct sdhci_host *host = dev_get_priv(dev);
-	struct reset_ctl rst_ctl;
 	u32 max_clk;
 	struct clk clk;
 	int ret;
@@ -42,16 +41,6 @@ static int aspeed_sdhci_probe(struct udevice *dev)
 		goto free;
 	}
 
-	ret = reset_get_by_index(dev, 0, &rst_ctl);
-	if (ret) {
-		dev_err(dev, "failed to get SDHCI reset\n");
-		goto free;
-	}
-
-	reset_assert(&rst_ctl);
-	udelay(2);
-	reset_deassert(&rst_ctl);
-
 	host->name = dev->name;
 	host->ioaddr = dev_read_addr_ptr(dev);
 
@@ -67,6 +56,11 @@ static int aspeed_sdhci_probe(struct udevice *dev)
 	host->mmc->dev = dev;
 	host->mmc->priv = host;
 	upriv->mmc = host->mmc;
+
+	host->bus_width = dev_read_u32_default(dev, "bus-width", 4);
+
+	if (host->bus_width == 8)
+		host->host_caps |= MMC_MODE_8BIT;
 
 	ret = sdhci_setup_cfg(&plat->cfg, host, 0, 0);
 	if (ret)
@@ -111,11 +105,30 @@ U_BOOT_DRIVER(aspeed_sdhci_drv) = {
 	.plat_auto	= sizeof(struct aspeed_sdhci_plat),
 };
 
+#define TIMING_PHASE_OFFSET 0xf4
+#define SDHCI140_SLOT_0_MIRROR_OFFSET 0x10
+#define SDHCI240_SLOT_0_MIRROR_OFFSET 0x20
+#define SDHCI140_SLOT_0_CAP_REG_1_OFFSET 0x140
+#define SDHCI240_SLOT_0_CAP_REG_1_OFFSET 0x240
 
 static int aspeed_sdc_probe(struct udevice *dev)
 {
+	struct reset_ctl rst_ctl;
+	void *sdhci_ctrl_base;
 	struct clk clk;
+	u32 timing_phase;
+	u32 reg_val;
 	int ret;
+
+	ret = reset_get_by_index(dev, 0, &rst_ctl);
+	if (ret) {
+		dev_err(dev, "failed to get SDHCI reset\n");
+		goto free;
+	}
+
+	reset_assert(&rst_ctl);
+	udelay(2);
+	reset_deassert(&rst_ctl);
 
 	ret = clk_get_by_index(dev, 0, &clk);
 	if (ret) {
@@ -127,6 +140,24 @@ static int aspeed_sdc_probe(struct udevice *dev)
 	if (ret) {
 		dev_err(dev, "clock enable failed");
 		goto free;
+	}
+
+	sdhci_ctrl_base = dev_read_addr_ptr(dev);
+	if (!sdhci_ctrl_base)
+		return -EINVAL;
+
+	timing_phase = dev_read_u32_default(dev, "timing-phase", 0);
+	writel(timing_phase, sdhci_ctrl_base + TIMING_PHASE_OFFSET);
+
+	if (dev_read_bool(dev, "sdhci_hs200")) {
+		reg_val = readl(sdhci_ctrl_base + SDHCI140_SLOT_0_CAP_REG_1_OFFSET);
+		/* support 1.8V */
+		reg_val |= BIT(26);
+		writel(reg_val, sdhci_ctrl_base + SDHCI140_SLOT_0_MIRROR_OFFSET);
+		reg_val = readl(sdhci_ctrl_base + SDHCI240_SLOT_0_CAP_REG_1_OFFSET);
+		/* support 1.8V */
+		reg_val |= BIT(26);
+		writel(reg_val, sdhci_ctrl_base + SDHCI240_SLOT_0_MIRROR_OFFSET);
 	}
 
 	return 0;
