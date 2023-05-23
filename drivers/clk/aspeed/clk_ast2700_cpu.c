@@ -107,17 +107,20 @@ static uint32_t ast2700_cpu_get_bclk_rate(struct ast2700_cpu_clk *clk)
 #endif
 }
 
+#define SCU_CLKSEL1_EMMCCLK_DIV_MASK		GENMASK(14, 12)
+#define SCU_CLKSEL1_EMMCCLK_DIV_SHIFT		12
+
 static uint32_t ast2700_cpu_get_emmcclk_rate(struct ast2700_cpu_clk *clk)
 {
 #ifdef ASPEED_FPGA
-	return 200000000;
+	return 50000000;
 #else
 	u32 rate = ast2700_cpu_get_pll_rate(clk, AST2700_CPU_CLK_HPLL);
 	u32 clksel1 = readl(&clk->clk_sel1);
-	u32 bclk_div = (clksel1 & SCU_CLKSEL1_BCLK_DIV_MASK) >>
-			     SCU_CLKSEL1_BCLK_DIV_SHIFT;
+	u32 emmcclk_div = (clksel1 & SCU_CLKSEL1_EMMCCLK_DIV_MASK) >>
+			     SCU_CLKSEL1_EMMCCLK_DIV_SHIFT;
 
-	return (rate / ((bclk_div + 1) * 4));
+	return (rate / ((emmcclk_div + 1) * 2));
 #endif
 }
 
@@ -157,7 +160,7 @@ static ulong ast2700_cpu_clk_get_rate(struct clk *clk)
 	case AST2700_CPU_CLK_BCLK:
 		rate = ast2700_cpu_get_bclk_rate(priv->clk);
 		break;
-	case AST2700_CPU_CLK_EMMC:
+	case AST2700_CPU_CLK_GATE_EMMCCLK:
 		rate = ast2700_cpu_get_emmcclk_rate(priv->clk);
 		break;
 	case AST2700_CPU_CLK_GATE_UART4CLK:
