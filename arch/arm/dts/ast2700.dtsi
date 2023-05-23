@@ -99,8 +99,9 @@
 			reg = <0 0x12090000 0 0x100>;
 			#address-cells = <2>;
 			#size-cells = <2>;
-			ranges = <0 0 0 0x12090000 0 0x10000>;
 			clocks = <&cpu_clk AST2700_CPU_CLK_GATE_EMMCCLK>;
+			resets = <&cpu_rst ASPEED_RESET_EMMC>;
+			ranges = <0 0 0 0x12090000 0 0x10000>;
 			status = "disable";
 
 			sdhci: sdhci@12090100 {
@@ -108,8 +109,7 @@
 				reg = <0 0x100 0 0x100>;
 				sdhci,auto-cmd12;
 				#interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&cpu_clk AST2700_CPU_CLK_EMMC>;
-				resets = <&cpu_rst ASPEED_RESET_EMMC>;
+				clocks = <&cpu_clk AST2700_CPU_CLK_GATE_EMMCCLK>;
 				//pinctrl-names = "default";
 				//pinctrl-0 = <&pinctrl_emmc_default>;
 			};
