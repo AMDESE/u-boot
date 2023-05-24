@@ -171,7 +171,7 @@ static uint32_t ast2700_io_get_uart_huxclk_rate(struct ast2700_io_clk *clk)
 static uint32_t ast2700_io_get_sdio_clk_rate(struct ast2700_io_clk *clk)
 {
 #ifdef ASPEED_FPGA
-	return 50000000;
+	return 48000000;
 #else
 	uint32_t rate = 0;
 	uint32_t clk_sel1 = readl(&clk->clk_sel1);
@@ -179,14 +179,14 @@ static uint32_t ast2700_io_get_sdio_clk_rate(struct ast2700_io_clk *clk)
 			     SCU_CLKSRC4_SDIO_DIV_SHIFT;
 
 	if (clk_sel1 & BIT(13))
-		rate = ast2700_io_get_pll_rate(clk, AST2700_IO_CLK_HPLL);
-	else
 		rate = ast2700_io_get_pll_rate(clk, AST2700_IO_CLK_APLL);
+	else
+		rate = ast2700_io_get_pll_rate(clk, AST2700_IO_CLK_HPLL);
 
 	if (!div)
 		div = 1;
-	else
-		div++;
+
+	div++;
 
 	return (rate / div);
 #endif
