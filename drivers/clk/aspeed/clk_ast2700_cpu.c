@@ -107,6 +107,21 @@ static uint32_t ast2700_cpu_get_bclk_rate(struct ast2700_cpu_clk *clk)
 #endif
 }
 
+#define SCU_CLKSEL1_MPHYCLK_DIV_MASK		GENMASK(7, 0)
+
+static uint32_t ast2700_cpu_get_mphyclk_rate(struct ast2700_cpu_clk *clk)
+{
+#ifdef ASPEED_FPGA
+	return 26000000;
+#else
+	u32 rate = ast2700_cpu_get_pll_rate(clk, AST2700_CPU_CLK_HPLL);
+	u32 mphy_para = readl(&clk->mphyclk_para);
+	u32 mphy_div = (mphy_para & SCU_CLKSEL1_BCLK_DIV_MASK);
+
+	return (rate / (mphy_div + 1));
+#endif
+}
+
 #define SCU_CLKSEL1_EMMCCLK_DIV_MASK		GENMASK(14, 12)
 #define SCU_CLKSEL1_EMMCCLK_DIV_SHIFT		12
 
@@ -171,6 +186,9 @@ static ulong ast2700_cpu_clk_get_rate(struct clk *clk)
 		break;
 	case AST2700_CPU_CLK_GATE_UART4CLK:
 		rate = ast2700_cpu_get_uartclk_rate(priv->clk);
+		break;
+	case AST2700_CPU_CLK_MPHY:
+		rate = ast2700_cpu_get_mphyclk_rate(priv->clk);
 		break;
 	default:
 		debug("%s: unknown clk %ld\n", __func__, clk->id);
