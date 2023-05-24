@@ -79,7 +79,19 @@
 	};
 };
 
+&emmc_controller {
+	status = "okay";
+};
+
 &emmc {
+	status = "okay";
+};
+
+&sdc {
+	status = "okay";
+};
+
+&sdhci {
 	status = "okay";
 };
 

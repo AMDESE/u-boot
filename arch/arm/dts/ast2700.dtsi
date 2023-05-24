@@ -31,6 +31,8 @@
 		i2c2 = &i2c2;
 		i2c3 = &i2c3;
 		i2c4 = &i2c4;
+		mmc0 = &emmc;
+		mmc1 = &sdhci;
 		ethernet0 = &mac0;
 		ethernet1 = &mac1;
 		ethernet2 = &mac2;
@@ -94,7 +96,7 @@
 		#size-cells = <2>;
 		ranges;
 
-		emmc: sdc@12090000 {
+		emmc_controller: sdc@12090000 {
 			compatible = "aspeed,ast2700-sd-controller";
 			reg = <0 0x12090000 0 0x100>;
 			#address-cells = <2>;
@@ -104,7 +106,7 @@
 			ranges = <0 0 0 0x12090000 0 0x10000>;
 			status = "disable";
 
-			sdhci: sdhci@12090100 {
+			emmc: sdhci@12090100 {
 				compatible = "aspeed,ast2700-sdhci";
 				reg = <0 0x100 0 0x100>;
 				sdhci,auto-cmd12;
@@ -268,6 +270,23 @@
 		otp: otp@14c07000 {
 			compatible = "aspeed,ast2700-otp";
 			reg = <0x0 0x14c07000 0x0 0x800>;
+		};
+
+		sdc: sdc@14080000 {
+			compatible = "aspeed,ast2700-sd-controller";
+			reg = <0 0x14080000 0 0x100>;
+			#address-cells = <2>;
+			#size-cells = <2>;
+			clocks = <&io_clk AST2700_IO_CLK_GATE_SDCLK>;
+			resets = <&io_rst ASPEED_RESET_SDC>;
+			ranges = <0 0 0 0x14080000 0 0x10000>;
+			status = "disable";
+
+			sdhci: sdhci@14080100 {
+				compatible = "aspeed,ast2700-sdhci";
+				reg = <0 0x100 0 0x100>;
+				clocks = <&io_clk AST2700_IO_CLK_GATE_SDCLK>;
+			};
 		};
 
 		pinctrl1: pinctrl@14c02200 {
