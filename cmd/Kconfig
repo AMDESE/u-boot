@@ -1533,6 +1533,7 @@ config CMD_AXI
 	  Interface) busses, a on-chip interconnect specification for managing
 	  functional blocks in SoC designs, which is also often used in designs
 	  involving FPGAs (e.g.  communication with IP cores in Xilinx FPGAs).
+
 endmenu
 
 
@@ -2132,6 +2133,7 @@ config CMD_UUID
 endmenu
 
 source "cmd/ti/Kconfig"
+source "cmd/aspeed/Kconfig"
 
 config CMD_BOOTSTAGE
 	bool "Enable the 'bootstage' command"

@@ -1,0 +1,8 @@
+
+config CMD_OTP
+	depends on ASPEED_AST2700
+	depends on ASPEED_OTP
+	bool "Aspeed otp program utility"
+	select RSA
+	default y
+
