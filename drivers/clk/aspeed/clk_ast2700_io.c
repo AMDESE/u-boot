@@ -275,151 +275,18 @@ static ulong ast2700_io_clk_get_rate(struct clk *clk)
 	return rate;
 }
 
-static uint32_t ast2700_configure_mac(struct ast2700_io_clk *clk, int index)
-{
-	u32 reset_bit;
-	u32 clkgate_bit;
-
-	switch (index) {
-	case 0:
-		reset_bit = BIT(ASPEED_RESET_MAC0);
-		clkgate_bit = BIT(AST2700_IO_CLK_GATE_MAC0CLK);
-		writel(reset_bit, &clk->modrst_ctrl1);
-		udelay(100);
-		writel(clkgate_bit, &clk->clkgate_clr1);
-		mdelay(10);
-		writel(reset_bit, &clk->modrst_clr1);
-		break;
-	case 1:
-		reset_bit = BIT(ASPEED_RESET_MAC1);
-		clkgate_bit = BIT(AST2700_IO_CLK_GATE_MAC1CLK);
-		writel(reset_bit, &clk->modrst_ctrl1);
-		udelay(100);
-		writel(clkgate_bit, &clk->clkgate_clr1);
-		mdelay(10);
-		writel(reset_bit, &clk->modrst_clr1);
-		break;
-	case 2:
-		reset_bit = BIT(ASPEED_RESET_MAC2);
-		clkgate_bit = BIT(AST2700_IO_CLK_GATE_MAC2CLK);
-		writel(reset_bit, &clk->modrst_ctrl2);
-		udelay(100);
-		writel(clkgate_bit, &clk->clkgate_clr2);
-		mdelay(10);
-		writel(reset_bit, &clk->modrst_clr2);
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static uint32_t ast2700_configure_uart(struct ast2700_io_clk *clk, int index)
-{
-	u32 clkgate_bit;
-
-	switch (index) {
-	case 0:
-		clkgate_bit = BIT(AST2700_IO_CLK_GATE_UART0CLK);
-		break;
-	case 1:
-		clkgate_bit = BIT(AST2700_IO_CLK_GATE_UART1CLK);
-		break;
-	case 2:
-		clkgate_bit = BIT(AST2700_IO_CLK_GATE_UART2CLK);
-		break;
-	case 3:
-		clkgate_bit = BIT(AST2700_IO_CLK_GATE_UART3CLK);
-		break;
-	case 5:
-		clkgate_bit = BIT(AST2700_IO_CLK_GATE_UART5CLK - 32);
-		break;
-	case 6:
-		clkgate_bit = BIT(AST2700_IO_CLK_GATE_UART6CLK - 32);
-		break;
-	case 7:
-		clkgate_bit = BIT(AST2700_IO_CLK_GATE_UART7CLK - 32);
-		break;
-	case 8:
-		clkgate_bit = BIT(AST2700_IO_CLK_GATE_UART8CLK - 32);
-		break;
-	case 9:
-		clkgate_bit = BIT(AST2700_IO_CLK_GATE_UART9CLK - 32);
-		break;
-	case 10:
-		clkgate_bit = BIT(AST2700_IO_CLK_GATE_UART10CLK - 32);
-		break;
-	case 11:
-		clkgate_bit = BIT(AST2700_IO_CLK_GATE_UART11CLK - 32);
-		break;
-	case 12:
-		clkgate_bit = BIT(AST2700_IO_CLK_GATE_UART12CLK - 32);
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	writel(clkgate_bit, &clk->clkgate_clr1);
-
-	return 0;
-}
-
 static int ast2700_io_clk_enable(struct clk *clk)
 {
 	struct ast2700_io_clk_priv *priv = dev_get_priv(clk->dev);
 	struct ast2700_io_clk *io_clk = priv->clk;
+	u32 clkgate_bit;
 
-	switch (clk->id) {
-	case AST2700_IO_CLK_GATE_MAC0CLK:
-		ast2700_configure_mac(io_clk, 0);
-		break;
-	case AST2700_IO_CLK_GATE_MAC1CLK:
-		ast2700_configure_mac(io_clk, 1);
-		break;
-	case AST2700_IO_CLK_GATE_MAC2CLK:
-		ast2700_configure_mac(io_clk, 2);
-		break;
-	case AST2700_IO_CLK_GATE_UART0CLK:
-		ast2700_configure_uart(io_clk, 0);
-		break;
-	case AST2700_IO_CLK_GATE_UART1CLK:
-		ast2700_configure_uart(io_clk, 1);
-		break;
-	case AST2700_IO_CLK_GATE_UART2CLK:
-		ast2700_configure_uart(io_clk, 2);
-		break;
-	case AST2700_IO_CLK_GATE_UART3CLK:
-		ast2700_configure_uart(io_clk, 3);
-		break;
-	case AST2700_IO_CLK_GATE_UART5CLK:
-		ast2700_configure_uart(io_clk, 5);
-		break;
-	case AST2700_IO_CLK_GATE_UART6CLK:
-		ast2700_configure_uart(io_clk, 6);
-		break;
-	case AST2700_IO_CLK_GATE_UART7CLK:
-		ast2700_configure_uart(io_clk, 7);
-		break;
-	case AST2700_IO_CLK_GATE_UART8CLK:
-		ast2700_configure_uart(io_clk, 8);
-		break;
-	case AST2700_IO_CLK_GATE_UART9CLK:
-		ast2700_configure_uart(io_clk, 9);
-		break;
-	case AST2700_IO_CLK_GATE_UART10CLK:
-		ast2700_configure_uart(io_clk, 10);
-		break;
-	case AST2700_IO_CLK_GATE_UART11CLK:
-		ast2700_configure_uart(io_clk, 11);
-		break;
-	case AST2700_IO_CLK_GATE_UART12CLK:
-		ast2700_configure_uart(io_clk, 12);
-		break;
-	default:
-		debug("%s: unknown clk %ld\n", __func__, clk->id);
-		return -ENOENT;
-	}
+	if (clk->id > 32)
+		clkgate_bit = BIT(clk->id - 32);
+	else
+		clkgate_bit = BIT(clk->id);
+	if (readl(&io_clk->clkgate_ctrl1) & clkgate_bit)
+		writel(clkgate_bit, &io_clk->clkgate_clr1);
 
 	return 0;
 }
