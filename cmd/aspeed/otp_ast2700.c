@@ -22,6 +22,7 @@
 #include <u-boot/rsa-mod-exp.h>
 #include <dm.h>
 #include <misc.h>
+#include <asm/arch/otp_ast2700.h>
 #include "otp_info_ast2700.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -310,8 +311,6 @@ static int otp_prog_data(int mode, int otp_w_offset, int bit_offset,
 	u16 read[1];
 	int ret = 0;
 
-	value = value << bit_offset;
-
 	switch (mode) {
 	case OTP_REGION_CONF:
 		otp_read_conf(otp_w_offset, read);
@@ -353,6 +352,7 @@ static int otp_prog_data(int mode, int otp_w_offset, int bit_offset,
 		}
 	}
 
+	value = value << bit_offset;
 	ret = otp_prog(prog_address, value);
 	if (ret) {
 		printf("OTP cannot be programmed\n");
@@ -517,6 +517,48 @@ static int do_otppb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[
 		return CMD_RET_USAGE;
 }
 
+static int do_otpecc(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
+{
+	int ret;
+	int ecc_en = 0;
+
+	/* Get ECC status */
+	ret = misc_ioctl(otp_dev, GET_ECC_STATUS, &ecc_en);
+	if (ret)
+		return CMD_RET_FAILURE;
+
+	/* Drop the ecc cmd */
+	argc--;
+	argv++;
+
+	if (!strcmp(argv[0], "status")) {
+		if (ecc_en == OTP_ECC_ENABLE)
+			printf("OTP ECC is enabled\n");
+		else
+			printf("OTP ECC is disabled\n");
+
+		return CMD_RET_SUCCESS;
+
+	} else if (!strcmp(argv[0], "enable")) {
+		if (ecc_en == OTP_ECC_ENABLE) {
+			printf("OTP ECC is already enabled\n");
+			return CMD_RET_SUCCESS;
+		}
+
+		/* Set ECC enable */
+		ret = misc_ioctl(otp_dev, SET_ECC_ENABLE, NULL);
+		if (ret)
+			return CMD_RET_FAILURE;
+
+		printf("OTP ECC is enabled\n");
+
+	} else {
+		return CMD_RET_USAGE;
+	}
+
+	return CMD_RET_SUCCESS;
+}
+
 static int do_otpver(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	printf("OTP tool version: %s\n", OTP_VER);
@@ -528,9 +570,10 @@ static int do_otpver(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv
 static struct cmd_tbl cmd_otp[] = {
 	U_BOOT_CMD_MKENT(version, 1, 0, do_otpver, "", ""),
 	U_BOOT_CMD_MKENT(read, 4, 0, do_otpread, "", ""),
-//	U_BOOT_CMD_MKENT(info, 3, 0, do_otpinfo, "", ""),
 	U_BOOT_CMD_MKENT(pb, 6, 0, do_otppb, "", ""),
 	U_BOOT_CMD_MKENT(progpatch, 4, 0, do_otpprogpatch, "", ""),
+	U_BOOT_CMD_MKENT(ecc, 2, 0, do_otpecc, "", ""),
+//	U_BOOT_CMD_MKENT(info, 3, 0, do_otpinfo, "", ""),
 };
 
 static void do_driver_init(void)
@@ -584,4 +627,5 @@ U_BOOT_CMD(otp, 7, 0,  do_ast_otp,
 	   "otp read conf|strap|f-strap|f-strap-vld|u-data|s-data|puf <otp_w_offset> <w_count>\n"
 	   "otp pb conf|strap|f-strap|f-strap-vld|data [o] <otp_w_offset> <bit_offset> <value>\n"
 	   "otp progpatch <dram_addr> <otp_w_offset> <w_count>\n"
+	   "otp ecc status|enable\n"
 	  );

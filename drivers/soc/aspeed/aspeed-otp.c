@@ -23,6 +23,7 @@
 #include <dm.h>
 #include <misc.h>
 #include <clk.h>
+#include <asm/arch/otp_ast2700.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -216,6 +217,7 @@ enum otpcfg0_desc {
 #define OTPSTRAP12_ADDR		(OTPSTRAP0_ADDR + 0xc)
 #define OTPSTRAP13_ADDR		(OTPSTRAP0_ADDR + 0xd)
 #define OTPSTRAP14_ADDR		(OTPSTRAP0_ADDR + 0xe)
+#define OTPSTRAP15_ADDR		(OTPSTRAP0_ADDR + 0xf)
 
 #define OTPTOOL_VERSION(a, b, c) (((a) << 24) + ((b) << 12) + (c))
 #define OTPTOOL_VERSION_MAJOR(x) (((x) >> 24) & 0xff)
@@ -363,10 +365,72 @@ static int aspeed_otp_write(struct udevice *dev, int offset,
 	return ret;
 }
 
+static int aspeed_otp_ecc_en(struct udevice *dev)
+{
+	struct aspeed_otp *otp = dev_get_priv(dev);
+	int ret = 0;
+
+	/* Check ecc is already enabled */
+	if (otp->cfg_ecc_en == 1 || otp->mem_ecc_en == 1)
+		return 0;
+
+	otp_unlock(dev);
+
+	/* enable cfg ecc */
+	ret = otp_prog_data(dev, OTPSTRAP14_ADDR, 0x1);
+	if (ret) {
+		printf("%s: prog failed\n", __func__);
+		goto end;
+	}
+
+	otp->cfg_ecc_en = 1;
+
+	/* enable mem ecc */
+	ret = otp_prog_data(dev, OTPCFG0_ADDR, BIT(OTP_MEM_ECC_ENABLE));
+	if (ret) {
+		printf("%s: prog failed\n", __func__);
+		goto end;
+	}
+
+	otp->mem_ecc_en = 1;
+
+end:
+	otp_lock(dev);
+
+	return ret;
+}
+
 static int aspeed_otp_ioctl(struct udevice *dev, unsigned long request,
 			    void *buf)
 {
-	return 0;
+	struct aspeed_otp *otp = dev_get_priv(dev);
+	int *data = (int *)buf;
+	int ret = 0;
+
+	otp_unlock(dev);
+
+	switch (request) {
+	case GET_ECC_STATUS:
+		if (otp->cfg_ecc_en == 1 && otp->mem_ecc_en == 1) {
+			*data = OTP_ECC_ENABLE;
+		} else if (otp->cfg_ecc_en == 0 && otp->mem_ecc_en == 0) {
+			*data = OTP_ECC_DISABLE;
+		} else {
+			printf("ECC status mismatch, cfg_ecc:%d, mem_ecc:%d\n",
+			       otp->cfg_ecc_en, otp->mem_ecc_en);
+			*data = OTP_ECC_MISMATCH;
+		}
+		break;
+	case SET_ECC_ENABLE:
+		ret = aspeed_otp_ecc_en(dev);
+		break;
+	default:
+		break;
+	}
+
+	otp_lock(dev);
+
+	return ret;
 }
 
 static int aspeed_otp_ecc_init(struct udevice *dev)
@@ -374,6 +438,8 @@ static int aspeed_otp_ecc_init(struct udevice *dev)
 	struct aspeed_otp *otp = dev_get_priv(dev);
 	int ret;
 	u32 val;
+
+	otp_unlock(dev);
 
 	/* Check cfg_ecc_en */
 	writel(0, otp->base + OTP_ECC_EN);
@@ -406,6 +472,8 @@ static int aspeed_otp_ecc_init(struct udevice *dev)
 		otp->mem_ecc_en = 0x1;
 	else
 		otp->mem_ecc_en = 0x0;
+
+	otp_lock(dev);
 
 	return 0;
 }
