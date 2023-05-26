@@ -747,6 +747,15 @@ static int do_otppb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[
 		if (value != 0 && value != 1)
 			return CMD_RET_USAGE;
 
+	} else if (mode == OTP_REGION_FLASH_STRAP ||
+		   mode == OTP_REGION_FLASH_STRAP_VLD) {
+		bit_offset = simple_strtoul(argv[0], NULL, 16);
+		value = simple_strtoul(argv[1], NULL, 16);
+		if (bit_offset >= 128)
+			return CMD_RET_USAGE;
+		if (value != 1)
+			return CMD_RET_USAGE;
+
 	} else {
 		otp_addr = simple_strtoul(argv[0], NULL, 16);
 		bit_offset = simple_strtoul(argv[1], NULL, 16);
@@ -761,21 +770,6 @@ static int do_otppb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[
 			return CMD_RET_USAGE;
 
 	} else if (mode == OTP_REGION_STRAP) {
-		if (otp_addr >= OTP_STRAP_REGION_SIZE)
-			return CMD_RET_USAGE;
-
-	} else if (mode == OTP_REGION_FLASH_STRAP || mode == OTP_REGION_FLASH_STRAP_VLD) {
-		if (otp_addr >= OTP_FLASH_STRAP_REGION_SIZE / 2)
-			return CMD_RET_USAGE;
-
-	} else {
-		/* user data + secure data region */
-		if (otp_addr >= OTP_USER_REGION_SIZE + OTP_SEC_REGION_SIZE)
-			return CMD_RET_USAGE;
-	}
-
-	/* Prog the corresponding OTSTRAP bits */
-	if (mode == OTP_REGION_STRAP) {
 		// get otpstrap status
 		otp_strap_status(otpstrap);
 
@@ -792,6 +786,15 @@ static int do_otppb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[
 		}
 
 		value = 1;
+
+	} else if (mode == OTP_REGION_FLASH_STRAP || mode == OTP_REGION_FLASH_STRAP_VLD) {
+		otp_addr = bit_offset / 16;
+		bit_offset = bit_offset % 16;
+
+	} else {
+		/* user data + secure data region */
+		if (otp_addr >= OTP_USER_REGION_SIZE + OTP_SEC_REGION_SIZE)
+			return CMD_RET_USAGE;
 	}
 
 	ret = otp_prog_data(mode, otp_addr, bit_offset, value, nconfirm);
@@ -917,8 +920,8 @@ U_BOOT_CMD(otp, 7, 0,  do_ast_otp,
 	   "ASPEED One-Time-Programmable sub-system",
 	   "version\n"
 	   "otp read conf|strap|f-strap|f-strap-vld|u-data|s-data|puf <otp_w_offset> <w_count>\n"
-	   "otp pb conf|f-strap|f-strap-vld|data [o] <otp_w_offset> <bit_offset> <value>\n"
-	   "otp pb strap [o] <bit_offset> <value>\n"
+	   "otp pb conf|data [o] <otp_w_offset> <bit_offset> <value>\n"
+	   "otp pb strap|f-strap|f-strap-vld [o] <bit_offset> <value>\n"
 	   "otp info strap|f-strap\n"
 	   "otp progpatch <dram_addr> <otp_w_offset> <w_count>\n"
 	   "otp ecc status|enable\n"
