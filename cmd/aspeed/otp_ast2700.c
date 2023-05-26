@@ -37,11 +37,14 @@ enum otp_region {
 	OTP_REGION_SEC_DATA,
 };
 
-#define OTP_VER				"1.0.0"
+enum otp_status {
+	OTP_FAILURE = -2,
+	OTP_USAGE = -1,
+	OTP_SUCCESS = 0,
+	OTP_PROG_SKIP,
+};
 
-#define OTP_USAGE			-1
-#define OTP_FAILURE			-2
-#define OTP_SUCCESS			0
+#define OTP_VER				"1.0.0"
 
 #define OTP_AST2700_A0			0
 
@@ -87,11 +90,27 @@ enum otp_region {
 #define OTP_MEM_ADDR_MAX		HW_PUF_START_ADDR
 #define OTP_ROM_REGION_SIZE		(OTPROM_END_ADDR - OTPROM_START_ADDR)
 #define OTP_CFG_REGION_SIZE		(OTPCFG_END_ADDR - OTPCFG_START_ADDR)
-#define OTP_STRAP_REGION_SIZE		(OTPSTRAP_END_ADDR - OTPSTRAP_START_ADDR)
+#define OTP_STRAP_REGION_SIZE		(OTPSTRAP_END_ADDR - OTPSTRAP_START_ADDR - 4)
 #define OTP_FLASH_STRAP_REGION_SIZE	(OTPFLASHSTRAP_END_ADDR - OTPFLASHSTRAP_START_ADDR)
 #define OTP_USER_REGION_SIZE		(USER_REGION_END_ADDR - USER_REGION_START_ADDR)
 #define OTP_SEC_REGION_SIZE		(SEC_REGION_END_ADDR - SEC_REGION_START_ADDR)
 
+struct otpstrap_status {
+	int value;
+	int option_value[6];
+	int remain_times;
+	int writeable_option;
+	int protected;
+};
+
+struct otp_info_cb {
+	int version;
+	char ver_name[3];
+	const struct otpstrap_info *strap_info;
+	int strap_info_len;
+};
+
+static struct otp_info_cb info_cb;
 struct udevice *otp_dev;
 
 static u32 chip_version(void)
@@ -186,7 +205,7 @@ static int otp_print_conf(u32 offset, int w_count)
 
 static int otp_print_strap(u32 offset, int w_count)
 {
-	int range = OTPSTRAP_END_ADDR - OTPSTRAP_START_ADDR;
+	int range = 12;	/* 32-bit * 6 / 16 (per word) */
 	u16 ret[1];
 	int i;
 
@@ -194,7 +213,7 @@ static int otp_print_strap(u32 offset, int w_count)
 		return OTP_USAGE;
 
 	for (i = offset; i < offset + w_count; i++) {
-		otp_read(OTPSTRAP_START_ADDR + i, ret);
+		otp_read(OTPSTRAP_START_ADDR + 2 + i, ret);
 		printf("OTPSTRAP0x%X: 0x%04X\n", i, ret[0]);
 	}
 	printf("\n");
@@ -365,6 +384,188 @@ static int otp_prog_data(int mode, int otp_w_offset, int bit_offset,
 	return OTP_SUCCESS;
 }
 
+static void otp_strap_status(struct otpstrap_status *otpstrap)
+{
+	int strap_start, strap_end;
+	u16 data[2];
+
+	for (int i = 0; i < 32; i++) {
+		otpstrap[i].value = 0;
+		otpstrap[i].remain_times = 6;
+		otpstrap[i].writeable_option = -1;
+		otpstrap[i].protected = 0;
+	}
+
+	strap_start = 2;
+	strap_end = 2 + 12;
+
+	for (int i = strap_start; i < strap_end; i += 2) {
+		int option = (i - strap_start) / 2;
+
+		otp_read_strap(i, &data[0]);
+		otp_read_strap(i + 1, &data[1]);
+
+		for (int j = 0; j < 16; j++) {
+			char bit_value = ((data[0] >> j) & 0x1);
+
+			if (bit_value == 0 && otpstrap[j].writeable_option == -1)
+				otpstrap[j].writeable_option = option;
+			if (bit_value == 1)
+				otpstrap[j].remain_times--;
+			otpstrap[j].value ^= bit_value;
+			otpstrap[j].option_value[option] = bit_value;
+		}
+
+		for (int j = 16; j < 32; j++) {
+			char bit_value = ((data[1] >> (j - 16)) & 0x1);
+
+			if (bit_value == 0 && otpstrap[j].writeable_option == -1)
+				otpstrap[j].writeable_option = option;
+			if (bit_value == 1)
+				otpstrap[j].remain_times--;
+			otpstrap[j].value ^= bit_value;
+			otpstrap[j].option_value[option] = bit_value;
+		}
+	}
+
+	otp_read_strap(0, &data[0]);
+	otp_read_strap(1, &data[1]);
+
+	for (int j = 0; j < 16; j++) {
+		if (((data[0] >> j) & 0x1) == 1)
+			otpstrap[j].protected = 1;
+	}
+	for (int j = 16; j < 32; j++) {
+		if (((data[1] >> (j - 16)) & 0x1) == 1)
+			otpstrap[j].protected = 1;
+	}
+
+#ifdef DEBUG
+	for (int i = 0; i < 32; i++) {
+		printf("otpstrap[%d]: value:%d, remain_times:%d, writeable_option:%d, protected:%d\n",
+		       i, otpstrap[i].value, otpstrap[i].remain_times,
+		       otpstrap[i].writeable_option, otpstrap[i].protected);
+		printf("option_value: ");
+		for (int j = 0; j < 6; j++)
+			printf("%d ", otpstrap[i].option_value[j]);
+		printf("\n");
+	}
+#endif
+}
+
+static int otp_print_strap_info(void)
+{
+	const struct otpstrap_info *strap_info = info_cb.strap_info;
+	struct otpstrap_status strap_status[32];
+	int fail = 0;
+	u32 bit_offset;
+	u32 length;
+	u32 otp_value;
+	u32 otp_protect;
+
+	otp_strap_status(strap_status);
+
+	printf("BIT(hex) Value  Remains  Protect   Description\n");
+	printf("___________________________________________________________________________________________________\n");
+
+	for (int i = 0; i < info_cb.strap_info_len; i++) {
+		otp_value = 0;
+		otp_protect = 0;
+		bit_offset = strap_info[i].bit_offset;
+		length = strap_info[i].length;
+		for (int j = 0; j < length; j++) {
+			otp_value |= strap_status[bit_offset + j].value << j;
+			otp_protect |= strap_status[bit_offset + j].protected << j;
+		}
+
+		if (otp_value != strap_info[i].value &&
+		    strap_info[i].value != OTP_REG_RESERVED)
+			continue;
+
+		for (int j = 0; j < length; j++) {
+			printf("0x%-7X", strap_info[i].bit_offset + j);
+			printf("0x%-5X", strap_status[bit_offset + j].value);
+			printf("%-9d", strap_status[bit_offset + j].remain_times);
+			printf("0x%-7X", strap_status[bit_offset + j].protected);
+			if (strap_info[i].value == OTP_REG_RESERVED) {
+				printf(" Reserved\n");
+				continue;
+			}
+
+			if (length == 1) {
+				printf(" %s\n", strap_info[i].information);
+				continue;
+			}
+
+			if (j == 0)
+				printf("/%s\n", strap_info[i].information);
+			else if (j == length - 1)
+				printf("\\ \"\n");
+			else
+				printf("| \"\n");
+		}
+	}
+
+	if (fail)
+		return OTP_FAILURE;
+
+	return OTP_SUCCESS;
+}
+
+static int otp_strap_bit_confirm(struct otpstrap_status *otpstrap, int offset, int ibit, int value, int pbit)
+{
+	int prog_flag = 0;
+
+	// ignore this bit
+	if (ibit == 1)
+		return OTP_SUCCESS;
+
+	printf("OTPSTRAP[0x%X]:\n", offset);
+
+	if (value == otpstrap->value) {
+		if (!pbit) {
+			printf("\tThe value is same as before, skip it.\n");
+			return OTP_PROG_SKIP;
+		}
+		printf("\tThe value is same as before.\n");
+
+	} else {
+		prog_flag = 1;
+	}
+
+	if (otpstrap->protected == 1 && prog_flag) {
+		printf("\tThis bit is protected and is not writable\n");
+		return OTP_FAILURE;
+	}
+
+	if (otpstrap->remain_times == 0 && prog_flag) {
+		printf("\tThis bit has no remaining chance to write.\n");
+		return OTP_FAILURE;
+	}
+
+	if (pbit == 1)
+		printf("\tThis bit will be protected and become non-writable.\n");
+
+	if (prog_flag)
+		printf("\tWrite 1 to OTPSTRAP[0x%X] OPTION[0x%X], that value becomes from 0x%X to 0x%X.\n",
+		       offset, otpstrap->writeable_option, otpstrap->value, otpstrap->value ^ 1);
+
+	return OTP_SUCCESS;
+}
+
+static int do_otpinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
+{
+	if (argc != 2 && argc != 3)
+		return CMD_RET_USAGE;
+
+	if (!strcmp(argv[1], "strap"))
+		otp_print_strap_info();
+	else
+		return CMD_RET_USAGE;
+
+	return CMD_RET_SUCCESS;
+}
+
 static int do_otpread(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	u32 offset, count;
@@ -442,6 +643,7 @@ static int do_otpprogpatch(struct cmd_tbl *cmdtp, int flag, int argc, char *cons
 
 static int do_otppb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
+	struct otpstrap_status otpstrap[32];
 	int mode = 0;
 	int nconfirm = 0;
 	int otp_addr = 0;
@@ -449,7 +651,7 @@ static int do_otppb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[
 	int value;
 	int ret;
 
-	if (argc != 5 && argc != 6) {
+	if (argc != 4 && argc != 5 && argc != 6) {
 		printf("%s: argc:%d\n", __func__, argc);
 		return CMD_RET_USAGE;
 	}
@@ -482,11 +684,21 @@ static int do_otppb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[
 		argv++;
 	}
 
-	otp_addr = simple_strtoul(argv[0], NULL, 16);
-	bit_offset = simple_strtoul(argv[1], NULL, 16);
-	value = simple_strtoul(argv[2], NULL, 16);
-	if (bit_offset >= 16)
-		return CMD_RET_USAGE;
+	if (mode == OTP_REGION_STRAP) {
+		bit_offset = simple_strtoul(argv[0], NULL, 16);
+		value = simple_strtoul(argv[1], NULL, 16);
+		if (bit_offset >= 32)
+			return CMD_RET_USAGE;
+		if (value != 0 && value != 1)
+			return CMD_RET_USAGE;
+
+	} else {
+		otp_addr = simple_strtoul(argv[0], NULL, 16);
+		bit_offset = simple_strtoul(argv[1], NULL, 16);
+		value = simple_strtoul(argv[2], NULL, 16);
+		if (bit_offset >= 16)
+			return CMD_RET_USAGE;
+	}
 
 	/* Check param */
 	if (mode == OTP_REGION_CONF) {
@@ -505,6 +717,26 @@ static int do_otppb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[
 		/* user data + secure data region */
 		if (otp_addr >= OTP_USER_REGION_SIZE + OTP_SEC_REGION_SIZE)
 			return CMD_RET_USAGE;
+	}
+
+	/* Prog the corresponding OTSTRAP bits */
+	if (mode == OTP_REGION_STRAP) {
+		// get otpstrap status
+		otp_strap_status(otpstrap);
+
+		ret = otp_strap_bit_confirm(&otpstrap[bit_offset], bit_offset, 0, value, 0);
+		if (ret != OTP_SUCCESS)
+			return ret;
+
+		// assign writable otp address
+		if (bit_offset < 16) {
+			otp_addr = 2 + otpstrap[bit_offset].writeable_option * 2;
+		} else {
+			otp_addr = 3 + otpstrap[bit_offset].writeable_option * 2;
+			bit_offset -= 16;
+		}
+
+		value = 1;
 	}
 
 	ret = otp_prog_data(mode, otp_addr, bit_offset, value, nconfirm);
@@ -573,7 +805,7 @@ static struct cmd_tbl cmd_otp[] = {
 	U_BOOT_CMD_MKENT(pb, 6, 0, do_otppb, "", ""),
 	U_BOOT_CMD_MKENT(progpatch, 4, 0, do_otpprogpatch, "", ""),
 	U_BOOT_CMD_MKENT(ecc, 2, 0, do_otpecc, "", ""),
-//	U_BOOT_CMD_MKENT(info, 3, 0, do_otpinfo, "", ""),
+	U_BOOT_CMD_MKENT(info, 3, 0, do_otpinfo, "", ""),
 };
 
 static void do_driver_init(void)
@@ -610,6 +842,9 @@ static int do_ast_otp(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 	ver = chip_version();
 	switch (ver) {
 	case OTP_AST2700_A0:
+		info_cb.version = OTP_AST2700_A0;
+		info_cb.strap_info = a0_strap_info;
+		info_cb.strap_info_len = ARRAY_SIZE(a0_strap_info);
 		break;
 	default:
 		printf("SOC is not supported\n");
@@ -625,7 +860,9 @@ U_BOOT_CMD(otp, 7, 0,  do_ast_otp,
 	   "ASPEED One-Time-Programmable sub-system",
 	   "version\n"
 	   "otp read conf|strap|f-strap|f-strap-vld|u-data|s-data|puf <otp_w_offset> <w_count>\n"
-	   "otp pb conf|strap|f-strap|f-strap-vld|data [o] <otp_w_offset> <bit_offset> <value>\n"
+	   "otp pb conf|f-strap|f-strap-vld|data [o] <otp_w_offset> <bit_offset> <value>\n"
+	   "otp pb strap [o] <bit_offset> <value>\n"
+	   "otp info strap\n"
 	   "otp progpatch <dram_addr> <otp_w_offset> <w_count>\n"
 	   "otp ecc status|enable\n"
 	  );
