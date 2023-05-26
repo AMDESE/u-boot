@@ -108,6 +108,8 @@ struct otp_info_cb {
 	char ver_name[3];
 	const struct otpstrap_info *strap_info;
 	int strap_info_len;
+	const struct otp_f_strap_info *f_strap_info;
+	int f_strap_info_len;
 };
 
 static struct otp_info_cb info_cb;
@@ -453,11 +455,10 @@ static void otp_strap_status(struct otpstrap_status *otpstrap)
 #endif
 }
 
-static int otp_print_strap_info(void)
+static void otp_print_strap_info(void)
 {
 	const struct otpstrap_info *strap_info = info_cb.strap_info;
 	struct otpstrap_status strap_status[32];
-	int fail = 0;
 	u32 bit_offset;
 	u32 length;
 	u32 otp_value;
@@ -505,11 +506,6 @@ static int otp_print_strap_info(void)
 				printf("| \"\n");
 		}
 	}
-
-	if (fail)
-		return OTP_FAILURE;
-
-	return OTP_SUCCESS;
 }
 
 static int otp_strap_bit_confirm(struct otpstrap_status *otpstrap, int offset, int ibit, int value, int pbit)
@@ -553,6 +549,63 @@ static int otp_strap_bit_confirm(struct otpstrap_status *otpstrap, int offset, i
 	return OTP_SUCCESS;
 }
 
+static void otp_print_flash_strap_info(void)
+{
+	const struct otp_f_strap_info *f_strap_info = info_cb.f_strap_info;
+	u32 bit_offset;
+	u32 otp_value, otp_vld;
+	u32 length;
+	u16 data[8];
+	u16 vld[8];
+
+	/* Read Flash strap */
+	for (int i = 0; i < 8; i++)
+		otp_read_flash_strap(i, &data[i]);
+
+	/* Read Flash strap valid */
+	for (int i = 0; i < 8; i++)
+		otp_read_flash_strap_vld(i, &vld[i]);
+
+	printf("BIT(hex) Value  Valid   Description\n");
+	printf("___________________________________________________________________________________________________\n");
+
+	for (int i = 0; i < info_cb.f_strap_info_len; i++) {
+		otp_value = 0;
+		otp_vld = 0;
+		bit_offset = f_strap_info[i].bit_offset;
+		length = f_strap_info[i].length;
+
+		int w_offset = bit_offset / 16;
+		int b_offset = bit_offset % 16;
+
+		otp_value = (data[w_offset] >> b_offset) &
+			    GENMASK(length - 1, 0);
+		otp_vld = (vld[w_offset] >> b_offset) &
+			  GENMASK(length - 1, 0);
+
+		if (otp_value != f_strap_info[i].value)
+			continue;
+
+		for (int j = 0; j < length; j++) {
+			printf("0x%-7X", f_strap_info[i].bit_offset + j);
+			printf("0x%-5lX", (otp_value & BIT(j)) >> j);
+			printf("0x%-5lX", (otp_vld & BIT(j)) >> j);
+
+			if (length == 1) {
+				printf(" %s\n", f_strap_info[i].information);
+				continue;
+			}
+
+			if (j == 0)
+				printf("/%s\n", f_strap_info[i].information);
+			else if (j == length - 1)
+				printf("\\ \"\n");
+			else
+				printf("| \"\n");
+		}
+	}
+}
+
 static int do_otpinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	if (argc != 2 && argc != 3)
@@ -560,6 +613,8 @@ static int do_otpinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 
 	if (!strcmp(argv[1], "strap"))
 		otp_print_strap_info();
+	else if (!strcmp(argv[1], "f-strap"))
+		otp_print_flash_strap_info();
 	else
 		return CMD_RET_USAGE;
 
@@ -845,6 +900,8 @@ static int do_ast_otp(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 		info_cb.version = OTP_AST2700_A0;
 		info_cb.strap_info = a0_strap_info;
 		info_cb.strap_info_len = ARRAY_SIZE(a0_strap_info);
+		info_cb.f_strap_info = a0_f_strap_info;
+		info_cb.f_strap_info_len = ARRAY_SIZE(a0_f_strap_info);
 		break;
 	default:
 		printf("SOC is not supported\n");
@@ -862,7 +919,7 @@ U_BOOT_CMD(otp, 7, 0,  do_ast_otp,
 	   "otp read conf|strap|f-strap|f-strap-vld|u-data|s-data|puf <otp_w_offset> <w_count>\n"
 	   "otp pb conf|f-strap|f-strap-vld|data [o] <otp_w_offset> <bit_offset> <value>\n"
 	   "otp pb strap [o] <bit_offset> <value>\n"
-	   "otp info strap\n"
+	   "otp info strap|f-strap\n"
 	   "otp progpatch <dram_addr> <otp_w_offset> <w_count>\n"
 	   "otp ecc status|enable\n"
 	  );
