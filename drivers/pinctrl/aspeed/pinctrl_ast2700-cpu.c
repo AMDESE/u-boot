@@ -130,7 +130,7 @@ static struct pinctrl_ops ast2700_cpu_pinctrl_ops = {
 };
 
 static const struct udevice_id ast2700_cpu_pinctrl_ids[] = {
-	{ .compatible = "aspeed,g7_cpu-pinctrl" },
+	{ .compatible = "aspeed,ast2700_cpu-pinctrl" },
 	{ }
 };
 
