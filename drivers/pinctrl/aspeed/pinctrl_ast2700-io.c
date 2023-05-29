@@ -200,7 +200,7 @@ static struct pinctrl_ops ast2700_io_pinctrl_ops = {
 };
 
 static const struct udevice_id ast2700_io_pinctrl_ids[] = {
-	{ .compatible = "aspeed,g7_io-pinctrl" },
+	{ .compatible = "aspeed,ast2700_io-pinctrl" },
 	{ }
 };
 
