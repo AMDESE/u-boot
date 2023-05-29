@@ -136,9 +136,9 @@
 			#reset-cells = <1>;
 		};
 
-		pinctrl0: pinctrl@12c00400 {
-			compatible = "aspeed,g7_cpu-pinctrl";
-			reg = <0 0x12c00400 0 0x400>;
+		pinctrl0: pinctrl@12c02400 {
+			compatible = "aspeed,ast2700_cpu-pinctrl";
+			reg = <0 0x12c02400 0 0x100>;
 		};
 
 		ufs: ufs-wrapper@12c08000 {
@@ -289,11 +289,6 @@
 			};
 		};
 
-		pinctrl1: pinctrl@14c02200 {
-			compatible = "aspeed,g7_io-pinctrl";
-			reg = <0 0x14c02200 0 0x400>;
-		};
-
 		io_clk: clock-controller@14c02200 {
 			compatible = "aspeed,ast2700_io-clk";
 			reg = <0 0x14c02200 0 0x400>;
@@ -306,9 +301,9 @@
 			#reset-cells = <1>;
 		};
 
-		pinctrl: pinctrl@14c02400 {
-			compatible = "aspeed,g7-pinctrl";
-			reg = <0x0 0x14c02400 0x0 0x80>;
+		pinctrl1: pinctrl@14c02400 {
+			compatible = "aspeed,ast2700_io-pinctrl";
+			reg = <0x0 0x14c02400 0x0 0x100>;
 		};
 
 		uart0: serial@14c33000 {
@@ -506,7 +501,7 @@
 		resets = <&io_rst ASPEED_RESET_I2C>;
 		clocks = <&io_clk AST2700_IO_CLK_APB>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_i2c1_default>;
+		pinctrl-1 = <&pinctrl_i2c0_default>;
 		status = "disabled";
 	};
 
@@ -522,7 +517,7 @@
 		resets = <&io_rst ASPEED_RESET_I2C>;
 		clocks = <&io_clk AST2700_IO_CLK_APB>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_i2c2_default>;
+		pinctrl-1 = <&pinctrl_i2c1_default>;
 		status = "disabled";
 	};
 
@@ -538,7 +533,7 @@
 		resets = <&io_rst ASPEED_RESET_I2C>;
 		clocks = <&io_clk AST2700_IO_CLK_APB>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_i2c3_default>;
+		pinctrl-1 = <&pinctrl_i2c2_default>;
 		status = "disabled";
 	};
 
@@ -554,7 +549,7 @@
 		resets = <&io_rst ASPEED_RESET_I2C>;
 		clocks = <&io_clk AST2700_IO_CLK_APB>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_i2c4_default>;
+		pinctrl-1 = <&pinctrl_i2c3_default>;
 		status = "disabled";
 	};
 
@@ -570,6 +565,7 @@
 		resets = <&io_rst ASPEED_RESET_I2C>;
 		clocks = <&io_clk AST2700_IO_CLK_APB>;
 		pinctrl-names = "default";
+		pinctrl-1 = <&pinctrl_i2c4_default>;
 		status = "disabled";
 	};
 };
@@ -582,6 +578,11 @@
 };
 
 &pinctrl1 {
+	pinctrl_i2c0_default: i2c0_default {
+		function = "I2C0";
+		groups = "I2C0";
+	};
+
 	pinctrl_i2c1_default: i2c1_default {
 		function = "I2C1";
 		groups = "I2C1";
