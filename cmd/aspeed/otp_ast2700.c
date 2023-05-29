@@ -706,7 +706,7 @@ static int do_otppb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[
 	int value;
 	int ret;
 
-	if (argc != 4 && argc != 5 && argc != 6) {
+	if (argc != 3 && argc != 4 && argc != 5 && argc != 6) {
 		printf("%s: argc:%d\n", __func__, argc);
 		return CMD_RET_USAGE;
 	}
@@ -747,8 +747,25 @@ static int do_otppb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[
 		if (value != 0 && value != 1)
 			return CMD_RET_USAGE;
 
-	} else if (mode == OTP_REGION_FLASH_STRAP ||
-		   mode == OTP_REGION_FLASH_STRAP_VLD) {
+	} else if (mode == OTP_REGION_FLASH_STRAP) {
+		bit_offset = simple_strtoul(argv[0], NULL, 16);
+		value = simple_strtoul(argv[1], NULL, 16);
+		if (bit_offset >= 128)
+			return CMD_RET_USAGE;
+		if (value != 1)
+			return CMD_RET_USAGE;
+
+	} else if (mode == OTP_REGION_FLASH_STRAP_VLD) {
+		if (!strcmp(argv[0], "all")) {
+			for (int i = 0; i < 8; i++) {
+				ret = otp_prog_data(mode, i, 0, GENMASK(15, 0), 1);
+				if (ret)
+					goto end;
+			}
+
+			goto end;
+		}
+
 		bit_offset = simple_strtoul(argv[0], NULL, 16);
 		value = simple_strtoul(argv[1], NULL, 16);
 		if (bit_offset >= 128)
@@ -799,6 +816,7 @@ static int do_otppb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[
 
 	ret = otp_prog_data(mode, otp_addr, bit_offset, value, nconfirm);
 
+end:
 	if (ret == OTP_SUCCESS)
 		return CMD_RET_SUCCESS;
 	else if (ret == OTP_FAILURE)
@@ -922,6 +940,7 @@ U_BOOT_CMD(otp, 7, 0,  do_ast_otp,
 	   "otp read conf|strap|f-strap|f-strap-vld|u-data|s-data|puf <otp_w_offset> <w_count>\n"
 	   "otp pb conf|data [o] <otp_w_offset> <bit_offset> <value>\n"
 	   "otp pb strap|f-strap|f-strap-vld [o] <bit_offset> <value>\n"
+	   "otp pb f-strap-vld all\n"
 	   "otp info strap|f-strap\n"
 	   "otp progpatch <dram_addr> <otp_w_offset> <w_count>\n"
 	   "otp ecc status|enable\n"
