@@ -7,6 +7,7 @@
 #include <dm.h>
 #include <clk.h>
 #include <log.h>
+#include <asm/cache.h>
 #include <asm/io.h>
 #include <malloc.h>
 #include <watchdog.h>
@@ -16,26 +17,26 @@
 #include <linux/kernel.h>
 #include <linux/iopoll.h>
 
-/* register offsets*/
-#define HACE_STS		0x1C
-#define   HACE_HASH_DATA_OVF		BIT(23)
-#define   HACE_HASH_INT			BIT(9)
-#define   HACE_HASH_BUSY		BIT(0)
-#define HACE_HASH_DATA		0x20
-#define HACE_HASH_DIGEST	0x24
-#define HACE_HASH_HMAC_KEY	0x28
-#define HACE_HASH_DATA_LEN	0x2C
-#define HACE_HASH_CMD		0x30
-#define   HACE_HASH_MODE_ACCUM		BIT(8)
-#define   HACE_HASH_ALGO_SHA1		BIT(5)
-#define   HACE_HASH_ALGO_SHA256		(BIT(6) | BIT(4))
-#define   HACE_HASH_ALGO_SHA384		(BIT(10) | BIT(6) | BIT(5))
-#define   HACE_HASH_ALGO_SHA512		(BIT(6) | BIT(5))
-#define   HACE_HASH_SHA_BE_EN		BIT(3)
+/* register offsets */
+#define HACE_STS			0x1C
+#define HACE_HASH_DATA_OVF		BIT(23)
+#define HACE_HASH_INT			BIT(9)
+#define HACE_HASH_BUSY			BIT(0)
+#define HACE_HASH_DATA			0x20
+#define HACE_HASH_DIGEST		0x24
+#define HACE_HASH_HMAC_KEY		0x28
+#define HACE_HASH_DATA_LEN		0x2C
+#define HACE_HASH_CMD			0x30
+#define HACE_HASH_MODE_ACCUM		BIT(8)
+#define HACE_HASH_ALGO_SHA1		BIT(5)
+#define HACE_HASH_ALGO_SHA256		(BIT(6) | BIT(4))
+#define HACE_HASH_ALGO_SHA384		(BIT(10) | BIT(6) | BIT(5))
+#define HACE_HASH_ALGO_SHA512		(BIT(6) | BIT(5))
+#define HACE_HASH_SHA_BE_EN		BIT(3)
 
-/* buffer size based on SHA-512 need*/
-#define HASH_BLOCK_BUFSZ	128
-#define HASH_DIGEST_BUFSZ	64
+/* buffer size based on SHA-512 need */
+#define HASH_BLOCK_BUFSZ		128
+#define HASH_DIGEST_BUFSZ		64
 
 struct aspeed_hace_ctx {
 	uint8_t digest[HASH_DIGEST_BUFSZ];
@@ -92,12 +93,16 @@ static int aspeed_hace_process(struct udevice *dev, void *ctx, const void *ibuf,
 	struct aspeed_hace *hace = dev_get_priv(dev);
 	struct aspeed_hace_ctx *hace_ctx = (struct aspeed_hace_ctx *)ctx;
 	uint32_t sts = readl(hace->base + HACE_STS);
+	int rc;
 
 	if (sts & HACE_HASH_BUSY) {
 		debug("HACE engine busy\n");
 		return -EBUSY;
 	}
 
+#if !CONFIG_IS_ENABLED(SYS_DCACHE_OFF)
+		flush_dcache_all();
+#endif
 	writel(HACE_HASH_INT, hace->base + HACE_STS);
 
 	writel((uint32_t)ibuf, hace->base + HACE_HASH_DATA);
@@ -106,9 +111,13 @@ static int aspeed_hace_process(struct udevice *dev, void *ctx, const void *ibuf,
 	writel(ilen, hace->base + HACE_HASH_DATA_LEN);
 	writel(hace_ctx->cmd, hace->base + HACE_HASH_CMD);
 
-	return aspeed_hace_wait_completion(hace->base + HACE_STS,
-					   HACE_HASH_INT,
-					   1000 + (ilen >> 3));
+	rc = aspeed_hace_wait_completion(hace->base + HACE_STS,
+					 HACE_HASH_INT,
+					 1000 + (ilen >> 3));
+#if !CONFIG_IS_ENABLED(SYS_DCACHE_OFF)
+		invalidate_dcache_all();
+#endif
+	return rc;
 }
 
 static int aspeed_hace_init(struct udevice *dev, enum HASH_ALGO algo, void **ctxp)
@@ -366,6 +375,7 @@ static const struct hash_ops aspeed_hace_ops = {
 
 static const struct udevice_id aspeed_hace_ids[] = {
 	{ .compatible = "aspeed,ast2600-hace" },
+	{ .compatible = "aspeed,ast2700-hace" },
 	{ }
 };
 
