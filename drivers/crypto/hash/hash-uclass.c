@@ -26,6 +26,7 @@ static const struct hash_info hash_info[HASH_ALGO_NUM] = {
 	[HASH_ALGO_CRC32] = { "crc32", 4 },
 	[HASH_ALGO_MD5] = { "md5", 16 },
 	[HASH_ALGO_SHA1] = { "sha1", 20 },
+	[HASH_ALGO_SHA224] = { "sha224", 28 },
 	[HASH_ALGO_SHA256] = { "sha256", 32 },
 	[HASH_ALGO_SHA384] = { "sha384", 48 },
 	[HASH_ALGO_SHA512] = { "sha512", 64},
