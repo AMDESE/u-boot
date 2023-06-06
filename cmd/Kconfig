@@ -2264,6 +2264,13 @@ config HASH_VERIFY
 	help
 	  Add -v option to verify data against a hash.
 
+config HASH_SELFTEST
+	bool "Support 'hash test' command"
+	depends on CMD_HASH
+	help
+	  Add 'test' subcommand to do self-test against prepared golden test
+	  patterns to verify registered hash driver-model.
+
 config CMD_SCP03
 	bool "scp03 - SCP03 enable and rotate/provision operations"
 	depends on SCP03

@@ -20,6 +20,12 @@ static int do_hash(struct cmd_tbl *cmdtp, int flag, int argc,
 	char *s;
 	int flags = HASH_FLAG_ENV;
 
+	if (IS_ENABLED(CONFIG_HASH_SELFTEST) && !strcmp(argv[1], "test")) {
+		argc -= 2;
+		argv += 2;
+		return hash_self_test(*argv);
+	}
+
 #ifdef CONFIG_HASH_VERIFY
 	if (argc < 4)
 		return CMD_RET_USAGE;
@@ -52,5 +58,9 @@ U_BOOT_CMD(
 	"\nhash -v algorithm address count [*]hash\n"
 		"    - verify message digest of memory area to immediate value, \n"
 		"      env var or *address"
+#endif
+#ifdef CONFIG_HASH_SELFTEST
+	"\nhash test algorithm\n"
+		"    - self-tests of hash algorithm\n"
 #endif
 );

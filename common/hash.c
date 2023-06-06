@@ -16,12 +16,17 @@
 #include <log.h>
 #include <malloc.h>
 #include <mapmem.h>
+#include <memalign.h>
 #include <hw_sha.h>
 #include <asm/cache.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
 #include <linux/errno.h>
 #include <u-boot/crc.h>
+#include <u-boot/hash.h>
+#ifdef CONFIG_DM_HASH
+#include <dm.h>
+#endif
 #else
 #include "mkimage.h"
 #include <linux/compiler_attributes.h>
@@ -30,6 +35,7 @@
 #endif /* !USE_HOSTCC*/
 
 #include <hash.h>
+#include <hash_test.h>
 #include <image.h>
 #include <u-boot/crc.h>
 #include <u-boot/sha1.h>
@@ -644,5 +650,85 @@ int hash_command(const char *algo_name, int flags, struct cmd_tbl *cmdtp,
 
 	return 0;
 }
+
+#ifdef CONFIG_DM_HASH
+static const struct hash_test_desc hash_test_descs[HASH_ALGO_NUM] = {
+	[HASH_ALGO_SHA1] = { "sha1", sha1_tv_template, ARRAY_SIZE(sha1_tv_template) },
+	[HASH_ALGO_SHA224] = { "sha224", sha224_tv_template, ARRAY_SIZE(sha224_tv_template) },
+	[HASH_ALGO_SHA256] = { "sha256", sha256_tv_template, ARRAY_SIZE(sha256_tv_template) },
+	[HASH_ALGO_SHA384] = { "sha384", sha384_tv_template, ARRAY_SIZE(sha384_tv_template) },
+	[HASH_ALGO_SHA512] = { "sha512", sha512_tv_template, ARRAY_SIZE(sha512_tv_template) },
+};
+
+static int hash_test_lookup_by_algo(enum HASH_ALGO hash_algo,
+				    const struct hash_testvec **tv,
+				    int *tv_len)
+{
+	*tv = hash_test_descs[hash_algo].hash_tv;
+	*tv_len = hash_test_descs[hash_algo].tv_size;
+
+	if (*tv_len == 0) {
+		printf("This algo self-test is not supported yet.\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+int hash_self_test(const char *algo_name)
+{
+	ALLOC_CACHE_ALIGN_BUFFER(uint8_t, digest, HASH_MAX_DIGEST_SIZE);
+	const struct hash_testvec *tv;
+	enum HASH_ALGO hash_algo;
+	struct udevice *dev;
+	int tv_len, ds;
+	int rc;
+
+	rc = uclass_get_device(UCLASS_HASH, 0, &dev);
+	if (rc) {
+		debug("failed to get hash device, rc=%d\n", rc);
+		return -ENODEV;
+	}
+
+	hash_algo = hash_algo_lookup_by_name(algo_name);
+	if (hash_algo == HASH_ALGO_INVALID) {
+		debug("Unsupported hash algorithm\n");
+		return -1;
+	};
+
+	rc = hash_test_lookup_by_algo(hash_algo, &tv, &tv_len);
+	if (rc) {
+		debug("failed to get hash test vectors, rc=%d\n", rc);
+		return -1;
+	}
+
+	ds = hash_algo_digest_size(hash_algo);
+
+	for (int i = 0; i < tv_len; i++) {
+		rc = hash_digest_wd(dev, hash_algo, tv[i].plaintext,
+				    tv[i].psize, digest, CHUNKSZ);
+		if (rc) {
+			debug("failed to get hash value, rc=%d\n", rc);
+			return -EIO;
+		}
+
+		if (memcmp(digest, tv[i].digest, ds)) {
+			printf("tv[%d] tests...failed\n", i);
+			/* Dump results */
+			return 1;
+		}
+	}
+
+	printf("%s self-tests...PASS\n", algo_name);
+	return rc;
+}
+#else
+int hash_self_test(const char *algo_name)
+{
+	printf("Not supported yet.\n");
+	return 0;
+}
+#endif /* CONFIG_DM_HASH */
+
 #endif /* CONFIG_CMD_HASH || CONFIG_CMD_SHA1SUM || CONFIG_CMD_CRC32) */
 #endif /* !USE_HOSTCC */

@@ -120,6 +120,15 @@ int hash_command(const char *algo_name, int flags, struct cmd_tbl *cmdtp,
 int hash_block(const char *algo_name, const void *data, unsigned int len,
 	       uint8_t *output, int *output_size);
 
+/**
+ * hash_self_test: Process a hash command self-tests
+ *
+ * This function is used to do self-tests with specific hash command.
+ *
+ * @algo_name:		Hash algorithm being used (lower case!)
+ */
+int hash_self_test(const char *algo_name);
+
 #endif /* !USE_HOSTCC */
 
 /**
