@@ -29,6 +29,7 @@
 #define HACE_HASH_CMD			0x30
 #define HACE_HASH_MODE_ACCUM		BIT(8)
 #define HACE_HASH_ALGO_SHA1		BIT(5)
+#define HACE_HASH_ALGO_SHA224		BIT(6)
 #define HACE_HASH_ALGO_SHA256		(BIT(6) | BIT(4))
 #define HACE_HASH_ALGO_SHA384		(BIT(10) | BIT(6) | BIT(5))
 #define HACE_HASH_ALGO_SHA512		(BIT(6) | BIT(5))
@@ -60,6 +61,11 @@ struct aspeed_hace {
 static const uint32_t iv_sha1[8] = {
 	0x01234567, 0x89abcdef, 0xfedcba98, 0x76543210,
 	0xf0e1d2c3, 0, 0, 0
+};
+
+static const uint32_t iv_sha224[8] = {
+	0xd89e05c1, 0x07d57c36, 0x17dd7030, 0x39590ef7,
+	0x310bc0ff, 0x11155868, 0xa78ff964, 0xa44ffabe
 };
 
 static const uint32_t iv_sha256[8] = {
@@ -139,6 +145,12 @@ static int aspeed_hace_init(struct udevice *dev, enum HASH_ALGO algo, void **ctx
 		hace_ctx->pad_size = 8;
 		hace_ctx->cmd |= HACE_HASH_ALGO_SHA1;
 		memcpy(hace_ctx->digest, iv_sha1, sizeof(iv_sha1));
+		break;
+	case HASH_ALGO_SHA224:
+		hace_ctx->blk_size = 64;
+		hace_ctx->pad_size = 8;
+		hace_ctx->cmd |= HACE_HASH_ALGO_SHA224;
+		memcpy(hace_ctx->digest, iv_sha224, sizeof(iv_sha224));
 		break;
 	case HASH_ALGO_SHA256:
 		hace_ctx->blk_size = 64;
@@ -237,6 +249,7 @@ static int aspeed_hace_finish(struct udevice *dev, void *ctx, void *obuf)
 
 	switch (hace_ctx->algo) {
 	case HASH_ALGO_SHA1:
+	case HASH_ALGO_SHA224:
 	case HASH_ALGO_SHA256:
 		padn = (last < 56) ? (56 - last) : (120 - last);
 
