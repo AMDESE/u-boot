@@ -91,7 +91,7 @@ static int aspeed_hace_wait_completion(uint32_t reg, uint32_t flag, int timeout_
 {
 	uint32_t val;
 
-	return readl_poll_timeout(reg, val, (val & flag) == flag, timeout_us);
+	return readl_poll_timeout((uintptr_t)reg, val, (val & flag) == flag, timeout_us);
 }
 
 static int aspeed_hace_process(struct udevice *dev, void *ctx, const void *ibuf, uint32_t ilen)
@@ -111,9 +111,9 @@ static int aspeed_hace_process(struct udevice *dev, void *ctx, const void *ibuf,
 #endif
 	writel(HACE_HASH_INT, hace->base + HACE_STS);
 
-	writel((uint32_t)ibuf, hace->base + HACE_HASH_DATA);
-	writel((uint32_t)hace_ctx->digest, hace->base + HACE_HASH_DIGEST);
-	writel((uint32_t)hace_ctx->digest, hace->base + HACE_HASH_HMAC_KEY);
+	writel((uintptr_t)ibuf, hace->base + HACE_HASH_DATA);
+	writel((uintptr_t)hace_ctx->digest, hace->base + HACE_HASH_DIGEST);
+	writel((uintptr_t)hace_ctx->digest, hace->base + HACE_HASH_HMAC_KEY);
 	writel(ilen, hace->base + HACE_HASH_DATA_LEN);
 	writel(hace_ctx->cmd, hace->base + HACE_HASH_CMD);
 
