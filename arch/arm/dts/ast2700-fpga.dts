@@ -122,3 +122,8 @@
 &wdt0 {
 	status = "okay";
 };
+
+&hace {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
