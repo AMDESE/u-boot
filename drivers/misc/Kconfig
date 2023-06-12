@@ -23,6 +23,12 @@ config SPL_MISC
 	  set of generic read, write and ioctl methods may be used to
 	  access the device.
 
+config ASPEED_VBIOS
+	bool "Aspeed VBIOS driver"
+	depends on ARCH_ASPEED
+	help
+	  Select this to enable VBIOS driver
+
 config TPL_MISC
 	bool "Enable Driver Model for Misc drivers in TPL"
 	depends on TPL_DM
