@@ -128,7 +128,7 @@ static uint32_t ast2700_cpu_get_mphyclk_rate(struct ast2700_cpu_clk *clk)
 static uint32_t ast2700_cpu_get_emmcclk_rate(struct ast2700_cpu_clk *clk)
 {
 #ifdef ASPEED_FPGA
-	return 50000000;
+	return 200000000;
 #else
 	u32 clksel1 = readl(&clk->clk_sel1);
 	u32 emmcclk_div = (clksel1 & SCU_CLKSEL1_EMMCCLK_DIV_MASK) >>
