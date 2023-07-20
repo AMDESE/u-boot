@@ -922,6 +922,7 @@ static int aspeed_spi_decoded_ranges_sanity(struct udevice *bus)
 			dev_err(bus, "decoded range overlay 0x%" PRIxPTR " 0x%" PRIxPTR "\n",
 				(uintptr_t)priv->flashes[cs].ahb_base,
 				(uintptr_t)priv->flashes[cs - 1].ahb_base);
+
 			return -EINVAL;
 		}
 	}
@@ -1242,7 +1243,7 @@ static int apseed_spi_of_to_plat(struct udevice *bus)
 
 	dev_dbg(bus, "ctrl_base = 0x%" PRIxPTR ", ahb_base = 0x%" PRIxPTR "\n",
 		(uintptr_t)priv->regs, (uintptr_t)plat->ahb_base);
-	dev_dbg(bus, "ahb_size = 0x%" PRIx64 "\n", plat->ahb_sz);
+	dev_dbg(bus, "ahb_size = 0x%08zx\n", plat->ahb_sz);
 	dev_dbg(bus, "hclk = %dMHz, max_cs = %d\n",
 		plat->hclk_rate / 1000000, plat->max_cs);
 

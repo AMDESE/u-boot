@@ -5,24 +5,15 @@
 
 #include "stm32mp15xx-dhcor-u-boot.dtsi"
 
-/delete-node/ &ksz8851;
-
 / {
 	aliases {
 		mmc0 = &sdmmc1;
 		mmc1 = &sdmmc2;
 		usb0 = &usbotg_hs;
-		ethernet1 = &ks8851;
 	};
 
 	config {
 		dh,board-coding-gpios = <&gpioh 9 0>, <&gpioh 8 0>, <&gpioh 3 0>;
-	};
-
-	/* This is actually on FMC2, but we do not have bus driver for that */
-	ks8851: ks8851mll@64000000 {
-		compatible = "micrel,ks8851-mll";
-		reg = <0x64000000 0x20000>;
 	};
 };
 
@@ -38,15 +29,8 @@
 	};
 };
 
-&pinctrl {
-	/* These should bound to FMC2 bus driver, but we do not have one */
-	pinctrl-0 = <&fmc_pins_b>;
-	pinctrl-1 = <&fmc_sleep_pins_b>;
-	pinctrl-names = "default", "sleep";
-};
-
 &sdmmc1 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 	st,use-ckin;
 	st,cmd-gpios = <&gpiod 2 0>;
 	st,ck-gpios = <&gpioc 12 0>;
@@ -54,43 +38,43 @@
 };
 
 &sdmmc1_b4_pins_a {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 	pins1 {
-		u-boot,dm-spl;
+		bootph-pre-ram;
 	};
 	pins2 {
-		u-boot,dm-spl;
+		bootph-pre-ram;
 	};
 };
 
 &sdmmc1_dir_pins_b {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 	pins1 {
-		u-boot,dm-spl;
+		bootph-pre-ram;
 	};
 	pins2 {
-		u-boot,dm-spl;
+		bootph-pre-ram;
 	};
 };
 
 &sdmmc2 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &sdmmc2_b4_pins_a {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 	pins1 {
-		u-boot,dm-spl;
+		bootph-pre-ram;
 	};
 	pins2 {
-		u-boot,dm-spl;
+		bootph-pre-ram;
 	};
 };
 
 &sdmmc2_d47_pins_c {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 	pins {
-		u-boot,dm-spl;
+		bootph-pre-ram;
 	};
 };
 
@@ -99,16 +83,16 @@
 };
 
 &uart4 {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &uart4_pins_d {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 	pins1 {
-		u-boot,dm-pre-reloc;
+		bootph-all;
 	};
 	pins2 {
-		u-boot,dm-pre-reloc;
+		bootph-all;
 		/delete-property/ bias-disable;
 		bias-pull-up;
 	};

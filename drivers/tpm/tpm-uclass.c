@@ -49,6 +49,16 @@ int tpm_get_desc(struct udevice *dev, char *buf, int size)
 	return ops->get_desc(dev, buf, size);
 }
 
+int tpm_report_state(struct udevice *dev, char *buf, int size)
+{
+	struct tpm_ops *ops = tpm_get_ops(dev);
+
+	if (!ops->report_state)
+		return -ENOSYS;
+
+	return ops->report_state(dev, buf, size);
+}
+
 /* Returns max number of milliseconds to wait */
 static ulong tpm_tis_i2c_calc_ordinal_duration(struct tpm_chip_priv *priv,
 					       u32 ordinal)
@@ -146,7 +156,7 @@ static int tpm_uclass_post_probe(struct udevice *dev)
 	const char *drv = TPM_RNG_DRV_NAME;
 	struct udevice *child;
 
-	if (CONFIG_IS_ENABLED(TPM_RNG)) {
+	if (IS_ENABLED(CONFIG_TPM_RNG)) {
 		ret = device_find_first_child_by_uclass(dev, UCLASS_RNG,
 							&child);
 

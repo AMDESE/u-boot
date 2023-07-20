@@ -3,6 +3,7 @@
  * Copyright 2021 Gateworks Corporation
  */
 
+#include <fdt_support.h>
 #include <init.h>
 #include <led.h>
 #include <miiphy.h>
@@ -40,8 +41,7 @@ int board_fit_config_name_match(const char *name)
 	return -1;
 }
 
-#if (IS_ENABLED(CONFIG_NET))
-static int setup_fec(void)
+static int __maybe_unused setup_fec(void)
 {
 	struct iomuxc_gpr_base_regs *gpr =
 		(struct iomuxc_gpr_base_regs *)IOMUXC_GPR_BASE_ADDR;
@@ -57,23 +57,10 @@ static int setup_fec(void)
 	return 0;
 }
 
-static int setup_eqos(void)
-{
-	struct iomuxc_gpr_base_regs *gpr =
-		(struct iomuxc_gpr_base_regs *)IOMUXC_GPR_BASE_ADDR;
-
-	/* set INTF as RGMII, enable RGMII TXC clock */
-	clrsetbits_le32(&gpr->gpr[1],
-			IOMUXC_GPR_GPR1_GPR_ENET_QOS_INTF_SEL_MASK, BIT(16));
-	setbits_le32(&gpr->gpr[1], BIT(19) | BIT(21));
-
-	return set_clk_eqos(ENET_125MHZ);
-}
-
+#if (IS_ENABLED(CONFIG_NET))
 int board_phy_config(struct phy_device *phydev)
 {
 	unsigned short val;
-	ofnode node;
 
 	switch (phydev->phy_id) {
 	case 0x2000a231: /* TI DP83867 GbE PHY */
@@ -83,21 +70,6 @@ int board_phy_config(struct phy_device *phydev)
 		val |= 0x5 << 4; /* LED1(Amber;Speed)   : 1000BT link */
 		val |= 0xb << 8; /* LED2(Green;Link/Act): blink for TX/RX act */
 		phy_write(phydev, MDIO_DEVAD_NONE, 24, val);
-		break;
-	case 0xd565a401: /* MaxLinear GPY111 */
-		puts("GPY111 ");
-		node = phy_get_ofnode(phydev);
-		if (ofnode_valid(node)) {
-			u32 rx_delay, tx_delay;
-
-			rx_delay = ofnode_read_u32_default(node, "rx-internal-delay-ps", 2000);
-			tx_delay = ofnode_read_u32_default(node, "tx-internal-delay-ps", 2000);
-			val = phy_read(phydev, MDIO_DEVAD_NONE, 0x17);
-			val &= ~((0x7 << 12) | (0x7 << 8));
-			val |= (rx_delay / 500) << 12;
-			val |= (tx_delay / 500) << 8;
-			phy_write(phydev, MDIO_DEVAD_NONE, 0x17, val);
-		}
 		break;
 	}
 
@@ -110,12 +82,10 @@ int board_phy_config(struct phy_device *phydev)
 
 int board_init(void)
 {
-	eeprom_init(1);
+	venice_eeprom_init(1);
 
 	if (IS_ENABLED(CONFIG_FEC_MXC))
 		setup_fec();
-	if (IS_ENABLED(CONFIG_DWC_ETH_QOS))
-		setup_eqos();
 
 	return 0;
 }
@@ -169,26 +139,38 @@ int board_mmc_get_env_dev(int devno)
 	return devno;
 }
 
-int ft_board_setup(void *blob, struct bd_info *bd)
+int ft_board_setup(void *fdt, struct bd_info *bd)
 {
+	const char *base_model = eeprom_get_baseboard_model();
+	char pcbrev;
 	int off;
 
 	/* set board model dt prop */
-	fdt_setprop_string(blob, 0, "board", eeprom_get_model());
+	fdt_setprop_string(fdt, 0, "board", eeprom_get_model());
 
-	/* update temp thresholds */
-	off = fdt_path_offset(blob, "/thermal-zones/cpu-thermal/trips");
-	if (off >= 0) {
-		int minc, maxc, prop;
+	if (!strncmp(base_model, "GW73", 4)) {
+		pcbrev = get_pcb_rev(base_model);
 
-		get_cpu_temp_grade(&minc, &maxc);
-		fdt_for_each_subnode(prop, blob, off) {
-			const char *type = fdt_getprop(blob, prop, "type", NULL);
+		if (pcbrev > 'B') {
+			printf("adjusting dt for %s\n", base_model);
 
-			if (type && (!strcmp("critical", type)))
-				fdt_setprop_u32(blob, prop, "temperature", maxc * 1000);
-			else if (type && (!strcmp("passive", type)))
-				fdt_setprop_u32(blob, prop, "temperature", (maxc - 10) * 1000);
+			/*
+			 * revC replaced PCIe 5-port switch with 4-port
+			 * which changed ethernet1 PCIe GbE
+			 * from: pcie@0,0/pcie@1,0/pcie@2,4/pcie@6.0
+			 *   to: pcie@0,0/pcie@1,0/pcie@2,3/pcie@5.0
+			 */
+			off = fdt_path_offset(fdt, "ethernet1");
+			if (off > 0) {
+				u32 reg[5];
+
+				fdt_set_name(fdt, off, "pcie@5,0");
+				off = fdt_parent_offset(fdt, off);
+				fdt_set_name(fdt, off, "pcie@2,3");
+				memset(reg, 0, sizeof(reg));
+				reg[0] = cpu_to_fdt32(PCI_DEVFN(3, 0));
+				fdt_setprop(fdt, off, "reg", reg, sizeof(reg));
+			}
 		}
 	}
 

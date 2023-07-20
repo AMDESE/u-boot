@@ -738,7 +738,7 @@ static struct mmc *init_mmc_device(int dev, bool force_init)
 	if (IS_ENABLED(CONFIG_BLOCK_CACHE)) {
 		struct blk_desc *bd = mmc_get_blk_desc(mmc);
 
-		blkcache_invalidate(bd->if_type, bd->devnum);
+		blkcache_invalidate(bd->uclass_id, bd->devnum);
 	}
 
 	return mmc;
@@ -776,7 +776,7 @@ static int do_mmc_dev(void)
 	if (!mmc)
 		return CMD_RET_FAILURE;
 
-	ret = blk_select_hwpart_devnum(IF_TYPE_MMC, dev, part);
+	ret = blk_select_hwpart_devnum(UCLASS_MMC, dev, part);
 	printf("switch to partitions #%d, %s\n",
 	       part, (!ret) ? "OK" : "ERROR");
 	if (ret != 0)

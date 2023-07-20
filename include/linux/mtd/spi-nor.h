@@ -141,6 +141,7 @@
 #define SPINOR_REG_ADDR_STR1V	0x00800000
 #define SPINOR_REG_ADDR_CFR1V	0x00800002
 #define SPINOR_REG_ADDR_CFR3V	0x00800004
+#define SPINOR_REG_ADDR_ARCFN	0x00000006
 #define CFR3V_UNHYSA		BIT(3)	/* Uniform sectors or not */
 #define CFR3V_PGMBUF		BIT(4)	/* Program buffer size */
 
@@ -189,12 +190,17 @@
 #define SPINOR_OP_WR_ANY_REG			0x71	/* Write any register */
 #define SPINOR_OP_S28_SE_4K			0x21
 #define SPINOR_REG_CYPRESS_CFR2V		0x00800003
-#define SPINOR_REG_CYPRESS_CFR2V_MEMLAT_11_24	0xb
+#define SPINOR_REG_CYPRESS_CFR2_MEMLAT_11_24	0xb
 #define SPINOR_REG_CYPRESS_CFR3V		0x00800004
-#define SPINOR_REG_CYPRESS_CFR3V_PGSZ		BIT(4) /* Page size. */
-#define SPINOR_REG_CYPRESS_CFR3V_UNISECT	BIT(3) /* Uniform sector mode */
+#define SPINOR_REG_CYPRESS_CFR3_PGSZ		BIT(4) /* Page size. */
+#define SPINOR_REG_CYPRESS_CFR3_UNISECT		BIT(3) /* Uniform sector mode */
 #define SPINOR_REG_CYPRESS_CFR5V		0x00800006
-#define SPINOR_REG_CYPRESS_CFR5V_OCT_DTR_EN	0x3
+#define SPINOR_REG_CYPRESS_CFR5_BIT6		BIT(6)
+#define SPINOR_REG_CYPRESS_CFR5_DDR		BIT(1)
+#define SPINOR_REG_CYPRESS_CFR5_OPI		BIT(0)
+#define SPINOR_REG_CYPRESS_CFR5_OCT_DTR_EN				\
+	(SPINOR_REG_CYPRESS_CFR5_BIT6 |	SPINOR_REG_CYPRESS_CFR5_DDR |	\
+	 SPINOR_REG_CYPRESS_CFR5_OPI)
 #define SPINOR_OP_CYPRESS_RD_FAST		0xee
 
 /* Supported SPI protocols */
@@ -494,6 +500,10 @@ struct spi_flash {
  * @rdsr_dummy		dummy cycles needed for Read Status Register command.
  * @rdsr_addr_nbytes:	dummy address bytes needed for Read Status Register
  *			command.
+ * @addr_mode_nbytes:	number of address bytes of current address mode. Useful
+ *			when the flash operates with 4B opcodes but needs the
+ *			internal address mode for opcodes that don't have a 4B
+ *			opcode correspondent.
  * @bank_read_cmd:	Bank read cmd
  * @bank_write_cmd:	Bank write cmd
  * @bank_curr:		Current flash bank
@@ -540,6 +550,7 @@ struct spi_nor {
 	u8			program_opcode;
 	u8			rdsr_dummy;
 	u8			rdsr_addr_nbytes;
+	u8			addr_mode_nbytes;
 #ifdef CONFIG_SPI_FLASH_BAR
 	u8			bank_read_cmd;
 	u8			bank_write_cmd;
