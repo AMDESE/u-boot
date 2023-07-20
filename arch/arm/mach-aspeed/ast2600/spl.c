@@ -7,6 +7,7 @@
 #include <dm.h>
 #include <spl.h>
 #include <init.h>
+#include <hang.h>
 #include <image.h>
 #include <linux/err.h>
 #include <asm/io.h>
@@ -69,6 +70,68 @@ int spl_start_uboot(void)
 	return 0;
 }
 #endif
+
+int spl_fit_images_get_uboot_entry(void *blob, ulong *entry)
+{
+	int parent, node, ndepth;
+	const void *data;
+	int rc;
+
+	if (!blob)
+		return -FDT_ERR_BADMAGIC;
+
+	parent = fdt_path_offset(blob, "/fit-images");
+	if (parent < 0)
+		return -FDT_ERR_NOTFOUND;
+
+	for (node = fdt_next_node(blob, parent, &ndepth);
+	     (node >= 0) && (ndepth > 0);
+	     node = fdt_next_node(blob, node, &ndepth)) {
+		if (ndepth != 1)
+			continue;
+
+		data = fdt_getprop(blob, node, FIT_OS_PROP, NULL);
+		if (!data)
+			continue;
+
+		if (genimg_get_os_id(data) == IH_OS_U_BOOT)
+			break;
+	};
+
+	if (node == -FDT_ERR_NOTFOUND)
+		return -FDT_ERR_NOTFOUND;
+
+	rc = fit_image_get_entry(blob, node, entry);
+	if (rc)
+		rc = fit_image_get_load(blob, node, entry);
+
+	return rc;
+}
+
+void spl_optee_entry(void *arg0, void *arg1, void *arg2, void *arg3)
+{
+	ulong optee_ns_ep;
+	int rc;
+
+	rc = spl_fit_images_get_uboot_entry(arg2, &optee_ns_ep);
+	if (rc)
+		goto err_hang;
+
+	asm volatile(
+		"mov lr, %[ns_ep]\n\t"
+		"mov r0, %[a0]\n\t"
+		"mov r1, %[a1]\n\t"
+		"mov r2, %[a2]\n\t"
+		"bx %[a3]\n\t"
+		:
+		: [ns_ep]"r" (optee_ns_ep), [a0]"r" (arg0), [a1]"r" (arg1), [a2]"r" (arg2), [a3]"r" (arg3)
+		: "lr", "r0", "r1", "r2"
+	);
+
+err_hang:
+	debug("cannot find NS image entry for OPTEE\n");
+	hang();
+}
 
 void board_fit_image_post_process(const void *fit, int node, void **p_image, size_t *p_size)
 {
