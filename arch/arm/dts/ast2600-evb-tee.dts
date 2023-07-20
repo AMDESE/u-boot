@@ -14,7 +14,17 @@
 		stdout-path = &uart5;
 	};
 
+	reserved-memory {
+		optee_core: optee_core@88000000 {
+			reg = <0x88000000 0x1000000>;
+			no-map;
+		};
+	};
+
 	aliases {
+		mmc0 = &emmc;
+		mmc1 = &sdhci0;
+		mmc2 = &sdhci1;
 		spi0 = &fmc;
 		spi1 = &spi1;
 		spi2 = &spi2;
@@ -24,20 +34,34 @@
 		ethernet3 = &mac3;
 	};
 
-	reserved-memory {
-		optee_core: optee_core@88000000 {
-			reg = <0x88000000 0x1000000>;
-			no-map;
+	cpus {
+		cpu@0 {
+			clock-frequency = <800000000>;
 		};
-
-		video_memory: video {
-			size = <0x04000000>;
-			alignment = <0x01000000>;
-			compatible = "shared-dma-pool";
-			no-map;
+		cpu@1 {
+			clock-frequency = <800000000>;
 		};
 	};
+};
 
+&pwm {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm0_default
+			&pinctrl_pwm1_default
+			&pinctrl_pwm2_default
+			&pinctrl_pwm3_default
+			&pinctrl_pwm4_default
+			&pinctrl_pwm5_default
+			&pinctrl_pwm6_default
+			&pinctrl_pwm7_default
+			&pinctrl_pwm8g1_default
+			&pinctrl_pwm9g1_default
+			&pinctrl_pwm10g1_default
+			&pinctrl_pwm11g1_default
+			&pinctrl_pwm12g1_default
+			&pinctrl_pwm13g1_default
+			&pinctrl_pwm14g1_default>;
 };
 
 &uart5 {
@@ -55,12 +79,10 @@
 
 &fmc {
 	status = "okay";
-
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_fmcquad_default>;
 
 	flash@0 {
-		compatible = "spi-flash", "sst,w25q256";
 		status = "okay";
 		spi-max-frequency = <50000000>;
 		spi-tx-bus-width = <4>;
@@ -68,7 +90,6 @@
 	};
 
 	flash@1 {
-		compatible = "spi-flash", "sst,w25q256";
 		status = "okay";
 		spi-max-frequency = <50000000>;
 		spi-tx-bus-width = <4>;
@@ -76,7 +97,6 @@
 	};
 
 	flash@2 {
-		compatible = "spi-flash", "sst,w25q256";
 		status = "okay";
 		spi-max-frequency = <50000000>;
 		spi-tx-bus-width = <4>;
@@ -86,14 +106,12 @@
 
 &spi1 {
 	status = "okay";
-
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_spi1_default &pinctrl_spi1abr_default
 			&pinctrl_spi1cs1_default &pinctrl_spi1wp_default
 			&pinctrl_spi1wp_default &pinctrl_spi1quad_default>;
 
 	flash@0 {
-		compatible = "spi-flash", "sst,w25q256";
 		status = "okay";
 		spi-max-frequency = <50000000>;
 		spi-tx-bus-width = <4>;
@@ -103,13 +121,11 @@
 
 &spi2 {
 	status = "okay";
-
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_spi2_default &pinctrl_spi2cs1_default
 			&pinctrl_spi2cs2_default &pinctrl_spi2quad_default>;
 
 	flash@0 {
-		compatible = "spi-flash", "sst,w25q256";
 		status = "okay";
 		spi-max-frequency = <50000000>;
 		spi-tx-bus-width = <4>;
@@ -117,39 +133,51 @@
 	};
 };
 
+&emmc_controller {
+	status = "okay";
+};
+
+&emmc {
+	non-removable;
+	bus-width = <4>;
+	max-frequency = <100000000>;
+	clk-phase-mmc-hs200 = <9>, <225>;
+};
+
 &i2c4 {
 	status = "okay";
-
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c5_default>;
 };
 
 &i2c5 {
 	status = "okay";
-
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c6_default>;
 };
 
 &i2c6 {
 	status = "okay";
-
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c7_default>;
 };
 
 &i2c7 {
 	status = "okay";
 
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c8_default>;
+	temp@2e {
+		compatible = "adi,adt7490";
+		reg = <0x2e>;
+	};
+
+	eeprom@50 {
+		compatible = "atmel,24c08";
+		reg = <0x50>;
+		pagesize = <16>;
+	};
 };
 
 &i2c8 {
 	status = "okay";
 
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c9_default>;
+	lm75@4d {
+		compatible = "national,lm75";
+		reg = <0x4d>;
+	};
 };
 
 &mdio0 {
