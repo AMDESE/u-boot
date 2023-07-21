@@ -121,14 +121,11 @@ static int aspeed_sdc_probe(struct udevice *dev)
 	int ret;
 
 	ret = reset_get_by_index(dev, 0, &rst_ctl);
-	if (ret) {
-		dev_err(dev, "failed to get SDHCI reset\n");
-		goto free;
+	if (!ret) {
+		reset_assert(&rst_ctl);
+		udelay(2);
+		reset_deassert(&rst_ctl);
 	}
-
-	reset_assert(&rst_ctl);
-	udelay(2);
-	reset_deassert(&rst_ctl);
 
 	ret = clk_get_by_index(dev, 0, &clk);
 	if (ret) {
