@@ -35,6 +35,27 @@ u32 tpm_startup(struct udevice *dev, enum tpm_startup_type mode)
 	}
 }
 
+u32 tpm_auto_start(struct udevice *dev)
+{
+	u32 rc;
+
+	/*
+	 * the tpm_init() will return -EBUSY if the init has already happened
+	 * The selftest and startup code can run multiple times with no side
+	 * effects
+	 */
+	rc = tpm_init(dev);
+	if (rc && rc != -EBUSY)
+		return rc;
+
+	if (tpm_is_v1(dev))
+		return tpm1_auto_start(dev);
+	else if (tpm_is_v2(dev))
+		return tpm2_auto_start(dev);
+	else
+		return -ENOSYS;
+}
+
 u32 tpm_resume(struct udevice *dev)
 {
 	if (tpm_is_v1(dev))
@@ -140,15 +161,17 @@ u32 tpm_write_lock(struct udevice *dev, u32 index)
 }
 
 u32 tpm_pcr_extend(struct udevice *dev, u32 index, const void *in_digest,
-		   void *out_digest)
+		   uint size, void *out_digest, const char *name)
 {
-	if (tpm_is_v1(dev))
+	if (tpm_is_v1(dev)) {
 		return tpm1_extend(dev, index, in_digest, out_digest);
-	else if (tpm_is_v2(dev))
+	} else if (tpm_is_v2(dev)) {
 		return tpm2_pcr_extend(dev, index, TPM2_ALG_SHA256, in_digest,
 				       TPM2_DIGEST_LEN);
-	else
+		/* @name is ignored as we do not support the TPM log here */
+	} else {
 		return -ENOSYS;
+	}
 }
 
 u32 tpm_pcr_read(struct udevice *dev, u32 index, void *data, size_t count)

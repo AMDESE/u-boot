@@ -9,25 +9,33 @@
 
 #include <common.h>
 #include <dm.h>
+#include <fdt_support.h>
 #include <init.h>
 #include <asm/global_data.h>
 #include <dm/uclass-internal.h>
 #include <asm/arch/rmobile.h>
 #include <linux/libfdt.h>
 
-#ifdef CONFIG_RCAR_GEN3
+#ifdef CONFIG_RCAR_64
 
 DECLARE_GLOBAL_DATA_PTR;
 
-/* If the firmware passed a device tree use it for U-Boot DRAM setup. */
+/* If the firmware passed a device tree use it for e.g. U-Boot DRAM setup. */
 extern u64 rcar_atf_boot_args[];
 
-int fdtdec_board_setup(const void *fdt_blob)
+#define FDT_RPC_PATH	"/soc/spi@ee200000"
+
+static void apply_atf_overlay(void *fdt_blob)
 {
 	void *atf_fdt_blob = (void *)(rcar_atf_boot_args[1]);
 
 	if (fdt_magic(atf_fdt_blob) == FDT_MAGIC)
-		fdt_overlay_apply_node((void *)fdt_blob, 0, atf_fdt_blob, 0);
+		fdt_overlay_apply_node(fdt_blob, 0, atf_fdt_blob, 0);
+}
+
+int fdtdec_board_setup(const void *fdt_blob)
+{
+	apply_atf_overlay((void *)fdt_blob);
 
 	return 0;
 }
@@ -70,9 +78,9 @@ static int is_mem_overlap(void *blob, int first_mem_node, int curr_mem_node)
 			if (curr_mem_res.start >= first_mem_res.end)
 				continue;
 
-			printf("Overlap found: 0x%llx..0x%llx / 0x%llx..0x%llx\n",
-				first_mem_res.start, first_mem_res.end,
-				curr_mem_res.start, curr_mem_res.end);
+			log_debug("Overlap found: 0x%llx..0x%llx / 0x%llx..0x%llx\n",
+				  first_mem_res.start, first_mem_res.end,
+				  curr_mem_res.start, curr_mem_res.end);
 
 			return 1;
 		}
@@ -81,7 +89,7 @@ static int is_mem_overlap(void *blob, int first_mem_node, int curr_mem_node)
 	return 0;
 }
 
-int ft_board_setup(void *blob, struct bd_info *bd)
+static void scrub_duplicate_memory(void *blob)
 {
 	/*
 	 * Scrub duplicate /memory@* node entries here. Some R-Car DTs might
@@ -119,6 +127,46 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 		first_mem_node = 0;
 		mem = 0;
 	}
+}
+
+static void update_rpc_status(void *blob)
+{
+	void *atf_fdt_blob = (void *)(rcar_atf_boot_args[1]);
+	int offset, enabled;
+
+	/*
+	 * Check if the DT fragment received from TF-A had its RPC-IF device node
+	 * enabled.
+	 */
+	if (fdt_magic(atf_fdt_blob) != FDT_MAGIC)
+		return;
+
+	offset = fdt_path_offset(atf_fdt_blob, FDT_RPC_PATH);
+	if (offset < 0)
+		return;
+
+	enabled = fdtdec_get_is_enabled(atf_fdt_blob, offset);
+	if (!enabled)
+		return;
+
+	/*
+	 * Find the RPC-IF device node, and enable it if it has a flash subnode.
+	 */
+	offset = fdt_path_offset(blob, FDT_RPC_PATH);
+	if (offset < 0)
+		return;
+
+	if (fdt_subnode_offset(blob, offset, "flash") < 0)
+		return;
+
+	fdt_status_okay(blob, offset);
+}
+
+int ft_board_setup(void *blob, struct bd_info *bd)
+{
+	apply_atf_overlay(blob);
+	scrub_duplicate_memory(blob);
+	update_rpc_status(blob);
 
 	return 0;
 }

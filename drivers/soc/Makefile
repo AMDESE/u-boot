@@ -9,3 +9,4 @@ obj-$(CONFIG_SANDBOX) += soc_sandbox.o
 obj-$(CONFIG_SOC_XILINX_ZYNQMP) += soc_xilinx_zynqmp.o
 obj-$(CONFIG_SOC_XILINX_VERSAL) += soc_xilinx_versal.o
 obj-$(CONFIG_ARCH_ASPEED) += aspeed/
+obj-$(CONFIG_SOC_XILINX_VERSAL_NET) += soc_xilinx_versal_net.o

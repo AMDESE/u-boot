@@ -41,9 +41,9 @@ void board_init_f(ulong dummy)
 	dram_init();
 }
 
-struct image_header *spl_get_load_buffer(ssize_t offset, size_t size)
+struct legacy_img_hdr *spl_get_load_buffer(ssize_t offset, size_t size)
 {
-	return (struct image_header *)(CONFIG_SYS_LOAD_ADDR);
+	return (struct legacy_img_hdr *)(CONFIG_SYS_LOAD_ADDR);
 }
 
 /*
