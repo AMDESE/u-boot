@@ -4,29 +4,29 @@
 };
 
 &soc0 {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &sdrammc {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &cpu_clk {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &cpu_rst {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &soc1 {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &io_clk {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &io_rst {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };

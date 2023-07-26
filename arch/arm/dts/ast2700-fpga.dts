@@ -35,7 +35,7 @@
 };
 
 &uart12 {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 	status = "okay";
 };
 
@@ -80,12 +80,12 @@
 };
 
 &emmc_controller {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 	status = "okay";
 };
 
 &emmc {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 	status = "okay";
 };
 
@@ -126,6 +126,6 @@
 };
 
 &hace {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 	status = "okay";
 };
