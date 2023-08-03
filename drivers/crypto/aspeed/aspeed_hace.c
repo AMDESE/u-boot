@@ -16,6 +16,7 @@
 #include <linux/delay.h>
 #include <linux/kernel.h>
 #include <linux/iopoll.h>
+#include <reset.h>
 
 /* register offsets */
 #define HACE_STS			0x1C
@@ -349,8 +350,19 @@ static int aspeed_hace_digest(struct udevice *dev, enum HASH_ALGO algo,
 
 static int aspeed_hace_probe(struct udevice *dev)
 {
-	int rc;
 	struct aspeed_hace *hace = dev_get_priv(dev);
+	struct reset_ctl rst_ctl;
+	int rc;
+
+	rc = reset_get_by_index(dev, 0, &rst_ctl);
+	if (rc) {
+		debug("failed to get HACE reset\n");
+		return rc;
+	}
+
+	reset_assert(&rst_ctl);
+	udelay(2);
+	reset_deassert(&rst_ctl);
 
 	rc = clk_get_by_index(dev, 0, &hace->clk);
 	if (rc < 0) {
