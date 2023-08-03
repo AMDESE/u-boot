@@ -100,6 +100,7 @@
 			compatible = "aspeed,ast2700-hace";
 			reg = <0 0x12070000 0 0x200>;
 			clocks = <&cpu_clk AST2700_CPU_CLK_GATE_YCLK>;
+			resets = <&cpu_rst ASPEED_RESET_HACE>;
 			status = "disabled";
 		};
 
