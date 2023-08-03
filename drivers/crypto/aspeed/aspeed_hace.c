@@ -211,15 +211,15 @@ static int aspeed_hace_update(struct udevice *dev, void *ctx, const void *ibuf, 
 		left = 0;
 	}
 
-	while (ilen >= hace_ctx->blk_size) {
-		rc = aspeed_hace_process(dev, ctx, ibuf, hace_ctx->blk_size);
+	if (ilen >= hace_ctx->blk_size) {
+		rc = aspeed_hace_process(dev, ctx, ibuf, ilen & ~(hace_ctx->blk_size - 1));
 		if (rc) {
 			debug("failed to process hash, rc=%d\n", rc);
 			return rc;
 		}
 
-		ibuf += hace_ctx->blk_size;
-		ilen -= hace_ctx->blk_size;
+		ibuf += ilen & ~(hace_ctx->blk_size - 1);
+		ilen -= ilen & ~(hace_ctx->blk_size - 1);
 	}
 
 	if (ilen)
