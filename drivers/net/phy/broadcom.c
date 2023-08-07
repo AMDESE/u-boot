@@ -360,6 +360,16 @@ U_BOOT_PHY_DRIVER(bcm54612) = {
 	.shutdown = &genphy_shutdown,
 };
 
+U_BOOT_PHY_DRIVER(bcm54210e) = {
+	.name = "Broadcom BCM54210E",
+	.uid = 0x600d84a0,
+	.mask = 0xfffffff0,
+	.features = PHY_GBIT_FEATURES,
+	.config = &bcm5461_config,
+	.startup = &bcm54xx_startup,
+	.shutdown = &genphy_shutdown,
+};
+
 U_BOOT_PHY_DRIVER(bcm5461s) = {
 	.name = "Broadcom BCM5461S",
 	.uid = 0x2060c0,
