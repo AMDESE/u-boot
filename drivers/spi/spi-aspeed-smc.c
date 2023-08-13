@@ -1243,6 +1243,7 @@ static int apseed_spi_of_to_plat(struct udevice *bus)
 
 	dev_dbg(bus, "ctrl_base = 0x%" PRIxPTR ", ahb_base = 0x%" PRIxPTR "\n",
 		(uintptr_t)priv->regs, (uintptr_t)plat->ahb_base);
+	dev_dbg(bus, "ahb_size = 0x%llx\n", (u64)plat->ahb_sz);
 	dev_dbg(bus, "hclk = %dMHz, max_cs = %d\n",
 		plat->hclk_rate / 1000000, plat->max_cs);
 
