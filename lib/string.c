@@ -586,6 +586,9 @@ __used void * memcpy(void *dest, const void *src, size_t count)
 #endif
 
 #ifndef __HAVE_ARCH_MEMMOVE
+
+size_t aspeed_memmove_dma_op(void *dest, const void *src, size_t count);
+
 /**
  * memmove - Copy one area of memory to another
  * @dest: Where to copy to
@@ -597,6 +600,15 @@ __used void * memcpy(void *dest, const void *src, size_t count)
 __used void * memmove(void * dest,const void *src,size_t count)
 {
 	char *tmp, *s;
+
+	if (IS_ENABLED(CONFIG_SPI_ASPEED_DMA)) {
+		size_t dma_count;
+
+		dma_count = aspeed_memmove_dma_op(dest, src, count);
+		count -= dma_count;
+		dest += dma_count;
+		src += dma_count;
+	}
 
 	if (dest <= src || (src + count) <= dest) {
 	/*

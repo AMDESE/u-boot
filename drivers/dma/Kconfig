@@ -96,4 +96,10 @@ config DMA_LEGACY
 
 source "drivers/dma/ti/Kconfig"
 
+if SPI_ASPEED_SMC
+config SPI_ASPEED_DMA
+        bool "Enable ASPEED SPI DMA"
+        default n
+endif
+
 endmenu # menu "DMA Support"
