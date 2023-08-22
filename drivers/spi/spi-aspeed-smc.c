@@ -66,7 +66,7 @@ struct aspeed_spi_plat {
 
 struct aspeed_spi_flash {
 	void __iomem *ahb_base;
-	u32 ahb_decoded_sz;
+	size_t ahb_decoded_sz;
 	u32 ce_ctrl_user;
 	u32 ce_ctrl_read;
 	u32 max_freq;
@@ -83,7 +83,7 @@ struct aspeed_spi_priv {
 struct aspeed_spi_info {
 	u32 io_mode_mask;
 	u32 max_bus_width;
-	u32 min_decoded_sz;
+	size_t min_decoded_sz;
 	u32 clk_ctrl_mask;
 	void (*set_4byte)(struct udevice *bus, u32 cs);
 	uintptr_t (*segment_start)(struct udevice *bus, u32 reg);
@@ -263,8 +263,8 @@ static int ast2500_adjust_decoded_size(struct udevice *bus)
 	int ret;
 	int i;
 	int cs;
-	u32 pre_sz;
-	u32 lack_sz;
+	size_t pre_sz;
+	size_t lack_sz;
 
 	/* Assign min_decoded_sz to unused CS. */
 	for (cs = priv->num_cs; cs < plat->max_cs; cs++)
@@ -435,8 +435,8 @@ static int ast2600_adjust_decoded_size(struct udevice *bus)
 	int ret;
 	int i;
 	int cs;
-	u32 pre_sz;
-	u32 lack_sz;
+	size_t pre_sz;
+	size_t lack_sz;
 
 	/* Close unused CS. */
 	for (cs = priv->num_cs; cs < plat->max_cs; cs++)
@@ -550,7 +550,7 @@ static int aspeed_spi_trim_decoded_size(struct udevice *bus)
 	struct aspeed_spi_plat *plat = dev_get_plat(bus);
 	struct aspeed_spi_priv *priv = dev_get_priv(bus);
 	struct aspeed_spi_flash *flashes = &priv->flashes[0];
-	u32 total_sz;
+	size_t total_sz;
 	int cs = plat->max_cs - 1;
 	u32 i;
 
@@ -757,7 +757,7 @@ static int aspeed_spi_dirmap_create(struct spi_mem_dirmap_desc *desc)
 
 		for (i = 0; i < priv->num_cs; i++) {
 			dev_dbg(dev, "cs: %d, sz: 0x%x\n", i,
-				priv->flashes[cs].ahb_decoded_sz);
+				(u32)priv->flashes[cs].ahb_decoded_sz);
 		}
 
 		ret = aspeed_spi_decoded_range_config(bus);
@@ -887,14 +887,14 @@ static int aspeed_spi_decoded_ranges_sanity(struct udevice *bus)
 	struct aspeed_spi_plat *plat = dev_get_plat(bus);
 	struct aspeed_spi_priv *priv = dev_get_priv(bus);
 	u32 cs;
-	u32 total_sz = 0;
+	size_t total_sz = 0;
 
 	/* Check overall size. */
 	for (cs = 0; cs < plat->max_cs; cs++)
 		total_sz += priv->flashes[cs].ahb_decoded_sz;
 
 	if (total_sz > plat->ahb_sz) {
-		dev_err(bus, "invalid total size 0x%08x\n", total_sz);
+		dev_err(bus, "invalid total size 0x%08x\n", (u32)total_sz);
 		return -EINVAL;
 	}
 
@@ -969,7 +969,7 @@ static int aspeed_spi_read_fixed_decoded_ranges(struct udevice *bus)
 	for (i = 0; i < plat->max_cs; i++) {
 		dev_dbg(bus, "ahb_base: 0x%p, size: 0x%08x\n",
 			priv->flashes[i].ahb_base,
-			priv->flashes[i].ahb_decoded_sz);
+			(u32)priv->flashes[i].ahb_decoded_sz);
 	}
 
 	ret = aspeed_spi_decoded_ranges_sanity(bus);
@@ -1024,7 +1024,6 @@ static int aspeed_spi_ctrl_init(struct udevice *bus)
 		priv->flashes[cs].ahb_decoded_sz = 0x10000000;
 		return 0;
 	}
-
 
 	ret = aspeed_spi_read_fixed_decoded_ranges(bus);
 	if (ret != 0)
