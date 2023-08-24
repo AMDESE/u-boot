@@ -29,6 +29,8 @@
 
 #define ASPEED_SPI_MAX_CS       5
 
+#define INTR_CTRL_DMA_STATUS	BIT(11)
+
 #define CTRL_IO_SINGLE_DATA     0
 #define CTRL_IO_QUAD_DATA       BIT(30)
 #define CTRL_IO_DUAL_DATA       BIT(29)
@@ -37,6 +39,18 @@
 #define CTRL_IO_MODE_CMD_READ   BIT(0)
 #define CTRL_IO_MODE_CMD_WRITE  BIT(1)
 #define CTRL_STOP_ACTIVE        BIT(2)
+
+#define DAM_CTRL_REQUEST	BIT(31)
+#define DAM_CTRL_GRANT		BIT(30)
+#define DMA_CTRL_CALIB		BIT(3)
+#define DMA_CTRL_CKSUM		BIT(2)
+#define DMA_CTRL_WRITE		BIT(1)
+#define DMA_CTRL_ENABLE		BIT(0)
+
+#define DMA_GET_REQ_MAGIC	0xaeed0000
+#define DMA_DISCARD_REQ_MAGIC	0xdeea0000
+
+#define TIMING_CAL_LEN		0x400
 
 struct aspeed_spi_regs {
 	u32 conf;                       /* 0x00 CE Type Setting */
@@ -59,16 +73,22 @@ struct aspeed_spi_regs {
 
 struct aspeed_spi_plat {
 	u8 max_cs;
-	void __iomem *ahb_base; /* AHB address base for all flash devices. */
+	uintptr_t ahb_base; /* AHB address base for all flash devices. */
 	fdt_size_t ahb_sz; /* Overall AHB window size for all flash device. */
 	u32 hclk_rate; /* AHB clock rate */
 };
 
+enum aspeed_spi_cmd_mode {
+	CMD_USER_MODE,
+	CMD_READ_MODE,
+	CMD_WRITE_MODE,
+	CMD_MODE_MAX,
+};
+
 struct aspeed_spi_flash {
-	void __iomem *ahb_base;
+	uintptr_t ahb_base;
 	size_t ahb_decoded_sz;
-	u32 ce_ctrl_user;
-	u32 ce_ctrl_read;
+	u32 cmd_mode[CMD_MODE_MAX];
 	u32 max_freq;
 };
 
@@ -78,6 +98,7 @@ struct aspeed_spi_priv {
 	struct aspeed_spi_info *info;
 	struct aspeed_spi_flash flashes[ASPEED_SPI_MAX_CS];
 	bool fixed_decoded_range;
+	bool disable_calib;
 };
 
 struct aspeed_spi_info {
@@ -91,6 +112,7 @@ struct aspeed_spi_info {
 	u32 (*segment_reg)(uintptr_t start, uintptr_t end);
 	int (*adjust_decoded_sz)(struct udevice *bus);
 	u32 (*get_clk_setting)(struct udevice *dev, uint hz);
+	int (*timing_calibration)(struct udevice *dev);
 };
 
 struct aspeed_spi_decoded_range {
@@ -126,9 +148,9 @@ static uintptr_t ast2400_spi_segment_start(struct udevice *bus, u32 reg)
 	uintptr_t start_offset = ((reg >> 16) & 0xff) << 23;
 
 	if (start_offset == 0)
-		return (uintptr_t)plat->ahb_base;
+		return plat->ahb_base;
 
-	return (uintptr_t)plat->ahb_base + start_offset;
+	return plat->ahb_base + start_offset;
 }
 
 static uintptr_t ast2400_spi_segment_end(struct udevice *bus, u32 reg)
@@ -138,9 +160,9 @@ static uintptr_t ast2400_spi_segment_end(struct udevice *bus, u32 reg)
 
 	/* Meaningless end_offset, set to physical ahb base. */
 	if (end_offset == 0)
-		return (uintptr_t)plat->ahb_base;
+		return plat->ahb_base;
 
-	return (uintptr_t)plat->ahb_base + end_offset;
+	return plat->ahb_base + end_offset;
 }
 
 static u32 ast2400_spi_segment_reg(uintptr_t start, uintptr_t end)
@@ -166,8 +188,8 @@ static void ast2400_spi_chip_set_4byte(struct udevice *bus, u32 cs)
 	struct aspeed_spi_priv *priv = dev_get_priv(bus);
 	struct aspeed_spi_flash *flash = &priv->flashes[cs];
 
-	flash->ce_ctrl_read |= BIT(13);
-	writel(flash->ce_ctrl_read, &priv->regs->ctrl);
+	flash->cmd_mode[CMD_READ_MODE] |= BIT(13);
+	writel(flash->cmd_mode[CMD_READ_MODE], &priv->regs->ctrl);
 }
 
 /* Transfer maximum clock frequency to register setting */
@@ -214,9 +236,9 @@ static uintptr_t ast2500_spi_segment_start(struct udevice *bus, u32 reg)
 	uintptr_t start_offset = ((reg >> 16) & 0xff) << 23;
 
 	if (start_offset == 0)
-		return (uintptr_t)plat->ahb_base;
+		return plat->ahb_base;
 
-	return (uintptr_t)plat->ahb_base + start_offset;
+	return plat->ahb_base + start_offset;
 }
 
 static uintptr_t ast2500_spi_segment_end(struct udevice *bus, u32 reg)
@@ -226,9 +248,9 @@ static uintptr_t ast2500_spi_segment_end(struct udevice *bus, u32 reg)
 
 	/* Meaningless end_offset, set to physical ahb base. */
 	if (end_offset == 0)
-		return (uintptr_t)plat->ahb_base;
+		return plat->ahb_base;
 
-	return (uintptr_t)plat->ahb_base + end_offset;
+	return plat->ahb_base + end_offset;
 }
 
 static u32 ast2500_spi_segment_reg(uintptr_t start, uintptr_t end)
@@ -354,9 +376,9 @@ static uintptr_t ast2600_spi_segment_start(struct udevice *bus, u32 reg)
 	uintptr_t start_offset = (reg << 16) & 0x0ff00000;
 
 	if (start_offset == 0)
-		return (uintptr_t)plat->ahb_base;
+		return plat->ahb_base;
 
-	return (uintptr_t)plat->ahb_base + start_offset;
+	return plat->ahb_base + start_offset;
 }
 
 static uintptr_t ast2600_spi_segment_end(struct udevice *bus, u32 reg)
@@ -366,9 +388,9 @@ static uintptr_t ast2600_spi_segment_end(struct udevice *bus, u32 reg)
 
 	/* Meaningless end_offset, set to physical ahb base. */
 	if (end_offset == 0)
-		return (uintptr_t)plat->ahb_base;
+		return plat->ahb_base;
 
-	return (uintptr_t)plat->ahb_base + end_offset + 0x100000;
+	return plat->ahb_base + end_offset + 0x100000;
 }
 
 static u32 ast2600_spi_segment_reg(uintptr_t start, uintptr_t end)
@@ -385,9 +407,9 @@ static uintptr_t ast2700_spi_segment_start(struct udevice *bus, u32 reg)
 	uintptr_t start_offset = (((reg) & 0x0000ffff) << 16);
 
 	if (start_offset == 0)
-		return (uintptr_t)plat->ahb_base;
+		return plat->ahb_base;
 
-	return (uintptr_t)plat->ahb_base + start_offset;
+	return plat->ahb_base + start_offset;
 }
 
 static uintptr_t ast2700_spi_segment_end(struct udevice *bus, u32 reg)
@@ -397,9 +419,9 @@ static uintptr_t ast2700_spi_segment_end(struct udevice *bus, u32 reg)
 
 	/* Meaningless end_offset, set to physical ahb base. */
 	if (end_offset == 0)
-		return (uintptr_t)plat->ahb_base;
+		return plat->ahb_base;
 
-	return (uintptr_t)plat->ahb_base + end_offset;
+	return plat->ahb_base + end_offset;
 }
 
 static u32 ast2700_spi_segment_reg(uintptr_t start, uintptr_t end)
@@ -575,7 +597,7 @@ static int aspeed_spi_trim_decoded_size(struct udevice *bus)
 	return 0;
 }
 
-static int aspeed_spi_read_from_ahb(void __iomem *ahb_base, void *buf,
+static int aspeed_spi_read_from_ahb(uintptr_t ahb_base, void *buf,
 				    size_t len)
 {
 	size_t offset = 0;
@@ -592,7 +614,7 @@ static int aspeed_spi_read_from_ahb(void __iomem *ahb_base, void *buf,
 	return 0;
 }
 
-static int aspeed_spi_write_to_ahb(void __iomem *ahb_base, const void *buf,
+static int aspeed_spi_write_to_ahb(uintptr_t ahb_base, const void *buf,
 				   size_t len)
 {
 	size_t offset = 0;
@@ -644,6 +666,255 @@ static bool aspeed_spi_supports_op(struct spi_slave *slave,
 	return true;
 }
 
+/*
+ * Check whether the data is not all 0 or 1 in order to
+ * avoid calibriate umount spi-flash.
+ */
+static bool aspeed_spi_calibriation_enable(const u8 *buf, u32 sz)
+{
+	const u32 *buf_32 = (const u32 *)buf;
+	u32 i;
+	u32 valid_count = 0;
+
+	for (i = 0; i < (sz / 4); i++) {
+		if (buf_32[i] != 0 && buf_32[i] != 0xffffffff)
+			valid_count++;
+		if (valid_count > 100)
+			return true;
+	}
+
+	return false;
+}
+
+static int get_best_timing_point(u8 *buf, u32 len)
+{
+	int i;
+	int start = 0;
+	int mid_point = 0;
+	int max_cnt = 0;
+	int cnt = 0;
+
+	for (i = 0; i < len; i++) {
+		if (buf[i] == 1) {
+			cnt++;
+		} else {
+			cnt = 0;
+			start = i;
+		}
+
+		if (max_cnt < cnt) {
+			max_cnt = cnt;
+			mid_point = start + (cnt / 2);
+		}
+	}
+
+	/*
+	 * In order to get a stable SPI read timing,
+	 * abandon the result if the length of longest
+	 * consecutive good points is too short.
+	 */
+	if (max_cnt < 4)
+		return -1;
+
+	return mid_point;
+}
+
+static u32 ast2600_spi_dma_checksum(struct aspeed_spi_priv *priv,
+				    u32 cs, u32 div, u32 delay)
+{
+	struct aspeed_spi_regs *regs = priv->regs;
+	u32 ctrl_val;
+	u32 checksum;
+
+	writel(DMA_GET_REQ_MAGIC, &regs->dma_ctrl);
+	if (readl(&regs->dma_ctrl) & DAM_CTRL_REQUEST) {
+		while (!(readl(&regs->dma_ctrl) & DAM_CTRL_GRANT))
+			;
+	}
+
+	writel((u32)priv->flashes[cs].ahb_base,
+	       &regs->dma_flash_addr);
+	writel(TIMING_CAL_LEN, &regs->dma_dram_addr);
+
+	/*
+	 * When doing calibration, the SPI clock rate in the control
+	 * register and the data input delay cycles in the
+	 * read timing compensation register are replaced by
+	 * DMA_CTRL bit[11:4].
+	 */
+	ctrl_val = DMA_CTRL_ENABLE | DMA_CTRL_CKSUM | DMA_CTRL_CALIB |
+		   (delay << 8) | ((div & 0xf) << 16);
+	writel(ctrl_val, &regs->dma_ctrl);
+
+	while (!(readl(&regs->intr_ctrl) & INTR_CTRL_DMA_STATUS))
+		;
+
+	checksum = readl(&regs->dma_checksum);
+	writel(0x0, &regs->dma_ctrl);
+	writel(DMA_DISCARD_REQ_MAGIC, &regs->dma_ctrl);
+
+	return checksum;
+}
+
+/*
+ * If SPI frequency is too high, timing compensation is needed,
+ * otherwise, SPI controller will sample unready data. For AST2600
+ * SPI memory controller, only the first four frequency levels
+ * (HCLK/2, HCLK/3,..., HCKL/5) may need timing compensation.
+ * Here, for each frequency, we will get a sequence of reading
+ * result (pass or fail) compared to golden data. Then, getting the
+ * middle point of the maximum pass widow. Besides, if the flash's
+ * content is too monotonous, the frequency recorded in the device
+ * tree will be adopted.
+ */
+#define INPUT_DELAY_RES_ARR_LEN		(6 * 17)
+
+int ast2600_spi_timing_calibration(struct udevice *dev)
+{
+	int ret = 0;
+	struct udevice *bus = dev->parent;
+	struct dm_spi_slave_plat *slave_plat = dev_get_parent_plat(dev);
+	u32 cs = slave_plat->cs;
+	struct aspeed_spi_priv *priv = dev_get_priv(bus);
+	struct aspeed_spi_plat *plat = dev_get_plat(bus);
+	struct aspeed_spi_regs *regs = priv->regs;
+	struct aspeed_spi_flash *flash = &priv->flashes[cs];
+	const struct aspeed_spi_info *info = priv->info;
+	u32 max_freq = slave_plat->max_hz;
+	/* HCLK/2, ..., HCKL/5 */
+	u32 hclk_masks[] = {7, 14, 6, 13};
+	u8 *calib_res = NULL;
+	u8 *check_buf = NULL;
+	u32 reg_val;
+	u32 checksum, gold_checksum;
+	u32 i, hcycle, delay_ns, final_delay = 0;
+	u32 input_delay;
+	u32 hclk_div;
+	bool pass;
+	int best_point;
+
+	reg_val = readl(&regs->timings[cs]);
+	if (reg_val != 0) {
+		dev_dbg(bus, "has executed calibration.\n");
+		goto no_calib;
+	}
+
+	dev_dbg(bus, "calculate timing compensation.\n");
+
+	/*
+	 * use the related low frequency to get check calibration data
+	 * and get golden data.
+	 */
+	reg_val = flash->cmd_mode[CMD_READ_MODE] & (~info->clk_ctrl_mask);
+	writel(reg_val, &regs->ce_ctrl[cs]);
+
+	/*
+	 * timing calibration should be skipped when
+	 * "timing-calibration-disabled" property is configured
+	 * in the device tree.
+	 */
+	if (priv->disable_calib)
+		goto no_calib;
+
+	check_buf = memalign(4, TIMING_CAL_LEN);
+	if (!check_buf)
+		return -ENOMEM;
+
+	memcpy_fromio(check_buf, (void __iomem *)flash->ahb_base, TIMING_CAL_LEN);
+	if (!aspeed_spi_calibriation_enable(check_buf, TIMING_CAL_LEN)) {
+		dev_info(bus, "flash data is monotonous, skip calibration.");
+		goto no_calib;
+	}
+
+	gold_checksum = ast2600_spi_dma_checksum(priv, cs, 0, 0);
+
+	/*
+	 * allocate a space to record calibration result for
+	 * different timing compensation with fixed HCLK division.
+	 */
+	calib_res = malloc(INPUT_DELAY_RES_ARR_LEN);
+	if (!calib_res) {
+		ret = -ENOMEM;
+		goto no_calib;
+	}
+
+	/* From HCLK/2 to HCLK/5 */
+	for (i = 0; i < ARRAY_SIZE(hclk_masks); i++) {
+		if (max_freq < (u32)plat->hclk_rate / (i + 2)) {
+			dev_dbg(bus, "skipping freq %d\n",
+				(u32)plat->hclk_rate / (i + 2));
+			continue;
+		}
+
+		max_freq = (u32)plat->hclk_rate / (i + 2);
+
+		memset(calib_res, 0x0, INPUT_DELAY_RES_ARR_LEN);
+
+		for (hcycle = 0; hcycle <= 5; hcycle++) {
+			/* increase DI delay by the step of 0.5ns */
+			dev_dbg(bus, "Delay Enable : hcycle %x\n", hcycle);
+			for (delay_ns = 0; delay_ns <= 0xf; delay_ns++) {
+				input_delay = BIT(3) | hcycle | (delay_ns << 4);
+				checksum = ast2600_spi_dma_checksum(priv,
+								    cs,
+								    hclk_masks[i],
+								    input_delay);
+				pass = (checksum == gold_checksum);
+				calib_res[hcycle * 17 + delay_ns] = pass;
+				dev_dbg(bus,
+					"HCLK/%d, %d HCLK cycle, %d delay_ns : %s\n",
+					i + 2, hcycle, delay_ns,
+					pass ? "PASS" : "FAIL");
+			}
+		}
+
+		best_point = get_best_timing_point(calib_res,
+						   INPUT_DELAY_RES_ARR_LEN);
+		if (best_point < 0) {
+			dev_info(bus, "cannot get good timing point.\n");
+			continue;
+		}
+
+		hcycle = best_point / 17;
+		delay_ns = best_point % 17;
+
+		dev_dbg(bus, "final hcycle: %d, delay_ns: %d\n", hcycle,
+			delay_ns);
+
+		final_delay = (BIT(3) | hcycle | (delay_ns << 4)) << (i * 8);
+		writel(final_delay, &regs->timings[cs]);
+		break;
+	}
+
+no_calib:
+
+	if (best_point <= 0)
+		max_freq = slave_plat->max_hz;
+
+	hclk_div = info->get_clk_setting(dev, max_freq);
+	/* configure SPI clock frequency */
+	reg_val = readl(&regs->ce_ctrl[cs]);
+	reg_val = (reg_val & (~info->clk_ctrl_mask)) | hclk_div;
+	writel(reg_val, &regs->ce_ctrl[cs]);
+
+	/* add clock setting info for CE ctrl setting */
+	for (i = 0; i < CMD_MODE_MAX; i++) {
+		flash->cmd_mode[i] = (flash->cmd_mode[i] &
+				      (~info->clk_ctrl_mask)) |
+				     hclk_div;
+	}
+
+	dev_dbg(bus, "freq: %dMHz\n", max_freq / 1000000);
+
+	if (check_buf)
+		free(check_buf);
+
+	if (calib_res)
+		free(calib_res);
+
+	return ret;
+}
+
 static int aspeed_spi_exec_op_user_mode(struct spi_slave *slave,
 					const struct spi_mem_op *op)
 {
@@ -675,7 +946,7 @@ static int aspeed_spi_exec_op_user_mode(struct spi_slave *slave,
 		priv->info->set_4byte(bus, cs);
 
 	/* Start user mode */
-	ce_ctrl_val = flash->ce_ctrl_user;
+	ce_ctrl_val = flash->cmd_mode[CMD_USER_MODE];
 	writel(ce_ctrl_val, ce_ctrl_reg);
 	ce_ctrl_val &= (~CTRL_STOP_ACTIVE);
 	writel(ce_ctrl_val, ce_ctrl_reg);
@@ -716,7 +987,7 @@ static int aspeed_spi_exec_op_user_mode(struct spi_slave *slave,
 	writel(ce_ctrl_val, ce_ctrl_reg);
 
 	/* Restore controller setting. */
-	writel(flash->ce_ctrl_read, ce_ctrl_reg);
+	writel(flash->cmd_mode[CMD_READ_MODE], ce_ctrl_reg);
 
 	return 0;
 }
@@ -771,13 +1042,19 @@ static int aspeed_spi_dirmap_create(struct spi_mem_dirmap_desc *desc)
 		      ((op_tmpl.dummy.nbytes) & 0x4) << 14 |
 		      CTRL_IO_MODE_CMD_READ;
 
-	priv->flashes[cs].ce_ctrl_read &= priv->info->clk_ctrl_mask;
-	priv->flashes[cs].ce_ctrl_read |= cmd_io_conf;
+	priv->flashes[cs].cmd_mode[CMD_READ_MODE] &= priv->info->clk_ctrl_mask;
+	priv->flashes[cs].cmd_mode[CMD_READ_MODE] |= cmd_io_conf;
 
-	writel(priv->flashes[cs].ce_ctrl_read, ce_ctrl_reg);
+	writel(priv->flashes[cs].cmd_mode[CMD_READ_MODE], ce_ctrl_reg);
+
+	if (info->timing_calibration) {
+		ret = info->timing_calibration(dev);
+		if (ret != 0)
+			dev_err(dev, "fail to implement timing calibration.\n");
+	}
 
 	dev_dbg(dev, "read bus width: %d ce_ctrl_val: 0x%08x\n",
-		op_tmpl.data.buswidth, priv->flashes[cs].ce_ctrl_read);
+		op_tmpl.data.buswidth, priv->flashes[cs].cmd_mode[CMD_READ_MODE]);
 
 	return ret;
 }
@@ -801,7 +1078,9 @@ static ssize_t aspeed_spi_dirmap_read(struct spi_mem_dirmap_desc *desc,
 		if (ret != 0)
 			return 0;
 	} else {
-		memcpy_fromio(buf, priv->flashes[cs].ahb_base + offs, len);
+		memcpy_fromio(buf,
+			      (void __iomem *)priv->flashes[cs].ahb_base + offs,
+			      len);
 	}
 
 	return len;
@@ -850,8 +1129,8 @@ static void aspeed_spi_decoded_range_set(struct udevice *bus)
 	u32 cs;
 
 	for (cs = 0; cs < plat->max_cs; cs++) {
-		start_addr = (uintptr_t)priv->flashes[cs].ahb_base;
-		end_addr = (uintptr_t)priv->flashes[cs].ahb_base +
+		start_addr = priv->flashes[cs].ahb_base;
+		end_addr = priv->flashes[cs].ahb_base +
 			   priv->flashes[cs].ahb_decoded_sz;
 
 		decoded_reg_val = priv->info->segment_reg(start_addr, end_addr);
@@ -915,13 +1194,13 @@ static int aspeed_spi_decoded_ranges_sanity(struct udevice *bus)
 	 * address base	are monotonic increasing with CE#.
 	 */
 	for (cs = plat->max_cs - 1; cs > 0; cs--) {
-		if ((uintptr_t)priv->flashes[cs].ahb_base != 0 &&
-		    (uintptr_t)priv->flashes[cs].ahb_base <
-		    (uintptr_t)priv->flashes[cs - 1].ahb_base +
+		if (priv->flashes[cs].ahb_base != 0 &&
+		    priv->flashes[cs].ahb_base <
+		    priv->flashes[cs - 1].ahb_base +
 		    priv->flashes[cs - 1].ahb_decoded_sz) {
 			dev_err(bus, "decoded range overlay 0x%" PRIxPTR " 0x%" PRIxPTR "\n",
-				(uintptr_t)priv->flashes[cs].ahb_base,
-				(uintptr_t)priv->flashes[cs - 1].ahb_base);
+				priv->flashes[cs].ahb_base,
+				priv->flashes[cs - 1].ahb_base);
 
 			return -EINVAL;
 		}
@@ -960,14 +1239,12 @@ static int aspeed_spi_read_fixed_decoded_ranges(struct udevice *bus)
 		return ret;
 
 	for (i = 0; i < count; i++) {
-		priv->flashes[ranges[i].cs].ahb_base =
-				(void __iomem *)ranges[i].ahb_base;
-		priv->flashes[ranges[i].cs].ahb_decoded_sz =
-				ranges[i].sz;
+		priv->flashes[ranges[i].cs].ahb_base = ranges[i].ahb_base;
+		priv->flashes[ranges[i].cs].ahb_decoded_sz = ranges[i].sz;
 	}
 
 	for (i = 0; i < plat->max_cs; i++) {
-		dev_dbg(bus, "ahb_base: 0x%p, size: 0x%08x\n",
+		dev_dbg(bus, "ahb_base: 0x%" PRIxPTR ", size: 0x%08x\n",
 			priv->flashes[i].ahb_base,
 			(u32)priv->flashes[i].ahb_decoded_sz);
 	}
@@ -1010,8 +1287,8 @@ static int aspeed_spi_ctrl_init(struct udevice *bus)
 
 	/* Initial user mode. */
 	for (cs = 0; cs < priv->num_cs; cs++) {
-		priv->flashes[cs].ce_ctrl_user &= priv->info->clk_ctrl_mask;
-		priv->flashes[cs].ce_ctrl_user |=
+		priv->flashes[cs].cmd_mode[CMD_USER_MODE] &= priv->info->clk_ctrl_mask;
+		priv->flashes[cs].cmd_mode[CMD_USER_MODE] |=
 				(CTRL_STOP_ACTIVE | CTRL_IO_MODE_USER);
 	}
 
@@ -1113,6 +1390,7 @@ static const struct aspeed_spi_info ast2600_fmc_info = {
 	.segment_reg = ast2600_spi_segment_reg,
 	.adjust_decoded_sz = ast2600_adjust_decoded_size,
 	.get_clk_setting = ast2600_get_clk_setting,
+	.timing_calibration = ast2600_spi_timing_calibration,
 };
 
 static const struct aspeed_spi_info ast2600_spi_info = {
@@ -1160,16 +1438,17 @@ static int aspeed_spi_claim_bus(struct udevice *dev)
 	struct dm_spi_slave_plat *slave_plat = dev_get_parent_plat(dev);
 	struct aspeed_spi_priv *priv = dev_get_priv(dev->parent);
 	struct aspeed_spi_flash *flash = &priv->flashes[slave_plat->cs];
+	struct aspeed_spi_plat *plat = dev_get_plat(dev->parent);
 	u32 clk_setting;
 
 	dev_dbg(bus, "%s: claim bus CS%u\n", bus->name, slave_plat->cs);
 
-	if (flash->max_freq == 0) {
+	if (slave_plat->max_hz < plat->hclk_rate / 5) {
 		clk_setting = priv->info->get_clk_setting(dev, slave_plat->max_hz);
-		flash->ce_ctrl_user &= ~(priv->info->clk_ctrl_mask);
-		flash->ce_ctrl_user |= clk_setting;
-		flash->ce_ctrl_read &= ~(priv->info->clk_ctrl_mask);
-		flash->ce_ctrl_read |= clk_setting;
+		flash->cmd_mode[CMD_USER_MODE] &= ~(priv->info->clk_ctrl_mask);
+		flash->cmd_mode[CMD_USER_MODE] |= clk_setting;
+		flash->cmd_mode[CMD_READ_MODE] &= ~(priv->info->clk_ctrl_mask);
+		flash->cmd_mode[CMD_READ_MODE] |= clk_setting;
 	}
 
 	return 0;
@@ -1220,9 +1499,8 @@ static int apseed_spi_of_to_plat(struct udevice *bus)
 		return -ENODEV;
 	}
 
-	plat->ahb_base =
-		(void __iomem *)devfdt_get_addr_size_index(bus, 1, &plat->ahb_sz);
-	if ((uintptr_t)plat->ahb_base == FDT_ADDR_T_NONE) {
+	plat->ahb_base = devfdt_get_addr_size_index(bus, 1, &plat->ahb_sz);
+	if (plat->ahb_base == FDT_ADDR_T_NONE) {
 		dev_err(bus, "wrong AHB base\n");
 		return -ENODEV;
 	}
@@ -1241,7 +1519,7 @@ static int apseed_spi_of_to_plat(struct udevice *bus)
 	clk_free(&hclk);
 
 	dev_dbg(bus, "ctrl_base = 0x%" PRIxPTR ", ahb_base = 0x%" PRIxPTR "\n",
-		(uintptr_t)priv->regs, (uintptr_t)plat->ahb_base);
+		(uintptr_t)priv->regs, plat->ahb_base);
 	dev_dbg(bus, "ahb_size = 0x%llx\n", (u64)plat->ahb_sz);
 	dev_dbg(bus, "hclk = %dMHz, max_cs = %d\n",
 		plat->hclk_rate / 1000000, plat->max_cs);
