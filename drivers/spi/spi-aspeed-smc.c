@@ -1451,7 +1451,7 @@ static int aspeed_spi_claim_bus(struct udevice *dev)
 
 	dev_dbg(bus, "%s: claim bus CS%u\n", bus->name, slave_plat->cs);
 
-	if (slave_plat->max_hz < plat->hclk_rate / 5) {
+	if (slave_plat->max_hz < (plat->hclk_rate / 5) || priv->disable_calib) {
 		clk_setting = priv->info->get_clk_setting(dev, slave_plat->max_hz);
 		flash->cmd_mode[CMD_USER_MODE] &= ~(priv->info->clk_ctrl_mask);
 		flash->cmd_mode[CMD_USER_MODE] |= clk_setting;
@@ -1506,6 +1506,8 @@ static int apseed_spi_of_to_plat(struct udevice *bus)
 		dev_err(bus, "wrong ctrl base\n");
 		return -ENODEV;
 	}
+
+	priv->disable_calib = dev_read_bool(bus, "timing-calibration-disabled");
 
 	plat->ahb_base = devfdt_get_addr_size_index(bus, 1, &plat->ahb_sz);
 	if (plat->ahb_base == FDT_ADDR_T_NONE) {
