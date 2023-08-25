@@ -915,6 +915,11 @@ no_calib:
 	return ret;
 }
 
+int ast2700_spi_timing_calibration(struct udevice *dev)
+{
+	return ast2600_spi_timing_calibration(dev);
+}
+
 static int aspeed_spi_exec_op_user_mode(struct spi_slave *slave,
 					const struct spi_mem_op *op)
 {
@@ -1418,6 +1423,7 @@ static const struct aspeed_spi_info ast2700_fmc_info = {
 	.segment_reg = ast2700_spi_segment_reg,
 	.adjust_decoded_sz = ast2700_adjust_decoded_size,
 	.get_clk_setting = ast2700_get_clk_setting,
+	.timing_calibration = ast2700_spi_timing_calibration,
 };
 
 static const struct aspeed_spi_info ast2700_spi_info = {
@@ -1431,6 +1437,7 @@ static const struct aspeed_spi_info ast2700_spi_info = {
 	.segment_reg = ast2700_spi_segment_reg,
 	.adjust_decoded_sz = ast2700_adjust_decoded_size,
 	.get_clk_setting = ast2700_get_clk_setting,
+	.timing_calibration = ast2700_spi_timing_calibration,
 };
 
 static int aspeed_spi_claim_bus(struct udevice *dev)
