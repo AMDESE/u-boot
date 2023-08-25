@@ -1404,6 +1404,7 @@ static const struct aspeed_spi_info ast2600_spi_info = {
 	.segment_reg = ast2600_spi_segment_reg,
 	.adjust_decoded_sz = ast2600_adjust_decoded_size,
 	.get_clk_setting = ast2600_get_clk_setting,
+	.timing_calibration = ast2600_spi_timing_calibration,
 };
 
 static const struct aspeed_spi_info ast2700_fmc_info = {
