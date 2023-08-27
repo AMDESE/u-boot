@@ -447,6 +447,14 @@ config SPI_ASPEED_SMC
 	  Enable ASPEED SPI flash controller driver for AST2500
 	  and AST2600 SoCs.
 
+config SPI_ASPEED_DIRMAP_WRITE
+	bool "ASPEED_SPI_DIRMAP_WRITE"
+	depends on SPI_ASPEED_SMC
+	default n
+	help
+	  Enable spi-mem write operation for ASPEED SPI flash controller
+	  driver. Usually, this configuration can be disabled.
+
 config SPI_SIFIVE
 	bool "SiFive SPI driver"
 	help

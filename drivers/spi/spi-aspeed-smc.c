@@ -97,6 +97,7 @@ struct aspeed_spi_priv {
 	struct aspeed_spi_regs *regs;
 	struct aspeed_spi_info *info;
 	struct aspeed_spi_flash flashes[ASPEED_SPI_MAX_CS];
+	u8 *tmp_buf;
 	bool fixed_decoded_range;
 	bool disable_calib;
 };
@@ -899,9 +900,8 @@ no_calib:
 
 	/* add clock setting info for CE ctrl setting */
 	for (i = 0; i < CMD_MODE_MAX; i++) {
-		flash->cmd_mode[i] = (flash->cmd_mode[i] &
-				      (~info->clk_ctrl_mask)) |
-				     hclk_div;
+		flash->cmd_mode[i] &= ~(info->clk_ctrl_mask);
+		flash->cmd_mode[i] |= hclk_div;
 	}
 
 	dev_dbg(bus, "freq: %dMHz\n", max_freq / 1000000);
@@ -1011,55 +1011,64 @@ static int aspeed_spi_dirmap_create(struct spi_mem_dirmap_desc *desc)
 	u32 cmd_io_conf;
 	uintptr_t ce_ctrl_reg;
 
-	if (desc->info.op_tmpl.data.dir == SPI_MEM_DATA_OUT) {
-		/*
-		 * dirmap_write is not supported currently due to a HW
-		 * limitation for command write mode: The written data
-		 * length should be multiple of 4-byte.
-		 */
-		return -EOPNOTSUPP;
-	}
-
 	ce_ctrl_reg = (uintptr_t)&priv->regs->ce_ctrl[cs];
 	if (info == &ast2400_spi_info)
 		ce_ctrl_reg = (uintptr_t)&priv->regs->ctrl;
 
-	if (desc->info.length > 0x1000000)
-		priv->info->set_4byte(bus, cs);
+	if (desc->info.op_tmpl.data.dir == SPI_MEM_DATA_IN) {
+		if (desc->info.length > 0x1000000)
+			priv->info->set_4byte(bus, cs);
 
-	/* AST2400 SPI1 doesn't have decoded address segment register. */
-	if (info != &ast2400_spi_info) {
-		priv->flashes[cs].ahb_decoded_sz = desc->info.length;
+		/*
+		 * AST2400 SPI1 doesn't have decoded address
+		 * ent register.
+		 */
+		if (info != &ast2400_spi_info) {
+			priv->flashes[cs].ahb_decoded_sz = desc->info.length;
 
-		for (i = 0; i < priv->num_cs; i++) {
-			dev_dbg(dev, "cs: %d, sz: 0x%x\n", i,
-				(u32)priv->flashes[cs].ahb_decoded_sz);
+			for (i = 0; i < priv->num_cs; i++) {
+				dev_dbg(dev, "cs: %d, sz: 0x%x\n", i,
+					(u32)priv->flashes[cs].ahb_decoded_sz);
+			}
+
+			ret = aspeed_spi_decoded_range_config(bus);
+			if (ret)
+				return ret;
 		}
 
-		ret = aspeed_spi_decoded_range_config(bus);
-		if (ret)
-			return ret;
+		cmd_io_conf = aspeed_spi_get_io_mode(op_tmpl.data.buswidth) |
+			      op_tmpl.cmd.opcode << 16 |
+			      ((op_tmpl.dummy.nbytes) & 0x3) << 6 |
+			      ((op_tmpl.dummy.nbytes) & 0x4) << 14 |
+			      CTRL_IO_MODE_CMD_READ;
+
+		priv->flashes[cs].cmd_mode[CMD_READ_MODE] &=
+						priv->info->clk_ctrl_mask;
+		priv->flashes[cs].cmd_mode[CMD_READ_MODE] |= cmd_io_conf;
+
+		writel(priv->flashes[cs].cmd_mode[CMD_READ_MODE], ce_ctrl_reg);
+
+		if (info->timing_calibration) {
+			ret = info->timing_calibration(dev);
+			if (ret != 0)
+				dev_err(dev, "timing calibration failed.\n");
+		}
+
+		dev_dbg(dev, "read bus width: %d ce_ctrl_val: 0x%08x\n",
+			op_tmpl.data.buswidth, priv->flashes[cs].cmd_mode[CMD_READ_MODE]);
+
+	} else if (desc->info.op_tmpl.data.dir == SPI_MEM_DATA_OUT) {
+		cmd_io_conf = aspeed_spi_get_io_mode(op_tmpl.data.buswidth) |
+			      op_tmpl.cmd.opcode << 16 | CTRL_IO_MODE_CMD_WRITE;
+		priv->flashes[cs].cmd_mode[CMD_WRITE_MODE] &=
+						priv->info->clk_ctrl_mask;
+		priv->flashes[cs].cmd_mode[CMD_WRITE_MODE] |= cmd_io_conf;
+		dev_dbg(dev, "write bus width: %d [0x%08x]\n",
+			op_tmpl.data.buswidth,
+			priv->flashes[cs].cmd_mode[CMD_WRITE_MODE]);
+	} else {
+		return -EOPNOTSUPP;
 	}
-
-	cmd_io_conf = aspeed_spi_get_io_mode(op_tmpl.data.buswidth) |
-		      op_tmpl.cmd.opcode << 16 |
-		      ((op_tmpl.dummy.nbytes) & 0x3) << 6 |
-		      ((op_tmpl.dummy.nbytes) & 0x4) << 14 |
-		      CTRL_IO_MODE_CMD_READ;
-
-	priv->flashes[cs].cmd_mode[CMD_READ_MODE] &= priv->info->clk_ctrl_mask;
-	priv->flashes[cs].cmd_mode[CMD_READ_MODE] |= cmd_io_conf;
-
-	writel(priv->flashes[cs].cmd_mode[CMD_READ_MODE], ce_ctrl_reg);
-
-	if (info->timing_calibration) {
-		ret = info->timing_calibration(dev);
-		if (ret != 0)
-			dev_err(dev, "fail to implement timing calibration.\n");
-	}
-
-	dev_dbg(dev, "read bus width: %d ce_ctrl_val: 0x%08x\n",
-		op_tmpl.data.buswidth, priv->flashes[cs].cmd_mode[CMD_READ_MODE]);
 
 	return ret;
 }
@@ -1090,6 +1099,58 @@ static ssize_t aspeed_spi_dirmap_read(struct spi_mem_dirmap_desc *desc,
 
 	return len;
 }
+
+#ifdef CONFIG_SPI_ASPEED_DIRMAP_WRITE
+static ssize_t aspeed_spi_dirmap_write(struct spi_mem_dirmap_desc *desc,
+				       u64 offs, size_t len, const void *buf)
+{
+	struct udevice *dev = desc->slave->dev;
+	struct aspeed_spi_priv *priv = dev_get_priv(dev->parent);
+	const struct aspeed_spi_info *info = priv->info;
+	struct dm_spi_slave_plat *slave_plat = dev_get_parent_plat(dev);
+	struct spi_mem_op op_tmpl = desc->info.op_tmpl;
+	uint32_t reg_val;
+	u32 cs = slave_plat->cs;
+	uintptr_t ce_ctrl_reg;
+	u32 data_bytes;
+	const void *data_buf;
+	int ret;
+
+	dev_dbg(dev, "read op:0x%x, addr:0x%llx, len:0x%zx\n",
+		desc->info.op_tmpl.cmd.opcode, offs, len);
+
+	ce_ctrl_reg = (uintptr_t)&priv->regs->ce_ctrl[cs];
+	if (info == &ast2400_spi_info)
+		ce_ctrl_reg = (uintptr_t)&priv->regs->ctrl;
+
+	if (priv->flashes[cs].ahb_decoded_sz < offs + len ||
+	    (offs % 4) != 0) {
+		ret = aspeed_spi_exec_op_user_mode(desc->slave,
+						   &desc->info.op_tmpl);
+		if (ret != 0)
+			return 0;
+	} else {
+		reg_val = priv->flashes[cs].cmd_mode[CMD_WRITE_MODE];
+		writel(reg_val, ce_ctrl_reg);
+
+		data_bytes = op_tmpl.data.nbytes;
+		if (data_bytes % 4 != 0) {
+			memset(priv->tmp_buf, 0xff, ((data_bytes / 4) + 1) * 4);
+			memcpy(priv->tmp_buf, op_tmpl.data.buf.out, data_bytes);
+			data_bytes = ((data_bytes / 4) + 1) * 4;
+			data_buf = priv->tmp_buf;
+		} else {
+			data_buf = op_tmpl.data.buf.out;
+		}
+
+		memcpy_toio((void __iomem *)priv->flashes[cs].ahb_base + offs,
+			    data_buf, len);
+		writel(priv->flashes[cs].cmd_mode[CMD_READ_MODE], ce_ctrl_reg);
+	}
+
+	return len;
+}
+#endif
 
 static struct aspeed_spi_flash *aspeed_spi_get_flash(struct udevice *dev)
 {
@@ -1448,15 +1509,16 @@ static int aspeed_spi_claim_bus(struct udevice *dev)
 	struct aspeed_spi_flash *flash = &priv->flashes[slave_plat->cs];
 	struct aspeed_spi_plat *plat = dev_get_plat(dev->parent);
 	u32 clk_setting;
+	enum aspeed_spi_cmd_mode mode;
 
 	dev_dbg(bus, "%s: claim bus CS%u\n", bus->name, slave_plat->cs);
 
 	if (slave_plat->max_hz < (plat->hclk_rate / 5) || priv->disable_calib) {
 		clk_setting = priv->info->get_clk_setting(dev, slave_plat->max_hz);
-		flash->cmd_mode[CMD_USER_MODE] &= ~(priv->info->clk_ctrl_mask);
-		flash->cmd_mode[CMD_USER_MODE] |= clk_setting;
-		flash->cmd_mode[CMD_READ_MODE] &= ~(priv->info->clk_ctrl_mask);
-		flash->cmd_mode[CMD_READ_MODE] |= clk_setting;
+		for (mode = 0; mode < CMD_MODE_MAX; mode++) {
+			flash->cmd_mode[mode] &= ~(priv->info->clk_ctrl_mask);
+			flash->cmd_mode[mode] |= clk_setting;
+		}
 	}
 
 	return 0;
@@ -1504,25 +1566,40 @@ static int apseed_spi_of_to_plat(struct udevice *bus)
 	priv->regs = (void __iomem *)devfdt_get_addr_index(bus, 0);
 	if ((uintptr_t)priv->regs == FDT_ADDR_T_NONE) {
 		dev_err(bus, "wrong ctrl base\n");
-		return -ENODEV;
+		ret = -ENODEV;
+		goto end;
 	}
 
 	priv->disable_calib = dev_read_bool(bus, "timing-calibration-disabled");
 
+	if (dev_read_bool(bus, "aspeed-spi-normal-mode")) {
+		dev_dbg(bus, "adopt normal mode\n");
+		priv->tmp_buf = memalign(4, 512);
+		if (!priv->tmp_buf) {
+			ret = -ENOMEM;
+			goto end;
+		}
+	} else {
+		priv->tmp_buf = NULL;
+	}
+
 	plat->ahb_base = devfdt_get_addr_size_index(bus, 1, &plat->ahb_sz);
 	if (plat->ahb_base == FDT_ADDR_T_NONE) {
 		dev_err(bus, "wrong AHB base\n");
-		return -ENODEV;
+		ret = -ENODEV;
+		goto end;
 	}
 
 	plat->max_cs = dev_read_u32_default(bus, "num-cs", ASPEED_SPI_MAX_CS);
-	if (plat->max_cs > ASPEED_SPI_MAX_CS)
-		return -EINVAL;
+	if (plat->max_cs > ASPEED_SPI_MAX_CS) {
+		ret = -EINVAL;
+		goto end;
+	}
 
 	ret = clk_get_by_index(bus, 0, &hclk);
 	if (ret < 0) {
 		dev_err(bus, "%s could not get clock: %d\n", bus->name, ret);
-		return ret;
+		goto end;
 	}
 
 	plat->hclk_rate = 200 * 1000000; //clk_get_rate(&hclk);
@@ -1534,7 +1611,11 @@ static int apseed_spi_of_to_plat(struct udevice *bus)
 	dev_dbg(bus, "hclk = %dMHz, max_cs = %d\n",
 		plat->hclk_rate / 1000000, plat->max_cs);
 
-	return 0;
+end:
+	if (priv->tmp_buf)
+		free(priv->tmp_buf);
+
+	return ret;
 }
 
 static int aspeed_spi_probe(struct udevice *bus)
@@ -1564,6 +1645,9 @@ static const struct spi_controller_mem_ops aspeed_spi_mem_ops = {
 	.exec_op = aspeed_spi_exec_op_user_mode,
 	.dirmap_create = aspeed_spi_dirmap_create,
 	.dirmap_read = aspeed_spi_dirmap_read,
+#ifdef CONFIG_SPI_ASPEED_DIRMAP_WRITE
+	.dirmap_write = aspeed_spi_dirmap_write,
+#endif
 };
 
 static const struct dm_spi_ops aspeed_spi_ops = {
