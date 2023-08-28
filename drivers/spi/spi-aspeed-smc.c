@@ -920,6 +920,122 @@ int ast2700_spi_timing_calibration(struct udevice *dev)
 	return ast2600_spi_timing_calibration(dev);
 }
 
+static int aspeed_spi_exec_op_normal_mode(struct spi_slave *slave,
+					  const struct spi_mem_op *op)
+{
+	struct udevice *dev = slave->dev;
+	struct udevice *bus = dev->parent;
+	struct aspeed_spi_priv *priv = dev_get_priv(bus);
+	const struct aspeed_spi_info *info = priv->info;
+	struct dm_spi_slave_plat *slave_plat = dev_get_parent_plat(slave->dev);
+	u32 cs = slave_plat->cs;
+	struct aspeed_spi_regs *regs = priv->regs;
+	struct aspeed_spi_flash *flash = &priv->flashes[cs];
+	u32 ce_ctrl_val;
+	u32 dummy_data = 0;
+	u32 addr_mode_val;
+	u32 addr_mode_reg_backup;
+	u32 addr_data_mask = 0;
+	uintptr_t op_addr;
+	const void *data_buf;
+	u32 data_bytes = 0;
+
+	dev_dbg(dev, "cmd:%x(%d),addr:%llx(%d),dummy:%d(%d),data_len:0x%x(%d)\n",
+		op->cmd.opcode, op->cmd.buswidth, op->addr.val,
+		op->addr.buswidth, op->dummy.nbytes, op->dummy.buswidth,
+		op->data.nbytes, op->data.buswidth);
+
+	addr_mode_val = readl(&regs->ctrl);
+	addr_mode_reg_backup = addr_mode_val;
+	addr_data_mask = readl(&regs->cmd_ctrl);
+	ce_ctrl_val = flash->cmd_mode[CMD_USER_MODE];
+	ce_ctrl_val &= info->clk_ctrl_mask;
+
+	/* configure opcode */
+	ce_ctrl_val |= op->cmd.opcode << 16;
+
+	/* configure operation address, address length and address mask */
+	if (op->addr.nbytes != 0) {
+		if (op->addr.nbytes == 3)
+			addr_mode_val &= ~(0x11 << cs);
+		else
+			addr_mode_val |= (0x11 << cs);
+		addr_data_mask &= 0x0f;
+		op_addr = flash->ahb_base + op->addr.val;
+	} else {
+		addr_data_mask |= 0xf0;
+		op_addr = flash->ahb_base;
+	}
+
+	/* dummy data */
+	if (op->dummy.nbytes != 0) {
+		ce_ctrl_val |= ((op->dummy.nbytes & 0x3) << 6 |
+				((op->dummy.nbytes & 0x4) >> 2) << 14);
+	}
+
+	/* configure data io mode and data mask */
+	if (op->data.nbytes != 0) {
+		addr_data_mask &= 0xf0;
+		data_bytes = op->data.nbytes;
+
+		if (op->data.dir == SPI_MEM_DATA_OUT) {
+			if (op->addr.nbytes != 0 && op->addr.val % 4 != 0) {
+				dev_warn(dev, "normal write addr should\n");
+				dev_warn(dev, "be 4-byte aligned\n");
+			}
+
+			if (data_bytes % 4 != 0) {
+				memset(priv->tmp_buf, 0xff,
+				       ((data_bytes / 4) + 1) * 4);
+				memcpy(priv->tmp_buf, op->data.buf.out,
+				       data_bytes);
+				data_bytes = ((data_bytes / 4) + 1) * 4;
+				data_buf = priv->tmp_buf;
+			} else {
+				data_buf = op->data.buf.out;
+			}
+		} else {
+			data_buf = op->data.buf.in;
+		}
+
+		if (op->data.buswidth)
+			ce_ctrl_val |= aspeed_spi_get_io_mode(op->data.buswidth);
+	} else {
+		addr_data_mask |= 0x0f;
+		data_bytes = 1;
+		data_buf = &dummy_data;
+	}
+
+	/* configure command mode */
+	if (op->data.dir == SPI_MEM_DATA_OUT)
+		ce_ctrl_val |= CTRL_IO_MODE_CMD_WRITE;
+	else
+		ce_ctrl_val |= CTRL_IO_MODE_CMD_READ;
+
+	/* set controller registers */
+	writel(ce_ctrl_val, &regs->ce_ctrl[cs]);
+	writel(addr_mode_val, &regs->ctrl);
+	writel(addr_data_mask, &regs->cmd_ctrl);
+	dev_dbg(dev, "ctrl: 0x%08x, addr_mode: 0x%x, mask: 0x%x, addr:0x%08x\n",
+		ce_ctrl_val, addr_mode_val, addr_data_mask, (uint32_t)op_addr);
+
+	/* trigger spi transmission or reception sequence */
+	if (op->data.dir == SPI_MEM_DATA_OUT) {
+		memcpy_toio((void __iomem *)op_addr, data_buf,
+			    data_bytes);
+	} else {
+		memcpy_fromio((void *)data_buf, (void __iomem *)op_addr,
+			      data_bytes);
+	}
+
+	/* restore controller setting */
+	writel(flash->cmd_mode[CMD_READ_MODE], &regs->ce_ctrl[cs]);
+	writel(addr_mode_reg_backup, &regs->ctrl);
+	writel(0x0, &regs->cmd_ctrl);
+
+	return 0;
+}
+
 static int aspeed_spi_exec_op_user_mode(struct spi_slave *slave,
 					const struct spi_mem_op *op)
 {
@@ -934,6 +1050,9 @@ static int aspeed_spi_exec_op_user_mode(struct spi_slave *slave,
 	u8 dummy_data[16] = {0};
 	u8 addr[4] = {0};
 	int i;
+
+	if (IS_ENABLED(CONFIG_SPI_ASPEED_NORMAL_MODE))
+		return aspeed_spi_exec_op_normal_mode(slave, op);
 
 	dev_dbg(dev, "cmd:%x(%d),addr:%llx(%d),dummy:%d(%d),data_len:0x%x(%d)\n",
 		op->cmd.opcode, op->cmd.buswidth, op->addr.val,
@@ -1058,6 +1177,9 @@ static int aspeed_spi_dirmap_create(struct spi_mem_dirmap_desc *desc)
 			op_tmpl.data.buswidth, priv->flashes[cs].cmd_mode[CMD_READ_MODE]);
 
 	} else if (desc->info.op_tmpl.data.dir == SPI_MEM_DATA_OUT) {
+		if (!IS_ENABLED(CONFIG_SPI_ASPEED_DIRMAP_WRITE))
+			return -EOPNOTSUPP;
+
 		cmd_io_conf = aspeed_spi_get_io_mode(op_tmpl.data.buswidth) |
 			      op_tmpl.cmd.opcode << 16 | CTRL_IO_MODE_CMD_WRITE;
 		priv->flashes[cs].cmd_mode[CMD_WRITE_MODE] &=
@@ -1100,7 +1222,6 @@ static ssize_t aspeed_spi_dirmap_read(struct spi_mem_dirmap_desc *desc,
 	return len;
 }
 
-#ifdef CONFIG_SPI_ASPEED_DIRMAP_WRITE
 static ssize_t aspeed_spi_dirmap_write(struct spi_mem_dirmap_desc *desc,
 				       u64 offs, size_t len, const void *buf)
 {
@@ -1150,7 +1271,6 @@ static ssize_t aspeed_spi_dirmap_write(struct spi_mem_dirmap_desc *desc,
 
 	return len;
 }
-#endif
 
 static struct aspeed_spi_flash *aspeed_spi_get_flash(struct udevice *dev)
 {
@@ -1572,17 +1692,6 @@ static int apseed_spi_of_to_plat(struct udevice *bus)
 
 	priv->disable_calib = dev_read_bool(bus, "timing-calibration-disabled");
 
-	if (dev_read_bool(bus, "aspeed-spi-normal-mode")) {
-		dev_dbg(bus, "adopt normal mode\n");
-		priv->tmp_buf = memalign(4, 512);
-		if (!priv->tmp_buf) {
-			ret = -ENOMEM;
-			goto end;
-		}
-	} else {
-		priv->tmp_buf = NULL;
-	}
-
 	plat->ahb_base = devfdt_get_addr_size_index(bus, 1, &plat->ahb_sz);
 	if (plat->ahb_base == FDT_ADDR_T_NONE) {
 		dev_err(bus, "wrong AHB base\n");
@@ -1635,8 +1744,21 @@ static int aspeed_spi_probe(struct udevice *bus)
 	if (priv->num_cs > ASPEED_SPI_MAX_CS)
 		return -EINVAL;
 
+	if (IS_ENABLED(CONFIG_SPI_ASPEED_NORMAL_MODE) ||
+	    IS_ENABLED(CONFIG_SPI_ASPEED_DIRMAP_WRITE)) {
+		dev_info(bus, "adopt normal mode\n");
+		priv->tmp_buf = memalign(4, 512);
+		if (!priv->tmp_buf) {
+			ret = -ENOMEM;
+			goto end;
+		}
+	} else {
+		priv->tmp_buf = NULL;
+	}
+
 	ret = aspeed_spi_ctrl_init(bus);
 
+end:
 	return ret;
 }
 
@@ -1645,9 +1767,7 @@ static const struct spi_controller_mem_ops aspeed_spi_mem_ops = {
 	.exec_op = aspeed_spi_exec_op_user_mode,
 	.dirmap_create = aspeed_spi_dirmap_create,
 	.dirmap_read = aspeed_spi_dirmap_read,
-#ifdef CONFIG_SPI_ASPEED_DIRMAP_WRITE
 	.dirmap_write = aspeed_spi_dirmap_write,
-#endif
 };
 
 static const struct dm_spi_ops aspeed_spi_ops = {
