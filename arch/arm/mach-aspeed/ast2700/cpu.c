@@ -14,22 +14,14 @@ static struct mm_region aspeed2700_mem_map[] = {
 		{
 				.virt = 0x0UL,
 				.phys = 0x0UL,
-				.size = 0x40000000UL,
-				.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
-					 PTE_BLOCK_NON_SHARE |
-					 PTE_BLOCK_PXN | PTE_BLOCK_UXN
-		},
-		{
-				.virt = 0x100000000UL,
-				.phys = 0x100000000UL,
-				.size =  0x40000000UL,
+				.size = 0x300000000UL,
 				.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
 					 PTE_BLOCK_NON_SHARE
 		},
 		{
 				.virt = 0x400000000UL,
 				.phys = 0x400000000UL,
-				.size =  0x40000000UL,
+				.size = 0x200000000UL,
 				.attrs = PTE_BLOCK_MEMTYPE(MT_NORMAL) |
 					 PTE_BLOCK_INNER_SHARE
 		},
