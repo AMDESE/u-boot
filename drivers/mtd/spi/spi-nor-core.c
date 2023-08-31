@@ -1100,6 +1100,81 @@ static int spansion_erase_non_uniform(struct spi_nor *nor, u32 addr,
 #endif
 
 #if defined(CONFIG_SPI_FLASH_STMICRO) || defined(CONFIG_SPI_FLASH_SST)
+#if CONFIG_IS_ENABLED(SPI_FLASH_SFDP_SUPPORT)
+static int micron_read_nvcr(struct spi_nor *nor)
+{
+	int ret;
+	int val = 0;
+
+	ret = nor->read_reg(nor, SPINOR_OP_MT_RDNVCR, (u8 *)&val, 2);
+	if (ret < 0) {
+		dev_err(nor->dev, "SST error %d while reading CR\n", ret);
+		return ret;
+	}
+
+	return val;
+}
+
+static int micron_write_nvcr(struct spi_nor *nor, int val)
+{
+	int ret;
+
+	write_enable(nor);
+
+	nor->cmd_buf[0] = (u8)(val & 0xff);
+	nor->cmd_buf[1] = (u8)((val >> 8) & 0xff);
+
+	ret = nor->write_reg(nor, SPINOR_OP_MT_WRNVCR, nor->cmd_buf, 2);
+	if (ret < 0) {
+		dev_err(nor->dev,
+			"SST error while writing configuration register\n");
+		return -EINVAL;
+	}
+
+	ret = spi_nor_wait_till_ready(nor);
+	if (ret) {
+		dev_err(nor->dev,
+			"SST timeout while writing configuration register\n");
+		return ret;
+	}
+
+	return 0;
+}
+
+static int micron_cr_quad_enable(struct spi_nor *nor)
+{
+	int ret;
+
+	/* Check current Quad Enable bit value. */
+	ret = micron_read_nvcr(nor);
+	if (ret < 0) {
+		dev_dbg(nor->dev, "SST error while reading nonvolatile configuration register\n");
+		return -EINVAL;
+	}
+
+	if ((ret & SPINOR_MT_RST_HOLD_CTRL) == 0)
+		return 0;
+
+	/* Nonvolatile Configuration Register bit 4 */
+	ret &= ~SPINOR_MT_RST_HOLD_CTRL;
+
+	/* Keep the current value of the Status Register. */
+	ret = micron_write_nvcr(nor, ret);
+	if (ret < 0) {
+		dev_err(nor->dev, "SST error while writing nonvolatile configuration register\n");
+		return -EINVAL;
+	}
+
+	ret = micron_read_nvcr(nor);
+	if (ret > 0 && (ret & SPINOR_MT_RST_HOLD_CTRL)) {
+		dev_err(nor->dev, "SST Quad bit not set\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+#endif
+
 /* Write status register and ensure bits in mask match written values */
 static int write_sr_and_check(struct spi_nor *nor, u8 status_new, u8 mask)
 {
@@ -2359,7 +2434,7 @@ static int spi_nor_parse_bfpt(struct spi_nor *nor,
 	/* Quad Enable Requirements. */
 	switch (bfpt.dwords[BFPT_DWORD(15)] & BFPT_DWORD15_QER_MASK) {
 	case BFPT_DWORD15_QER_NONE:
-		params->quad_enable = NULL;
+		params->quad_enable = micron_cr_quad_enable;
 		break;
 #if defined(CONFIG_SPI_FLASH_SPANSION) || defined(CONFIG_SPI_FLASH_WINBOND)
 	case BFPT_DWORD15_QER_SR2_BIT1_BUGGY:

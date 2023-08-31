@@ -154,6 +154,9 @@
 #define SPINOR_REG_MT_CFR0V	0x00	/* For setting octal DTR mode */
 #define SPINOR_REG_MT_CFR1V	0x01	/* For setting dummy cycles */
 #define SPINOR_MT_OCT_DTR	0xe7	/* Enable Octal DTR with DQS. */
+#define SPINOR_OP_MT_RDNVCR	0xB5	/* Read nonvolatile configuration register */
+#define SPINOR_OP_MT_WRNVCR	0xB1	/* Write nonvolatile configuration register */
+#define SPINOR_MT_RST_HOLD_CTRL	BIT(4)
 
 /* Status Register bits. */
 #define SR_WIP			BIT(0)	/* Write in progress */
