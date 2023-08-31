@@ -1243,7 +1243,8 @@ dtb-$(CONFIG_BCM6878) += \
 dtb-$(CONFIG_ASPEED_AST2500) += ast2500-evb.dtb
 dtb-$(CONFIG_ASPEED_AST2600) += \
 	ast2600-evb.dtb \
-	ast2600-evb-tee.dtb
+	ast2600-evb-tee.dtb \
+	ast2600-ncsi.dtb
 
 dtb-$(CONFIG_ASPEED_AST2700) += \
 	ast2700-fpga.dtb
