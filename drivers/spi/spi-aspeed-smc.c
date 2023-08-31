@@ -582,8 +582,10 @@ static int aspeed_spi_trim_decoded_size(struct udevice *bus)
 		for (i = 0; i < plat->max_cs; i++)
 			total_sz += flashes[i].ahb_decoded_sz;
 
-		if (flashes[cs].ahb_decoded_sz <= priv->info->min_decoded_sz)
+		if (flashes[cs].ahb_decoded_sz <= priv->info->min_decoded_sz) {
 			cs--;
+			continue;
+		}
 
 		if (cs < 0)
 			return -ENOMEM;
@@ -1147,7 +1149,7 @@ static int aspeed_spi_dirmap_create(struct spi_mem_dirmap_desc *desc)
 
 			for (i = 0; i < priv->num_cs; i++) {
 				dev_dbg(dev, "cs: %d, sz: 0x%x\n", i,
-					(u32)priv->flashes[cs].ahb_decoded_sz);
+					(u32)priv->flashes[i].ahb_decoded_sz);
 			}
 
 			ret = aspeed_spi_decoded_range_config(bus);
@@ -1494,7 +1496,7 @@ static int aspeed_spi_ctrl_init(struct udevice *bus)
 
 	if (!priv->fixed_decoded_range) {
 		/* Assign basic AHB decoded size for each CS. */
-		for (cs = 0; cs < plat->max_cs; cs++) {
+		for (cs = 0; cs < priv->num_cs; cs++) {
 			reg_val = readl(&priv->regs->segment_addr[cs]);
 			decoded_sz = priv->info->segment_end(bus, reg_val) -
 				     priv->info->segment_start(bus, reg_val);
