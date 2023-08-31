@@ -159,6 +159,7 @@ struct sfdp_header {
 #define BFPT_DWORD15_QER_SR2_BIT7		(0x3UL << 20)
 #define BFPT_DWORD15_QER_SR2_BIT1_NO_RD		(0x4UL << 20)
 #define BFPT_DWORD15_QER_SR2_BIT1		(0x5UL << 20) /* Spansion */
+#define BFPT_DWORD15_QER_NONE_111		(0x7UL << 20) /* Gigadevice */
 
 #define BFPT_DWORD16_SOFT_RST			BIT(12)
 #define BFPT_DWORD16_EX4B_PWRCYC		BIT(21)
@@ -2435,6 +2436,9 @@ static int spi_nor_parse_bfpt(struct spi_nor *nor,
 	switch (bfpt.dwords[BFPT_DWORD(15)] & BFPT_DWORD15_QER_MASK) {
 	case BFPT_DWORD15_QER_NONE:
 		params->quad_enable = micron_cr_quad_enable;
+		break;
+	case BFPT_DWORD15_QER_NONE_111:
+		params->quad_enable = NULL;
 		break;
 #if defined(CONFIG_SPI_FLASH_SPANSION) || defined(CONFIG_SPI_FLASH_WINBOND)
 	case BFPT_DWORD15_QER_SR2_BIT1_BUGGY:
