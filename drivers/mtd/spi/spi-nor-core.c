@@ -210,6 +210,7 @@ struct spi_nor_fixups {
 			 struct spi_nor_flash_parameter *params);
 	void (*post_sfdp)(struct spi_nor *nor,
 			  struct spi_nor_flash_parameter *params);
+	void (*post_fixup)(struct spi_nor *nor);
 };
 
 #define SPI_NOR_SRST_SLEEP_LEN			200
@@ -3836,6 +3837,73 @@ static struct spi_nor_fixups mt35xu512aba_fixups = {
 };
 #endif /* CONFIG_SPI_FLASH_MT35XU */
 
+#if CONFIG_IS_ENABLED(SPI_FLASH_WINBOND)
+static ssize_t spi_nor_read_data_w25q02gjv(struct spi_nor *nor, loff_t from,
+					   size_t len, u_char *buf)
+{
+	struct spi_mem_op op =
+			SPI_MEM_OP(SPI_MEM_OP_CMD(nor->read_opcode, 0),
+				   SPI_MEM_OP_ADDR(nor->addr_width, from, 0),
+				   SPI_MEM_OP_DUMMY(nor->read_dummy, 0),
+				   SPI_MEM_OP_DATA_IN(len, buf, 0));
+	size_t remaining = len;
+	int ret;
+	u32 die_sz = 0x04000000;
+
+	spi_nor_setup_op(nor, &op, nor->read_proto);
+
+	/* convert the dummy cycles to the number of bytes */
+	op.dummy.nbytes = (nor->read_dummy * op.dummy.buswidth) / 8;
+	if (spi_nor_protocol_is_dtr(nor->read_proto))
+		op.dummy.nbytes *= 2;
+
+	while (remaining) {
+		op.data.nbytes = remaining < UINT_MAX ? remaining : UINT_MAX;
+
+		if (op.data.nbytes > die_sz - (op.addr.val % die_sz))
+			op.data.nbytes = die_sz - (op.addr.val % die_sz);
+
+		if (CONFIG_IS_ENABLED(SPI_DIRMAP) && nor->dirmap.rdesc) {
+			/*
+			 * Record current operation information which may be used
+			 * when the address or data length exceeds address mapping.
+			 */
+			memcpy(&nor->dirmap.rdesc->info.op_tmpl, &op,
+			       sizeof(struct spi_mem_op));
+			ret = spi_mem_dirmap_read(nor->dirmap.rdesc,
+						  op.addr.val, op.data.nbytes,
+						  op.data.buf.in);
+			if (ret < 0)
+				return ret;
+			op.data.nbytes = ret;
+		} else {
+			ret = spi_mem_adjust_op_size(nor->spi, &op);
+			if (ret)
+				return ret;
+
+			ret = spi_mem_exec_op(nor->spi, &op);
+			if (ret)
+				return ret;
+		}
+
+		op.addr.val += op.data.nbytes;
+		remaining -= op.data.nbytes;
+		op.data.buf.in += op.data.nbytes;
+	}
+
+	return len;
+}
+
+void w25q02gjv_post_fixup(struct spi_nor *nor)
+{
+	nor->read = spi_nor_read_data_w25q02gjv;
+}
+
+static struct spi_nor_fixups w25q02gjv_fixups = {
+	.post_fixup = w25q02gjv_post_fixup,
+};
+#endif
+
 #if CONFIG_IS_ENABLED(SPI_FLASH_MACRONIX)
 /**
  * spi_nor_macronix_octal_dtr_enable() - Enable octal DTR on Macronix flashes.
@@ -4085,6 +4153,11 @@ void spi_nor_set_fixups(struct spi_nor *nor)
 		}
 	}
 
+	if (CONFIG_IS_ENABLED(SPI_FLASH_WINBOND) &&
+	    JEDEC_MFR(nor->info) == SNOR_MFR_WINBOND &&
+	    nor->info->id[1] == 0x70 && nor->info->id[2] == 0x22)
+		nor->fixups = &w25q02gjv_fixups;
+
 	if (CONFIG_IS_ENABLED(SPI_FLASH_BAR) &&
 	    !strcmp(nor->info->name, "s25fl256l"))
 		nor->fixups = &s25fl256l_fixups;
@@ -4281,6 +4354,9 @@ int spi_nor_scan(struct spi_nor *nor)
 	nor->size = mtd->size;
 	nor->erase_size = mtd->erasesize;
 	nor->sector_size = mtd->erasesize;
+
+	if (nor->fixups && nor->fixups->post_fixup)
+		nor->fixups->post_fixup(nor);
 
 #ifndef CONFIG_SPL_BUILD
 	printf("SF: Detected %s with page size ", nor->name);
