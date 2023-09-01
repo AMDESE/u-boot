@@ -29,6 +29,12 @@ config ASPEED_VBIOS
 	help
 	  Select this to enable VBIOS driver
 
+config ASPEED_DP
+	bool "Aspeed Display Port firmware driver"
+	depends on ARCH_ASPEED
+	help
+	  Select this to enable Display Port firmware driver
+
 config TPL_MISC
 	bool "Enable Driver Model for Misc drivers in TPL"
 	depends on TPL_DM
