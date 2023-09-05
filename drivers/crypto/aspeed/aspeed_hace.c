@@ -355,14 +355,13 @@ static int aspeed_hace_probe(struct udevice *dev)
 	int rc;
 
 	rc = reset_get_by_index(dev, 0, &rst_ctl);
-	if (rc) {
-		debug("failed to get HACE reset\n");
-		return rc;
+	if (!rc) {
+		reset_assert(&rst_ctl);
+		udelay(2);
+		reset_deassert(&rst_ctl);
+	} else {
+		debug("failed to get HACE reset, skip it.\n");
 	}
-
-	reset_assert(&rst_ctl);
-	udelay(2);
-	reset_deassert(&rst_ctl);
 
 	rc = clk_get_by_index(dev, 0, &hace->clk);
 	if (rc < 0) {
