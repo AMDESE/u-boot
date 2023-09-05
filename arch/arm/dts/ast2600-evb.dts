@@ -14,6 +14,18 @@
 		stdout-path = &uart5;
 	};
 
+	reserved-memory {
+		mctp0_reserved: mctp0_reserved@b1000000 {
+			reg = <0xb1000000 0x10000>;
+			no-map;
+		};
+
+		mctp1_reserved: mctp0_reserved@b1010000 {
+			reg = <0xb1010000 0x10000>;
+			no-map;
+		};
+	};
+
 	aliases {
 		mmc0 = &emmc;
 		mmc1 = &sdhci0;

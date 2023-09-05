@@ -12,6 +12,13 @@
 		stdout-path = &uart5;
 	};
 
+	reserved-memory {
+		mctp_reserved: mctp_reserved@8a000000 {
+			reg = <0x8a000000 0x10000>;
+			no-map;
+		};
+	};
+
 	aliases {
 		ethernet0 = &mac0;
 		ethernet1 = &mac1;
