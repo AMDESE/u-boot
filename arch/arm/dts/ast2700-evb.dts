@@ -6,8 +6,8 @@
 #include "ast2700-u-boot.dtsi"
 
 / {
-	model = "AST2700 FPGA";
-	compatible = "aspeed,ast2700-fpga", "aspeed,ast2700";
+	model = "AST2700 EVB";
+	compatible = "aspeed,ast2700-evb", "aspeed,ast2700";
 
 	memory {
 		device_type = "memory";
