@@ -32,21 +32,6 @@
 			no-map;
 		};
 	};
-
-	cpus {
-		cpu@0 {
-			clock-frequency = <24000000>;
-		};
-		cpu@1 {
-			clock-frequency = <24000000>;
-		};
-		cpu@2 {
-			clock-frequency = <24000000>;
-		};
-		cpu@3 {
-			clock-frequency = <24000000>;
-		};
-	};
 };
 
 &uart12 {
