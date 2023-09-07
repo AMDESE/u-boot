@@ -331,7 +331,7 @@ static int ast2700_cpu_clk_probe(struct udevice *dev)
 	int i = 0;
 	u32 clksrc1;
 
-	priv->clk = devfdt_get_addr_ptr(dev);
+	priv->clk = dev_read_addr_ptr(dev);
 	if (IS_ERR(priv->clk))
 		return PTR_ERR(priv->clk);
 

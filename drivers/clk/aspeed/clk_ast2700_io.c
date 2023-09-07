@@ -300,7 +300,7 @@ static int ast2700_io_clk_probe(struct udevice *dev)
 {
 	struct ast2700_io_clk_priv *priv = dev_get_priv(dev);
 
-	priv->clk = devfdt_get_addr_ptr(dev);
+	priv->clk = dev_read_addr_ptr(dev);
 	if (IS_ERR(priv->clk))
 		return PTR_ERR(priv->clk);
 
