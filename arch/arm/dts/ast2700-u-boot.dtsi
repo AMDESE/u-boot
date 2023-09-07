@@ -11,6 +11,10 @@
 	bootph-all;
 };
 
+&syscon0 {
+	bootph-all;
+};
+
 &cpu_clk {
 	bootph-all;
 };
@@ -20,6 +24,10 @@
 };
 
 &soc1 {
+	bootph-all;
+};
+
+&syscon1 {
 	bootph-all;
 };
 
