@@ -187,6 +187,18 @@
 			no-loopback-test;
 			status = "disabled";
 		};
+
+		display_port: dp@12c0a000 {
+			compatible = "aspeed,ast2700-displayport";
+			reg = <0x12c0a000 0x200>,
+			      <0x11000000 0x1000>,
+			      <0x11010000 0x100>,
+			      <0x11020000 0x4000>;
+			interrupts = <GIC_SPI 28 IRQ_TYPE_LEVEL_HIGH>;
+			resets = <&cpu_rst ASPEED_RESET_DP>, <&cpu_rst ASPEED_RESET_DP_MCU>;
+			aspeed,scu = <&syscon0>;
+			status = "disabled";
+		};
 	};
 
 	soc1: soc@14000000 {
