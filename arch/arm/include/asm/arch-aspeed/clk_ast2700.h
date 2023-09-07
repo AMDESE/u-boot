@@ -92,15 +92,6 @@ struct aspeed_clks {
 
 #ifndef __ASSEMBLY__
 struct ast2700_cpu_clk {
-	u32 modrst_ctrl;		/* 0x200 */
-	u32 modrst_clr;		/* 0x204 */
-	u32 rsv_0x208;		/* 0x208 */
-	u32 rsv_0x20c;		/* 0x20c */
-	u32 modrst_lock;		/* 0x210 */
-	u32 modrst_secure1;		/* 0x214 */
-	u32 modrst_secure2;		/* 0x218 */
-	u32 modrst_secure3;		/* 0x21c */
-	u32 rsv_0x220[8];		/* 0x220 */
 	u32 clkgate_ctrl;		/* 0x240 */
 	u32 clkgate_clr;		/* 0x244 */
 	u32 rsv_0x248[2];		/* 0x248 */
@@ -159,22 +150,6 @@ struct ast2700_cpu_clk {
 };
 
 struct ast2700_io_clk {
-	u32 modrst_ctrl1;		/* 0x200 */
-	u32 modrst_clr1;		/* 0x204 */
-	u32 rsv_0x208;		/* 0x208 */
-	u32 rsv_0x20c;		/* 0x20c */
-	u32 modrst_lock1;		/* 0x210 */
-	u32 modrst_secure11;		/* 0x214 */
-	u32 modrst_secure12;		/* 0x218 */
-	u32 modrst_secure13;		/* 0x21c */
-	u32 modrst_ctrl2;		/* 0x220 */
-	u32 modrst_clr2;		/* 0x224 */
-	u32 rsv_0x228;		/* 0x228 */
-	u32 rsv_0x22c;		/* 0x22c */
-	u32 modrst_lock2;		/* 0x230 */
-	u32 modrst_secure21;		/* 0x234 */
-	u32 modrst_secure22;		/* 0x238 */
-	u32 modrst_secure23;		/* 0x23c */
 	u32 clkgate_ctrl1;		/* 0x240 */
 	u32 clkgate_clr1;		/* 0x244 */
 	u32 rsv_0x248[2];		/* 0x248 */
