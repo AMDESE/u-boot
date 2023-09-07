@@ -15,6 +15,22 @@
 	bootph-all;
 };
 
+&uart12 {
+	bootph-all;
+};
+
+&emmc_controller {
+	bootph-all;
+};
+
+&emmc {
+	bootph-all;
+};
+
+&hace {
+	bootph-all;
+};
+
 &cpu_clk {
 	bootph-all;
 };

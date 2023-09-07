@@ -35,7 +35,6 @@
 };
 
 &uart12 {
-	bootph-all;
 	status = "okay";
 };
 
@@ -80,12 +79,10 @@
 };
 
 &emmc_controller {
-	bootph-all;
 	status = "okay";
 };
 
 &emmc {
-	bootph-all;
 	status = "okay";
 };
 
@@ -126,6 +123,5 @@
 };
 
 &hace {
-	bootph-all;
 	status = "okay";
 };
