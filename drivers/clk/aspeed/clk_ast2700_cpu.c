@@ -198,109 +198,6 @@ static ulong ast2700_cpu_clk_get_rate(struct clk *clk)
 	return rate;
 }
 
-/**
- * @brief	lookup PLL divider config by input/output rate
- * @param[in]	*pll - PLL descriptor
- * Return:	true - if PLL divider config is found, false - else
- * The function caller shall fill "pll->in" and "pll->out",
- * then this function will search the lookup table
- * to find a valid PLL divider configuration.
- */
-static bool ast2700_search_clock_config(struct ast2700_pll_desc *pll)
-{
-	uint32_t i;
-	const struct ast2700_pll_desc *def_desc;
-	bool is_found = false;
-
-	for (i = 0; i < ARRAY_SIZE(ast2700_pll_lookup); i++) {
-		def_desc = &ast2700_pll_lookup[i];
-
-		if (def_desc->in == pll->in && def_desc->out == pll->out) {
-			is_found = true;
-			pll->cfg.reg.w = def_desc->cfg.reg.w;
-			pll->cfg.ext_reg = def_desc->cfg.ext_reg;
-			break;
-		}
-	}
-	return is_found;
-}
-
-static uint32_t ast2700_configure_pll(struct ast2700_cpu_clk *clk,
-				      struct ast2700_pll_cfg *p_cfg,
-				      int pll_idx)
-{
-	void __iomem *addr, *addr_ext;
-	uint32_t reg;
-
-	switch (pll_idx) {
-	case AST2700_CPU_CLK_HPLL:
-		addr = (void __iomem *)(&clk->hpll);
-		addr_ext = (void __iomem *)(&clk->hpll_ext);
-		break;
-	case AST2700_CPU_CLK_MPLL:
-		addr = (void __iomem *)(&clk->mpll);
-		addr_ext = (void __iomem *)(&clk->mpll_ext);
-		break;
-	default:
-		debug("unknown PLL index\n");
-		return 1;
-	}
-
-	p_cfg->reg.b.bypass = 0;
-	p_cfg->reg.b.off = 1;
-	p_cfg->reg.b.reset = 1;
-
-	reg = readl(addr);
-	reg &= ~GENMASK(25, 0);
-	reg |= p_cfg->reg.w;
-	writel(reg, addr);
-
-	/* write extend parameter */
-	writel(p_cfg->ext_reg, addr_ext);
-	udelay(100);
-	p_cfg->reg.b.off = 0;
-	p_cfg->reg.b.reset = 0;
-	reg &= ~GENMASK(25, 0);
-	reg |= p_cfg->reg.w;
-	writel(reg, addr);
-
-	while (!(readl(addr_ext) & BIT(31)))
-		;
-
-	return 0;
-}
-
-static uint32_t ast2700_configure_ddr(struct ast2700_cpu_clk *clk, ulong rate)
-{
-	struct ast2700_pll_desc mpll;
-
-	mpll.in = CLKIN_25M;
-	mpll.out = rate;
-	if (ast2700_search_clock_config(&mpll) == false) {
-		printf("error!! unable to find valid DDR clock setting\n");
-		return 0;
-	}
-	ast2700_configure_pll(clk, &mpll.cfg, AST2700_CPU_CLK_MPLL);
-
-	return ast2700_cpu_get_pll_rate(clk, AST2700_CPU_CLK_MPLL);
-}
-
-static ulong ast2700_cpu_clk_set_rate(struct clk *clk, ulong rate)
-{
-	struct ast2700_cpu_clk_priv *priv = dev_get_priv(clk->dev);
-	ulong new_rate;
-
-	switch (clk->id) {
-	case AST2700_CPU_CLK_MPLL:
-		new_rate = ast2700_configure_ddr(priv->clk, rate);
-		break;
-	default:
-		return -ENOENT;
-	}
-
-	return new_rate;
-}
-
 static int ast2700_cpu_clk_enable(struct clk *clk)
 {
 	struct ast2700_cpu_clk_priv *priv = dev_get_priv(clk->dev);
@@ -315,7 +212,6 @@ static int ast2700_cpu_clk_enable(struct clk *clk)
 
 struct clk_ops ast2700_cpu_clk_ops = {
 	.get_rate = ast2700_cpu_clk_get_rate,
-	.set_rate = ast2700_cpu_clk_set_rate,
 	.enable = ast2700_cpu_clk_enable,
 };
 
