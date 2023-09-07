@@ -55,7 +55,7 @@ static int ast2700_reset_probe(struct udevice *dev)
 {
 	struct ast2700_reset_priv *priv = dev_get_priv(dev);
 
-	priv->base = dev_remap_addr(dev);
+	priv->base = dev_read_addr_ptr(dev);
 	if (!priv->base)
 		return -ENOMEM;
 
