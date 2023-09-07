@@ -34,6 +34,24 @@
 #define  MCU_INTR_CTRL_MASK             GENMASK(15, 8)
 #define  MCU_INTR_CTRL_EN               GENMASK(23, 16)
 
+struct astdp_data {
+	u16 scratch0;
+	u16 scratch1;
+	u16 dp_pin_mux;
+};
+
+static const struct astdp_data ast2600_data = {
+	.scratch0 = 0x100,
+	.scratch1 = 0,
+	.dp_pin_mux = 0,
+};
+
+static const struct astdp_data ast2700_data = {
+	.scratch0 = 0x900,
+	.scratch1 = 0x910,
+	.dp_pin_mux = 0x414,
+};
+
 struct aspeed_dp_priv {
 	void *ctrl_base;
 	void *mcud_base;	// mcu data
@@ -81,15 +99,35 @@ static void _redriver_cfg(struct udevice *dev)
 	writel(0x0000cafe, dp->mcud_base + 0x0e00);	// mark re-driver cfg ready
 }
 
+// Decide the offset of scu scratch register.
+static u32 _get_scu_offset(struct udevice *dev)
+{
+	struct astdp_data *data = (struct astdp_data *)dev_get_driver_data(dev);
+
+	if (data->scratch1) {
+		struct aspeed_dp_priv *priv = dev_get_priv(dev);
+		u32 val;
+
+		// There is 2 node in AST2700.
+		// Use DP_output mux to decide which scu
+		regmap_read(priv->scu, data->dp_pin_mux, &val);
+		return (((val >> 8) & 0x3) == 1) ?
+			data->scratch1 : data->scratch0;
+	}
+
+	return data->scratch0;
+}
+
 static int aspeed_dp_probe(struct udevice *dev)
 {
 	struct aspeed_dp_priv *dp = dev_get_priv(dev);
 	struct reset_ctl dp_reset_ctl, dpmcu_reset_ctrl;
 	int i, ret = 0;
-	u32 mcu_ctrl, val;
+	u32 mcu_ctrl, val, scu_offset;
 	bool is_mcu_stop = false;
 
-	regmap_read(dp->scu, 0x100, &val);
+	scu_offset = _get_scu_offset(dev);
+	regmap_read(dp->scu, scu_offset, &val);
 	is_mcu_stop = ((val & BIT(13)) == 0);
 
 	debug("%s(dev=%p)\n", __func__, dev);
@@ -140,8 +178,13 @@ static int aspeed_dp_probe(struct udevice *dev)
 		mcu_ctrl |= MCU_CTRL_AHBS_IMEM_EN;
 		writel(mcu_ctrl, dp->mcuc_base + MCU_CTRL);
 
-		for (i = 0; i < ARRAY_SIZE(firmware_ast2600_dp); i++)
-			writel(firmware_ast2600_dp[i], dp->mcui_base + (i * 4));
+		if (IS_ENABLED(CONFIG_MACH_ASPEED_G7)) {
+			for (i = 0; i < ARRAY_SIZE(firmware_ast2700_dp); i++)
+				writel(firmware_ast2700_dp[i], dp->mcui_base + (i * 4));
+		} else {
+			for (i = 0; i < ARRAY_SIZE(firmware_ast2600_dp); i++)
+				writel(firmware_ast2600_dp[i], dp->mcui_base + (i * 4));
+		}
 
 		/* release DPMCU internal reset */
 		mcu_ctrl &= ~MCU_CTRL_AHBS_IMEM_EN;
@@ -153,7 +196,7 @@ static int aspeed_dp_probe(struct udevice *dev)
 	}
 
 	//set vga ASTDP with DPMCU FW handling scratch
-	regmap_update_bits(dp->scu, 0x100, 0x7 << 9, 0x7 << 9);
+	regmap_update_bits(dp->scu, scu_offset, 0x7 << 9, 0x7 << 9);
 
 	return 0;
 }
@@ -185,7 +228,10 @@ static int dp_aspeed_ofdata_to_platdata(struct udevice *dev)
 }
 
 static const struct udevice_id aspeed_dp_ids[] = {
-	{ .compatible = "aspeed,ast2600-displayport" },
+	{ .compatible = "aspeed,ast2600-displayport",
+	  .data = (ulong)&ast2600_data,	},
+	{ .compatible = "aspeed,ast2700-displayport",
+	  .data = (ulong)&ast2700_data,	},
 	{ }
 };
 
