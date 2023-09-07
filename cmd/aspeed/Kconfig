@@ -1,8 +1,27 @@
 
 config CMD_OTP
-	depends on ASPEED_AST2700
-	depends on ASPEED_OTP
-	bool "Aspeed otp program utility"
-	select RSA
+	bool "Support OTP utility"
+	select AST2600_CMD_OTP if ASPEED_AST2600
+	select AST2700_CMD_OTP if ASPEED_AST2700
 	default y
+	help
+	  Enable otp cmd support for Aspeed OTP hardware engine.
 
+config AST2600_CMD_OTP
+	bool "Support AST2600 OTP utility"
+	depends on CMD_OTP
+	depends on SHA256 && SHA384 && SHA512
+	help
+	  Enable cmd support for Aspeed AST2600 OTP utility.
+	  AST2600 OTP utility provides read/program data/conf/strap
+	  OTP regions and multiple subcommands supported.
+
+config AST2700_CMD_OTP
+	bool "Support AST2700 OTP utility"
+	depends on CMD_OTP
+	select ASPEED_OTP
+	help
+	  Enable cmd support for Aspeed AST2700 OTP utility.
+	  AST2700 OTP utility provides read/program multiple
+	  OTP regions.
+	  It also needs Aspeed OTP driver model to support it.
