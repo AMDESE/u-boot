@@ -132,21 +132,29 @@
 			resets = <&cpu_rst ASPEED_RESET_SDRAM>;
 		};
 
-		cpu_clk: clock-controller@12c02200 {
-			compatible = "aspeed,ast2700_cpu-clk";
-			reg = <0 0x12c02200 0 0x200>;
-			#clock-cells = <1>;
-		};
+		syscon0: syscon@12c02000 {
+			compatible = "syscon", "simple-mfd";
+			reg = <0x0 0x12c02000 0x0 0x1000>;
+			ranges = <0 0 0x0 0x12c02000 0x0 0x1000>;
+			#address-cells = <2>;
+			#size-cells = <2>;
 
-		cpu_rst: reset-controller@12c02200 {
-			compatible = "aspeed,ast2700-reset";
-			reg = <0 0x12c02200 0 0x40>;
-			#reset-cells = <1>;
-		};
+			cpu_rst: reset-controller@12c02200 {
+				compatible = "aspeed,ast2700-reset";
+				reg = <0 0x200 0 0x40>;
+				#reset-cells = <1>;
+			};
 
-		pinctrl0: pinctrl@12c02400 {
-			compatible = "aspeed,ast2700_cpu-pinctrl";
-			reg = <0 0x12c02400 0 0x100>;
+			cpu_clk: clock-controller@12c02200 {
+				compatible = "aspeed,ast2700_cpu-clk";
+				reg = <0 0x240 0 0x1c0>;
+				#clock-cells = <1>;
+			};
+
+			pinctrl0: pinctrl@12c02400 {
+				compatible = "aspeed,ast2700_cpu-pinctrl";
+				reg = <0 0x400 0 0x100>;
+			};
 		};
 
 		ufs: ufs-wrapper@12c08000 {
@@ -297,21 +305,29 @@
 			};
 		};
 
-		io_clk: clock-controller@14c02200 {
-			compatible = "aspeed,ast2700_io-clk";
-			reg = <0 0x14c02200 0 0x200>;
-			#clock-cells = <1>;
-		};
+		syscon1: syscon@14c02000 {
+			compatible = "syscon", "simple-mfd";
+			reg = <0x0 0x14c02000 0x0 0x1000>;
+			ranges = <0 0 0 0x14c02000 0 0x1000>;
+			#address-cells = <2>;
+			#size-cells = <2>;
 
-		io_rst: reset-controller@14c02200 {
-			compatible = "aspeed,ast2700-reset";
-			reg = <0 0x14c02200 0 0x40>;
-			#reset-cells = <1>;
-		};
+			io_rst: reset-controller@14c02200 {
+				compatible = "aspeed,ast2700-reset";
+				reg = <0 0x200 0 0x40>;
+				#reset-cells = <1>;
+			};
 
-		pinctrl1: pinctrl@14c02400 {
-			compatible = "aspeed,ast2700_io-pinctrl";
-			reg = <0x0 0x14c02400 0x0 0x100>;
+			io_clk: clock-controller@14c02200 {
+				compatible = "aspeed,ast2700_io-clk";
+				reg = <0 0x240 0 0x1c0>;
+				#clock-cells = <1>;
+			};
+
+			pinctrl1: pinctrl@14c02400 {
+				compatible = "aspeed,ast2700_io-pinctrl";
+				reg = <0 0x400 0 0x100>;
+			};
 		};
 
 		uart0: serial@14c33000 {
