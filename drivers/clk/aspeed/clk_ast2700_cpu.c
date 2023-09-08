@@ -14,8 +14,6 @@
 #include <dt-bindings/clock/ast2700-clock.h>
 #include <dt-bindings/reset/ast2700-reset.h>
 
-#define ASPEED_FPGA
-
 DECLARE_GLOBAL_DATA_PTR;
 
 #define CLKIN_25M 25000000UL
@@ -26,9 +24,6 @@ struct ast2700_cpu_clk_priv {
 
 extern uint32_t ast2700_cpu_get_pll_rate(struct ast2700_cpu_clk *clk, int pll_idx)
 {
-#ifdef ASPEED_FPGA
-	return 24000000;
-#else
 	union ast2700_pll_reg pll_reg;
 	uint32_t mul = 1, div = 1;
 
@@ -57,19 +52,14 @@ extern uint32_t ast2700_cpu_get_pll_rate(struct ast2700_cpu_clk *clk, int pll_id
 	}
 
 	return ((CLKIN_25M * mul) / div);
-#endif
 }
 
 static uint32_t ast2700_cpu_get_hclk_rate(struct ast2700_cpu_clk *clk)
 {
-#ifdef ASPEED_FPGA
-	return 50000000;
-#else
 	u32 rate = ast2700_cpu_get_pll_rate(clk, AST2700_CPU_CLK_HPLL);
 	u32 fixed_div = 4;
 
 	return (rate / fixed_div);
-#endif
 }
 
 #define SCU_CLKSEL1_PCLK_DIV_MASK		GENMASK(25, 23)
@@ -77,17 +67,12 @@ static uint32_t ast2700_cpu_get_hclk_rate(struct ast2700_cpu_clk *clk)
 
 static uint32_t ast2700_cpu_get_pclk_rate(struct ast2700_cpu_clk *clk)
 {
-#ifdef ASPEED_FPGA
-	//hpll/4
-	return 6000000;
-#else
 	u32 rate = ast2700_cpu_get_pll_rate(clk, AST2700_CPU_CLK_HPLL);
 	u32 clksel1 = readl(&clk->clk_sel1);
 	u32 pclk_div = (clksel1 & SCU_CLKSEL1_PCLK_DIV_MASK) >>
 			    SCU_CLKSEL1_PCLK_DIV_SHIFT;
 
 	return (rate / ((pclk_div + 1) * 4));
-#endif
 }
 
 #define SCU_CLKSEL1_BCLK_DIV_MASK		GENMASK(22, 20)
@@ -95,31 +80,23 @@ static uint32_t ast2700_cpu_get_pclk_rate(struct ast2700_cpu_clk *clk)
 
 static uint32_t ast2700_cpu_get_bclk_rate(struct ast2700_cpu_clk *clk)
 {
-#ifdef ASPEED_FPGA
-	return 50000000;
-#else
 	u32 rate = ast2700_cpu_get_pll_rate(clk, AST2700_CPU_CLK_HPLL);
 	u32 clksel1 = readl(&clk->clk_sel1);
 	u32 bclk_div = (clksel1 & SCU_CLKSEL1_BCLK_DIV_MASK) >>
 			     SCU_CLKSEL1_BCLK_DIV_SHIFT;
 
 	return (rate / ((bclk_div + 1) * 4));
-#endif
 }
 
 #define SCU_CLKSEL1_MPHYCLK_DIV_MASK		GENMASK(7, 0)
 
 static uint32_t ast2700_cpu_get_mphyclk_rate(struct ast2700_cpu_clk *clk)
 {
-#ifdef ASPEED_FPGA
-	return 26000000;
-#else
 	u32 rate = ast2700_cpu_get_pll_rate(clk, AST2700_CPU_CLK_HPLL);
 	u32 mphy_para = readl(&clk->mphyclk_para);
 	u32 mphy_div = (mphy_para & SCU_CLKSEL1_BCLK_DIV_MASK);
 
 	return (rate / (mphy_div + 1));
-#endif
 }
 
 #define SCU_CLKSEL1_EMMCCLK_DIV_MASK		GENMASK(14, 12)
@@ -127,9 +104,6 @@ static uint32_t ast2700_cpu_get_mphyclk_rate(struct ast2700_cpu_clk *clk)
 
 static uint32_t ast2700_cpu_get_emmcclk_rate(struct ast2700_cpu_clk *clk)
 {
-#ifdef ASPEED_FPGA
-	return 200000000;
-#else
 	u32 clksel1 = readl(&clk->clk_sel1);
 	u32 emmcclk_div = (clksel1 & SCU_CLKSEL1_EMMCCLK_DIV_MASK) >>
 			     SCU_CLKSEL1_EMMCCLK_DIV_SHIFT;
@@ -142,7 +116,6 @@ static uint32_t ast2700_cpu_get_emmcclk_rate(struct ast2700_cpu_clk *clk)
 
 	rate /= 4;
 	return (rate / ((emmcclk_div + 1) * 2));
-#endif
 }
 
 static uint32_t ast2700_cpu_get_uartclk_rate(struct ast2700_cpu_clk *clk)
@@ -249,18 +222,6 @@ static int ast2700_cpu_clk_probe(struct udevice *dev)
 	return 0;
 }
 
-static int ast2700_cpu_clk_bind(struct udevice *dev)
-{
-	int ret;
-
-	/* The reset driver does not have a device node, so bind it here */
-	ret = device_bind_driver(gd->dm_root, "ast_sysreset", "reset", &dev);
-	if (ret)
-		debug("Warning: No reset driver: ret=%d\n", ret);
-
-	return 0;
-}
-
 static const struct udevice_id ast2700_cpu_clk_ids[] = {
 	{ .compatible = "aspeed,ast2700_cpu-clk", },
 	{ },
@@ -272,6 +233,5 @@ U_BOOT_DRIVER(aspeed_ast2700_cpu_clk) = {
 	.of_match = ast2700_cpu_clk_ids,
 	.priv_auto = sizeof(struct ast2700_cpu_clk_priv),
 	.ops = &ast2700_cpu_clk_ops,
-	.bind = ast2700_cpu_clk_bind,
 	.probe = ast2700_cpu_clk_probe,
 };
