@@ -107,14 +107,8 @@ static uint32_t ast2700_cpu_get_emmcclk_rate(struct ast2700_cpu_clk *clk)
 	u32 clksel1 = readl(&clk->clk_sel1);
 	u32 emmcclk_div = (clksel1 & SCU_CLKSEL1_EMMCCLK_DIV_MASK) >>
 			     SCU_CLKSEL1_EMMCCLK_DIV_SHIFT;
-	u32 rate;
+	u32 rate = ast2700_cpu_get_pll_rate(clk, AST2700_CPU_CLK_MPLL);
 
-	if (clksel1 & BIT(11))
-		rate = ast2700_cpu_get_pll_rate(clk, AST2700_CPU_CLK_HPLL);
-	else
-		rate = ast2700_cpu_get_pll_rate(clk, AST2700_CPU_CLK_MPLL);
-
-	rate /= 4;
 	return (rate / ((emmcclk_div + 1) * 2));
 }
 
@@ -205,7 +199,7 @@ static int ast2700_cpu_clk_probe(struct udevice *dev)
 		return PTR_ERR(priv->clk);
 
 	cpu_clk = priv->clk;
-	/* emmc clk div initial */
+	/* emmc clk src div to 200Mhz */
 	clksrc1 = readl(&cpu_clk->clk_sel1);
 
 	rate = ast2700_cpu_get_pll_rate(cpu_clk, AST2700_CPU_CLK_MPLL);
