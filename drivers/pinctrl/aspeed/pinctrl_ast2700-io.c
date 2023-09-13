@@ -45,13 +45,7 @@ static int ast2700_io_pinctrl_probe(struct udevice *dev)
 }
 
 static struct ast2700_cpu_sig_desc espi1_link[] = {
-	{ 0x00, GENMASK(30, 28) | GENMASK(26, 24) | GENMASK(22, 20) | GENMASK(18, 16) |
-	GENMASK(14, 12) | GENMASK(10, 8) | GENMASK(6, 4) | GENMASK(2, 0),
-	BIT(28) | BIT(24) | BIT(20) | BIT(16) | BIT(12) | BIT(8) | BIT(4) | BIT(0) },
-};
-
-static struct ast2700_cpu_sig_desc lpc1_link[] = {
-	{ 0x00, GENMASK(30, 28) | GENMASK(26, 24) | GENMASK(22, 20) | GENMASK(18, 16) |
+	{ 0x58, GENMASK(30, 28) | GENMASK(26, 24) | GENMASK(22, 20) | GENMASK(18, 16) |
 	GENMASK(14, 12) | GENMASK(10, 8) | GENMASK(6, 4) | GENMASK(2, 0),
 	(2 << 28) | (2 << 24) | (2 << 20) | (2 << 16) | (2 << 12) | (2 << 8) | (2 << 4) | 2},
 };
@@ -150,7 +144,6 @@ static struct ast2700_cpu_sig_desc pwm7[] = {
 
 static const struct aspeed_group_config ast2700_io_groups[] = {
 	{ "ESPI1", ARRAY_SIZE(espi1_link), espi1_link },
-	{ "LPC1", ARRAY_SIZE(lpc1_link), lpc1_link },
 	{ "SD", ARRAY_SIZE(sdio_link), sdio_link },
 	{ "MDIO0", ARRAY_SIZE(mdio0_link), mdio0_link },
 	{ "MDIO1", ARRAY_SIZE(mdio1_link), mdio1_link },
