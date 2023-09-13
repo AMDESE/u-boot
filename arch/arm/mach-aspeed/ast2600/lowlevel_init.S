@@ -46,6 +46,10 @@
 #define FMC_WDT1_CTRL_MODE	(FMC_BASE + 0x060)
 #define FMC_WDT2_CTRL_MODE	(FMC_BASE + 0x064)
 
+#define LPC_BASE		0x1e789000
+#define LPC_HICR9		(LPC_BASE + 0x098)
+#define LPC_HICRA		(LPC_BASE + 0x09c)
+
 .macro scu_unlock
 	movw	r0, #(SCU_UNLOCK_KEY & 0xffff)
 	movt	r0, #(SCU_UNLOCK_KEY >> 16)
@@ -148,6 +152,17 @@ poll_mailbox_ready:
 
 do_primary_core_setup:
 	scu_unlock
+
+	/* Restore UART routing to HW default value */
+	ldr     r0, =LPC_HICR9
+	movw    r1, #0x0a30
+	movt    r1, #0x0000
+	str     r1, [r0]
+
+	ldr     r0, =LPC_HICRA
+	movw    r1, #0x0000
+	movt    r1, #0x0000
+	str     r1, [r0]
 
 	/* MMIO decode setting */
 	ldr	r0, =SCU_MMIO_DEC
