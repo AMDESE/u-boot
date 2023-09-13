@@ -7,6 +7,7 @@
 #include <common.h>
 #include <clk.h>
 #include <dm.h>
+#include <dm/device_compat.h>
 #include <errno.h>
 #include <regmap.h>
 #include <syscon.h>
@@ -74,20 +75,20 @@ static void _redriver_cfg(struct udevice *dev)
 		for (i = 0; i < len / sizeof(u32); ++i)
 			writel(fdt32_to_cpu(cell[i]), dp->mcud_base + 0x0e04 + i * 4);
 	} else {
-		debug("%s(): Failed to get eq-table for re-driver\n", __func__);
+		dev_dbg(dev, "%s(): Failed to get eq-table for re-driver\n", __func__);
 		return;
 	}
 
 	tmp = dev_read_s32_default(dev, "i2c-base-addr", -1);
 	if (tmp == -1) {
-		debug("%s(): Failed to get i2c port's base address\n", __func__);
+		dev_dbg(dev, "%s(): Failed to get i2c port's base address\n", __func__);
 		return;
 	}
 	writel(tmp, dp->mcud_base + 0x0e28);
 
 	tmp = dev_read_s32_default(dev, "i2c-buf-addr", -1);
 	if (tmp == -1) {
-		debug("%s(): Failed to get i2c port's buf address\n", __func__);
+		dev_dbg(dev, "%s(): Failed to get i2c port's buf address\n", __func__);
 		return;
 	}
 	writel(tmp, dp->mcud_base + 0x0e2c);
@@ -130,17 +131,16 @@ static int aspeed_dp_probe(struct udevice *dev)
 	regmap_read(dp->scu, scu_offset, &val);
 	is_mcu_stop = ((val & BIT(13)) == 0);
 
-	debug("%s(dev=%p)\n", __func__, dev);
-
+	dev_dbg(dev, "%s(dev=%p) scu offset(%#x)\n", __func__, dev, scu_offset);
 	ret = reset_get_by_index(dev, 0, &dp_reset_ctl);
 	if (ret) {
-		printf("%s(): Failed to get dp reset signal\n", __func__);
+		dev_err(dev, "%s(): Failed to get dp reset signal\n", __func__);
 		return ret;
 	}
 
 	ret = reset_get_by_index(dev, 1, &dpmcu_reset_ctrl);
 	if (ret) {
-		printf("%s(): Failed to get dp mcu reset signal\n", __func__);
+		dev_err(dev, "%s(): Failed to get dp mcu reset signal\n", __func__);
 		return ret;
 	}
 
@@ -201,7 +201,7 @@ static int aspeed_dp_probe(struct udevice *dev)
 	return 0;
 }
 
-static int dp_aspeed_ofdata_to_platdata(struct udevice *dev)
+static int aspeed_dp_of_to_plat(struct udevice *dev)
 {
 	struct aspeed_dp_priv *dp = dev_get_priv(dev);
 
@@ -220,7 +220,7 @@ static int dp_aspeed_ofdata_to_platdata(struct udevice *dev)
 		return PTR_ERR(dp->mcui_base);
 	dp->scu = syscon_regmap_lookup_by_phandle(dev, "aspeed,scu");
 	if (IS_ERR(dp->scu)) {
-		pr_err("Dev: %s - can't get regmap for scu!\n", dev->name);
+		dev_err(dev, "%s can't get regmap for scu!\n", dev->name);
 		return PTR_ERR(dp->scu);
 	}
 
@@ -240,6 +240,6 @@ U_BOOT_DRIVER(aspeed_dp) = {
 	.id		= UCLASS_MISC,
 	.of_match	= aspeed_dp_ids,
 	.probe		= aspeed_dp_probe,
-	.of_to_plat   = dp_aspeed_ofdata_to_platdata,
+	.of_to_plat   = aspeed_dp_of_to_plat,
 	.priv_auto = sizeof(struct aspeed_dp_priv),
 };
