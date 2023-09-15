@@ -30,6 +30,7 @@
 #define SCU_BASE		0x1e6e2000
 #define SCU_PROT_KEY1		(SCU_BASE + 0x000)
 #define SCU_PROT_KEY2		(SCU_BASE + 0x010)
+#define SCU_CLK_STOP_CTRL_CLR	(SCU_BASE + 0x084)
 #define SCU_SMP_NS_EP		(SCU_BASE + 0x180)
 #define SCU_SMP_GO		(SCU_BASE + 0x184)
 #define SCU_SMP_READY		(SCU_BASE + 0x18c)
@@ -182,6 +183,11 @@ do_primary_core_setup:
 	/* Select USB2.0 Device mode as USB port B */
 	ldr	r0, =0x10000000
 	ldr	r1, =SCU_USB_MULTI_FUNC
+	str	r0, [r1]
+
+	/* Enable USB port B PHY clk */
+	mov	r0, #0x80
+	ldr	r1, =SCU_CLK_STOP_CTRL_CLR
 	str	r0, [r1]
 
 	/* do not fill FMC50[1] if boot from eMMC */
