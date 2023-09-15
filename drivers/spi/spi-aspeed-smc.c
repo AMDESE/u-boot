@@ -107,13 +107,15 @@ struct aspeed_spi_info {
 	u32 max_bus_width;
 	size_t min_decoded_sz;
 	u32 clk_ctrl_mask;
+	u32 hdiv_max;
 	void (*set_4byte)(struct udevice *bus, u32 cs);
 	uintptr_t (*segment_start)(struct udevice *bus, u32 reg);
 	uintptr_t (*segment_end)(struct udevice *bus, u32 reg);
 	u32 (*segment_reg)(uintptr_t start, uintptr_t end);
 	int (*adjust_decoded_sz)(struct udevice *bus);
 	u32 (*get_clk_setting)(struct udevice *dev, uint hz);
-	int (*timing_calibration)(struct udevice *dev);
+	int (*calibrate)(struct udevice *dev, u32 hdiv,
+			 const u8 *golden_buf, u8 *test_buf);
 };
 
 struct aspeed_spi_decoded_range {
@@ -669,33 +671,11 @@ static bool aspeed_spi_supports_op(struct spi_slave *slave,
 	return true;
 }
 
-/*
- * Check whether the data is not all 0 or 1 in order to
- * avoid calibriate umount spi-flash.
- */
-static bool aspeed_spi_calibriation_enable(const u8 *buf, u32 sz)
-{
-	const u32 *buf_32 = (const u32 *)buf;
-	u32 i;
-	u32 valid_count = 0;
-
-	for (i = 0; i < (sz / 4); i++) {
-		if (buf_32[i] != 0 && buf_32[i] != 0xffffffff)
-			valid_count++;
-		if (valid_count > 100)
-			return true;
-	}
-
-	return false;
-}
-
-static int get_best_timing_point(u8 *buf, u32 len)
+static int get_mid_point_of_longest_one(u8 *buf, u32 len)
 {
 	int i;
-	int start = 0;
-	int mid_point = 0;
-	int max_cnt = 0;
-	int cnt = 0;
+	int start = 0, mid_point = 0;
+	int max_cnt = 0, cnt = 0;
 
 	for (i = 0; i < len; i++) {
 		if (buf[i] == 1) {
@@ -722,41 +702,124 @@ static int get_best_timing_point(u8 *buf, u32 len)
 	return mid_point;
 }
 
-static u32 ast2600_spi_dma_checksum(struct aspeed_spi_priv *priv,
-				    u32 cs, u32 div, u32 delay)
-{
-	struct aspeed_spi_regs *regs = priv->regs;
-	u32 ctrl_val;
-	u32 checksum;
+/*
+ * Read timing compensation sequences
+ */
 
-	writel(DMA_GET_REQ_MAGIC, &regs->dma_ctrl);
-	if (readl(&regs->dma_ctrl) & DAM_CTRL_REQUEST) {
-		while (!(readl(&regs->dma_ctrl) & DAM_CTRL_GRANT))
-			;
+#define CALIBRATE_REPEAT_COUNT 2
+
+static bool aspeed_spi_check_reads(struct aspeed_spi_flash *flash,
+				   const u8 *golden_buf, u8 *test_buf)
+{
+	int i;
+
+	for (i = 0; i < CALIBRATE_REPEAT_COUNT; i++) {
+		memcpy_fromio(test_buf, (void *)flash->ahb_base, TIMING_CAL_LEN);
+		if (memcmp(test_buf, golden_buf, TIMING_CAL_LEN) != 0)
+			return false;
 	}
 
-	writel((u32)priv->flashes[cs].ahb_base,
-	       &regs->dma_flash_addr);
-	writel(TIMING_CAL_LEN, &regs->dma_dram_addr);
+	return true;
+}
+
+static bool aspeed_spi_check_calib_data(const u8 *test_buf, u32 size)
+{
+	const u32 *tb32 = (const u32 *)test_buf;
+	u32 i, cnt = 0;
 
 	/*
-	 * When doing calibration, the SPI clock rate in the control
-	 * register and the data input delay cycles in the
-	 * read timing compensation register are replaced by
-	 * DMA_CTRL bit[11:4].
+	 * We check if we have enough words that are neither all 0
+	 * nor all 1's so the calibration can be considered valid.
 	 */
-	ctrl_val = DMA_CTRL_ENABLE | DMA_CTRL_CKSUM | DMA_CTRL_CALIB |
-		   (delay << 8) | ((div & 0xf) << 16);
-	writel(ctrl_val, &regs->dma_ctrl);
+	size >>= 2;
+	for (i = 0; i < size; i++) {
+		if (tb32[i] != 0 && tb32[i] != 0xffffffff)
+			cnt++;
+	}
+	return cnt >= 64;
+}
 
-	while (!(readl(&regs->intr_ctrl) & INTR_CTRL_DMA_STATUS))
-		;
+static const u32 aspeed_spi_hclk_divs[] = {
+	/* HCLK, HCLK/2, HCLK/3, HCLK/4, HCLK/5, ..., HCLK/16 */
+	0xf, 0x7, 0xe, 0x6, 0xd,
+	0x5, 0xc, 0x4, 0xb, 0x3,
+	0xa, 0x2, 0x9, 0x1, 0x8,
+	0x0
+};
 
-	checksum = readl(&regs->dma_checksum);
-	writel(0x0, &regs->dma_ctrl);
-	writel(DMA_DISCARD_REQ_MAGIC, &regs->dma_ctrl);
+#define ASPEED_SPI_HCLK_DIV(i)	(aspeed_spi_hclk_divs[(i)] << 8)
 
-	return checksum;
+static inline u32 fread_tpass(int i)
+{
+	return (((i) / 2) | (((i) & 1) ? 8 : 0));
+}
+
+/*
+ * The timing register is shared by all devices. Only update for CE0.
+ */
+static int aspeed_spi_calibrate(struct udevice *dev, u32 hdiv,
+				const u8 *golden_buf, u8 *test_buf)
+{
+	struct udevice *bus = dev->parent;
+	struct dm_spi_slave_plat *slave_plat = dev_get_parent_plat(dev);
+	u32 cs = slave_plat->cs;
+	struct aspeed_spi_priv *priv = dev_get_priv(bus);
+	struct aspeed_spi_flash *flash = &priv->flashes[cs];
+	struct aspeed_spi_regs *regs = priv->regs;
+	int i;
+	int good_pass = -1;
+	int pass_count = 0;
+	u32 shift = (hdiv - 1) << 2;
+	u32 mask = ~(0xfu << shift);
+	u32 fread_timing_val = 0;
+	void *timing_reg = &regs->timings[cs];
+
+	if (priv->info == &ast2400_spi_info)
+		timing_reg = &regs->ce_ctrl[1];
+
+	/* Try HCLK delay 0..5, each one with/without delay and look for a
+	 * good pair.
+	 */
+	for (i = 0; i < 12; i++) {
+		bool pass;
+
+		if (cs == 0) {
+			fread_timing_val &= mask;
+			fread_timing_val |= fread_tpass(i) << shift;
+			writel(fread_timing_val, timing_reg);
+		}
+
+		pass = aspeed_spi_check_reads(flash, golden_buf, test_buf);
+		dev_dbg(bus,
+			"  * [%08x] %d HCLK delay, %dns DI delay : %s",
+			fread_timing_val, i / 2, (i & 1) ? 4 : 0,
+			pass ? "PASS" : "FAIL");
+		if (pass) {
+			pass_count++;
+			if (pass_count == 3) {
+				good_pass = i - 1;
+				break;
+			}
+		} else {
+			pass_count = 0;
+		}
+	}
+
+	/* No good setting for this frequency */
+	if (good_pass < 0)
+		return -1;
+
+	/* We have at least one pass of margin, let's use first pass */
+	if (cs == 0) {
+		fread_timing_val &= mask;
+		fread_timing_val |= fread_tpass(good_pass) << shift;
+		writel(fread_timing_val, timing_reg);
+	}
+
+	dev_dbg(bus, " * -> good is pass %d [0x%08x]",
+		good_pass, fread_timing_val);
+
+	return 0;
 }
 
 /*
@@ -770,156 +833,155 @@ static u32 ast2600_spi_dma_checksum(struct aspeed_spi_priv *priv,
  * content is too monotonous, the frequency recorded in the device
  * tree will be adopted.
  */
-#define INPUT_DELAY_RES_ARR_LEN		(6 * 17)
+#define TIMING_DELAY_DI		BIT(3)
+#define INPUT_DELAY_RES_ARR_LEN	(6 * 17)
 
-int ast2600_spi_timing_calibration(struct udevice *dev)
+static int aspeed_spi_ast2600_calibrate(struct udevice *dev, u32 hdiv,
+					const u8 *golden_buf, u8 *test_buf)
 {
-	int ret = 0;
 	struct udevice *bus = dev->parent;
 	struct dm_spi_slave_plat *slave_plat = dev_get_parent_plat(dev);
 	u32 cs = slave_plat->cs;
 	struct aspeed_spi_priv *priv = dev_get_priv(bus);
-	struct aspeed_spi_plat *plat = dev_get_plat(bus);
-	struct aspeed_spi_regs *regs = priv->regs;
 	struct aspeed_spi_flash *flash = &priv->flashes[cs];
-	const struct aspeed_spi_info *info = priv->info;
-	u32 max_freq = slave_plat->max_hz;
-	/* HCLK/2, ..., HCKL/5 */
-	u32 hclk_masks[] = {7, 14, 6, 13};
+	struct aspeed_spi_regs *regs = priv->regs;
+	int hcycle;
+	u32 shift = (hdiv - 2) << 3;
+	u32 mask = ~(0xffu << shift);
+	u32 fread_timing_val = 0;
 	u8 *calib_res = NULL;
-	u8 *check_buf = NULL;
-	u32 reg_val;
-	u32 checksum, gold_checksum;
-	u32 i, hcycle, delay_ns, final_delay = 0;
-	u32 input_delay;
-	u32 hclk_div;
+	int calib_point;
+	u32 final_delay;
+	int delay_ns;
 	bool pass;
-	int best_point;
 
-	reg_val = readl(&regs->timings[cs]);
-	if (reg_val != 0) {
-		dev_dbg(bus, "has executed calibration.\n");
-		goto no_calib;
+	calib_res = malloc(INPUT_DELAY_RES_ARR_LEN);
+	if (!calib_res)
+		return -ENOMEM;
+
+	for (hcycle = 0; hcycle <= 5; hcycle++) {
+		fread_timing_val &= mask;
+		fread_timing_val |= (TIMING_DELAY_DI | hcycle) << shift;
+
+		for (delay_ns = 0; delay_ns < 16; delay_ns++) {
+			fread_timing_val &= ~(0xfu << (4 + shift));
+			fread_timing_val |= delay_ns << (4 + shift);
+
+			writel(fread_timing_val, &regs->timings[cs]);
+			pass = aspeed_spi_check_reads(flash, golden_buf, test_buf);
+			dev_dbg(bus,
+				"  * [%08x] %d HCLK delay, DI delay %d.%dns : %s\n",
+				fread_timing_val, hcycle, delay_ns / 2,
+				(delay_ns & 1) ? 5 : 0, pass ? "PASS" : "FAIL");
+
+			calib_res[hcycle * 17 + delay_ns] = pass;
+		}
 	}
 
-	dev_dbg(bus, "calculate timing compensation.\n");
+	calib_point = get_mid_point_of_longest_one(calib_res, INPUT_DELAY_RES_ARR_LEN);
+
+	if (calib_point < 0) {
+		dev_info(bus, "[HCLK/%d] cannot get good calibration point.\n",
+			 hdiv);
+		free(calib_res);
+		return -1;
+	}
+
+	hcycle = calib_point / 17;
+	delay_ns = calib_point % 17;
+
+	dev_dbg(bus, "final hcycle: %d, delay_ns: %d\n", hcycle, delay_ns);
+
+	final_delay = (TIMING_DELAY_DI | hcycle | (delay_ns << 4)) << shift;
+	writel(final_delay, &regs->timings[cs]);
+
+	free(calib_res);
+
+	return 0;
+}
+
+static void aspeed_spi_do_calibration(struct udevice *dev)
+{
+	struct udevice *bus = dev->parent;
+	struct dm_spi_slave_plat *slave_plat = dev_get_parent_plat(dev);
+	u32 cs = slave_plat->cs;
+	struct aspeed_spi_priv *priv = dev_get_priv(bus);
+	const struct aspeed_spi_info *info = priv->info;
+	struct aspeed_spi_plat *plat = dev_get_plat(bus);
+	struct aspeed_spi_flash *flash = &priv->flashes[cs];
+	struct aspeed_spi_regs *regs = priv->regs;
+	u32 ahb_freq = plat->hclk_rate;
+	u32 max_freq = slave_plat->max_hz;
+	u32 ctrl_val;
+	u8 *golden_buf = NULL;
+	u8 *test_buf = NULL;
+	int i, rc, best_div = -1;
+	u32 clk_div = 0;
+	u32 freq = 0;
+
+	dev_dbg(bus, "calculate timing compensation - AHB freq: %d MHz",
+		ahb_freq / 1000000);
 
 	/*
 	 * use the related low frequency to get check calibration data
 	 * and get golden data.
 	 */
-	reg_val = flash->cmd_mode[CMD_READ_MODE] & (~info->clk_ctrl_mask);
-	writel(reg_val, &regs->ce_ctrl[cs]);
+	ctrl_val = flash->cmd_mode[CMD_READ_MODE] & (~info->clk_ctrl_mask);
+	writel(ctrl_val, &regs->ce_ctrl[cs]);
 
-	/*
-	 * timing calibration should be skipped when
-	 * "timing-calibration-disabled" property is configured
-	 * in the device tree.
-	 */
-	if (priv->disable_calib)
+	test_buf = malloc(TIMING_CAL_LEN * 2);
+	if (!test_buf)
 		goto no_calib;
 
-	check_buf = memalign(4, TIMING_CAL_LEN);
-	if (!check_buf)
-		return -ENOMEM;
+	golden_buf = test_buf + TIMING_CAL_LEN;
 
-	memcpy_fromio(check_buf, (void __iomem *)flash->ahb_base, TIMING_CAL_LEN);
-	if (!aspeed_spi_calibriation_enable(check_buf, TIMING_CAL_LEN)) {
-		dev_info(bus, "flash data is monotonous, skip calibration.");
+	memcpy_fromio(golden_buf, (void *)flash->ahb_base, TIMING_CAL_LEN);
+	if (!aspeed_spi_check_calib_data(golden_buf, TIMING_CAL_LEN)) {
+		dev_info(bus, "Calibration area too uniform, using low speed");
 		goto no_calib;
 	}
 
-	gold_checksum = ast2600_spi_dma_checksum(priv, cs, 0, 0);
+	/* Now we iterate the HCLK dividers until we find our breaking point */
+	for (i = info->hdiv_max; i <= 5; i++) {
+		u32 tv;
 
-	/*
-	 * allocate a space to record calibration result for
-	 * different timing compensation with fixed HCLK division.
-	 */
-	calib_res = malloc(INPUT_DELAY_RES_ARR_LEN);
-	if (!calib_res) {
-		ret = -ENOMEM;
-		goto no_calib;
-	}
-
-	/* From HCLK/2 to HCLK/5 */
-	for (i = 0; i < ARRAY_SIZE(hclk_masks); i++) {
-		if (max_freq < (u32)plat->hclk_rate / (i + 2)) {
-			dev_dbg(bus, "skipping freq %d\n",
-				(u32)plat->hclk_rate / (i + 2));
+		freq = ahb_freq / i;
+		if (freq > max_freq)
 			continue;
+
+		/* Set the timing */
+		tv = flash->cmd_mode[CMD_READ_MODE] & ~(info->clk_ctrl_mask);
+		tv |= ASPEED_SPI_HCLK_DIV(i - 1);
+		writel(tv, &regs->ce_ctrl[cs]);
+		dev_dbg(bus, "Trying HCLK/%d [%08x] ...\n", i, tv);
+		rc = info->calibrate(dev, i, golden_buf, test_buf);
+		if (rc == 0) {
+			best_div = i;
+			break;
 		}
-
-		max_freq = (u32)plat->hclk_rate / (i + 2);
-
-		memset(calib_res, 0x0, INPUT_DELAY_RES_ARR_LEN);
-
-		for (hcycle = 0; hcycle <= 5; hcycle++) {
-			/* increase DI delay by the step of 0.5ns */
-			dev_dbg(bus, "Delay Enable : hcycle %x\n", hcycle);
-			for (delay_ns = 0; delay_ns <= 0xf; delay_ns++) {
-				input_delay = BIT(3) | hcycle | (delay_ns << 4);
-				checksum = ast2600_spi_dma_checksum(priv,
-								    cs,
-								    hclk_masks[i],
-								    input_delay);
-				pass = (checksum == gold_checksum);
-				calib_res[hcycle * 17 + delay_ns] = pass;
-				dev_dbg(bus,
-					"HCLK/%d, %d HCLK cycle, %d delay_ns : %s\n",
-					i + 2, hcycle, delay_ns,
-					pass ? "PASS" : "FAIL");
-			}
-		}
-
-		best_point = get_best_timing_point(calib_res,
-						   INPUT_DELAY_RES_ARR_LEN);
-		if (best_point < 0) {
-			dev_info(bus, "cannot get good timing point.\n");
-			continue;
-		}
-
-		hcycle = best_point / 17;
-		delay_ns = best_point % 17;
-
-		dev_dbg(bus, "final hcycle: %d, delay_ns: %d\n", hcycle,
-			delay_ns);
-
-		final_delay = (BIT(3) | hcycle | (delay_ns << 4)) << (i * 8);
-		writel(final_delay, &regs->timings[cs]);
-		break;
 	}
 
 no_calib:
-
-	if (best_point <= 0)
-		max_freq = slave_plat->max_hz;
-
-	hclk_div = info->get_clk_setting(dev, max_freq);
-	/* configure SPI clock frequency */
-	reg_val = readl(&regs->ce_ctrl[cs]);
-	reg_val = (reg_val & (~info->clk_ctrl_mask)) | hclk_div;
-	writel(reg_val, &regs->ce_ctrl[cs]);
-
-	/* add clock setting info for CE ctrl setting */
-	for (i = 0; i < CMD_MODE_MAX; i++) {
-		flash->cmd_mode[i] &= ~(info->clk_ctrl_mask);
-		flash->cmd_mode[i] |= hclk_div;
+	/* Nothing found ? */
+	if (best_div < 0) {
+		dev_warn(bus, "No good frequency\n");
+		clk_div = info->get_clk_setting(dev, max_freq);
+	} else {
+		dev_dbg(bus, "Found good read timings at HCLK/%d\n", best_div);
+		flash->max_freq = freq;
+		clk_div = ASPEED_SPI_HCLK_DIV(best_div - 1);
 	}
 
-	dev_dbg(bus, "freq: %dMHz\n", max_freq / 1000000);
+	/* Record the freq */
+	for (i = 0; i < CMD_MODE_MAX; i++) {
+		flash->cmd_mode[i] &= ~(info->clk_ctrl_mask);
+		flash->cmd_mode[i] |= clk_div;
+	}
 
-	if (check_buf)
-		free(check_buf);
+	writel(flash->cmd_mode[CMD_READ_MODE], &regs->ce_ctrl[cs]);
 
-	if (calib_res)
-		free(calib_res);
-
-	return ret;
-}
-
-int ast2700_spi_timing_calibration(struct udevice *dev)
-{
-	return ast2600_spi_timing_calibration(dev);
+	if (test_buf)
+		free(test_buf);
 }
 
 static int aspeed_spi_exec_op_normal_mode(struct spi_slave *slave,
@@ -1124,6 +1186,7 @@ static int aspeed_spi_dirmap_create(struct spi_mem_dirmap_desc *desc)
 	struct udevice *dev = desc->slave->dev;
 	struct udevice *bus = dev->parent;
 	struct aspeed_spi_priv *priv = dev_get_priv(bus);
+	struct aspeed_spi_plat *plat = dev_get_plat(bus);
 	struct dm_spi_slave_plat *slave_plat = dev_get_parent_plat(dev);
 	const struct aspeed_spi_info *info = priv->info;
 	struct spi_mem_op op_tmpl = desc->info.op_tmpl;
@@ -1131,6 +1194,7 @@ static int aspeed_spi_dirmap_create(struct spi_mem_dirmap_desc *desc)
 	u32 cs = slave_plat->cs;
 	u32 cmd_io_conf;
 	uintptr_t ce_ctrl_reg;
+	u32 hclk_div = 0;
 
 	ce_ctrl_reg = (uintptr_t)&priv->regs->ce_ctrl[cs];
 	if (info == &ast2400_spi_info)
@@ -1164,15 +1228,21 @@ static int aspeed_spi_dirmap_create(struct spi_mem_dirmap_desc *desc)
 			      CTRL_IO_MODE_CMD_READ;
 
 		priv->flashes[cs].cmd_mode[CMD_READ_MODE] &=
-						priv->info->clk_ctrl_mask;
+						info->clk_ctrl_mask;
 		priv->flashes[cs].cmd_mode[CMD_READ_MODE] |= cmd_io_conf;
 
 		writel(priv->flashes[cs].cmd_mode[CMD_READ_MODE], ce_ctrl_reg);
 
-		if (info->timing_calibration) {
-			ret = info->timing_calibration(dev);
-			if (ret != 0)
-				dev_err(dev, "timing calibration failed.\n");
+		/* assign SPI clock frequency division */
+		if (slave_plat->max_hz < plat->hclk_rate / 5) {
+			hclk_div = info->get_clk_setting(dev, slave_plat->max_hz);
+
+			for (i = 0; i < CMD_MODE_MAX; i++) {
+				priv->flashes[i].cmd_mode[i] &=
+					~(info->clk_ctrl_mask) | hclk_div;
+			}
+		} else {
+			aspeed_spi_do_calibration(dev);
 		}
 
 		dev_dbg(dev, "read bus width: %d ce_ctrl_val: 0x%08x\n",
@@ -1516,6 +1586,7 @@ static int aspeed_spi_ctrl_init(struct udevice *bus)
 static const struct aspeed_spi_info ast2400_fmc_info = {
 	.io_mode_mask = 0x70000000,
 	.max_bus_width = 2,
+	.hdiv_max = 1,
 	.min_decoded_sz = 0x800000,
 	.clk_ctrl_mask = 0x00002f00,
 	.set_4byte = ast2400_fmc_chip_set_4byte,
@@ -1523,11 +1594,13 @@ static const struct aspeed_spi_info ast2400_fmc_info = {
 	.segment_end = ast2400_spi_segment_end,
 	.segment_reg = ast2400_spi_segment_reg,
 	.get_clk_setting = ast2400_get_clk_setting,
+	.calibrate = aspeed_spi_calibrate,
 };
 
 static const struct aspeed_spi_info ast2400_spi_info = {
 	.io_mode_mask = 0x70000000,
 	.max_bus_width = 2,
+	.hdiv_max = 1,
 	.min_decoded_sz = 0x800000,
 	.clk_ctrl_mask = 0x00000f00,
 	.set_4byte = ast2400_spi_chip_set_4byte,
@@ -1535,11 +1608,13 @@ static const struct aspeed_spi_info ast2400_spi_info = {
 	.segment_end = ast2400_spi_segment_end,
 	.segment_reg = ast2400_spi_segment_reg,
 	.get_clk_setting = ast2400_get_clk_setting,
+	.calibrate = aspeed_spi_calibrate,
 };
 
 static const struct aspeed_spi_info ast2500_fmc_info = {
 	.io_mode_mask = 0x70000000,
 	.max_bus_width = 2,
+	.hdiv_max = 1,
 	.min_decoded_sz = 0x800000,
 	.clk_ctrl_mask = 0x00002f00,
 	.set_4byte = ast2500_spi_chip_set_4byte,
@@ -1548,6 +1623,7 @@ static const struct aspeed_spi_info ast2500_fmc_info = {
 	.segment_reg = ast2500_spi_segment_reg,
 	.adjust_decoded_sz = ast2500_adjust_decoded_size,
 	.get_clk_setting = ast2500_get_clk_setting,
+	.calibrate = aspeed_spi_calibrate,
 };
 
 /*
@@ -1557,6 +1633,7 @@ static const struct aspeed_spi_info ast2500_fmc_info = {
 static const struct aspeed_spi_info ast2500_spi_info = {
 	.io_mode_mask = 0x70000000,
 	.max_bus_width = 2,
+	.hdiv_max = 1,
 	.min_decoded_sz = 0x800000,
 	.clk_ctrl_mask = 0x00002f00,
 	.set_4byte = ast2500_spi_chip_set_4byte,
@@ -1565,11 +1642,13 @@ static const struct aspeed_spi_info ast2500_spi_info = {
 	.segment_reg = ast2500_spi_segment_reg,
 	.adjust_decoded_sz = ast2500_adjust_decoded_size,
 	.get_clk_setting = ast2500_get_clk_setting,
+	.calibrate = aspeed_spi_calibrate,
 };
 
 static const struct aspeed_spi_info ast2600_fmc_info = {
 	.io_mode_mask = 0xf0000000,
 	.max_bus_width = 4,
+	.hdiv_max = 2,
 	.min_decoded_sz = 0x200000,
 	.clk_ctrl_mask = 0x0f000f00,
 	.set_4byte = ast2600_spi_chip_set_4byte,
@@ -1578,12 +1657,13 @@ static const struct aspeed_spi_info ast2600_fmc_info = {
 	.segment_reg = ast2600_spi_segment_reg,
 	.adjust_decoded_sz = ast2600_adjust_decoded_size,
 	.get_clk_setting = ast2600_get_clk_setting,
-	.timing_calibration = ast2600_spi_timing_calibration,
+	.calibrate = aspeed_spi_ast2600_calibrate,
 };
 
 static const struct aspeed_spi_info ast2600_spi_info = {
 	.io_mode_mask = 0xf0000000,
 	.max_bus_width = 4,
+	.hdiv_max = 2,
 	.min_decoded_sz = 0x200000,
 	.clk_ctrl_mask = 0x0f000f00,
 	.set_4byte = ast2600_spi_chip_set_4byte,
@@ -1592,12 +1672,13 @@ static const struct aspeed_spi_info ast2600_spi_info = {
 	.segment_reg = ast2600_spi_segment_reg,
 	.adjust_decoded_sz = ast2600_adjust_decoded_size,
 	.get_clk_setting = ast2600_get_clk_setting,
-	.timing_calibration = ast2600_spi_timing_calibration,
+	.calibrate = aspeed_spi_ast2600_calibrate,
 };
 
 static const struct aspeed_spi_info ast2700_fmc_info = {
 	.io_mode_mask = 0xf0000000,
 	.max_bus_width = 4,
+	.hdiv_max = 2,
 	.min_decoded_sz = 0x10000,
 	.clk_ctrl_mask = 0x0f000f00,
 	.set_4byte = ast2700_spi_chip_set_4byte,
@@ -1606,12 +1687,13 @@ static const struct aspeed_spi_info ast2700_fmc_info = {
 	.segment_reg = ast2700_spi_segment_reg,
 	.adjust_decoded_sz = ast2700_adjust_decoded_size,
 	.get_clk_setting = ast2700_get_clk_setting,
-	.timing_calibration = ast2700_spi_timing_calibration,
+	.calibrate = aspeed_spi_ast2600_calibrate,
 };
 
 static const struct aspeed_spi_info ast2700_spi_info = {
 	.io_mode_mask = 0xf0000000,
 	.max_bus_width = 4,
+	.hdiv_max = 2,
 	.min_decoded_sz = 0x10000,
 	.clk_ctrl_mask = 0x0f000f00,
 	.set_4byte = ast2700_spi_chip_set_4byte,
@@ -1620,7 +1702,7 @@ static const struct aspeed_spi_info ast2700_spi_info = {
 	.segment_reg = ast2700_spi_segment_reg,
 	.adjust_decoded_sz = ast2700_adjust_decoded_size,
 	.get_clk_setting = ast2700_get_clk_setting,
-	.timing_calibration = ast2700_spi_timing_calibration,
+	.calibrate = aspeed_spi_ast2600_calibrate,
 };
 
 static int aspeed_spi_claim_bus(struct udevice *dev)
@@ -1713,7 +1795,7 @@ static int apseed_spi_of_to_plat(struct udevice *bus)
 		goto end;
 	}
 
-	plat->hclk_rate = 200 * 1000000; //clk_get_rate(&hclk);
+	plat->hclk_rate = clk_get_rate(&hclk);
 	clk_free(&hclk);
 
 	dev_dbg(bus, "ctrl_base = 0x%" PRIxPTR ", ahb_base = 0x%" PRIxPTR "\n",
