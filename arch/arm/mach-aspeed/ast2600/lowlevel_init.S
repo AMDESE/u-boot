@@ -35,6 +35,7 @@
 #define SCU_SMP_READY		(SCU_BASE + 0x18c)
 #define SCU_SMP_POLLINSN	(SCU_BASE + 0x190)
 #define SCU_SMP_S_EP		(SCU_BASE + 0x1bc)
+#define SCU_USB_MULTI_FUNC	(SCU_BASE + 0x440)
 #define SCU_HWSTRAP1		(SCU_BASE + 0x510)
 #define SCU_CA7_PARITY_CHK	(SCU_BASE + 0x820)
 #define SCU_CA7_PARITY_CLR	(SCU_BASE + 0x824)
@@ -176,6 +177,11 @@ do_primary_core_setup:
 
 	mov	r0, #0x1
 	ldr	r1, =SCU_CA7_PARITY_CHK
+	str	r0, [r1]
+
+	/* Select USB2.0 Device mode as USB port B */
+	ldr	r0, =0x10000000
+	ldr	r1, =SCU_USB_MULTI_FUNC
 	str	r0, [r1]
 
 	/* do not fill FMC50[1] if boot from eMMC */
