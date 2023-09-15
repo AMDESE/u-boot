@@ -538,7 +538,7 @@ DECLARE_GLOBAL_DATA_PTR;
 static const u32 ddr4_ac_timing[4] = {
 	0x040e0307, 0x0f4711f1, 0x0e060304, 0x00001240 };
 static const u32 ddr_max_grant_params[4] = {
-	0x44444444, 0x44444444, 0x44444444, 0x44444444 };
+	0x44484488, 0xee4444ee, 0x44444444, 0x44444444 };
 
 struct dram_info {
 	struct ram_info info;
@@ -940,9 +940,15 @@ static void ast2600_sdrammc_common_init(struct ast2600_sdrammc_regs *regs)
 
 	writel(MCR34_MREQI_DIS | MCR34_RESETN_DIS, &regs->power_ctrl);
 	writel(SDRAM_VIDEO_UNLOCK_KEY, &regs->gm_protection_key);
-	writel(0x10 << MCR38_RW_MAX_GRANT_CNT_RQ_SHIFT,
+	/* [6:0] : Group 1 request queued number = 16
+	 * [14:8] : Group 2 request queued number = 16
+	 * [20:16] : R/W max-grant count for RQ output arbitration = 16
+	 */
+	writel((0x10 << MCR38_RW_MAX_GRANT_CNT_RQ_SHIFT) |
+	       (0x10 << MCR38_GROUP2_REQ_NUM_THR_SHIFT) |
+	       (0x10 << MCR38_GROUP1_REQ_NUM_THR_SHIFT),
 	       &regs->arbitration_ctrl);
-	writel(0xFFBBFFF4, &regs->req_limit_mask);
+	writel(0x0FFF3CEF, &regs->req_limit_mask);
 
 	for (i = 0; i < ARRAY_SIZE(ddr_max_grant_params); ++i)
 		writel(ddr_max_grant_params[i], &regs->max_grant_len[i]);
@@ -957,14 +963,14 @@ static void ast2600_sdrammc_common_init(struct ast2600_sdrammc_regs *regs)
 	writel(0, &regs->test_init_val);
 
 	writel(0xFFFFFFFF, &regs->req_input_ctrl);
-	writel(0, &regs->req_high_pri_ctrl);
+	writel(0x300, &regs->req_high_pri_ctrl);
 
 	udelay(600);
 
 #ifdef CONFIG_ASPEED_DDR4_DUALX8
-	writel(0x37, &regs->config);
+	writel(0xa037, &regs->config);
 #else
-	writel(0x17, &regs->config);
+	writel(0xa017, &regs->config);
 #endif
 
 	/* load controller setting */
