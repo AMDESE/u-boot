@@ -319,6 +319,11 @@ static int ast2500_adjust_decoded_size(struct udevice *bus)
 	if (ret != 0)
 		return ret;
 
+	if (priv->info == &ast2500_spi_info) {
+		flashes[1].ahb_decoded_sz = SZ_128M -
+					    flashes[0].ahb_decoded_sz;
+	}
+
 	return 0;
 }
 
