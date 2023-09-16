@@ -1234,7 +1234,8 @@ static int aspeed_spi_dirmap_create(struct spi_mem_dirmap_desc *desc)
 		writel(priv->flashes[cs].cmd_mode[CMD_READ_MODE], ce_ctrl_reg);
 
 		/* assign SPI clock frequency division */
-		if (slave_plat->max_hz < plat->hclk_rate / 5) {
+		if (slave_plat->max_hz < (plat->hclk_rate / 5) ||
+		    priv->disable_calib) {
 			hclk_div = info->get_clk_setting(dev, slave_plat->max_hz);
 
 			for (i = 0; i < CMD_MODE_MAX; i++) {
