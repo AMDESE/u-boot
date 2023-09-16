@@ -100,6 +100,7 @@ struct aspeed_spi_priv {
 	u8 *tmp_buf;
 	bool fixed_decoded_range;
 	bool disable_calib;
+	bool pure_spi_mode_only;
 };
 
 struct aspeed_spi_info {
@@ -1209,7 +1210,10 @@ static int aspeed_spi_dirmap_create(struct spi_mem_dirmap_desc *desc)
 		 * ent register.
 		 */
 		if (info != &ast2400_spi_info) {
-			priv->flashes[cs].ahb_decoded_sz = desc->info.length;
+			if (!priv->pure_spi_mode_only) {
+				priv->flashes[cs].ahb_decoded_sz =
+					desc->info.length;
+			}
 
 			for (i = 0; i < priv->num_cs; i++) {
 				dev_dbg(dev, "cs: %d, sz: 0x%x\n", i,
@@ -1248,6 +1252,9 @@ static int aspeed_spi_dirmap_create(struct spi_mem_dirmap_desc *desc)
 
 		dev_dbg(dev, "read bus width: %d ce_ctrl_val: 0x%08x\n",
 			op_tmpl.data.buswidth, priv->flashes[cs].cmd_mode[CMD_READ_MODE]);
+
+		if (priv->pure_spi_mode_only)
+			return -EOPNOTSUPP;
 
 	} else if (desc->info.op_tmpl.data.dir == SPI_MEM_DATA_OUT) {
 		if (!IS_ENABLED(CONFIG_SPI_ASPEED_DIRMAP_WRITE))
@@ -1776,6 +1783,7 @@ static int apseed_spi_of_to_plat(struct udevice *bus)
 	}
 
 	priv->disable_calib = dev_read_bool(bus, "timing-calibration-disabled");
+	priv->pure_spi_mode_only = dev_read_bool(bus, "pure-spi-mode-only");
 
 	plat->ahb_base = devfdt_get_addr_size_index(bus, 1, &plat->ahb_sz);
 	if (plat->ahb_base == FDT_ADDR_T_NONE) {
