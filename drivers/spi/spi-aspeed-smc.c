@@ -435,6 +435,9 @@ static uintptr_t ast2700_spi_segment_end(struct udevice *bus, u32 reg)
 
 static u32 ast2700_spi_segment_reg(uintptr_t start, uintptr_t end)
 {
+	if (start == end)
+		return 0;
+
 	return ((((start) >> 16) & 0xffff) | ((end + 1) & 0xffff0000));
 }
 
