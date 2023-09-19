@@ -20,10 +20,6 @@ DECLARE_GLOBAL_DATA_PTR;
 #define AST_BOOTMODE_SPI    0
 #define AST_BOOTMODE_EMMC   1
 
-#define SCU_IO_REG		0x14c02000
-#define HW_STRAP_REG		(SCU_IO_REG + 0x10)
-#define STRAP_BOOTMODE_BIT	BIT(11)
-
 void board_init_f(ulong dummy)
 {
 	if (CONFIG_IS_ENABLED(OF_CONTROL)) {
@@ -52,7 +48,7 @@ struct legacy_img_hdr *spl_get_load_buffer(ssize_t offset, size_t size)
  */
 u32 spl_boot_device(void)
 {
-	if ((readl(HW_STRAP_REG) & STRAP_BOOTMODE_BIT))
+	if ((readl(ASPEED_CPU_HW_STRAP1) & STRAP_BOOTMODE_BIT))
 		return BOOT_DEVICE_MMC1;
 	else
 		return BOOT_DEVICE_RAM;
