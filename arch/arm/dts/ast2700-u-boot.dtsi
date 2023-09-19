@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0+
 
 / {
+	config {
+		u-boot,mmc-env-offset = <0x5000>;      /* @  20KB */
+	};
 };
 
 &soc0 {
