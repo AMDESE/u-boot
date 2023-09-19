@@ -7,6 +7,8 @@
 #include <asm/armv8/mmu.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
+#include <env.h>
+#include <env_internal.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -44,4 +46,19 @@ struct mm_region *mem_map = aspeed2700_mem_map;
 u64 get_page_table_size(void)
 {
 	return 0x80000;
+}
+
+enum env_location env_get_location(enum env_operation op, int prio)
+{
+	enum env_location env_loc = ENVL_UNKNOWN;
+
+	if (prio)
+		return env_loc;
+
+	if ((readl(ASPEED_CPU_HW_STRAP1) & STRAP_BOOTMODE_BIT))
+		env_loc =  ENVL_MMC;
+	else
+		env_loc =  ENVL_SPI_FLASH;
+
+	return env_loc;
 }
