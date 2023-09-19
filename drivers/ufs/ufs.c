@@ -27,8 +27,6 @@
 
 #include "ufs.h"
 
-#define FPGA_ASPEED
-
 #define UFSHCD_ENABLE_INTRS	(UTP_TRANSFER_REQ_COMPL |\
 				 UTP_TASK_REQ_COMPL |\
 				 UFSHCD_ERROR_MASK)
@@ -1849,7 +1847,6 @@ int ufs_start(struct ufs_hba *hba)
 			"%s: Failed getting max supported power mode\n",
 			__func__);
 	} else {
-#ifndef FPGA_ASPEED
 		ret = ufshcd_change_power_mode(hba, &hba->max_pwr_info.info);
 		if (ret) {
 			dev_err(hba->dev, "%s: Failed setting power mode, err = %d\n",
@@ -1857,7 +1854,6 @@ int ufs_start(struct ufs_hba *hba)
 
 			return ret;
 		}
-#endif
 
 		printf("Device at %s up at:", hba->dev->name);
 		ufshcd_print_pwr_info(hba);
