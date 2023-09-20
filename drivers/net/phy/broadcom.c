@@ -34,6 +34,33 @@
 
 #define MIIM_BCM_CHANNEL_WIDTH    0x2000
 
+#define MII_BRCM_FET_INTREG		0x1a	/* Interrupt register */
+#define MII_BRCM_FET_IR_MASK		0x0100	/* Mask all interrupts */
+#define MII_BRCM_FET_IR_LINK_EN		0x0200	/* Link status change enable */
+#define MII_BRCM_FET_IR_SPEED_EN	0x0400	/* Link speed change enable */
+#define MII_BRCM_FET_IR_DUPLEX_EN	0x0800	/* Duplex mode change enable */
+#define MII_BRCM_FET_IR_ENABLE		0x4000	/* Interrupt enable */
+
+#define MII_BRCM_FET_BRCMTEST		0x1f	/* Brcm test register */
+#define MII_BRCM_FET_BT_SRE		0x0080	/* Shadow register enable */
+
+#define MII_BRCM_FET_SHDW_AUXMODE4	0x1a	/* Auxiliary mode 4 */
+#define MII_BRCM_FET_SHDW_AM4_STANDBY	0x0008	/* Standby enable */
+#define MII_BRCM_FET_SHDW_AM4_LED_MASK	0x0003
+#define MII_BRCM_FET_SHDW_AM4_LED_MODE1 0x0001
+
+#define PHY_BRCM_AUTO_PWRDWN_ENABLE	0x00000001
+
+#define MII_BRCM_FET_SHDW_AUXSTAT2	0x1b	/* Auxiliary status 2 */
+#define MII_BRCM_FET_SHDW_AS2_APDE	0x0020	/* Auto power down enable */
+
+/* BCM5221 Registers */
+#define BCM5221_AEGSR			0x1C
+#define BCM5221_AEGSR_MDIX_DIS		BIT(11)
+
+#define BCM5221_SHDW_AM4_EN_CLK_LPM	BIT(2)
+#define BCM5221_SHDW_AM4_FORCE_LPM	BIT(1)
+
 static void bcm_phy_write_misc(struct phy_device *phydev,
 			       u16 reg, u16 chl, u16 value)
 {
@@ -189,6 +216,66 @@ static int bcm5482_config(struct phy_device *phydev)
 	genphy_config_aneg(phydev);
 
 	return 0;
+}
+
+static int bcm5221_config(struct phy_device *phydev)
+{
+	int reg, err, err2, brcmtest;
+
+	/* Reset the PHY to bring it to a known state. */
+	err = phy_write(phydev, MDIO_DEVAD_NONE, MII_BMCR, BMCR_RESET);
+	if (err < 0)
+		return err;
+
+	/* The datasheet indicates the PHY needs up to 1us to complete a reset,
+	 * build some slack here.
+	 */
+	mdelay(20);
+
+	/* The PHY requires 65 MDC clock cycles to complete a write operation
+	 * and turnaround the line properly.
+	 *
+	 * We ignore -EIO here as the MDIO controller (e.g.: mdio-bcm-unimac)
+	 * may flag the lack of turn-around as a read failure. This is
+	 * particularly true with this combination since the MDIO controller
+	 * only used 64 MDC cycles. This is not a critical failure in this
+	 * specific case and it has no functional impact otherwise, so we let
+	 * that one go through. If there is a genuine bus error, the next read
+	 * of MII_BRCM_FET_INTREG will error out.
+	 */
+	err = phy_read(phydev, MDIO_DEVAD_NONE, MII_BMCR);
+	if (err < 0 && err != -EIO)
+		return err;
+
+	/* Enable shadow register access */
+	brcmtest = phy_read(phydev, MDIO_DEVAD_NONE, MII_BRCM_FET_BRCMTEST);
+	if (brcmtest < 0)
+		return brcmtest;
+
+	reg = brcmtest | MII_BRCM_FET_BT_SRE;
+
+	err = phy_write(phydev, MDIO_DEVAD_NONE, MII_BRCM_FET_BRCMTEST, reg);
+	if (err < 0)
+		return err;
+
+	/* Exit low power mode */
+	reg = phy_read(phydev, MDIO_DEVAD_NONE, MII_BRCM_FET_SHDW_AUXMODE4);
+	if (reg < 0)
+		return reg;
+	reg &= ~BCM5221_SHDW_AM4_FORCE_LPM;
+	err = phy_write(phydev, MDIO_DEVAD_NONE, MII_BRCM_FET_SHDW_AUXMODE4,
+			reg);
+	if (err < 0)
+		goto done;
+
+done:
+	/* Disable shadow register access */
+	err2 = phy_write(phydev, MDIO_DEVAD_NONE, MII_BRCM_FET_BRCMTEST,
+			 brcmtest);
+	if (!err)
+		err = err2;
+
+	return err;
 }
 
 static void bcm_cygnus_afe(struct phy_device *phydev)
@@ -406,6 +493,16 @@ U_BOOT_PHY_DRIVER(bcm_cygnus) = {
 	.mask = 0xfffff0,
 	.features = PHY_GBIT_FEATURES,
 	.config = &bcm_cygnus_config,
+	.startup = &genphy_startup,
+	.shutdown = &genphy_shutdown,
+};
+
+U_BOOT_PHY_DRIVER(bcm5221) = {
+	.name = "Broadcom BCM5221",
+	.uid = 0x004061E0,
+	.mask = 0xfffff0,
+	.features = PHY_BASIC_FEATURES,
+	.config = &bcm5221_config,
 	.startup = &genphy_startup,
 	.shutdown = &genphy_shutdown,
 };
