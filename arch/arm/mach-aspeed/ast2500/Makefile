@@ -1,4 +1,4 @@
-obj-y += lowlevel_init.o
+obj-y += platform.o
 obj-y += board_common.o
 obj-y += clk_ast2500.o
 obj-$(CONFIG_SPL_BUILD) += spl.o
