@@ -14,7 +14,6 @@
 #include <reset.h>
 #include <fdtdec.h>
 #include <asm/io.h>
-#include "dp_mcu_firmware.h"
 
 #define MCU_CTRL                        0x00e0
 #define  MCU_CTRL_AHBS_IMEM_EN          BIT(0)
@@ -126,12 +125,20 @@ static int aspeed_dp_probe(struct udevice *dev)
 	int i, ret = 0;
 	u32 mcu_ctrl, val, scu_offset;
 	bool is_mcu_stop = false;
+	u32 fw[0x1000];
 
 	scu_offset = _get_scu_offset(dev);
 	regmap_read(dp->scu, scu_offset, &val);
 	is_mcu_stop = ((val & BIT(13)) == 0);
 
 	dev_dbg(dev, "%s(dev=%p) scu offset(%#x)\n", __func__, dev, scu_offset);
+
+	ret = dev_read_u32_array(dev, "aspeed,dp-fw", fw, ARRAY_SIZE(fw));
+	if (ret) {
+		dev_err(dev, "Can't get dp-firmware, err(%d)\n", ret);
+		return ret;
+	}
+
 	ret = reset_get_by_index(dev, 0, &dp_reset_ctl);
 	if (ret) {
 		dev_err(dev, "%s(): Failed to get dp reset signal\n", __func__);
@@ -178,13 +185,8 @@ static int aspeed_dp_probe(struct udevice *dev)
 		mcu_ctrl |= MCU_CTRL_AHBS_IMEM_EN;
 		writel(mcu_ctrl, dp->mcuc_base + MCU_CTRL);
 
-		if (IS_ENABLED(CONFIG_MACH_ASPEED_G7)) {
-			for (i = 0; i < ARRAY_SIZE(firmware_ast2700_dp); i++)
-				writel(firmware_ast2700_dp[i], dp->mcui_base + (i * 4));
-		} else {
-			for (i = 0; i < ARRAY_SIZE(firmware_ast2600_dp); i++)
-				writel(firmware_ast2600_dp[i], dp->mcui_base + (i * 4));
-		}
+		for (i = 0; i < ARRAY_SIZE(fw); i++)
+			writel(fw[i], dp->mcui_base + (i * 4));
 
 		/* release DPMCU internal reset */
 		mcu_ctrl &= ~MCU_CTRL_AHBS_IMEM_EN;
