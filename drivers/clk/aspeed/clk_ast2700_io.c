@@ -58,7 +58,7 @@ static uint32_t ast2700_io_get_hclk_rate(struct ast2700_io_clk *clk)
 	if (!hclk_div)
 		hclk_div++;
 
-	return (rate / ((hclk_div + 1) * 2));
+	return (rate / hclk_div);
 }
 
 #define SCU_CLKSEL1_PCLK_DIV_MASK		GENMASK(20, 18)
