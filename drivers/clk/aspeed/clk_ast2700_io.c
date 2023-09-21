@@ -279,6 +279,18 @@ static int ast2700_io_clk_probe(struct udevice *dev)
 	return 0;
 }
 
+static int ast2700_io_clk_bind(struct udevice *dev)
+{
+	int ret;
+
+	/* The reset driver does not have a device node, so bind it here */
+	ret = device_bind_driver(gd->dm_root, "ast_sysreset", "reset", &dev);
+	if (ret)
+		debug("Warning: No reset driver: ret = %d\n", ret);
+
+	return 0;
+}
+
 static const struct udevice_id ast2700_io_clk_ids[] = {
 	{ .compatible = "aspeed,ast2700_io-clk", },
 	{ },
@@ -291,4 +303,5 @@ U_BOOT_DRIVER(aspeed_ast2700_io_clk) = {
 	.priv_auto = sizeof(struct ast2700_io_clk_priv),
 	.ops = &ast2700_io_clk_ops,
 	.probe = ast2700_io_clk_probe,
+	.bind = ast2700_io_clk_bind,
 };
