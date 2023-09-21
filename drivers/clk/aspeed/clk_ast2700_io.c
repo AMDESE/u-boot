@@ -56,6 +56,8 @@ static uint32_t ast2700_io_get_hclk_rate(struct ast2700_io_clk *clk)
 			     SCU_CLKSEL2_HCLK_DIV_SHIFT;
 
 	if (!hclk_div)
+		hclk_div = 2;
+	else
 		hclk_div++;
 
 	return (rate / hclk_div);
