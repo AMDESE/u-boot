@@ -62,3 +62,13 @@ enum env_location env_get_location(enum env_operation op, int prio)
 
 	return env_loc;
 }
+
+int arch_misc_init(void)
+{
+	if ((readl(ASPEED_CPU_HW_STRAP1) & STRAP_BOOTMODE_BIT))
+		env_set("boot_device", "mmc");
+	else
+		env_set("boot_device", "spi");
+
+	return 0;
+}

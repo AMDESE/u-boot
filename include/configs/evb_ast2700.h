@@ -29,5 +29,9 @@
 	"bootb=setenv bootpart 3; setenv rootfs rofs-b; run setmmcargs; ext4load mmc 0:${bootpart} ${loadaddr} fitImage && bootm; echo Error loading kernel FIT image\0"	\
 	"bootmmc=if test \"${bootside}\" = \"b\"; then run bootb; run boota; else run boota; run bootb; fi\0"	\
 	"verify=yes\0"	\
+	"boot_ast2700=" \
+	"echo \"Boot from ${boot_device}!\";" \
+	"if test ${boot_device} = mmc; then run bootmmc; fi;" \
+	"if test ${boot_device} = spi; then run bootspi; fi;" \
 	""
 #endif	/* __CONFIG_H */
