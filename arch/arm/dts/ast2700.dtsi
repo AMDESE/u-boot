@@ -685,3 +685,7 @@
 	};
 
 };
+
+#ifdef CONFIG_ASPEED_DP
+#include "ast2700-dp-fw.dtsi"
+#endif
