@@ -1,0 +1,6 @@
+AST2700 BootMCU
+M:	Chia-Wei, Wang <chiawei_wang@aspeedtech.com>
+S:	Maintained
+F:	board/aspeed/bmcu_ast2700/
+F:	include/configs/bmcu_ast2700.h
+F:	configs/bmcu-ast2700_defconfig

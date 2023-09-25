@@ -1,0 +1,53 @@
+// SPDX-License-Identifier: GPL-2.0+
+
+/ {
+	model = "Aspeed AST2700 BootMCU";
+	compatible = "aspeed,ast2700-bmcu";
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			compatible = "lowrisc,ibex";
+			device_type = "cpu";
+			reg = <0>;
+			comptaible = "riscv";
+			riscv,isa = "rv32imc";
+		};
+	};
+
+	memory@80000000 {
+		reg = <0x80000000 0x80000000>;
+	};
+
+	soc0: soc@12000000 {
+		compatible = "aspeed,soc0","simple-bus";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		sdrammc: sdrammc@12c00000 {
+			compatible = "aspeed,ast2700-sdrammc";
+			reg = <0x12c00000 0x3000>, <0x13000000 0x300>;
+			status = "disabled";
+		};
+	};
+
+	soc1: soc@14000000 {
+		compatible = "aspeed,soc1","simple-bus";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		uart12: serial@14c33b00 {
+			compatible = "ns16550a";
+			reg = <0x14c33b00 0x20>;
+			reg-shift = <2>;
+			no-loopback-test;
+			status = "disabled";
+		};
+	};
+};

@@ -1,13 +1,3 @@
-menuconfig ASPEED_RAM
-	bool "ASPEED SDRAM configuration"
-	depends on RAM && ARCH_ASPEED
-	default ARCH_ASPEED
-	help
-	 Configuration options for DDR SDRAM on ASPEED systems.
-
-	 RAM initialisation is always built in for the platform. This menu
-	 allows customisation of the configuration used.
-
 if ASPEED_RAM
 
 config ASPEED_DDR4_DUALX8

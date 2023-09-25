@@ -193,6 +193,12 @@ config SYSRESET_MPC83XX
 	help
 	  Reboot support for NXP MPC83xx SoCs.
 
+config SYSRESET_ASPEED
+	bool "Enable support Aspeed SoC family reboot driver"
+	default y if ARCH_ASPEED
+	help
+	  Reboot support for Aspeed SoCs.
+
 endif
 
 endmenu

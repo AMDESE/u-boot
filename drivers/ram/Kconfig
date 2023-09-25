@@ -107,6 +107,12 @@ config IMXRT_SDRAM
 	  to support external memories like sdram, psram & nand.
 	  This driver is for the sdram memory interface with the SEMC.
 
+config ASPEED_RAM
+	bool "Enable Aspeed SDRAM support"
+	depends on RAM
+	help
+	  Say y to enable RAM driver support for Aspeed SoCs.
+
 source "drivers/ram/aspeed/Kconfig"
 source "drivers/ram/cadence/Kconfig"
 source "drivers/ram/rockchip/Kconfig"
