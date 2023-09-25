@@ -173,7 +173,10 @@ config RISCV_ISA_D
 	  lp64d.
 
 config RISCV_ISA_A
-	def_bool y
+	bool "Standard extension for Atomic Instructions"
+	default y
+	help
+	  Adds "A" to the ISA string passed to the compiler
 
 config 32BIT
 	bool
