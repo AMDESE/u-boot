@@ -42,56 +42,13 @@ struct ast2700_pll_desc {
 	struct ast2700_pll_cfg cfg;
 };
 
-static const struct ast2700_pll_desc ast2700_pll_lookup[] = {
-	{
-		.in = CLKIN_25M,
-		.out = 400000000,
-		.cfg.reg.b.m = 95,
-		.cfg.reg.b.n = 2,
-		.cfg.reg.b.p = 1,
-		.cfg.ext_reg = 0x31,
-	},
-	{
-		.in = CLKIN_25M,
-		.out = 200000000,
-		.cfg.reg.b.m = 127,
-		.cfg.reg.b.n = 0,
-		.cfg.reg.b.p = 15,
-		.cfg.ext_reg = 0x3f,
-	},
-	{
-		.in = CLKIN_25M,
-		.out = 334000000,
-		.cfg.reg.b.m = 667,
-		.cfg.reg.b.n = 4,
-		.cfg.reg.b.p = 9,
-		.cfg.ext_reg = 0x14d,
-	},
-	{
-		.in = CLKIN_25M,
-		.out = 1000000000,
-		.cfg.reg.b.m = 119,
-		.cfg.reg.b.n = 2,
-		.cfg.reg.b.p = 0,
-		.cfg.ext_reg = 0x3d,
-	},
-	{
-		.in = CLKIN_25M,
-		.out = 50000000,
-		.cfg.reg.b.m = 95,
-		.cfg.reg.b.n = 2,
-		.cfg.reg.b.p = 15,
-		.cfg.ext_reg = 0x31,
-	},
-};
-
 struct aspeed_clks {
 	ulong id;
 	const char *name;
 };
 
 #ifndef __ASSEMBLY__
-struct ast2700_cpu_clk {
+struct ast2700_soc0_clk {
 	u32 clkgate_ctrl;		/* 0x240 */
 	u32 clkgate_clr;		/* 0x244 */
 	u32 rsv_0x248[2];		/* 0x248 */
@@ -149,7 +106,7 @@ struct ast2700_cpu_clk {
 	u32 rsv_0x3a8[2];		/* 0x3a8 ~ 0x3aC */
 };
 
-struct ast2700_io_clk {
+struct ast2700_soc1_clk {
 	u32 clkgate_ctrl1;		/* 0x240 */
 	u32 clkgate_clr1;		/* 0x244 */
 	u32 rsv_0x248[2];		/* 0x248 */

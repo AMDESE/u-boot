@@ -18,29 +18,29 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define CLKIN_25M 25000000UL
 
-struct ast2700_cpu_clk_priv {
-	struct ast2700_cpu_clk *clk;
+struct ast2700_soc0_clk_priv {
+	struct ast2700_soc0_clk *clk;
 };
 
-extern uint32_t ast2700_cpu_get_pll_rate(struct ast2700_cpu_clk *clk, int pll_idx)
+extern uint32_t ast2700_soc0_get_pll_rate(struct ast2700_soc0_clk *clk, int pll_idx)
 {
 	union ast2700_pll_reg pll_reg;
 	uint32_t mul = 1, div = 1;
 
 	switch (pll_idx) {
-	case AST2700_CPU_CLK_HPLL:
+	case AST2700_SOC0_CLK_HPLL:
 		pll_reg.w = readl(&clk->hpll);
 		break;
-	case AST2700_CPU_CLK_DPLL:
+	case AST2700_SOC0_CLK_DPLL:
 		pll_reg.w = readl(&clk->dpll);
 		break;
-	case AST2700_CPU_CLK_MPLL:
+	case AST2700_SOC0_CLK_MPLL:
 		pll_reg.w = readl(&clk->mpll);
 		break;
 	}
 
 	if (!pll_reg.b.bypass) {
-		if (pll_idx == AST2700_CPU_CLK_MPLL) {
+		if (pll_idx == AST2700_SOC0_CLK_MPLL) {
 			/* F = 25Mhz * [M / (n + 1)] / (p + 1) */
 			mul = (pll_reg.b.m) / ((pll_reg.b.n + 1));
 			div = (pll_reg.b.p + 1);
@@ -54,9 +54,9 @@ extern uint32_t ast2700_cpu_get_pll_rate(struct ast2700_cpu_clk *clk, int pll_id
 	return ((CLKIN_25M * mul) / div);
 }
 
-static uint32_t ast2700_cpu_get_hclk_rate(struct ast2700_cpu_clk *clk)
+static uint32_t ast2700_soc0_get_hclk_rate(struct ast2700_soc0_clk *clk)
 {
-	u32 rate = ast2700_cpu_get_pll_rate(clk, AST2700_CPU_CLK_HPLL);
+	u32 rate = ast2700_soc0_get_pll_rate(clk, AST2700_SOC0_CLK_HPLL);
 	u32 fixed_div = 4;
 
 	return (rate / fixed_div);
@@ -65,9 +65,9 @@ static uint32_t ast2700_cpu_get_hclk_rate(struct ast2700_cpu_clk *clk)
 #define SCU_CLKSEL1_PCLK_DIV_MASK		GENMASK(25, 23)
 #define SCU_CLKSEL1_PCLK_DIV_SHIFT		23
 
-static uint32_t ast2700_cpu_get_pclk_rate(struct ast2700_cpu_clk *clk)
+static uint32_t ast2700_soc0_get_pclk_rate(struct ast2700_soc0_clk *clk)
 {
-	u32 rate = ast2700_cpu_get_pll_rate(clk, AST2700_CPU_CLK_HPLL);
+	u32 rate = ast2700_soc0_get_pll_rate(clk, AST2700_SOC0_CLK_HPLL);
 	u32 clksel1 = readl(&clk->clk_sel1);
 	u32 pclk_div = (clksel1 & SCU_CLKSEL1_PCLK_DIV_MASK) >>
 			    SCU_CLKSEL1_PCLK_DIV_SHIFT;
@@ -78,9 +78,9 @@ static uint32_t ast2700_cpu_get_pclk_rate(struct ast2700_cpu_clk *clk)
 #define SCU_CLKSEL1_BCLK_DIV_MASK		GENMASK(22, 20)
 #define SCU_CLKSEL1_BCLK_DIV_SHIFT		20
 
-static uint32_t ast2700_cpu_get_bclk_rate(struct ast2700_cpu_clk *clk)
+static uint32_t ast2700_soc0_get_bclk_rate(struct ast2700_soc0_clk *clk)
 {
-	u32 rate = ast2700_cpu_get_pll_rate(clk, AST2700_CPU_CLK_HPLL);
+	u32 rate = ast2700_soc0_get_pll_rate(clk, AST2700_SOC0_CLK_HPLL);
 	u32 clksel1 = readl(&clk->clk_sel1);
 	u32 bclk_div = (clksel1 & SCU_CLKSEL1_BCLK_DIV_MASK) >>
 			     SCU_CLKSEL1_BCLK_DIV_SHIFT;
@@ -90,9 +90,9 @@ static uint32_t ast2700_cpu_get_bclk_rate(struct ast2700_cpu_clk *clk)
 
 #define SCU_CLKSEL1_MPHYCLK_DIV_MASK		GENMASK(7, 0)
 
-static uint32_t ast2700_cpu_get_mphyclk_rate(struct ast2700_cpu_clk *clk)
+static uint32_t ast2700_soc0_get_mphyclk_rate(struct ast2700_soc0_clk *clk)
 {
-	u32 rate = ast2700_cpu_get_pll_rate(clk, AST2700_CPU_CLK_HPLL);
+	u32 rate = ast2700_soc0_get_pll_rate(clk, AST2700_SOC0_CLK_HPLL);
 	u32 mphy_para = readl(&clk->mphyclk_para);
 	u32 mphy_div = (mphy_para & SCU_CLKSEL1_BCLK_DIV_MASK);
 
@@ -102,17 +102,17 @@ static uint32_t ast2700_cpu_get_mphyclk_rate(struct ast2700_cpu_clk *clk)
 #define SCU_CLKSEL1_EMMCCLK_DIV_MASK		GENMASK(14, 12)
 #define SCU_CLKSEL1_EMMCCLK_DIV_SHIFT		12
 
-static uint32_t ast2700_cpu_get_emmcclk_rate(struct ast2700_cpu_clk *clk)
+static uint32_t ast2700_soc0_get_emmcclk_rate(struct ast2700_soc0_clk *clk)
 {
 	u32 clksel1 = readl(&clk->clk_sel1);
 	u32 emmcclk_div = (clksel1 & SCU_CLKSEL1_EMMCCLK_DIV_MASK) >>
 			     SCU_CLKSEL1_EMMCCLK_DIV_SHIFT;
-	u32 rate = ast2700_cpu_get_pll_rate(clk, AST2700_CPU_CLK_MPLL);
+	u32 rate = ast2700_soc0_get_pll_rate(clk, AST2700_SOC0_CLK_MPLL);
 
 	return (rate / ((emmcclk_div + 1) * 2));
 }
 
-static uint32_t ast2700_cpu_get_uartclk_rate(struct ast2700_cpu_clk *clk)
+static uint32_t ast2700_soc0_get_uartclk_rate(struct ast2700_soc0_clk *clk)
 {
 	u32 clksel2 = readl(&clk->clk_sel2);
 	u32 div = 1;
@@ -128,34 +128,34 @@ static uint32_t ast2700_cpu_get_uartclk_rate(struct ast2700_cpu_clk *clk)
 	return (rate / div);
 }
 
-static ulong ast2700_cpu_clk_get_rate(struct clk *clk)
+static ulong ast2700_soc0_clk_get_rate(struct clk *clk)
 {
-	struct ast2700_cpu_clk_priv *priv = dev_get_priv(clk->dev);
+	struct ast2700_soc0_clk_priv *priv = dev_get_priv(clk->dev);
 	ulong rate = 0;
 
 	switch (clk->id) {
-	case AST2700_CPU_CLK_HPLL:
-	case AST2700_CPU_CLK_DPLL:
-	case AST2700_CPU_CLK_MPLL:
-		rate = ast2700_cpu_get_pll_rate(priv->clk, clk->id);
+	case AST2700_SOC0_CLK_HPLL:
+	case AST2700_SOC0_CLK_DPLL:
+	case AST2700_SOC0_CLK_MPLL:
+		rate = ast2700_soc0_get_pll_rate(priv->clk, clk->id);
 		break;
-	case AST2700_CPU_CLK_AHB:
-		rate = ast2700_cpu_get_hclk_rate(priv->clk);
+	case AST2700_SOC0_CLK_AHB:
+		rate = ast2700_soc0_get_hclk_rate(priv->clk);
 		break;
-	case AST2700_CPU_CLK_APB:
-		rate = ast2700_cpu_get_pclk_rate(priv->clk);
+	case AST2700_SOC0_CLK_APB:
+		rate = ast2700_soc0_get_pclk_rate(priv->clk);
 		break;
-	case AST2700_CPU_CLK_BCLK:
-		rate = ast2700_cpu_get_bclk_rate(priv->clk);
+	case AST2700_SOC0_CLK_BCLK:
+		rate = ast2700_soc0_get_bclk_rate(priv->clk);
 		break;
-	case AST2700_CPU_CLK_GATE_EMMCCLK:
-		rate = ast2700_cpu_get_emmcclk_rate(priv->clk);
+	case AST2700_SOC0_CLK_GATE_EMMCCLK:
+		rate = ast2700_soc0_get_emmcclk_rate(priv->clk);
 		break;
-	case AST2700_CPU_CLK_GATE_UART4CLK:
-		rate = ast2700_cpu_get_uartclk_rate(priv->clk);
+	case AST2700_SOC0_CLK_GATE_UART4CLK:
+		rate = ast2700_soc0_get_uartclk_rate(priv->clk);
 		break;
-	case AST2700_CPU_CLK_MPHY:
-		rate = ast2700_cpu_get_mphyclk_rate(priv->clk);
+	case AST2700_SOC0_CLK_MPHY:
+		rate = ast2700_soc0_get_mphyclk_rate(priv->clk);
 		break;
 	default:
 		debug("%s: unknown clk %ld\n", __func__, clk->id);
@@ -165,10 +165,10 @@ static ulong ast2700_cpu_clk_get_rate(struct clk *clk)
 	return rate;
 }
 
-static int ast2700_cpu_clk_enable(struct clk *clk)
+static int ast2700_soc0_clk_enable(struct clk *clk)
 {
-	struct ast2700_cpu_clk_priv *priv = dev_get_priv(clk->dev);
-	struct ast2700_cpu_clk *cpu_clk = priv->clk;
+	struct ast2700_soc0_clk_priv *priv = dev_get_priv(clk->dev);
+	struct ast2700_soc0_clk *cpu_clk = priv->clk;
 	u32 clkgate_bit = BIT(clk->id);
 
 	if (readl(&cpu_clk->clkgate_ctrl) & clkgate_bit)
@@ -177,18 +177,18 @@ static int ast2700_cpu_clk_enable(struct clk *clk)
 	return 0;
 }
 
-struct clk_ops ast2700_cpu_clk_ops = {
-	.get_rate = ast2700_cpu_clk_get_rate,
-	.enable = ast2700_cpu_clk_enable,
+struct clk_ops ast2700_soc0_clk_ops = {
+	.get_rate = ast2700_soc0_clk_get_rate,
+	.enable = ast2700_soc0_clk_enable,
 };
 
 #define SCU_CLKSRC1_EMMC_DIV_MASK		GENMASK(14, 12)
 #define SCU_CLKSRC1_EMMC_DIV_SHIFT		12
 
-static int ast2700_cpu_clk_probe(struct udevice *dev)
+static int ast2700_soc0_clk_probe(struct udevice *dev)
 {
-	struct ast2700_cpu_clk_priv *priv = dev_get_priv(dev);
-	struct ast2700_cpu_clk *cpu_clk;
+	struct ast2700_soc0_clk_priv *priv = dev_get_priv(dev);
+	struct ast2700_soc0_clk *cpu_clk;
 	u32 rate = 0;
 	u32 div = 0;
 	int i = 0;
@@ -202,7 +202,7 @@ static int ast2700_cpu_clk_probe(struct udevice *dev)
 	/* emmc clk src div to 200Mhz */
 	clksrc1 = readl(&cpu_clk->clk_sel1);
 
-	rate = ast2700_cpu_get_pll_rate(cpu_clk, AST2700_CPU_CLK_MPLL);
+	rate = ast2700_soc0_get_pll_rate(cpu_clk, AST2700_SOC0_CLK_MPLL);
 	for (i = 0; i < 8; i++) {
 		div = (i + 1) * 2;
 		if ((rate / div) <= 200000000)
@@ -216,16 +216,16 @@ static int ast2700_cpu_clk_probe(struct udevice *dev)
 	return 0;
 }
 
-static const struct udevice_id ast2700_cpu_clk_ids[] = {
-	{ .compatible = "aspeed,ast2700_cpu-clk", },
+static const struct udevice_id ast2700_soc0_clk_ids[] = {
+	{ .compatible = "aspeed,ast2700-soc0-clk", },
 	{ },
 };
 
-U_BOOT_DRIVER(aspeed_ast2700_cpu_clk) = {
-	.name = "aspeed_ast2700_cpu_clk",
+U_BOOT_DRIVER(aspeed_ast2700_soc0_clk) = {
+	.name = "aspeed_ast2700_soc0_clk",
 	.id = UCLASS_CLK,
-	.of_match = ast2700_cpu_clk_ids,
-	.priv_auto = sizeof(struct ast2700_cpu_clk_priv),
-	.ops = &ast2700_cpu_clk_ops,
-	.probe = ast2700_cpu_clk_probe,
+	.of_match = ast2700_soc0_clk_ids,
+	.priv_auto = sizeof(struct ast2700_soc0_clk_priv),
+	.ops = &ast2700_soc0_clk_ops,
+	.probe = ast2700_soc0_clk_probe,
 };

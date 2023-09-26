@@ -34,11 +34,11 @@
 	bootph-all;
 };
 
-&cpu_clk {
+&soc0_clk {
 	bootph-all;
 };
 
-&cpu_rst {
+&soc0_rst {
 	bootph-all;
 };
 
@@ -50,10 +50,10 @@
 	bootph-all;
 };
 
-&io_clk {
+&soc1_clk {
 	bootph-all;
 };
 
-&io_rst {
+&soc1_rst {
 	bootph-all;
 };
