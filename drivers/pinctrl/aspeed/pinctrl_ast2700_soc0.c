@@ -33,7 +33,7 @@ struct aspeed_pinctrl_priv {
 	void __iomem *base;
 };
 
-static int ast2700_cpu_pinctrl_probe(struct udevice *dev)
+static int ast2700_soc0_pinctrl_probe(struct udevice *dev)
 {
 	struct aspeed_pinctrl_priv *priv = dev_get_priv(dev);
 
@@ -72,7 +72,7 @@ static struct aspeed_sig_desc usb2bh_link[] = {
 	{ 0x10, BIT(29), 0 },
 };
 
-static const struct aspeed_group_config ast2700_cpu_groups[] = {
+static const struct aspeed_group_config ast2700_soc0_groups[] = {
 	{ "EMMC", ARRAY_SIZE(emmc_link), emmc_link },
 	{ "EMMC8BIT", ARRAY_SIZE(emmc_8bit_link), emmc_8bit_link },
 	{ "USB2AD", ARRAY_SIZE(usb2ad_link), usb2ad_link },
@@ -81,23 +81,23 @@ static const struct aspeed_group_config ast2700_cpu_groups[] = {
 	{ "USB2BH", ARRAY_SIZE(usb2bh_link), usb2bh_link },
 };
 
-static int ast2700_cpu_pinctrl_get_groups_count(struct udevice *dev)
+static int ast2700_soc0_pinctrl_get_groups_count(struct udevice *dev)
 {
 	debug("PINCTRL: get_(functions/groups)_count\n");
 
-	return ARRAY_SIZE(ast2700_cpu_groups);
+	return ARRAY_SIZE(ast2700_soc0_groups);
 }
 
-static const char *ast2700_cpu_pinctrl_get_group_name(struct udevice *dev,
-						      unsigned int selector)
+static const char *ast2700_soc0_pinctrl_get_group_name(struct udevice *dev,
+						       unsigned int selector)
 {
 	debug("PINCTRL: get_(function/group)_name %u\n", selector);
 
-	return ast2700_cpu_groups[selector].group_name;
+	return ast2700_soc0_groups[selector].group_name;
 }
 
-static int ast2700_cpu_pinctrl_group_set(struct udevice *dev, unsigned int selector,
-					 unsigned int func_selector)
+static int ast2700_soc0_pinctrl_group_set(struct udevice *dev, unsigned int selector,
+					  unsigned int func_selector)
 {
 	struct aspeed_pinctrl_priv *priv = dev_get_priv(dev);
 	const struct aspeed_group_config *config;
@@ -105,10 +105,10 @@ static int ast2700_cpu_pinctrl_group_set(struct udevice *dev, unsigned int selec
 	u32 i;
 
 	debug("PINCTRL: group_set <%u, %u>\n", selector, func_selector);
-	if (selector >= ARRAY_SIZE(ast2700_cpu_groups))
+	if (selector >= ARRAY_SIZE(ast2700_soc0_groups))
 		return -EINVAL;
 
-	config = &ast2700_cpu_groups[selector];
+	config = &ast2700_soc0_groups[selector];
 	for (i = 0; i < config->ndescs; i++) {
 		descs = &config->descs[i];
 		if (descs->clr)
@@ -120,25 +120,25 @@ static int ast2700_cpu_pinctrl_group_set(struct udevice *dev, unsigned int selec
 	return 0;
 }
 
-static struct pinctrl_ops ast2700_cpu_pinctrl_ops = {
+static struct pinctrl_ops ast2700_soc0_pinctrl_ops = {
 	.set_state = pinctrl_generic_set_state,
-	.get_groups_count = ast2700_cpu_pinctrl_get_groups_count,
-	.get_group_name = ast2700_cpu_pinctrl_get_group_name,
-	.get_functions_count = ast2700_cpu_pinctrl_get_groups_count,
-	.get_function_name = ast2700_cpu_pinctrl_get_group_name,
-	.pinmux_group_set = ast2700_cpu_pinctrl_group_set,
+	.get_groups_count = ast2700_soc0_pinctrl_get_groups_count,
+	.get_group_name = ast2700_soc0_pinctrl_get_group_name,
+	.get_functions_count = ast2700_soc0_pinctrl_get_groups_count,
+	.get_function_name = ast2700_soc0_pinctrl_get_group_name,
+	.pinmux_group_set = ast2700_soc0_pinctrl_group_set,
 };
 
-static const struct udevice_id ast2700_cpu_pinctrl_ids[] = {
-	{ .compatible = "aspeed,ast2700_cpu-pinctrl" },
+static const struct udevice_id ast2700_soc0_pinctrl_ids[] = {
+	{ .compatible = "aspeed,ast2700-soc0-pinctrl" },
 	{ }
 };
 
-U_BOOT_DRIVER(pinctrl_ast2700_cpu) = {
-	.name = "aspeed_ast2700_cpu_pinctrl",
+U_BOOT_DRIVER(pinctrl_ast2700_soc0) = {
+	.name = "aspeed_ast2700_soc0_pinctrl",
 	.id = UCLASS_PINCTRL,
-	.of_match = ast2700_cpu_pinctrl_ids,
+	.of_match = ast2700_soc0_pinctrl_ids,
 	.priv_auto = sizeof(struct aspeed_pinctrl_priv),
-	.ops = &ast2700_cpu_pinctrl_ops,
-	.probe = ast2700_cpu_pinctrl_probe,
+	.ops = &ast2700_soc0_pinctrl_ops,
+	.probe = ast2700_soc0_pinctrl_probe,
 };

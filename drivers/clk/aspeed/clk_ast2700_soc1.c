@@ -294,7 +294,7 @@ static int ast2700_soc1_clk_bind(struct udevice *dev)
 }
 
 static const struct udevice_id ast2700_soc1_clk_ids[] = {
-	{ .compatible = "aspeed,ast2700_io-clk", },
+	{ .compatible = "aspeed,ast2700-soc1-clk", },
 	{ },
 };
 

@@ -146,13 +146,13 @@
 			};
 
 			soc0_clk: clock-controller@12c02200 {
-				compatible = "aspeed,ast2700_cpu-clk";
+				compatible = "aspeed,ast2700-soc0-clk";
 				reg = <0 0x240 0 0x1c0>;
 				#clock-cells = <1>;
 			};
 
 			pinctrl0: pinctrl@12c02400 {
-				compatible = "aspeed,ast2700_cpu-pinctrl";
+				compatible = "aspeed,ast2700-soc0-pinctrl";
 				reg = <0 0x400 0 0x100>;
 			};
 		};
@@ -325,19 +325,19 @@
 			#size-cells = <2>;
 
 			soc1_rst: reset-controller@14c02200 {
-				compatible = "aspeed,ast2700-reset";
+				compatible = "aspeed,ast2700-soc1-reset";
 				reg = <0 0x200 0 0x40>;
 				#reset-cells = <1>;
 			};
 
 			soc1_clk: clock-controller@14c02200 {
-				compatible = "aspeed,ast2700_io-clk";
+				compatible = "aspeed,ast2700-soc1-clk";
 				reg = <0 0x240 0 0x1c0>;
 				#clock-cells = <1>;
 			};
 
 			pinctrl1: pinctrl@14c02400 {
-				compatible = "aspeed,ast2700_io-pinctrl";
+				compatible = "aspeed,ast2700-soc1-pinctrl";
 				reg = <0 0x400 0 0x100>;
 			};
 		};
