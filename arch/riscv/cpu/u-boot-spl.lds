@@ -44,10 +44,10 @@ SECTIONS
 		__binman_sym_end = .;
 	} > .spl_mem
 
-	. = ALIGN(8);
-
 	_end = .;
 	_image_binary_end = .;
+
+	. = ALIGN(8);
 
 	.bss : {
 		__bss_start = .;
