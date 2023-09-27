@@ -85,36 +85,40 @@ u32 spl_boot_device(void)
 
 void board_fit_image_post_process(const void *fit, int node, void **p_image, size_t *p_size)
 {
-	uint64_t ep64;
+	uint64_t ep_arm;
 	uint8_t os;
 	ulong ep;
 
 	fit_image_get_os(fit, node, &os);
-
-	if (os != IH_OS_U_BOOT)
-		return;
-
 	fit_image_get_entry(fit, node, &ep);
 
-	/* convert to AArch64 view */
-	ep64 = ((uint64_t)ep - 0x80000000) | 0x400000000ULL;
-	writeq(ep64, (void *)0x12c02780);
+	/* convert to Arm view */
+	ep_arm = ((uint64_t)ep - 0x80000000) | 0x400000000ULL;
+
+	switch (os) {
+	case IH_OS_ARM_TRUSTED_FIRMWARE:
+		writel(ep_arm >> 4, (void *)0x12c02110);
+		writel(ep_arm >> 4, (void *)0x12c02114);
+		writel(ep_arm >> 4, (void *)0x12c02118);
+		writel(ep_arm >> 4, (void *)0x12c0211c);
+		break;
+	case IH_OS_U_BOOT:
+		writeq(ep_arm, (void *)0x12c02780);
+		break;
+	default:
+		break;
+	}
 }
 
 void spl_board_prepare_for_boot(void)
 {
-	uint32_t rvbar;
-
+	/* for v7 FPGA only */
 	writel(0x1, (void *)0x12c02014);
 
-	rvbar = (readq((void *)0x12c02780) >> 4) & 0xffffffff;
-	writel(rvbar, (void *)0x12c02110);
-	writel(rvbar, (void *)0x12c02114);
-	writel(rvbar, (void *)0x12c02118);
-	writel(rvbar, (void *)0x12c0211c);
-
+	/* release CA35 reset */
 	writel(0x1, (void *)0x12c0210c);
 
+	/* sleep well */
 	while (1)
 		__asm__("wfi");
 }
