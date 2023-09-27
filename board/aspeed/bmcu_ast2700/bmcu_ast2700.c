@@ -115,6 +115,11 @@ void spl_board_prepare_for_boot(void)
 	/* for v7 FPGA only */
 	writel(0x1, (void *)0x12c02014);
 
+	/* clean up secondary entries */
+	writeq(0x0, (void *)0x12c02788);
+	writeq(0x0, (void *)0x12c02790);
+	writeq(0x0, (void *)0x12c02798);
+
 	/* release CA35 reset */
 	writel(0x1, (void *)0x12c0210c);
 
