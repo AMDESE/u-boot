@@ -40,6 +40,7 @@ config TARGET_OPENPITON_RISCV64
 	bool "Support RISC-V cores on OpenPiton SoC"
 
 config TARGET_ASPEED_AST2700BMCU
+	select BINMAN
 	bool "Support RISC-V BootMCU on Aspeed AST2700 SoC"
 
 endchoice

@@ -1,5 +1,10 @@
 if ASPEED_RAM
 
+config ASPEED_FPGA
+	bool "FPGA support"
+	help
+	  Say Y is platform is FPGA.
+
 config ASPEED_DDR4_DUALX8
 	bool "Enable Dual X8 DDR4 die"
 	help
@@ -7,6 +12,12 @@ config ASPEED_DDR4_DUALX8
 	 SRAM controller needs to know if the memory chip mounted on the
 	 board is dual x8 die or not, otherwise it may get the wrong
 	 size of the memory space.
+
+config ASPEED_DDR_PHY_TRAINING
+	bool "Enable DDR PHY Training"
+	depends on ASPEED_RAM
+	help
+	  Say 'y' to enable the PHY training
 
 config ASPEED_BYPASS_SELFTEST
 	depends on ASPEED_AST2600
@@ -38,6 +49,34 @@ config ASPEED_DDR4_1600
 	bool "1600Mbps"
 	help
 	  select DDR4 target data rate at 1600M
+
+config ASPEED_DDR4_3200
+	bool "3200Mbps"
+	help
+	  select DDR4 target data rate at 3200M
+endchoice
+
+choice
+	prompt "AST2700 DDR target date rate"
+	default ASPEED_DDR_1600
+	depends on ASPEED_RAM
+	depends on TARGET_ASPEED_AST2700BMCU
+
+config ASPEED_DDR_1600
+	bool "1600Mbps"
+	help
+	  select DDR4 target data rate at 1600M
+
+config ASPEED_DDR_2400
+	bool "2400Mbps"
+	help
+	  select DDR4 target data rate at 2400M
+
+config ASPEED_DDR_3200
+	bool "3200Mbps"
+	help
+	  select DDR4 target data rate at 3200M
+
 endchoice
 
 endif # End of ASPEED_RAM

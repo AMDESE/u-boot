@@ -8,6 +8,7 @@
 #include <spl.h>
 #include <image.h>
 #include <common.h>
+#include <asm/csr.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -126,4 +127,16 @@ void spl_board_prepare_for_boot(void)
 	/* sleep well */
 	while (1)
 		__asm__("wfi");
+}
+
+#define CSR_MCYCLE 0xb00
+#define CSR_MCYCLEH 0xb80
+unsigned long timer_read_counter(void)
+{
+	uint32_t tl, th;
+
+	tl = csr_read(CSR_MCYCLE);
+	th = csr_read(CSR_MCYCLEH);
+
+	return (((uint64_t)th) << 32 | tl);
 }

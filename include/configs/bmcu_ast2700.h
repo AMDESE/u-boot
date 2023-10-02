@@ -7,5 +7,6 @@
 #define __CONFIG_H
 
 #define CFG_SYS_UBOOT_BASE		CONFIG_TEXT_BASE
+#define CFG_SYS_TIMER_RATE		(24000000)
 
 #endif	/* __CONFIG_H */

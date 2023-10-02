@@ -13,13 +13,94 @@
 		device_type = "memory";
 		reg = <0x80000000 0x40000000>;
 	};
+
+	binman: binman {
+		multiple-images;
+	};
 };
 
 &sdrammc {
 	status = "okay";
+	bootph-all;
 };
 
 &uart12 {
 	status = "okay";
 	clock-frequency = <1846153>;
+};
+
+&binman {
+	bootph-all;
+
+	u-boot-spl-ddr {
+		bootph-all;
+		filename = "u-boot-spl-ddr.bin";
+		pad-byte = <0xff>;
+		align-size = <4>;
+		align = <4>;
+
+		u-boot-spl {
+			bootph-all;
+			align-end = <4>;
+			filename = "u-boot-spl.bin";
+		};
+
+		ddr4-1d-imem-fw {
+			bootph-all;
+			filename = "ddr4_pmu_train_imem.bin";
+			type = "blob-ext";
+			align-end = <4>;
+		};
+		ddr4-1d-dmem-fw {
+			bootph-all;
+			filename = "ddr4_pmu_train_dmem.bin";
+			type = "blob-ext";
+			align-end = <4>;
+		};
+		ddr4-2d-imem-fw {
+			bootph-all;
+			filename = "ddr4_2d_pmu_train_imem.bin";
+			type = "blob-ext";
+			align-end = <4>;
+		};
+		ddr4-2d-dmem-fw {
+			bootph-all;
+			filename = "ddr4_2d_pmu_train_dmem.bin";
+			type = "blob-ext";
+			align-end = <4>;
+		};
+		ddr5-imem-fw {
+			bootph-all;
+			filename = "ddr5_pmu_train_imem.bin";
+			type = "blob-ext";
+			align-end = <4>;
+		};
+		ddr5-dmem-fw {
+			bootph-all;
+			filename = "ddr5_pmu_train_dmem.bin";
+			type = "blob-ext";
+			align-end = <4>;
+		};
+	};
+
+	ast2700-u-boot-spl {
+		bootph-all;
+		filename = "u-boot-spl-sign.bin";
+		pad-byte = <0x00>;
+
+//		pre-load {
+//			content = <&u_boot_spl>;
+//			algo-name = "sha256,rsa2048";
+//			key-name = "keys/dev.key";
+//			header-size = <1024>;
+//			version = <1>;
+//		};
+
+		u_boot_spl: u-boot-spl-ddr {
+			bootph-all;
+			offset = <0x80>;
+			filename = "u-boot-spl-ddr.bin";
+			type = "blob-ext";
+		};
+	};
 };

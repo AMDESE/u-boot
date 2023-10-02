@@ -3,399 +3,205 @@
  * Copyright (C) ASPEED Technology Inc.
  */
 #include <common.h>
-#include <clk.h>
 #include <dm.h>
-#include <errno.h>
-#include <ram.h>
-#include <regmap.h>
-#include <reset.h>
-#include <asm/io.h>
-#include <asm/global_data.h>
-#include <linux/err.h>
-#include <linux/kernel.h>
+#include "sdram_ast2700.h"
 
-/* keys for unlocking HW */
-#define SDRAM_UNLOCK_KEY			0x1688a8a8
-#define SDRAM_VIDEO_UNLOCK_KEY		0x00440003
+#define DRAMC_UNLOCK_KEY		0x1688a8a8
+#define DRAMC_VIDEO_UNLOCK_KEY		0x00440003
 
-/* Fixed priority DRAM Requests mask */
-#define REQ_PRI_VGA_HW_CURSOR_R         0
-#define REQ_PRI_VGA_CRT_R               1
-#define REQ_PRI_SOC_DISPLAY_CTRL_R      2
-#define REQ_PRI_PCIE_BUS1_RW            3
-#define REQ_PRI_VIDEO_HIGH_PRI_W        4
-#define REQ_PRI_CPU_RW                  5
-#define REQ_PRI_SLI_RW                  6
-#define REQ_PRI_PCIE_BUS2_RW            7
-#define REQ_PRI_USB2_0_HUB_EHCI1_DMA_RW 8
-#define REQ_PRI_USB2_0_DEV_EHCI2_DMA_RW 9
-#define REQ_PRI_USB1_1_UHCI_HOST_RW     10
-#define REQ_PRI_AHB_BUS_RW              11
-#define REQ_PRI_CM3_DATA_RW             12
-#define REQ_PRI_CM3_INST_R              13
-#define REQ_PRI_MAC0_DMA_RW             14
-#define REQ_PRI_MAC1_DMA_RW             15
-#define REQ_PRI_SDIO_DMA_RW             16
-#define REQ_PRI_PILOT_ENGINE_RW         17
-#define REQ_PRI_XDMA1_RW                18
-#define REQ_PRI_MCTP1_RW                19
-#define REQ_PRI_VIDEO_FLAG_RW           20
-#define REQ_PRI_VIDEO_LOW_PRI_W         21
-#define REQ_PRI_2D_ENGINE_DATA_RW       22
-#define REQ_PRI_ENC_ENGINE_RW           23
-#define REQ_PRI_MCTP2_RW                24
-#define REQ_PRI_XDMA2_RW                25
-#define REQ_PRI_ECC_RSA_RW              26
+/*
+ * Given a maximum RFC value for biggest capacity,
+ * it will be updated after dram size is determined later
+ */
 
-#define MCR30_RESET_DLL_DELAY_EN	BIT(4)
-#define MCR30_MODE_REG_SEL_SHIFT	1
-#define MCR30_MODE_REG_SEL_MASK		GENMASK(3, 1)
-#define MCR30_SET_MODE_REG		BIT(0)
+#define RFC 880
 
-#define MCR30_SET_MR(mr) (((mr) << MCR30_MODE_REG_SEL_SHIFT) | MCR30_SET_MODE_REG)
-
-#define MCR34_SELF_REFRESH_STATUS_MASK	GENMASK(30, 28)
-
-#define MCR34_ODT_DELAY_SHIFT		12
-#define MCR34_ODT_DELAY_MASK		GENMASK(15, 12)
-#define MCR34_ODT_EXT_SHIFT		10
-#define MCR34_ODT_EXT_MASK		GENMASK(11, 10)
-#define MCR34_ODT_AUTO_ON		BIT(9)
-#define MCR34_ODT_EN			BIT(8)
-#define MCR34_RESETN_DIS		BIT(7)
-#define MCR34_MREQI_DIS			BIT(6)
-#define MCR34_MREQ_BYPASS_DIS		BIT(5)
-#define MCR34_RGAP_CTRL_EN		BIT(4)
-#define MCR34_CKE_OUT_IN_SELF_REF_DIS	BIT(3)
-#define MCR34_FOURCE_SELF_REF_EN	BIT(2)
-#define MCR34_AUTOPWRDN_EN		BIT(1)
-#define MCR34_CKE_EN			BIT(0)
-
-#define MCR38_RW_MAX_GRANT_CNT_RQ_SHIFT	16
-#define MCR38_RW_MAX_GRANT_CNT_RQ_MASK	GENMASK(20, 16)
-
-/* default request queued limitation mask (0xFFBBFFF4) */
-#define MCR3C_DEFAULT_MASK                                                     \
-	~(REQ_PRI_VGA_HW_CURSOR_R | REQ_PRI_VGA_CRT_R | REQ_PRI_PCIE_BUS1_RW | \
-	  REQ_PRI_XDMA1_RW | REQ_PRI_2D_ENGINE_DATA_RW)
-
-#define MCR50_RESET_ALL_INTR		BIT(31)
-#define SDRAM_CONF_ECC_AUTO_SCRUBBING	BIT(9)
-#define SDRAM_CONF_SCRAMBLE		BIT(8)
-#define SDRAM_CONF_ECC_EN		BIT(7)
-#define SDRAM_CONF_DUALX8		BIT(5)
-#define SDRAM_CONF_DDR4			BIT(4)
-#define SDRAM_CONF_VGA_SIZE_SHIFT	2
-#define SDRAM_CONF_VGA_SIZE_MASK	GENMASK(3, 2)
-#define SDRAM_CONF_CAP_SHIFT		0
-#define SDRAM_CONF_CAP_MASK		GENMASK(1, 0)
-
-#define SDRAM_CONF_CAP_256M		0
-#define SDRAM_CONF_CAP_512M		1
-#define SDRAM_CONF_CAP_1024M		2
-#define SDRAM_CONF_CAP_2048M		3
-#define SDRAM_CONF_ECC_SETUP		(SDRAM_CONF_ECC_AUTO_SCRUBBING | SDRAM_CONF_ECC_EN)
-
-#define SDRAM_MISC_DDR4_TREFRESH	BIT(3)
-
-#define SDRAM_PHYCTRL0_PLL_LOCKED	BIT(4)
-#define SDRAM_PHYCTRL0_NRST		BIT(2)
-#define SDRAM_PHYCTRL0_INIT		BIT(0)
-
-/* MCR0C */
-#define SDRAM_REFRESH_PERIOD_ZQCS_SHIFT	16
-#define SDRAM_REFRESH_PERIOD_ZQCS_MASK	GENMASK(31, 16)
-#define SDRAM_REFRESH_PERIOD_SHIFT	8
-#define SDRAM_REFRESH_PERIOD_MASK	GENMASK(15, 8)
-#define SDRAM_REFRESH_ZQCS_EN		BIT(7)
-#define SDRAM_RESET_DLL_ZQCL_EN		BIT(6)
-#define SDRAM_LOW_PRI_REFRESH_EN	BIT(5)
-#define SDRAM_FORCE_PRECHARGE_EN	BIT(4)
-#define SDRAM_REFRESH_EN		BIT(0)
-
-#define SDRAM_TEST_LEN_SHIFT		4
-#define SDRAM_TEST_LEN_MASK		0xfffff
-#define SDRAM_TEST_START_ADDR_SHIFT	24
-#define SDRAM_TEST_START_ADDR_MASK	0x3f
-
-#define SDRAM_TEST_EN			BIT(0)
-#define SDRAM_TEST_MODE_SHIFT		1
-#define SDRAM_TEST_MODE_MASK		(0x3 << SDRAM_TEST_MODE_SHIFT)
-#define SDRAM_TEST_MODE_WO		(0x0 << SDRAM_TEST_MODE_SHIFT)
-#define SDRAM_TEST_MODE_RB		(0x1 << SDRAM_TEST_MODE_SHIFT)
-#define SDRAM_TEST_MODE_RW		(0x2 << SDRAM_TEST_MODE_SHIFT)
-
-#define SDRAM_TEST_GEN_MODE_SHIFT	3
-#define SDRAM_TEST_GEN_MODE_MASK	(7 << SDRAM_TEST_GEN_MODE_SHIFT)
-#define SDRAM_TEST_TWO_MODES		BIT(6)
-#define SDRAM_TEST_ERRSTOP		BIT(7)
-#define SDRAM_TEST_DONE			BIT(12)
-#define SDRAM_TEST_FAIL			BIT(13)
-
-#define SDRAM_AC_TRFC_SHIFT		0
-#define SDRAM_AC_TRFC_MASK		0xff
-
-DECLARE_GLOBAL_DATA_PTR;
-
-struct dramc_port {
-	u32 configuration;
-	u32 timeout;
-	u32 read_qos;
-	u32 write_qos;
-	u32 monitor_config;
-	u32 monitor_limit;
-	u32 monitor_timer;
-	u32 monitor_status;
-	u32 bandwidth_log;
-};
-
-struct dramc_protect {
-	u32 control;
-	u32 err_status;
-	u32 lo_addr;
-	u32 hi_addr;
-	u32 wr_master_0;
-	u32 wr_master_1;
-	u32 rd_master_0;
-	u32 rd_master_1;
-	u32 wr_secure_0;
-	u32 wr_secure_1;
-	u32 rd_secure_0;
-	u32 rd_secure_1;
-};
-
-struct dramc_regs {
-	u32 protection_key;			/* offset 0x00 */
-	u32 intr_status;			/* offset 0x04 */
-	u32 intr_clear;             /* offset 0x08 */
-	u32 intr_mask;              /* offset 0x0C */
-	u32 main_configuration;     /* offset 0x10 */
-	u32 main_control;
-	u32 main_status;
-	u32 error_status;
-	u32 ac_timing[7];
-	u32 dfi_timing;
-	u32 dfi_configuration;
-	u32 dfi_control_msg;
-	u32 mode_reg_control;
-	u32 mode_reg_wr_op;
-	u32 mode_reg_rd_op;
-	u32 mr01_setting;
-	u32 mr23_setting;
-	u32 mr45_setting;
-	u32 mr67_setting;
-	u32 refresh_control;
-	u32 refresh_mng_control;
-	u32 refresh_status;
-	u32 zqc_control;            /* offset 0x70 */
-	u32 ecc_addr_range;         /* offset 0x74 */
-	u32 ecc_failure_status;     /* offset 0x78 */
-	u32 ecc_failure_addr;       /* offset 0x7C */
-	u32 ecc_test_control;       /* offset 0x80 */
-	u32 ecc_test_status;        /* offset 0x84 */
-	u32 arbitration_control;    /* offset 0x88 */
-	u32 reserved0;				/* offset 0x8c */
-	u32 protect_lock_set;		/* offset 0x90 */
-	u32 protect_lock_status;	/* offset 0x94 */
-	u32 protect_lock_reset;		/* offset 0x98 */
-	u32 enc_min_address;		/* offset 0x9c */
-	u32 enc_max_address;		/* offset 0xa0 */
-	u32 enc_key[4];				/* offset 0xa4~0xb0 */
-	u32 enc_iv[3];				/* offset 0xb4~0xbc */
-	u32 built_in_test_config;
-	u32 built_in_test_addr;
-	u32 built_in_test_size;
-	u32 built_in_test_pattern;
-	u32 built_in_test_result;
-	u32 built_in_fail_addr;
-	u32 built_in_fail_data[4];
-	u32 reserved2[2];
-	u32 debug_control;
-	u32 debug_status;
-	u32 phy_intf_status;
-	u32 test_configuration;
-	u32 graphic_memory_config;	/* 0x100 */
-	u32 graphic_memory_0_ctrl;
-	u32 graphic_memory_1_ctrl;
-	struct dramc_protect region0[8];
-	struct dramc_port port[6];	/* 0x400 */
-	struct dramc_protect region1[8];
-};
-
-struct dram_info {
-	struct ram_info info;
-	struct dramc_regs *regs;
-	//struct ast2600_scu *scu;
-	//struct ast2600_ddr_phy *phy;
-	void __iomem *phy_setting;
-	void __iomem *phy_status;
-	ulong clock_rate;
-};
-
-#define FPGA_ASPEED
-#define ASPEED_DDR4_1600
-#define DDR4
-#define ASPEED_DDR4_4G
-
-#if defined(ASPEED_DDR4_3200)
-#define CL		20
-#define RTP		12
-#define CWL		16
-#define BL		8
-#define CCD_L	8
-#elif defined(ASPEED_DDR4_2400)
-#define CL		15
-#define RTP		10
-#define CWL		12
-#define BL		8
-#define CCD_L	c7
-#elif defined(ASPEED_DDR4_1600)
-#define CL		10
-#define RTP		6
-#define CWL		9
-#define BL		8
-#define CCD_L	5
-#endif
-
-#if defined(ASPEED_DDR4_16G)
-#define RFC		440
-#elif defined(ASPEED_DDR4_8G)
-#define RFC		280
-#elif defined(ASPEED_DDR4_4G)
-#define RFC		208
-#else
-#define RFC		128
-#endif
-
-struct dramc_ac_timing {
-	int t_rcd;
-	int t_rp;
-	int t_ras;
-	int t_rrd;
-	int t_rrd_l;
-	int t_faw;
-	int t_rtp;
-	int t_wtr;
-	int t_wtr_l;
-	int t_wtp;
-	int t_rtw;
-	int t_ccd_l;
-	int t_dllk;
-	int t_cksre;
-	int t_pd;
-	int t_xp;
-	int t_rfc;
-};
-
-struct dramc_ac_timing ac_table[] = {
-	{/* DDR4 1600 */
-		10, 10, 28, 5, 6, 28, 6,
-		(CWL + BL / 2 + 2), /* t_wtr */
-		(CWL + BL / 2 + 6), /* t_wtr_l */
-		(CWL + BL / 2 + 12), /* t_wtp */
-		(CL - CWL + BL / 2 + 2), /* t_rtw */
-		CCD_L, 597, 8, 4, 5, RFC,
+struct sdramc_ac_timing ac_table[] = {
+	/* DDR4 1600 */
+	{
+		DRAM_TYPE_4,
+		"DDR4 1600",
+		10, 9, 8,
+	/*     rcd, rp, ras, rrd, rrd_l, faw, rtp */
+		10, 10, 28,  5,   6,     28,  6,
+		2,	/* t_wtr */
+		6,	/* t_wtr_l */
+		0,	/* t_wtr_a */
+		12,	/* t_wtp */
+		0,	/* t_rtw */
+	/*      ccd_l, dllk, cksre, pd, xp, rfc */
+		5, 597,  8,     4,  5,  RFC,
+		24,	/* t_mrd */
+		0,	/* t_refsbrd */
+		0,	/* t_rfcsb */
+		0,	/* t_cshsr */
+		80,	/* zq */
 	},
-
+	/* DDR4 2400 */
+	{
+		DRAM_TYPE_4,
+		"DDR4 2400",
+		15, 12, 8,
+	/*     rcd, rp, ras, rrd, rrd_l, faw, rtp */
+		16, 16, 39, 7, 8, 37, 10,
+		4,	/* t_wtr */
+		10,	/* t_wtr_l */
+		0,	/* t_wtr_a */
+		19,	/* t_wtp */
+		0,
+	/*      ccd_l, dllk, cksre, pd, xp, rfc */
+		7, 768,  13,    7,  8,  RFC,
+		24,	/* t_mrd */
+		0,	/* t_refsbrd */
+		0,	/* t_rfcsb */
+		0,	/* t_cshsr */
+		80,	/* zq */
+	},
+	/* DDR4 3200 */
+	{
+		DRAM_TYPE_4,
+		"DDR4 3200",
+		20, 16, 8,
+	/*     rcd, rp, ras, rrd, rrd_l, faw, rtp */
+		20, 20, 52, 9, 11, 48, 12,
+		4,	/* t_wtr */
+		12,	/* t_wtr_l */
+		0,	/* t_wtr_a */
+		24,	/* t_wtp */
+		0,	/* t_rtw */
+	/*      ccd_l, dllk, cksre, pd, xp, rfc */
+		8, 1023, 16,    8,  10, RFC,
+		24,	/* t_mrd */
+		0,	/* t_refsbrd */
+		0,	/* t_rfcsb */
+		0,	/* t_cshsr */
+		80,	/* zq */
+	},
+	/* DDR5 3200 */
+	{
+		DRAM_TYPE_5,
+		"DDR5 3200",
+		22, 20, 16,
+	/*     rcd, rp, ras, rrd, rrd_l, faw, rtp */
+		22, 22, 52,  8,   8,     40,  12,
+		4,	/* t_wtr */
+		16,	/* t_wtr_l */
+		36,	/* t_wtr_a */
+		48,	/* t_wtp */
+		0,
+	/*      ccd_l, dllk, cksre, pd, xp, rfc */
+		8, 1024, 9,     13, 13, RFC,
+		23,	/* t_mrd */
+		48,	/* t_refsbrd */
+		208,	/* t_rfcsb */
+		21,	/* t_cshsr */
+		48,	/* zq */
+	},
 };
 
-void dramc_convert_actiming_table(struct dramc_regs *regs, struct dramc_ac_timing *tbl)
+#define DRAMC_INIT_DONE		0x70
+static bool is_ddr_initialized(void)
 {
-	u32 ac_timing[7];
-	u8 t_zqcs  = 80; //TBD
-	u8 t_rfcsb = 0;
-	u8 t_mrd   = 4;
-	u8 t_wtr_a = 0; // not used
-	u8 t_cshsr = 0; // not used
+	if (readl((void *)SCU_CPU_SOC1_SCRATCH) & DRAMC_INIT_DONE) {
+		printf("DDR has been initialized\n");
+		return 1;
+	}
 
-#if defined(FPGA_ASPEED)
-	u32 i = 1;
-#else
-	u32 i = 0;
-#endif
-	ac_timing[0] = ((tbl->t_ccd_l) << 24) +
-				((tbl->t_rrd_l >> 1) << 16) +
-				((tbl->t_rrd >> 1) << 8) + t_mrd;
-	ac_timing[1] = ((tbl->t_faw >> 1) << 24) +
-				((tbl->t_rp >> 1) << 16) +
-				((tbl->t_ras >> 1) << 8) +
-				(tbl->t_rcd >> 1);
-	ac_timing[2] = ((tbl->t_wtr >> 1) << 24) +
-				(((tbl->t_rtw >> 1) + i) << 16) +
-				((tbl->t_wtp >> 1) << 8) +
-				(tbl->t_rtp >> 1);
-	ac_timing[3] = (t_wtr_a << 8) +
-				(tbl->t_wtr_l >> 1);
-	ac_timing[4] = (t_zqcs << 20) +
-				(t_rfcsb << 10) +
-				(tbl->t_rfc >> 1);
-	ac_timing[5] = (t_cshsr << 24) +
-				(((tbl->t_pd >> 1) - 1) << 16) +
-				(((tbl->t_xp >> 1) - 1) << 8) +
-				((tbl->t_cksre >> 1) - 1);
-	ac_timing[6] = (tbl->t_dllk >> 1) - 1;
-
-	for (i = 0; i < ARRAY_SIZE(ac_timing); ++i)
-		writel(ac_timing[i], &regs->ac_timing[i]);
+	return 0;
 }
 
-void dramc_configure_ac_timing(struct dramc_regs *regs)
+bool is_ddr4(void)
 {
-	/* load controller setting */
-	dramc_convert_actiming_table(regs, ac_table);
+	if (IS_ENABLED(CONFIG_ASPEED_FPGA))
+		/* made fpga strap reverse */
+		return ((readl((void *)SCU_IO_HWSTRAP1) & IO_HWSTRAP1_DRAM_TYPE) ? 0 : 1);
+
+	/* asic strap default 0 is ddr5, 1 is ddr4 */
+	return ((readl((void *)SCU_IO_HWSTRAP1) & IO_HWSTRAP1_DRAM_TYPE) ? 1 : 0);
 }
 
-void dramc_configure_register(struct dramc_regs *regs, int ddr5_mode)
+#define ACTIME1(ccd, rrd_l, rrd, mrd)	\
+	(((ccd) << 24) | (((rrd_l) >> 1) << 16) | (((rrd) >> 1) << 8) | ((mrd) >> 1))
+
+#define ACTIME2(faw, rp, ras, rcd)	\
+	((((faw) >> 1) << 24) | (((rp) >> 1) << 16) | (((ras) >> 1) << 8) | ((rcd) >> 1))
+
+#define ACTIME3(wtr, rtw, wtp, rtp)	\
+	((((wtr) >> 1) << 24) | \
+	(((rtw) >> 1) << 16) | \
+	(((wtp) >> 1) << 8) | \
+	((rtp) >> 1))
+
+#define ACTIME4(wtr_a, wtr_l)		\
+	((((wtr_a) >> 1) << 8) | ((wtr_l) >> 1))
+
+#define ACTIME5(refsbrd, rfcsb, rfc)	\
+	((((refsbrd) >> 1) << 20) | (((rfcsb) >> 1) << 10) | ((rfc) >> 1))
+
+#define ACTIME6(cshsr, pd, xp, cksre)	\
+	((((cshsr) >> 1) << 24) | (((pd) >> 1) << 16) | (((xp) >> 1) << 8) | ((cksre) >> 1))
+
+#define ACTIME7(zqcs, dllk)	\
+	((((zqcs) >> 1) << 10) | ((dllk) >> 1))
+
+static void sdramc_configure_ac_timing(struct sdramc *sdramc, struct sdramc_ac_timing *ac)
 {
-	u32 dram_size;
+	struct sdramc_regs *regs = sdramc->regs;
 
-#if defined(FPGA_ASPEED)
-	u32 t_phy_wrdata = 1;
-	u32 t_phy_wrlat = CWL - 6;
-	u32 t_phy_rddata_en = CL - 5;
-	u32 t_phy_odtlat = 1;
-	u32 t_phy_odtext = 0;
-#else
-	// - Tphy_wrlat = N+4 (nCK) for DDR4, N+3 (nCK) for DDR5, where N is setting value.
-	//   * For DDR4 SDRAM, t_{phy_wrlat} = WL - 5.
-	//   * For DDR5 SDRAM, t_{phy_wrlat} = WL - 13.
-	u32 t_phy_wrlat = CWL - 5 - 4;
-	u32 t_phy_odtlat = CWL - 5 - 4;
-	u32 t_phy_odtext  = 0;
+	writel(ACTIME1(ac->t_ccd_l, ac->t_rrd_l, ac->t_rrd, ac->t_mrd),
+	       &regs->actime1);
+	writel(ACTIME2(ac->t_faw, ac->t_rp, ac->t_ras, ac->t_rcd),
+	       &regs->actime2);
+	writel(ACTIME3(ac->t_cwl + ac->t_bl / 2 + ac->t_wtr,
+		       ac->t_cl - ac->t_cwl + (ac->t_bl / 2) + 2,
+		       ac->t_cwl + ac->t_bl / 2 + ac->t_wtp,
+		       ac->t_rtp),
+	       &regs->actime3);
+	writel(ACTIME4(ac->t_wtr_a, ac->t_cwl + ac->t_bl / 2 + ac->t_wtr_l),
+	       &regs->actime4);
+	writel(ACTIME5(ac->t_refsbrd, ac->t_rfcsb, ac->t_rfc),
+	       &regs->actime5);
+	writel(ACTIME6(ac->t_cshsr, ac->t_pd, ac->t_xp, ac->t_cksre), &regs->actime6);
+	writel(ACTIME7(ac->t_zq, ac->t_dllk), &regs->actime7);
+}
 
-	// - Tphy_rddata_en = N+4 (nCK) for DDR4, N+3 (nCK) for DDR5, where N is setting value.
-	//   * For DDR4 SDRAM, t_{phy_rddata_en} = RL - 5.
-	//   * For DDR5 SDRAM, t_{phy_rddata_en} = RL - 13.
-	u32 t_phy_rddata_en = CL - 5 - 4;
+static void sdramc_configure_register(struct sdramc *sdramc, struct sdramc_ac_timing *ac)
+{
+	struct sdramc_regs *regs = sdramc->regs;
 
-	// - Tphy_wrdata = N (nCK)
-	//   * For DDR4 SDRAM, t_{phy_wrdata} = 2.
-	//   * For DDR5 SDRAM, t_{phy_wrdata} = 6.
-	u32 t_phy_wrdata = 2;
-#endif
+	u32 dram_size = 5;
+	u32 t_phy_wrdata;
+	u32 t_phy_wrlat;
+	u32 t_phy_rddata_en;
+	u32 t_phy_odtlat;
+	u32 t_phy_odtext;
 
-#ifdef DDR4
-#if defined(ASPEED_DDR4_64G)
-	dram_size = 5;
-#elif defined(ASPEED_DDR4_32G)
-	dram_size = 4;
-#elif defined(ASPEED_DDR4_16G)
-	dram_size = 3;
-#elif defined(ASPEED_DDR4_8G)
-	dram_size = 2;
-#elif defined(ASPEED_DDR4_4G)
-	dram_size = 1;
-#elif defined(ASPEED_DDR4_2G)
-	dram_size = 0;
-#else
-	dram_size = 0;
-#endif
-#endif
+	if (IS_ENABLED(CONFIG_ASPEED_FPGA)) {
+		t_phy_wrlat = ac->t_cwl - 6;
+		t_phy_rddata_en = ac->t_cl - 5;
+		t_phy_wrdata = 1;
+		t_phy_odtlat = 1;
+		t_phy_odtext = 0;
+	} else {
+		if (ac->type == DRAM_TYPE_4) {
+			t_phy_wrlat = ac->t_cwl - 5 - 4;
+			t_phy_rddata_en = ac->t_cl - 5 - 4;
+			t_phy_wrdata = 2;
+			t_phy_odtlat = ac->t_cwl - 5 - 4;
+			t_phy_odtext = 0;
+		} else {
+			t_phy_wrlat = ac->t_cwl - 13 - 3;
+			t_phy_rddata_en = ac->t_cl - 13 - 3;
+			t_phy_wrdata = 6;
+			t_phy_odtlat = 0;
+			t_phy_odtext = 0;
+		}
+	}
 
-	writel(0x20 + (dram_size << 2) + ddr5_mode, &regs->main_configuration);
-	//printf("main_config=0x%x\n", (u32)&regs->main_configuration);
+	writel(0x20 + (dram_size << 2) + ac->type, &regs->mcfg);
 
-	/* [5:0], t_phy_wrlat, for cycles from WR command to write data enable.
+	/*
+	 * [5:0], t_phy_wrlat, for cycles from WR command to write data enable.
 	 * [8:6], t_phy_wrdata, for cycles from write data enable to write data.
 	 * [9], reserved
 	 * [15:10] t_phy_rddata_en, for cycles from RD command to read data enable.
@@ -404,372 +210,576 @@ void dramc_configure_register(struct dramc_regs *regs, int ddr5_mode)
 	 * [22], ODT signal enable
 	 * [23], ODT signal auto mode
 	 */
-	writel((t_phy_odtext << 16) + (t_phy_odtlat << 16) +
-			(t_phy_rddata_en << 10) + (t_phy_wrdata << 6) +
-			t_phy_wrlat, &regs->dfi_timing);
+	writel((t_phy_odtext << 20) + (t_phy_odtlat << 16) + (t_phy_rddata_en << 10) + (t_phy_wrdata << 6) + t_phy_wrlat, &regs->dfi_timing);
+	writel(0, &regs->dctl);
 
-	writel(0x00000000, &regs->dfi_control_msg);
-
-	/* [31:24]: refresh felxibility time period
+	/*
+	 * [31:24]: refresh felxibility time period
 	 * [23:16]: refresh time interfal
 	 * [15]   : refresh function disable
 	 * [14:10]: reserved
 	 * [9:6]  : refresh threshold
-	 * [5]    : refresh option
-	 * [4]    : auto MR command sending for mode change
-	 * [3]    : same bank refresh operation
-	 * [2]    : refresh rate selection
-	 * [1]    : refresh mode selection
-	 * [0]    : refresh mode update trigger
+	 * [5]	  : refresh option
+	 * [4]	  : auto MR command sending for mode change
+	 * [3]	  : same bank refresh operation
+	 * [2]	  : refresh rate selection
+	 * [1]	  : refresh mode selection
+	 * [0]	  : refresh mode update trigger
 	 */
-	writel(0x40b48200, &regs->refresh_control);
+	writel(0x40b48200, &regs->refctl);
 
-	/* [31:16]: ZQ calibration period
+	/*
+	 * [31:16]: ZQ calibration period
 	 * [15:8] : ZQ latch time period
-	 * [7]    : ZQ control status
+	 * [7]	  : ZQ control status
 	 * [6:3]  : reserved
-	 * [2]    : ZQCL command enable
-	 * [1]    : ZQ calibration auto mode
+	 * [2]	  : ZQCL command enable
+	 * [1]	  : ZQ calibration auto mode
 	 */
-	writel(0x42aa1800, &regs->zqc_control);
+	writel(0x42aa1800, &regs->zqctl);
 
-	/* [31:14]: reserved
+	/*
+	 * [31:14]: reserved
 	 * [13:12]: selection of limited request number for page-hit request
 	 * [11]   : enable control of limitation for page-hit request counter
 	 * [10]   : arbiter read threshold limitation disable control
-	 * [9]    : arbiter write threshold limitation disable control
+	 * [9]	  : arbiter write threshold limitation disable control
 	 * [8:5]  : read access limit threshold selection
-	 * [4]    : read request limit threshold enable
+	 * [4]	  : read request limit threshold enable
 	 * [3:1]  : write request limit threshold selection
-	 * [0]    : write request limit enable
+	 * [0]	  : write request limit enable
 	 */
-	writel(0x00000000, &regs->arbitration_control); /* write read threshold enable */
+	writel(0, &regs->arbctl);
+
+	if (ac->type)
+		writel(0, &regs->refmng_ctl);
 
 	writel(0xffffffff, &regs->intr_mask);
 }
 
-static void ast2700_sdrammc_common_init(struct dram_info *info)
+static void sdramc_mr_send(struct sdramc *sdramc, u32 ctrl, u32 op)
 {
-	/* 2.2 configure ac timing */
-	dramc_configure_ac_timing(info->regs);
+	struct sdramc_regs *regs = sdramc->regs;
 
-	/* 2.3 configure register */
-	dramc_configure_register(info->regs, 0);
+	writel(op, &regs->mrwr);
+	writel(ctrl | DRAMC_MRCTL_CMD_START, &regs->mrctl);
+
+	while (!(readl(&regs->intr_status) & DRAMC_IRQSTA_MR_DONE))
+		;
+
+	writel(DRAMC_IRQSTA_MR_DONE, &regs->intr_clear);
 }
 
-static void ast2700_sdrammc_unlock(struct dram_info *info)
+static void sdramc_unlock(struct sdramc *sdramc)
 {
-	writel(SDRAM_UNLOCK_KEY, &info->regs->protection_key);
-	while (!readl(&info->regs->protection_key))
+	struct sdramc_regs *regs = sdramc->regs;
+
+	writel(DRAMC_UNLOCK_KEY, &regs->prot_key);
+
+	while (!readl(&regs->prot_key))
 		;
 }
 
-static void ast2700_sdrammc_lock(struct dram_info *info)
+static void sdramc_set_flag(u32 flag)
 {
-	writel(~SDRAM_UNLOCK_KEY, &info->regs->protection_key);
-	while (readl(&info->regs->protection_key))
-		;
+	u32 val;
+
+	val = readl((void *)SCU_CPU_SOC1_SCRATCH);
+	val |= flag;
+	writel(val, (void *)SCU_CPU_SOC1_SCRATCH);
 }
 
-void dramc_configure_mrs(struct dramc_regs *regs)
+static int sdramc_init(struct sdramc *sdramc, struct sdramc_ac_timing **ac)
 {
+	struct sdramc_ac_timing *tbl = ac_table;
+	int speed;
+
+	/* Detect dram type by a hw strap at IO SCU010 */
+	if (is_ddr4()) {
+		/* DDR4 type */
+		if (IS_ENABLED(CONFIG_ASPEED_DDR_1600)) {
+			speed = DDR4_1600;
+		} else if (IS_ENABLED(CONFIG_ASPEED_DDR_2400)) {
+			speed = DDR4_2400;
+		} else if (IS_ENABLED(CONFIG_ASPEED_DDR_3200)) {
+			speed = DDR4_3200;
+		} else {
+			printf("Speed %d is not supported!!!\n", speed);
+			return 1;
+		}
+	} else {
+		/* DDR5 type */
+		speed = DDR5_3200;
+	}
+
+	printf("%s is selected\n", tbl[speed].desc);
+
+	/* Configure ac timing */
+	sdramc_configure_ac_timing(sdramc, &tbl[speed]);
+
+	/* Configure register */
+	sdramc_configure_register(sdramc, &tbl[speed]);
+
+	*ac = &tbl[speed];
+
+	printf("ac_table type=%d\n", tbl[speed].type);
+	return 0;
+}
+
+static void sdramc_phy_init(struct sdramc *sdramc, struct sdramc_ac_timing *ac)
+{
+	/* release emmc pin from emmc boot */
+	writel(0, (void *)0x12c0b00c);
+
+	/* initialize phy */
+	if (IS_ENABLED(CONFIG_ASPEED_FPGA))
+		fpga_phy_init(sdramc);
+	else
+		dwc_phy_init(ac);
+}
+
+static int sdramc_exit_self_refresh(struct sdramc *sdramc)
+{
+	struct sdramc_regs *regs = sdramc->regs;
+
+	/* exit self-refresh after phy init */
+	setbits(le32, &regs->mctl, DRAMC_MCTL_SELF_REF_START);
+
+	/* query if self-ref done */
+	while (!(readl(&regs->intr_status) & DRAMC_IRQSTA_REF_DONE))
+		;
+
+	/* clear status */
+	writel(DRAMC_IRQSTA_REF_DONE, &regs->intr_clear);
+
+	udelay(1);
+
+	return 0;
+}
+
+static void sdramc_enter_self_refresh(struct sdramc *sdramc)
+{
+	struct sdramc_regs *regs = sdramc->regs;
+
+	/* refresh update */
+	clrbits(le32, &regs->refctl, 0x8000);
+}
+
+static void sdramc_configure_mrs(struct sdramc *sdramc, struct sdramc_ac_timing *ac)
+{
+	struct sdramc_regs *regs = sdramc->regs;
 	u32 mr0_cas, mr0_rtp, mr2_cwl, mr6_tccd_l;
 	u32 mr0_val, mr1_val, mr2_val, mr3_val, mr4_val, mr5_val, mr6_val;
 
 	//-------------------------------------------------------------------
 	// CAS Latency (Table-15)
 	//-------------------------------------------------------------------
-	switch (CL) {
+	switch (ac->t_cl) {
 	case 9:
-		mr0_cas = 0x00; break;  //5'b00000;
+		mr0_cas = 0x00; //5'b00000;
+		break;
 	case 10:
-		mr0_cas = 0x01; break;  //5'b00001;
+		mr0_cas = 0x01; //5'b00001;
+		break;
 	case 11:
-		mr0_cas = 0x02; break;  //5'b00010;
+		mr0_cas = 0x02; //5'b00010;
+		break;
 	case 12:
-		mr0_cas = 0x03; break;  //5'b00011;
+		mr0_cas = 0x03; //5'b00011;
+		break;
 	case 13:
-		mr0_cas = 0x04; break;  //5'b00100;
+		mr0_cas = 0x04; //5'b00100;
+		break;
 	case 14:
-		mr0_cas = 0x05; break;  //5'b00101;
+		mr0_cas = 0x05; //5'b00101;
+		break;
 	case 15:
-		mr0_cas = 0x06; break;  //5'b00110;
+		mr0_cas = 0x06; //5'b00110;
+		break;
 	case 16:
-		mr0_cas = 0x07; break;  //5'b00111;
+		mr0_cas = 0x07; //5'b00111;
+		break;
 	case 18:
-		mr0_cas = 0x08; break;  //5'b01000;
+		mr0_cas = 0x08; //5'b01000;
+		break;
 	case 20:
-		mr0_cas = 0x09; break;  //5'b01001;
+		mr0_cas = 0x09; //5'b01001;
+		break;
 	case 22:
-		mr0_cas = 0x0a; break;  //5'b01010;
+		mr0_cas = 0x0a; //5'b01010;
+		break;
 	case 24:
-		mr0_cas = 0x0b; break;  //5'b01011;
+		mr0_cas = 0x0b; //5'b01011;
+		break;
 	case 23:
-		mr0_cas = 0x0c; break;  //5'b01100;
+		mr0_cas = 0x0c; //5'b01100;
+		break;
 	case 17:
-		mr0_cas = 0x0d; break;  //5'b01101;
+		mr0_cas = 0x0d; //5'b01101;
+		break;
 	case 19:
-		mr0_cas = 0x0e; break;  //5'b01110;
+		mr0_cas = 0x0e; //5'b01110;
+		break;
 	case 21:
-		mr0_cas = 0x0f; break;  //5'b01111;
+		mr0_cas = 0x0f; //5'b01111;
+		break;
 	case 25:
-		mr0_cas = 0x10; break;  //5'b10000;
+		mr0_cas = 0x10; //5'b10000;
+		break;
 	case 26:
-		mr0_cas = 0x11; break;  //5'b10001;
+		mr0_cas = 0x11; //5'b10001;
+		break;
 	case 27:
-		mr0_cas = 0x12; break;  //5'b10010;
+		mr0_cas = 0x12; //5'b10010;
+		break;
 	case 28:
-		mr0_cas = 0x13; break;  //5'b10011;
+		mr0_cas = 0x13; //5'b10011;
+		break;
 	case 30:
-		mr0_cas = 0x15; break;  //5'b10101;
+		mr0_cas = 0x15; //5'b10101;
+		break;
 	case 32:
-		mr0_cas = 0x17; break;  //5'b10111;
+		mr0_cas = 0x17; //5'b10111;
+		break;
 	}
 
 	//-------------------------------------------------------------------
 	// WR and RTP (Table-14)
 	//-------------------------------------------------------------------
-	switch (RTP)  {
+	switch (ac->t_rtp) {
 	case 5:
-		mr0_rtp = 0x0; break;  //4'b0000;
+		mr0_rtp = 0x0; //4'b0000;
+		break;
 	case 6:
-		mr0_rtp = 0x1; break;  //4'b0001;
+		mr0_rtp = 0x1; //4'b0001;
+		break;
 	case 7:
-		mr0_rtp = 0x2; break;  //4'b0010;
+		mr0_rtp = 0x2; //4'b0010;
+		break;
 	case 8:
-		mr0_rtp = 0x3; break;  //4'b0011;
+		mr0_rtp = 0x3; //4'b0011;
+		break;
 	case 9:
-		mr0_rtp = 0x4; break;  //4'b0100;
+		mr0_rtp = 0x4; //4'b0100;
+		break;
 	case 10:
-		mr0_rtp = 0x5; break;  //4'b0101;
+		mr0_rtp = 0x5; //4'b0101;
+		break;
 	case 12:
-		mr0_rtp = 0x6; break;  //4'b0110;
+		mr0_rtp = 0x6; //4'b0110;
+		break;
 	case 11:
-		mr0_rtp = 0x7; break;  //4'b0111;
+		mr0_rtp = 0x7; //4'b0111;
+		break;
 	case 13:
-		mr0_rtp = 0x8; break;  //4'b1000;
+		mr0_rtp = 0x8; //4'b1000;
+		break;
 	}
 
 	//-------------------------------------------------------------------
 	// CAS Write Latency (Table-21)
 	//-------------------------------------------------------------------
-	switch (CWL)  {
+	switch (ac->t_cwl)  {
 	case 9:
-		mr2_cwl = 0x0; break;  // 3'b000; // 1600
+		mr2_cwl = 0x0; // 3'b000; // 1600
+		break;
 	case 10:
-		mr2_cwl = 0x1; break;  // 3'b001; // 1866
+		mr2_cwl = 0x1; // 3'b001; // 1866
+		break;
 	case 11:
-		mr2_cwl = 0x2; break;  // 3'b010; // 2133
+		mr2_cwl = 0x2; // 3'b010; // 2133
+		break;
 	case 12:
-		mr2_cwl = 0x3; break;  // 3'b011; // 2400
+		mr2_cwl = 0x3; // 3'b011; // 2400
+		break;
 	case 14:
-		mr2_cwl = 0x4; break;  // 3'b100; // 2666
+		mr2_cwl = 0x4; // 3'b100; // 2666
+		break;
 	case 16:
-		mr2_cwl = 0x5; break;  // 3'b101; // 2933/3200
+		mr2_cwl = 0x5; // 3'b101; // 2933/3200
+		break;
 	case 18:
-		mr2_cwl = 0x6; break;  // 3'b110;
+		mr2_cwl = 0x6; // 3'b110;
+		break;
 	case 20:
-		mr2_cwl = 0x7; break;  // 3'b111;
+		mr2_cwl = 0x7; // 3'b111;
+		break;
 	}
 
 	//-------------------------------------------------------------------
 	// tCCD_L and tDLLK
 	//-------------------------------------------------------------------
-	switch (CCD_L) {
+	switch (ac->t_ccd_l) {
 	case 4:
-		mr6_tccd_l = 0x0; break;  //3'b000;  // rate <= 1333
+		mr6_tccd_l = 0x0; //3'b000;  // rate <= 1333
+		break;
 	case 5:
-		mr6_tccd_l = 0x1; break;  //3'b001;  // 1333 < rate <= 1866
+		mr6_tccd_l = 0x1; //3'b001;  // 1333 < rate <= 1866
+		break;
 	case 6:
-		mr6_tccd_l = 0x2; break;  //3'b010;  // 1866 < rate <= 2400
+		mr6_tccd_l = 0x2; //3'b010;  // 1866 < rate <= 2400
+		break;
 	case 7:
-		mr6_tccd_l = 0x3; break;  //3'b011;  // 2400 < rate <= 2666
+		mr6_tccd_l = 0x3; //3'b011;  // 2400 < rate <= 2666
+		break;
 	case 8:
-		mr6_tccd_l = 0x4; break;  //3'b100;  // 2666 < rate <= 3200
+		mr6_tccd_l = 0x4; //3'b100;  // 2666 < rate <= 3200
+		break;
 	}
 
-	mr0_val = ((mr0_cas & 0x1) << 2) | (((mr0_cas >> 1) & 0x7) << 4) |
-			(((mr0_cas >> 4) & 0x1) << 12) | ((mr0_rtp & 0x7) << 9) |
-			(((mr0_rtp >> 3) & 0x1) << 13);
+	/*
+	 * mr0_val = {
+	 * mr0_rtp[3],		// 13
+	 * mr0_cas[4],		// 12
+	 * mr0_rtp[2:0],	// 13,11-9: WR and RTP
+	 * 1'b0,		// 8: DLL reset
+	 * 1'b0,		// 7: TM
+	 * mr0_cas[3:1],	// 6-4,2: CAS latency
+	 * 1'b0,		// 3: sequential
+	 * mr0_cas[0],
+	 * 2'b00		// 1-0: burst length
+	 */
+	mr0_val = ((mr0_cas & 0x1) << 2) | (((mr0_cas >> 1) & 0x7) << 4) | (((mr0_cas >> 4) & 0x1) << 12) |
+		  ((mr0_rtp & 0x7) << 9) | (((mr0_rtp >> 3) & 0x1) << 13);
+
+	/*
+	 * 3'b2 //[10:8]: rtt_nom, 000:disable,001:rzq/4,010:rzq/2,011:rzq/6,100:rzq/1,101:rzq/5,110:rzq/3,111:rzq/7
+	 * 1'b0 //[7]: write leveling enable
+	 * 2'b0 //[6:5]: reserved
+	 * 2'b0 //[4:3]: additive latency
+	 * 2'b0 //[2:1]: output driver impedance
+	 * 1'b1 //[0]: enable dll
+	 */
 	mr1_val = 0x201;
+
+	/*
+	 * [10:9]: rtt_wr, 00:dynamic odt off, 01:rzq/2, 10:rzq/1, 11: hi-z
+	 * [8]: 0
+	 */
 	mr2_val = ((mr2_cwl & 0x7) << 3) | 0x200;
+
 	mr3_val = 0;
+
 	mr4_val = 0;
 
-	/* mr5_val = {
-	 * 1'b0,         // 13: RFU
-	 * 1'b0,         // 12: read DBI
-	 * 1'b0,         // 11: write DBI
-	 * 1'b1,         // 10: Data mask
-	 * 1'b0,         // 9: C/A parity persistent error
-	 * 3'b000,       // 8-6: RTT_PARK (disable)
-	 * 1'b1,         // 5: ODT input buffer during power down mode
-	 * 1'b0,         // 4: C/A parity status
-	 * 1'b0,         // 3: CRC error clear
-	 * 3'b0          // 2-0: C/A parity latency mode
+	/*
+	 * mr5_val = {
+	 * 1'b0,		// 13: RFU
+	 * 1'b0,		// 12: read DBI
+	 * 1'b0,		// 11: write DBI
+	 * 1'b1,		// 10: Data mask
+	 * 1'b0,		// 9: C/A parity persistent error
+	 * 3'b000,		// 8-6: RTT_PARK (disable)
+	 * 1'b1,		// 5: ODT input buffer during power down mode
+	 * 1'b0,		// 4: C/A parity status
+	 * 1'b0,		// 3: CRC error clear
+	 * 3'b0			// 2-0: C/A parity latency mode
 	 * };
 	 */
 	mr5_val = 0x420;
 
-	/* mr6_val = {
-	 *	1'b0,         // 13, 9-8: RFU
-	 *	mr6_tccd_l[2:0],   // 12-10: tCCD_L
-	 *	2'b0,         // 13, 9-8: RFU
-	 *	1'b0,         // 7: VrefDQ training enable
-	 *	1'b0,         // 6: VrefDQ training range
-	 *	6'b0          // 5-0: VrefDQ training value
-	 *	};
+	/*
+	 * mr6_val = {
+	 * 1'b0,		// 13, 9-8: RFU
+	 * mr6_tccd_l[2:0],	// 12-10: tCCD_L
+	 * 2'b0,		// 13, 9-8: RFU
+	 * 1'b0,		// 7: VrefDQ training enable
+	 * 1'b0,		// 6: VrefDQ training range
+	 * 6'b0			// 5-0: VrefDQ training value
+	 * };
 	 */
 	mr6_val = ((mr6_tccd_l & 0x7) << 10);
 
-	writel((mr1_val << 16) + mr0_val, &regs->mr01_setting);
-	writel((mr3_val << 16) + mr2_val, &regs->mr23_setting);
-	writel((mr5_val << 16) + mr4_val, &regs->mr45_setting);
-	writel(mr6_val, &regs->mr67_setting);
+	writel((mr1_val << 16) + mr0_val, &regs->mr01);
+	writel((mr3_val << 16) + mr2_val, &regs->mr23);
+	writel((mr5_val << 16) + mr4_val, &regs->mr45);
+	writel(mr6_val, &regs->mr67);
+
+	printf("MR0: 0x%x\n", mr0_val);
+	printf("MR1: 0x%x\n", mr1_val);
+	printf("MR2: 0x%x\n", mr2_val);
+	printf("MR3: 0x%x\n", mr3_val);
+	printf("MR4: 0x%x\n", mr4_val);
+	printf("MR5: 0x%x\n", mr5_val);
+	printf("MR6: 0x%x\n", mr6_val);
 
 	/* Power-up initialization sequence */
-	writel((0x3 << 8) | 0x3, &regs->mode_reg_control);
-	while (!((readl(&regs->intr_status) & 0x2)))
-		;
-
-	writel((0x6 << 8) | 0x3, &regs->mode_reg_control);
-	while (!((readl(&regs->intr_status) & 0x2)))
-		;
-	writel(2, &regs->intr_clear);
-
-	writel((0x5 << 8) | 0x3, &regs->mode_reg_control);
-	while (!(readl(&regs->intr_status) & 0x2))
-		;
-	writel(2, &regs->intr_clear);
-
-	writel((0x4 << 8) | 0x3, &regs->mode_reg_control);
-	while (!((readl(&regs->intr_status) & 0x2)))
-		;
-	writel(2, &regs->intr_clear);
-
-	writel((0x2 << 8) | 0x3, &regs->mode_reg_control);
-	while (!((readl(&regs->intr_status) & 0x2)))
-		;
-	writel(2, &regs->intr_clear);
-
-	writel((0x1 << 8) | 0x3, &regs->mode_reg_control);
-	while (!((readl(&regs->intr_status) & 0x2)))
-		;
-	writel(2, &regs->intr_clear);
-
-	writel((0x0 << 8) | 0x3, &regs->mode_reg_control);
-	while (!((readl(&regs->intr_status) & 0x2)))
-		;
-	writel(2, &regs->intr_clear);
-
-	/* refresh update */
-	writel(0x40b40201, &regs->refresh_control);
+	sdramc_mr_send(sdramc, MR_ADDR(3), 0);
+	sdramc_mr_send(sdramc, MR_ADDR(6), 0);
+	sdramc_mr_send(sdramc, MR_ADDR(5), 0);
+	sdramc_mr_send(sdramc, MR_ADDR(4), 0);
+	sdramc_mr_send(sdramc, MR_ADDR(2), 0);
+	sdramc_mr_send(sdramc, MR_ADDR(1), 0);
+	sdramc_mr_send(sdramc, MR_ADDR(0), 0);
 }
 
-static int ast2700_sdrammc_probe(struct udevice *dev)
-{
-	struct dram_info *priv = (struct dram_info *)dev_get_priv(dev);
-	struct dramc_regs *regs = priv->regs;
-	int i;
-	u32 val;
-
-	if (readl(0x12c02900) & 0x40) {
-		printf("ddr has already initialized\n");
-		goto done;
-	}
-
-	ast2700_sdrammc_unlock(priv);
-	ast2700_sdrammc_common_init(priv);
-
-	writel(0x10f, 0x12C02000 + 0x400);
-	writel(0x30f, 0x12C02000 + 0x400);
-	//writel(0x18, &regs->debug_control);
-	writel(0x18, &regs->test_configuration);
-
-	writel(0x50000, &regs->dfi_configuration);
-
-	for (i = 0; i < 1000000; ++i)
-		;
-
-	writel(0x00020000, &regs->main_control);
-	writel(0x00030000, &regs->main_control);
-	writel(0x00010000, &regs->main_control);
-
-	for (i = 0; i < 4; i++)
-		val = readl(&regs->main_control);
-
-	for (i = 0; i < 1000000; ++i)
-		;
-
-	val = readl(&regs->dfi_configuration);
-	val &= 0xfffeffff;
-	writel(val, &regs->dfi_configuration);
-
-	for (i = 0; i < 4; i++)
-		val = readl(&regs->dfi_configuration);
-
-	for (i = 0; i < 1000000; ++i)
-		;
-
-	writel(0x00010001, &regs->main_control);
-
-	while ((readl(&regs->intr_status) & 0x1) == 0)
-		;
-
-	writel(1, &regs->intr_clear);
-
-	val = readl(&regs->main_control);
-	writel(val | 0x2, &regs->main_control);
-	while (!(readl(&regs->intr_status) & 0x400))
-		;
-	writel(0x400, &regs->intr_clear);
-
-	for (i = 0; i < 8; i++)
-		val = readl(&regs->dfi_configuration);
-
-	/* 4. initialize dram */
-	dramc_configure_mrs(regs);
-
-	val = readl(&regs->refresh_control);
-	val &= 0xffff7fff;
-	writel(val, &regs->refresh_control);
-
-	val = readl(0x12c02900);
-	val |= 0x70;
-	writel(val, 0x12c02900);
-
-	writel(0x3c, 0x12c00010);
-done:
-	priv->info.base = 0x80000000;
-	priv->info.size = 0x80000000;
-
-	return 0;
-}
-
-static int ast2700_sdrammc_of_to_plat(struct udevice *dev)
-{
-	struct dram_info *priv = dev_get_priv(dev);
-
-	priv->regs = (void *)(uintptr_t)devfdt_get_addr_index(dev, 0);
-	priv->phy_setting = (void *)(uintptr_t)devfdt_get_addr_index(dev, 1);
-
-	return 0;
-}
-
-static int ast2700_sdrammc_get_info(struct udevice *dev, struct ram_info *info)
-{
-	struct dram_info *priv = dev_get_priv(dev);
-
-	*info = priv->info;
-
-	return 0;
-}
-
-static struct ram_ops ast2700_sdrammc_ops = {
-	.get_info = ast2700_sdrammc_get_info,
+struct ddr_command {
+	u8 desc[30];
+	u32 type;
+	u32 data;
 };
 
-static const struct udevice_id ast2700_sdrammc_ids[] = {
+struct ddr_command command_sequence_tbl[] = {
+	{"RTT_CK group A",
+	MR_MPC, (MPC_OP_RTT_CK_A + MR32_CK_ODT_RTT_OFF)},
+	{"RTT_CK group B",
+	MR_MPC, (MPC_OP_RTT_CK_B + MR32_CK_ODT_40)},
+	{"RTT_CS group A",
+	MR_MPC, (MPC_OP_RTT_CS_A + MR32_CS_ODT_RTT_OFF)},
+	{"RTT_CS group B",
+	MR_MPC, (MPC_OP_RTT_CS_B + MR32_CS_ODT_40)},
+	{"RTT_CA group A",
+	MR_MPC, (MPC_OP_RTT_CA_A + MR33_CA_ODT_RTT_OFF)},
+	{"RTT_CA group B",
+	MR_MPC, (MPC_OP_RTT_CA_B + MR33_CA_ODT_40)},
+	{"Set DQS_RTT_PARK",
+	MR_MPC, (MPC_OP_SET_DQS_RTT_PARK + MR33_DQS_RTT_PARK_240)},
+	{"Set RTT_PARK",
+	MR_MPC, (MPC_OP_SET_RTT_PARK + MR34_RTT_PARK_240)},
+	{"VrefCS",
+	MR_VREFCS, MR12_VREFCS_RANGE_75},
+	{"VrefCA",
+	MR_VREFCA, MR11_VREFCA_RANGE_75},
+	{"Apply VrefCA/VrefCS/RTT",
+	MR_MPC, MPC_OP_APPLY},
+	{"Set 1N command timing",
+	MR_MPC, MPC_OP_SET_1N_CMD},
+	{"MR0",
+	MR_ADDR(0), 0},//((((CL - 22) >> 1) << 2) + 0),
+	{"MR4/5/6",
+	MR_ADDR(4) | MR_NUM(2), 0x2000},
+	{"MR8",
+	MR_ADDR(8), MR8_WRITE_PREAMBLE_2TCK},
+	{"MR10",
+	MR_ADDR(10), MR10_VREFDQ_RANGE_75},
+	{"MR23",
+	MR_ADDR(23), 0},
+	{"MR2",
+	MR_ADDR(2), MR2_CS_ASSERTION},
+	{"MR13",
+	MR_1T_MODE | MR_MPC, MPC_OP_CONFIG_DLLK_CCD},
+	{"DLL Reset",
+	MR_1T_MODE | MR_DLL_RESET | MR_MPC, MPC_OP_DLL_RESET},
+	{"ZQ Cali",
+	MR_1T_MODE | MR_MPC, MPC_OP_ZQCAL_START},
+	{"ZQ Latch",
+	MR_1T_MODE | MR_MPC, MPC_OP_ZQCAL_LATCH},
+};
+
+static void sdramc_configure_ddr5_mrs(struct sdramc *sdramc, struct sdramc_ac_timing *ac)
+{
+	struct ddr_command *cmd = command_sequence_tbl;
+	int i;
+
+
+	for (i = 0; i < ARRAY_SIZE(command_sequence_tbl); i++) {
+		printf("%s 0x%x\n", cmd[i].desc, cmd[i].data);
+		sdramc_mr_send(sdramc, cmd[i].type, cmd[i].data);
+	}
+}
+
+static int sdramc_bist(struct sdramc *sdramc, u32 addr, u32 size, u32 cfg, u32 timeout)
+{
+	struct sdramc_regs *regs = sdramc->regs;
+	u32 val;
+	u32 err = 0;
+
+	writel(0, &regs->bistcfg);
+	writel(cfg, &regs->bistcfg);
+	writel(addr >> 4, &regs->bist_addr);
+	writel(size >> 4, &regs->bist_size);
+	writel(0x89abcdef, &regs->bist_patt);
+	writel(cfg | DRAMC_BISTCFG_START, &regs->bistcfg);
+
+	while (!(readl(&regs->intr_status) & DRAMC_IRQSTA_BIST_DONE))
+		;
+
+	writel(DRAMC_IRQSTA_BIST_DONE, &regs->intr_clear);
+
+	val = readl(&regs->bist_res);
+
+	/* bist done */
+	if (val & DRAMC_BISTRES_DONE) {
+		/* bist pass [9]=0 */
+		if (val & DRAMC_BISTRES_FAIL)
+			err++;
+	} else {
+		err++;
+	}
+
+	return err;
+}
+
+static int ast2700_sdramc_probe(struct udevice *dev)
+{
+	struct sdramc *sdramc = (struct sdramc *)dev_get_priv(dev);
+	struct sdramc_ac_timing *ac;
+	u32 bistcfg;
+	int err = 0;
+
+	if (is_ddr_initialized())
+		return 0;
+
+	sdramc_unlock(sdramc);
+
+	err = sdramc_init(sdramc, &ac);
+	if (err)
+		return err;
+
+	sdramc_phy_init(sdramc, ac);
+
+	sdramc_exit_self_refresh(sdramc);
+
+	if (ac->type == DRAM_TYPE_4)
+		sdramc_configure_mrs(sdramc, ac);
+	else
+		sdramc_configure_ddr5_mrs(sdramc, ac);
+
+	sdramc_enter_self_refresh(sdramc);
+
+	bistcfg = FIELD_PREP(DRAMC_BISTCFG_PMODE, BIST_PMODE_CRC)
+		| FIELD_PREP(DRAMC_BISTCFG_BMODE, BIST_BMODE_RW_SWITCH)
+		| DRAMC_BISTCFG_ENABLE;
+
+	err = sdramc_bist(sdramc, 0, 0x10000, bistcfg, 0x200000);
+	if (err) {
+		printf("%s bist is failed\n", ac->desc);
+		return err;
+	}
+
+	printf("%s is successfully initialized\n", ac->desc);
+	sdramc_set_flag(DRAMC_INIT_DONE);
+
+	sdramc->info.base = 0x80000000;
+	sdramc->info.size = 0x40000000;
+
+	return 0;
+}
+
+static int ast2700_sdramc_of_to_plat(struct udevice *dev)
+{
+	struct sdramc *sdramc = (struct sdramc *)dev_get_priv(dev);
+
+	sdramc->regs = (void *)(uintptr_t)devfdt_get_addr_index(dev, 0);
+	sdramc->phy_setting = (void *)(uintptr_t)devfdt_get_addr_index(dev, 1);
+
+	return 0;
+}
+
+static int ast2700_sdramc_get_info(struct udevice *dev, struct ram_info *info)
+{
+	struct sdramc *sdramc = (struct sdramc *)dev_get_priv(dev);
+
+	*info = sdramc->info;
+
+	return 0;
+}
+
+static struct ram_ops ast2700_sdramc_ops = {
+	.get_info = ast2700_sdramc_get_info,
+};
+
+static const struct udevice_id ast2700_sdramc_ids[] = {
 	{ .compatible = "aspeed,ast2700-sdrammc" },
 	{ }
 };
@@ -777,9 +787,9 @@ static const struct udevice_id ast2700_sdrammc_ids[] = {
 U_BOOT_DRIVER(sdrammc_ast2700) = {
 	.name = "aspeed_ast2700_sdrammc",
 	.id = UCLASS_RAM,
-	.of_match = ast2700_sdrammc_ids,
-	.ops = &ast2700_sdrammc_ops,
-	.of_to_plat = ast2700_sdrammc_of_to_plat,
-	.probe = ast2700_sdrammc_probe,
-	.priv_auto = sizeof(struct dram_info),
+	.of_match = ast2700_sdramc_ids,
+	.ops = &ast2700_sdramc_ops,
+	.of_to_plat = ast2700_sdramc_of_to_plat,
+	.probe = ast2700_sdramc_probe,
+	.priv_auto = sizeof(struct sdramc),
 };
