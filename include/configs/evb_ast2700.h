@@ -21,8 +21,8 @@
 #define EMMC_BOOTCOMMAND "run bootmmc"
 
 #define CFG_EXTRA_ENV_SETTINGS \
-	"bootspi=fdt addr 1002a0000 && fdt header get fitsize totalsize && " \
-	"cp.b 1002a0000 ${loadaddr} ${fitsize} && bootm; " \
+	"bootspi=fdt addr 1002e0000 && fdt header get fitsize totalsize && " \
+	"cp.b 1002e0000 ${loadaddr} ${fitsize} && bootm; " \
 	"echo Error loading kernel FIT image\0" \
 	"loadaddr=" STR(CONFIG_SYS_LOAD_ADDR) "\0"	\
 	"bootside=a\0"	\
