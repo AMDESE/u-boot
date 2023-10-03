@@ -30,7 +30,7 @@ static struct soc_id soc_map_table[] = {
 	SOC_ID("AST2625-A3", 0x0503040305030403),
 };
 
-void ast2600_print_soc_id(void)
+void aspeed_print_soc_id(void)
 {
 	int i;
 	u64 rev_id;
@@ -48,7 +48,7 @@ void ast2600_print_soc_id(void)
 		printf("SOC: %4s\n", soc_map_table[i].name);
 }
 
-int ast2600_get_mac_phy_interface(u8 num)
+int aspeed_get_mac_phy_interface(u8 num)
 {
 	u32 strap1 = readl(ASPEED_HW_STRAP1);
 #ifdef ASPEED_HW_STRAP2
@@ -85,7 +85,7 @@ int ast2600_get_mac_phy_interface(u8 num)
 	return -1;
 }
 
-void ast2600_print_security_info(void)
+void aspeed_print_security_info(void)
 {
 	u32 qsr = readl(ASPEED_OTP_QSR);
 	u32 sb_sts = readl(ASPEED_SB_STS);
@@ -219,7 +219,7 @@ inline void handle_wdtx_reset(u32 x, u32 event_log, u32 event_log_reg)
 	}
 }
 
-void ast2600_print_sysrst_info(void)
+void aspeed_print_sysrst_info(void)
 {
 	u32 rest = readl(ASPEED_SYS_RESET_CTRL);
 	u32 rest3 = readl(ASPEED_SYS_RESET_CTRL3);
@@ -272,7 +272,7 @@ void ast2600_print_sysrst_info(void)
 	}
 }
 
-void ast2600_print_2nd_wdt_mode(void)
+void aspeed_print_2nd_wdt_mode(void)
 {
 	/* ABR enable */
 	if (readl(ASPEED_HW_STRAP2) & BIT(11)) {
@@ -301,7 +301,7 @@ void ast2600_print_2nd_wdt_mode(void)
 	}
 }
 
-void ast2600_print_fmc_aux_ctrl(void)
+void aspeed_print_fmc_aux_ctrl(void)
 {
 	if (readl(ASPEED_HW_STRAP2) & BIT(22)) {
 		printf("FMC aux control: Enable");
@@ -323,7 +323,7 @@ void ast2600_print_fmc_aux_ctrl(void)
 	}
 }
 
-void ast2600_print_spi1_abr_mode(void)
+void aspeed_print_spi1_abr_mode(void)
 {
 	if (readl(ASPEED_HW_STRAP2) & BIT(16)) {
 		printf("SPI1 ABR: Enable");
@@ -352,7 +352,7 @@ void ast2600_print_spi1_abr_mode(void)
 	}
 }
 
-void ast2600_print_spi1_aux_ctrl(void)
+void aspeed_print_spi1_aux_ctrl(void)
 {
 	if (readl(ASPEED_HW_STRAP2) & BIT(27)) {
 		printf("SPI1 aux control: Enable");
@@ -374,13 +374,13 @@ void ast2600_print_spi1_aux_ctrl(void)
 	}
 }
 
-void ast2600_print_spi_strap_mode(void)
+void aspeed_print_spi_strap_mode(void)
 {
 	if (readl(ASPEED_HW_STRAP2) & BIT(10))
 		printf("SPI: 3/4 byte mode auto detection\n");
 }
 
-void ast2600_print_espi_mode(void)
+void aspeed_print_espi_mode(void)
 {
 	int espi_mode = 0;
 	int sio_disable = 0;
@@ -408,7 +408,7 @@ void ast2600_print_espi_mode(void)
 		printf("\n");
 }
 
-void ast2600_print_mac_info(void)
+void aspeed_print_mac_info(void)
 {
 	int i;
 
@@ -425,15 +425,15 @@ void ast2600_print_mac_info(void)
 
 int print_cpuinfo(void)
 {
-	ast2600_print_soc_id();
-	ast2600_print_sysrst_info();
-	ast2600_print_security_info();
-	ast2600_print_2nd_wdt_mode();
-	ast2600_print_fmc_aux_ctrl();
-	ast2600_print_spi1_abr_mode();
-	ast2600_print_spi1_aux_ctrl();
-	ast2600_print_spi_strap_mode();
-	ast2600_print_espi_mode();
-	ast2600_print_mac_info();
+	aspeed_print_soc_id();
+	aspeed_print_sysrst_info();
+	aspeed_print_security_info();
+	aspeed_print_2nd_wdt_mode();
+	aspeed_print_fmc_aux_ctrl();
+	aspeed_print_spi1_abr_mode();
+	aspeed_print_spi1_aux_ctrl();
+	aspeed_print_spi_strap_mode();
+	aspeed_print_espi_mode();
+	aspeed_print_mac_info();
 	return 0;
 }
