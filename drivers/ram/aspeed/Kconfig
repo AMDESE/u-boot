@@ -2,7 +2,6 @@ if ASPEED_RAM
 
 config ASPEED_DDR4_DUALX8
 	bool "Enable Dual X8 DDR4 die"
-	depends on ASPEED_RAM
 	help
 	 Say Y if dual X8 DDR4 die is used on the board. The ASPEED DDRM
 	 SRAM controller needs to know if the memory chip mounted on the
@@ -10,7 +9,6 @@ config ASPEED_DDR4_DUALX8
 	 size of the memory space.
 
 config ASPEED_BYPASS_SELFTEST
-	depends on ASPEED_RAM
 	depends on ASPEED_AST2600
 	bool "Bypass self test during initialization"
 	help
@@ -19,7 +17,6 @@ config ASPEED_BYPASS_SELFTEST
 choice
 	prompt "AST2600 DDR4 target date rate"
 	default ASPEED_DDR4_1600
-	depends on ASPEED_RAM
 	depends on ASPEED_AST2600
 
 config ASPEED_DDR4_400
