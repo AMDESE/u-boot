@@ -31,6 +31,8 @@
 #define SCU_PROT_KEY1		(SCU_BASE + 0x000)
 #define SCU_PROT_KEY2		(SCU_BASE + 0x010)
 #define SCU_CLK_STOP_CTRL_CLR	(SCU_BASE + 0x084)
+#define SCU_DEBUG_CTRL		(SCU_BASE + 0x0c8)
+#define SCU_DEBUG_CTRL2		(SCU_BASE + 0x0d8)
 #define SCU_SMP_NS_EP		(SCU_BASE + 0x180)
 #define SCU_SMP_GO		(SCU_BASE + 0x184)
 #define SCU_SMP_READY		(SCU_BASE + 0x18c)
@@ -38,6 +40,7 @@
 #define SCU_SMP_S_EP		(SCU_BASE + 0x1bc)
 #define SCU_USB_MULTI_FUNC	(SCU_BASE + 0x440)
 #define SCU_HWSTRAP1		(SCU_BASE + 0x510)
+#define SCU_HW_STRAP3		(SCU_BASE + 0x51c)
 #define SCU_CA7_PARITY_CHK	(SCU_BASE + 0x820)
 #define SCU_CA7_PARITY_CLR	(SCU_BASE + 0x824)
 #define SCU_MMIO_DEC		(SCU_BASE + 0xc24)
@@ -215,6 +218,22 @@ skip_fill_wip_bit:
 	mov	r0, #0
 	ldr	r1, =FMC_WDT1_CTRL_MODE
 	str	r0, [r1]
+
+	/* disable debug path for A1/A2 to align A3 design */
+	ldr	r0, =SCU_HW_STRAP3
+	ldr	r0, [r0]
+	tst	r0, #0x1
+
+	ldr	r0, =SCU_DEBUG_CTRL
+	movwne	r1, #0x0ffd
+	movweq	r1, #0x0fff
+	movt	r1, #0x0000
+	str	r1, [r0]
+
+	ldr	r0, =SCU_DEBUG_CTRL2
+	movne	r1, #0xf7
+	moveq	r1, #0xff
+	str	r1, [r0]
 
 	/* relocate mailbox insn. for cpuN to poll for SMP go signal */
 	adrl	r0, smp_mbox_insn
