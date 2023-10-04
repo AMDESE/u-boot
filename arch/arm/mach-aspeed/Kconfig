@@ -46,6 +46,13 @@ config ASPEED_AST2700
 	  which is enabled by support of LPC and eSPI peripherals.
 endchoice
 
+config ASPEED_DEFAULT_SPI_FREQUENCY
+	bool "Using default SPI clock frequency"
+	default n
+	help
+	  Using default SPI clock frequency during
+	  early booting up progress.
+
 source "arch/arm/mach-aspeed/ast2500/Kconfig"
 source "arch/arm/mach-aspeed/ast2600/Kconfig"
 source "arch/arm/mach-aspeed/ast2700/Kconfig"

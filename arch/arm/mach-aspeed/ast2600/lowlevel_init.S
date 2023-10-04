@@ -202,6 +202,15 @@ do_primary_core_setup:
 	str	r0, [r1]
 
 skip_fill_wip_bit:
+
+#if !defined(CONFIG_ASPEED_DEFAULT_SPI_FREQUENCY)
+	/* tune up SPI clock */
+	movw	r0, #0x0600
+	movt	r0, #0x0000
+	ldr	r1, =FMC_CE0_CTRL
+	str	r0, [r1]
+#endif
+
 	/* disable FMC WDT for SPI address mode detection */
 	mov	r0, #0
 	ldr	r1, =FMC_WDT1_CTRL_MODE
