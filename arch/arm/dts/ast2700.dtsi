@@ -524,14 +524,12 @@
 };
 
 &i2c {
-	i2cglobal: i2cg@0 {
+	i2c_global: i2c-global-regs@0 {
 	#address-cells = <1>;
 	#size-cells = <0>;
 
-		compatible = "aspeed,ast2700-i2c-global";
+		compatible = "aspeed,i2c-global", "syscon";
 		reg = <0 0x0 0 0x40>;
-		resets = <&soc1_rst ASPEED_RESET_I2C>;
-		new-mode;
 	};
 
 	i2c0: i2c@100 {
@@ -541,6 +539,7 @@
 
 		reg = <0 0x100 0 0x80>;
 		compatible = "aspeed,ast2700-i2c-bus";
+		aspeed,global-regs = <&i2c_global>;
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 110 IRQ_TYPE_LEVEL_HIGH>;
 		resets = <&soc1_rst ASPEED_RESET_I2C>;
@@ -557,6 +556,7 @@
 
 		reg = <0 0x200 0 0x80>;
 		compatible = "aspeed,ast2700-i2c-bus";
+		aspeed,global-regs = <&i2c_global>;
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>;
 		resets = <&soc1_rst ASPEED_RESET_I2C>;
@@ -573,6 +573,7 @@
 
 		reg = <0 0x300 0 0x80>;
 		compatible = "aspeed,ast2700-i2c-bus";
+		aspeed,global-regs = <&i2c_global>;
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>;
 		resets = <&soc1_rst ASPEED_RESET_I2C>;
@@ -589,6 +590,7 @@
 
 		reg = <0 0x400 0 0x80>;
 		compatible = "aspeed,ast2700-i2c-bus";
+		aspeed,global-regs = <&i2c_global>;
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>;
 		resets = <&soc1_rst ASPEED_RESET_I2C>;
@@ -605,6 +607,7 @@
 
 		reg = <0 0x500 0 0x80>;
 		compatible = "aspeed,ast2700-i2c-bus";
+		aspeed,global-regs = <&i2c_global>;
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 114 IRQ_TYPE_LEVEL_HIGH>;
 		resets = <&soc1_rst ASPEED_RESET_I2C>;
