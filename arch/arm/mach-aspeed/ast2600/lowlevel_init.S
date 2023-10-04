@@ -1,11 +1,14 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (c) ASPEED Technology Inc.
+ * Chia-Wei Wang <chiawei_wang@aspeedtech.com>
  */
+
 #include <config.h>
+#include <version.h>
+#include <asm/secure.h>
 #include <asm/armv7.h>
 #include <linux/linkage.h>
-#include <asm/arch/scu_ast2600.h>
 
 /*
  *       SMP mailbox
@@ -28,8 +31,12 @@
  */
 
 #define SCU_BASE		0x1e6e2000
-#define SCU_PROT_KEY1		(SCU_BASE + 0x000)
+#define SCU_PROT_KEY1		(SCU_BASE)
 #define SCU_PROT_KEY2		(SCU_BASE + 0x010)
+#define SCU_REV_ID		(SCU_BASE + 0x014)
+#define SCU_SYSRST_CTRL		(SCU_BASE + 0x040)
+#define SCU_SYSRST_CTRL_CLR	(SCU_BASE + 0x044)
+#define SCU_SYSRST_EVENT	(SCU_BASE + 0x064)
 #define SCU_CLK_STOP_CTRL_CLR	(SCU_BASE + 0x084)
 #define SCU_DEBUG_CTRL		(SCU_BASE + 0x0c8)
 #define SCU_DEBUG_CTRL2		(SCU_BASE + 0x0d8)
@@ -38,12 +45,15 @@
 #define SCU_SMP_READY		(SCU_BASE + 0x18c)
 #define SCU_SMP_POLLINSN	(SCU_BASE + 0x190)
 #define SCU_SMP_S_EP		(SCU_BASE + 0x1bc)
+#define SCU_HPLL_PARAM		(SCU_BASE + 0x200)
+#define SCU_HPLL_PARAM_EXT	(SCU_BASE + 0x204)
 #define SCU_USB_MULTI_FUNC	(SCU_BASE + 0x440)
-#define SCU_HWSTRAP1		(SCU_BASE + 0x510)
+#define SCU_HW_STRAP1		(SCU_BASE + 0x500)
+#define SCU_HW_STRAP2		(SCU_BASE + 0x510)
 #define SCU_HW_STRAP3		(SCU_BASE + 0x51c)
 #define SCU_CA7_PARITY_CHK	(SCU_BASE + 0x820)
 #define SCU_CA7_PARITY_CLR	(SCU_BASE + 0x824)
-#define SCU_MMIO_DEC		(SCU_BASE + 0xc24)
+#define SCU_MMIO_DEC_SET	(SCU_BASE + 0xc24)
 
 #define FMC_BASE		0x1e620000
 #define FMC_CE0_CTRL		(FMC_BASE + 0x010)
@@ -51,13 +61,23 @@
 #define FMC_WDT1_CTRL_MODE	(FMC_BASE + 0x060)
 #define FMC_WDT2_CTRL_MODE	(FMC_BASE + 0x064)
 
+#define GPIO_BASE		0x1e780000
+#define GPIOYZ_DATA_VALUE	(GPIO_BASE + 0x1e0)
+
+#define SEC_BASE		0x1e6f2000
+#define SEC_VAULT_KEY_CTRL	(SEC_BASE + 0x80c)
+
 #define LPC_BASE		0x1e789000
 #define LPC_HICR9		(LPC_BASE + 0x098)
 #define LPC_HICRA		(LPC_BASE + 0x09c)
 
+#define REV_ID_AST2600A0	0x05000303
+#define REV_ID_AST2600A1	0x05010303
+#define REV_ID_AST2620A1	0x05010203
+
 .macro scu_unlock
-	movw	r0, #(SCU_UNLOCK_KEY & 0xffff)
-	movt	r0, #(SCU_UNLOCK_KEY >> 16)
+	movw	r0, #0xa8a8
+	movt	r0, #0x1688	@; magic key to unlock SCU
 
 	ldr	r1, =SCU_PROT_KEY1
 	str	r0, [r1]
@@ -66,7 +86,7 @@
 .endm
 
 .macro timer_init
-	ldr	r1, =SCU_HWSTRAP1
+	ldr	r1, =SCU_HW_STRAP1
 	ldr	r1, [r1]
 	and	r1, #0x700
 	lsr	r1, #0x8
@@ -131,18 +151,18 @@ lowlevel_init:
 
 	beq   do_primary_core_setup
 
-	/* hold cpuN until mailbox is ready */
-poll_mailbox_ready:
+	/* hold cpuN until SMP mailbox is ready */
+poll_smp_mbox_ready:
 	wfe
 	ldr	r0, =SCU_SMP_READY
 	ldr	r0, [r0]
 	movw	r1, #0xcafe
 	movt	r1, #0xbabe
 	cmp	r1, r0
-	bne	poll_mailbox_ready
+	bne	poll_smp_mbox_ready
 
 	/*
-	 * parameters for relocated SMP go polling insn.
+	 * for relocated SMP mailbox insn. use
 	 *  r4 = per-cpu go sign value
 	 *  r5 = SCU_SMP_GO
 	 *  r6 = SCU_SMP_NS_EP
@@ -158,7 +178,84 @@ poll_mailbox_ready:
 do_primary_core_setup:
 	scu_unlock
 
-	/* Restore UART routing to HW default value */
+	/* identify AST2600 A0/A1 */
+	ldr	r0, =SCU_REV_ID
+	ldr	r0, [r0]
+
+	ldr	r1, =REV_ID_AST2600A0
+	cmp	r0, r1
+
+	bne	0f
+
+	/* tune up CPU clocks (A0 only) */
+	ldr	r0, =SCU_HW_STRAP1
+	ldr	r1, [r0]
+	bic	r1, #0x1800
+	orr	r1, #0x1000
+	str	r1, [r0]
+
+	ldr	r0, =SCU_HPLL_PARAM
+	movw	r1, #0x4080
+	movt	r1, #0x1000
+	str	r1, [r0]
+
+	ldr	r0, =SCU_HPLL_PARAM_EXT
+	mov	r1, #0x47
+	str	r1, [r0]
+
+wait_lock:
+	ldr	r1, [r0]
+	tst	r1, #0x80000000
+	beq	wait_lock
+
+	/* skip A1 only area */
+	b 2f
+
+0:
+	/* identify AST2600/AST2620 A1 */
+	ldr	r0, =SCU_REV_ID
+	ldr	r0, [r0]
+
+	ldr	r1, =REV_ID_AST2600A1
+	cmp	r0, r1
+	beq	1f
+
+	ldr	r1, =REV_ID_AST2620A1
+	cmp	r0, r1
+	bne	2f
+
+1:
+	/* LPC/eSPI mode selection by SW (AST2600/AST2620 A1 only) */
+	ldr	r0, =GPIOYZ_DATA_VALUE
+	ldr	r0, [r0]
+	tst	r0, #0x1000
+	beq	2f
+
+	/* switch to LPC mode if GPIOZ[4]=1 */
+	ldr	r0, =SCU_HW_STRAP2
+	ldr	r1, [r0]
+	orr	r1, #0x40
+	str	r1, [r0]
+
+2:
+	/* Enable Vault Key Write Protection */
+	mov	r0, #0x2
+	ldr	r1, =SEC_VAULT_KEY_CTRL
+	str	r0, [r1]
+
+	/* PCIeRC/E2M8 power-on reset comes from SCU040
+	It need set SCU040[18] high to reset PCIeRC/E2M
+	when AC power-on */
+	ldr	r0,  =SCU_SYSRST_EVENT
+	ldr	r1, [r0]
+	tst	r1, #0x1
+	beq	3f
+	ldr     r0, =SCU_SYSRST_CTRL
+	movw    r1, #0x0000
+	movt    r1, #0x0004
+	str     r1, [r0]
+3:
+	/* Fix UART1 route problem on A3 */
 	ldr     r0, =LPC_HICR9
 	movw    r1, #0x0a30
 	movt    r1, #0x0000
@@ -170,7 +267,7 @@ do_primary_core_setup:
 	str     r1, [r0]
 
 	/* MMIO decode setting */
-	ldr	r0, =SCU_MMIO_DEC
+	ldr	r0, =SCU_MMIO_DEC_SET
 	mov	r1, #0x2000
 	str	r1, [r0]
 
@@ -194,7 +291,7 @@ do_primary_core_setup:
 	str	r0, [r1]
 
 	/* do not fill FMC50[1] if boot from eMMC */
-	ldr	r0, =SCU_HWSTRAP1
+	ldr	r0, =SCU_HW_STRAP1
 	ldr	r1, [r0]
 	ands	r1, #0x04
 	bne	skip_fill_wip_bit
@@ -219,7 +316,7 @@ skip_fill_wip_bit:
 	ldr	r1, =FMC_WDT1_CTRL_MODE
 	str	r0, [r1]
 
-	/* disable debug path for A1/A2 to align A3 design */
+	/* disable backdoor for A1/A2 to align A3 design */
 	ldr	r0, =SCU_HW_STRAP3
 	ldr	r0, [r0]
 	tst	r0, #0x1
@@ -235,11 +332,11 @@ skip_fill_wip_bit:
 	moveq	r1, #0xff
 	str	r1, [r0]
 
-	/* relocate mailbox insn. for cpuN to poll for SMP go signal */
+relocate_smp_mbox_start:
+	/* relocate SMP mailbox insn. for cpuN to poll for go signal */
 	adrl	r0, smp_mbox_insn
 	adrl	r1, smp_mbox_insn_end
-
-	ldr	r2, =#SCU_SMP_POLLINSN
+	ldr	r2, =SCU_SMP_POLLINSN
 
 relocate_smp_mbox_insn:
 	ldr	r3, [r0], #0x4
@@ -256,7 +353,7 @@ relocate_smp_mbox_insn:
 	ldr	r1, =SCU_SMP_S_EP
 	str	r0, [r1]
 
-	/* notify cpuN that SMP mailbox is ready */
+	/* notify cpuN mailbox is ready */
 	movw	r0, #0xcafe
 	movt	r0, #0xbabe
 	ldr	r1, =SCU_SMP_READY
