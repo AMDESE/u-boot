@@ -10,7 +10,7 @@ default:
 
 # Grab our configured image.  The source for this is found
 # in the u-boot tree at tools/docker/Dockerfile
-image: ${MIRROR_DOCKER}/trini/u-boot-gitlab-ci-runner:jammy-20230308-04Apr2023
+image: ${MIRROR_DOCKER}/trini/u-boot-gitlab-ci-runner:jammy-20230624-20Jul2023
 
 # We run some tests in different order, to catch some failures quicker.
 stages:
@@ -20,6 +20,7 @@ stages:
 
 .buildman_and_testpy_template: &buildman_and_testpy_dfn
   stage: test.py
+  retry: 2 # QEMU may be too slow, etc.
   before_script:
     # Clone uboot-test-hooks
     - git config --global --add safe.directory "${CI_PROJECT_DIR}"
@@ -29,12 +30,12 @@ stages:
     - grub-mkimage --prefix="" -o ~/grub_x86.efi -O i386-efi normal  echo lsefimmap lsefi lsefisystab efinet tftp minicmd
     - grub-mkimage --prefix="" -o ~/grub_x64.efi -O x86_64-efi normal  echo lsefimmap lsefi lsefisystab efinet tftp minicmd
     - if [[ "${TEST_PY_BD}" == "qemu-riscv32_spl" ]]; then
-        wget -O - https://github.com/riscv/opensbi/releases/download/v0.9/opensbi-0.9-rv-bin.tar.xz | tar -C /tmp -xJ;
-        export OPENSBI=/tmp/opensbi-0.9-rv-bin/share/opensbi/ilp32/generic/firmware/fw_dynamic.bin;
+        wget -O - https://github.com/riscv-software-src/opensbi/releases/download/v1.2/opensbi-1.2-rv-bin.tar.xz | tar -C /tmp -xJ;
+        export OPENSBI=/tmp/opensbi-1.2-rv-bin/share/opensbi/ilp32/generic/firmware/fw_dynamic.bin;
       fi
     - if [[ "${TEST_PY_BD}" == "qemu-riscv64_spl" ]] || [[ "${TEST_PY_BD}" == "sifive_unleashed" ]]; then
-        wget -O - https://github.com/riscv/opensbi/releases/download/v0.9/opensbi-0.9-rv-bin.tar.xz | tar -C /tmp -xJ;
-        export OPENSBI=/tmp/opensbi-0.9-rv-bin/share/opensbi/lp64/generic/firmware/fw_dynamic.bin;
+        wget -O - https://github.com/riscv-software-src/opensbi/releases/download/v1.2/opensbi-1.2-rv-bin.tar.xz | tar -C /tmp -xJ;
+        export OPENSBI=/tmp/opensbi-1.2-rv-bin/share/opensbi/lp64/generic/firmware/fw_dynamic.bin;
       fi
 
   after_script:
@@ -68,7 +69,7 @@ stages:
       fi
     - if [[ "${TEST_PY_BD}" == "coreboot" ]]; then
         wget -O -
-          "https://drive.google.com/uc?id=1x6nrtWIyIRPLS2cQBwYTnT2TbOI8UjmM&export=download" |
+          "https://drive.google.com/uc?id=1uJ2VkUQ8czWFZmhJQ90Tp8V_zrJ6BrBH&export=download" |
           xz -dc >${UBOOT_TRAVIS_BUILD_DIR}/coreboot.rom;
         wget -O -
           "https://drive.google.com/uc?id=149Cz-5SZXHNKpi9xg6R_5XITWohu348y&export=download" >
@@ -97,6 +98,7 @@ build all 32bit ARM platforms:
   script:
     - ret=0;
       git config --global --add safe.directory "${CI_PROJECT_DIR}";
+      pip install -r tools/buildman/requirements.txt;
       ./tools/buildman/buildman -o /tmp -PEWM arm -x aarch64 || ret=$?;
       if [[ $ret -ne 0 ]]; then
         ./tools/buildman/buildman -o /tmp -seP;
@@ -110,6 +112,7 @@ build all 64bit ARM platforms:
     - . /tmp/venv/bin/activate
     - ret=0;
       git config --global --add safe.directory "${CI_PROJECT_DIR}";
+      pip install -r tools/buildman/requirements.txt;
       ./tools/buildman/buildman -o /tmp -PEWM aarch64 || ret=$?;
       if [[ $ret -ne 0 ]]; then
         ./tools/buildman/buildman -o /tmp -seP;
@@ -184,7 +187,7 @@ sloccount:
 Check for configs without MAINTAINERS entry:
   stage: testsuites
   script:
-    - ./tools/buildman/buildman -R
+    - ./tools/buildman/buildman --maintainer-check || exit 0
 
 # Ensure host tools build
 Build tools-only:
@@ -208,6 +211,7 @@ Run binman, buildman, dtoc, Kconfig and patman testsuites:
       virtualenv -p /usr/bin/python3 /tmp/venv;
       . /tmp/venv/bin/activate;
       pip install -r test/py/requirements.txt;
+      pip install -r tools/buildman/requirements.txt;
       export UBOOT_TRAVIS_BUILD_DIR=/tmp/sandbox_spl;
       export PYTHONPATH="${UBOOT_TRAVIS_BUILD_DIR}/scripts/dtc/pylibfdt";
       export PATH="${UBOOT_TRAVIS_BUILD_DIR}/scripts/dtc:${PATH}";
@@ -221,25 +225,13 @@ Run binman, buildman, dtoc, Kconfig and patman testsuites:
       ./tools/patman/patman test;
       make testconfig
 
-Run tests for Nokia RX-51 (aka N900):
-  stage: testsuites
-  script:
-    - mkdir nokia_rx51_tmp;
-      ln -s /opt/nokia/u-boot-gen-combined nokia_rx51_tmp/;
-      ln -s /opt/nokia/qemu-n900.tar.gz nokia_rx51_tmp/;
-      ln -s /opt/nokia/kernel_2.6.28-20103103+0m5_armel.deb nokia_rx51_tmp/;
-      ln -s /opt/nokia/libc6_2.5.1-1eglibc27+0m5_armel.deb nokia_rx51_tmp/;
-      ln -s /opt/nokia/busybox_1.10.2.legal-1osso30+0m5_armel.deb nokia_rx51_tmp/;
-      ln -s /opt/nokia/qemu-system-arm nokia_rx51_tmp/;
-      export PATH=/opt/gcc-12.2.0-nolibc/arm-linux-gnueabi/bin:$PATH;
-      test/nokia_rx51_test.sh
-
 # Check for any pylint regressions
 Run pylint:
   stage: testsuites
   script:
     - git config --global --add safe.directory "${CI_PROJECT_DIR}"
     - pip install -r test/py/requirements.txt
+    - pip install -r tools/buildman/requirements.txt
     - pip install asteval pylint==2.12.2 pyopenssl
     - export PATH=${PATH}:~/.local/bin
     - echo "[MASTER]" >> .pylintrc

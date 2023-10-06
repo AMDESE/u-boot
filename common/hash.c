@@ -592,6 +592,8 @@ int hash_command(const char *algo_name, int flags, struct cmd_tbl *cmdtp,
 
 		output = memalign(ARCH_DMA_MINALIGN,
 				  sizeof(uint32_t) * HASH_MAX_DIGEST_SIZE);
+		if (!output)
+			return CMD_RET_FAILURE;
 
 		buf = map_sysmem(addr, len);
 		algo->hash_func_ws(buf, len, output, algo->chunk_size);
@@ -608,6 +610,7 @@ int hash_command(const char *algo_name, int flags, struct cmd_tbl *cmdtp,
 					flags & HASH_FLAG_ENV)) {
 				printf("ERROR: %s does not contain a valid "
 					"%s sum\n", *argv, algo->name);
+				free(output);
 				return 1;
 			}
 			if (memcmp(output, vsum, algo->digest_size) != 0) {
@@ -618,6 +621,7 @@ int hash_command(const char *algo_name, int flags, struct cmd_tbl *cmdtp,
 				for (i = 0; i < algo->digest_size; i++)
 					printf("%02x", vsum[i]);
 				puts(" ** ERROR **\n");
+				free(output);
 				return 1;
 			}
 		} else {
@@ -628,9 +632,9 @@ int hash_command(const char *algo_name, int flags, struct cmd_tbl *cmdtp,
 				store_result(algo, output, *argv,
 					flags & HASH_FLAG_ENV);
 			}
-		unmap_sysmem(output);
-
 		}
+
+		free(output);
 
 	/* Horrible code size hack for boards that just want crc32 */
 	} else {
