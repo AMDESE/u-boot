@@ -1165,7 +1165,7 @@ int soc_clk_dump(void)
 	unsigned long rate;
 	int i, ret;
 
-	ret = uclass_get_device_by_driver(UCLASS_CLK, DM_DRIVER_GET(aspeed_scu),
+	ret = uclass_get_device_by_driver(UCLASS_CLK, DM_DRIVER_GET(aspeed_ast2600_scu),
 					  &dev);
 	if (ret)
 		return ret;
