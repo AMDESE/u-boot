@@ -9,6 +9,7 @@
 #include <image.h>
 #include <common.h>
 #include <asm/csr.h>
+#include <init.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -65,6 +66,9 @@ int board_late_init(void)
 int spl_board_init_f(void)
 {
 	dram_init();
+
+	if (IS_ENABLED(CONFIG_PCI_ENDPOINT))
+		pci_ep_init();
 
 	return 0;
 }
