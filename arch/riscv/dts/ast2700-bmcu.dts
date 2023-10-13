@@ -24,6 +24,11 @@
 	bootph-all;
 };
 
+&pcie_ep {
+	status = "okay";
+	bootph-all;
+};
+
 &uart12 {
 	status = "okay";
 	clock-frequency = <1846153>;
