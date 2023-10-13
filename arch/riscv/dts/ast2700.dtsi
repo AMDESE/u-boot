@@ -34,6 +34,16 @@
 			reg = <0x12c00000 0x3000>, <0x13000000 0x300>;
 			status = "disabled";
 		};
+
+		pcie_ep: pcie_ep@12c15000 {
+			compatible = "aspeed,ast2700-pcie-ep";
+			reg = <0x12c02000 0x1000>, <0x12c00000 0x200>,
+			      <0x12c21000 0x200>, <0x12c22000 0x200>,
+			      <0x12c1d000 0x200>, <0x14c3a000 0x200>;
+			aspeed,dac-src = <0>;
+			aspeed,dp-src = <1>;
+			status = "disabled";
+		};
 	};
 
 	soc1: soc@14000000 {
