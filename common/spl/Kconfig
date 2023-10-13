@@ -1131,6 +1131,13 @@ config SPL_PCI
 	  necessary driver support. This enables the drivers in drivers/pci
 	  as part of an SPL build.
 
+config SPL_PCI_ENDPOINT
+	bool "Support PCI Endpoint drivers"
+	help
+	   Enable support for PCI Endpoint in SPL. Enable this configuration
+	   option to support configurable PCI endpoints. This enables the
+	   drivers in drivers/pci_endpoint as part of an SPL build.
+
 config SPL_PCH
 	bool "Support PCH drivers"
 	help
