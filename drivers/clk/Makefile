@@ -18,6 +18,7 @@ obj-y += tegra/
 obj-y += ti/
 obj-$(CONFIG_$(SPL_TPL_)CLK_INTEL) += intel/
 obj-$(CONFIG_ARCH_ASPEED) += aspeed/
+obj-$(CONFIG_TARGET_ASPEED_AST2700BMCU) += aspeed/
 obj-$(CONFIG_ARCH_MEDIATEK) += mediatek/
 obj-$(CONFIG_ARCH_MESON) += meson/
 obj-$(CONFIG_ARCH_MTMIPS) += mtmips/

@@ -9,7 +9,7 @@
 #include <asm/io.h>
 #include <dm/lists.h>
 #include <linux/delay.h>
-#include <asm/arch/clk_ast2700.h>
+#include <asm/arch-aspeed/clk_ast2700.h>
 #include <asm/global_data.h>
 #include <dt-bindings/clock/ast2700-clock.h>
 #include <dt-bindings/reset/ast2700-reset.h>
