@@ -41,7 +41,7 @@ void fpga_phy_init(struct sdramc *sdramc)
 	writel(DRAMC_IRQSTA_PHY_INIT_DONE, &regs->intr_clear);
 }
 
-#if defined(FPGA_DRAM_CALI)
+#if defined(ASPEED_FPGA_DDR_CALI)
 int fpga_dq_shift_cali(void)
 {
 	int i, err, dq[128 + 16], dq_left_0, dq_right_0;

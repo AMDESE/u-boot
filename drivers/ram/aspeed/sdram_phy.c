@@ -9,6 +9,8 @@
 #define DWC_PHY_IMEM_OFFSET	(0x50000)
 #define DWC_PHY_DMEM_OFFSET	(0x58000)
 
+binman_sym_declare(u32, u_boot_spl_ddr, image_pos);
+
 binman_sym_declare(u32, ddr4_1d_imem_fw, image_pos);
 binman_sym_declare(u32, ddr4_1d_imem_fw, size);
 binman_sym_declare(u32, ddr4_1d_dmem_fw, image_pos);
@@ -232,7 +234,7 @@ void dwc_ddrphy_phyinit_userCustom_G_waitFwDone(void)
 {
 	uint32_t message = 0, mail;
 
-	printf("wait fw done\n");
+	printf("dwc_ddrphy wait fw done\n");
 
 	while (message != 0x07 && message != 0xff) {
 		dwc_get_mailbox(0, &mail);
@@ -282,11 +284,55 @@ int dwc_ddrphy_phyinit_userCustom_D_loadIMEM(const int train2D)
 	u32 *src;
 	int type;
 	int ret = 0;
+	u32 blk, blks, target_base;
+	struct mmc *mmc;
+	struct blk_desc *bd;
 
 	printf("%s %d\n", __func__, train2D);
 
 	type = is_ddr4();
-	src = (u32 *)(dwc_train[type][train2D].imem_base);
+
+	if (spl_boot_device() == BOOT_DEVICE_RAM) {
+		target_base = DWC_PHY_BIN_BASE_SPI;
+	} else if (spl_boot_device() == BOOT_DEVICE_MMC1) {
+		target_base = DWC_PHY_BIN_BASE_SRAM;
+
+		printf("%s: mmc init device\n", __func__);
+		ret = mmc_init_device(0);
+		if (ret)
+			printf("cannot init mmc\n");
+
+		printf("%s: find mmc device\n", __func__);
+		mmc = find_mmc_device(0);
+		ret = mmc ? 0 : -ENODEV;
+		if (ret)
+			printf("cannot find mmc device\n");
+
+		printf("mmc=0x%x\n", (u32)mmc);
+
+		bd = mmc_get_blk_desc(mmc);
+		printf("bd=0x%x\n", (u32)bd);
+
+		ret = blk_dselect_hwpart(bd, 1);
+		if (ret)
+			printf("bd selet part fail\n");
+
+		blk = dwc_train[type][train2D].imem_base / 512;
+		dwc_train[type][train2D].imem_base %= 512;
+		blks = dwc_train[type][train2D].imem_len / 512;
+
+		printf("blk read blk=0x%x, blks=0x%x\n", blk, blks);
+		ret = blk_dread(bd, blk, blks + 1, (void *)target_base);
+
+		printf("blk read cnt=%d\n", ret);
+	} else {
+		printf("Unsupported Device!\n");
+	}
+
+	src = (u32 *)(dwc_train[type][train2D].imem_base + target_base);
+	printf("imem target src = 0x%x\n", (u32)src);
+	printf("imem target 1st dword = 0x%x\n", (u32)*src);
+	printf("imem target len = 0x%x\n", dwc_train[type][train2D].imem_len);
 
 	for (i = 0; i < dwc_train[type][train2D].imem_len / 4; i++)
 		writel(*(src + i), (void *)DRAMC_PHY_BASE + 2 * (imem_base + 2 * i));
@@ -301,11 +347,55 @@ int dwc_ddrphy_phyinit_userCustom_F_loadDMEM(const int pState, const int train2D
 	u32 *src;
 	int type;
 	int ret = 0;
+	u32 blk, blks, target_base;
+	struct mmc *mmc;
+	struct blk_desc *bd;
 
 	printf("%s %d\n", __func__, train2D);
 
 	type = is_ddr4();
-	src = (u32 *)(dwc_train[type][train2D].dmem_base);
+
+	if (spl_boot_device() == BOOT_DEVICE_RAM) {
+		target_base = DWC_PHY_BIN_BASE_SPI;
+	} else if (spl_boot_device() == BOOT_DEVICE_MMC1) {
+		target_base = DWC_PHY_BIN_BASE_SRAM;
+
+		printf("%s: mmc init device\n", __func__);
+		ret = mmc_init_device(0);
+		if (ret)
+			printf("cannot init mmc\n");
+
+		printf("%s: find mmc device\n", __func__);
+		mmc = find_mmc_device(0);
+		ret = mmc ? 0 : -ENODEV;
+		if (ret)
+			printf("cannot find mmc device\n");
+
+		printf("mmc=0x%x\n", (u32)mmc);
+
+		bd = mmc_get_blk_desc(mmc);
+		printf("bd=0x%x\n", (u32)bd);
+
+		ret = blk_dselect_hwpart(bd, 1);
+		if (ret)
+			printf("bd selet part fail\n");
+
+		blk = dwc_train[type][train2D].dmem_base / 512;
+		dwc_train[type][train2D].dmem_base %= 512;
+		blks = dwc_train[type][train2D].dmem_len / 512;
+
+		printf("blk read blk=0x%x, blks=0x%x\n", blk, blks);
+		ret = blk_dread(bd, blk, blks + 1, (void *)target_base);
+
+		printf("blk read cnt=%d\n", ret);
+	} else {
+		printf("Unsupported Device!\n");
+	}
+
+	src = (u32 *)(dwc_train[type][train2D].dmem_base + target_base);
+	printf("dmem target src = 0x%x\n", (u32)src);
+	printf("dmem target 1st dword = 0x%x\n", (u32)*src);
+	printf("dmem target len = 0x%x\n", dwc_train[type][train2D].dmem_len);
 
 	for (i = 0; i < dwc_train[type][train2D].dmem_len / 4; i++)
 		writel(*(src + i), (void *)DRAMC_PHY_BASE + 2 * (dmem_base + 2 * i));
@@ -315,12 +405,12 @@ int dwc_ddrphy_phyinit_userCustom_F_loadDMEM(const int pState, const int train2D
 
 void dwc_phy_init(struct sdramc_ac_timing *ac)
 {
-	u32 imem_start, dmem_start, imem_2d_start, dmem_2d_start;
+	u32 ctx_start, imem_start, dmem_start, imem_2d_start, dmem_2d_start;
 	u32 imem_len, dmem_len, imem_2d_len, dmem_2d_len;
 	u32 ddr5_imem, ddr5_imem_len, ddr5_dmem, ddr5_dmem_len;
 	u32 base = CONFIG_SPL_TEXT_BASE - 0x80;
-	u32 target_base;
 
+	ctx_start = binman_sym(u32, u_boot_spl_ddr, image_pos);
 	imem_start = binman_sym(u32, ddr4_1d_imem_fw, image_pos);
 	imem_len = binman_sym(u32, ddr4_1d_imem_fw, size);
 	dmem_start = binman_sym(u32, ddr4_1d_dmem_fw, image_pos);
@@ -334,29 +424,24 @@ void dwc_phy_init(struct sdramc_ac_timing *ac)
 	ddr5_dmem = binman_sym(u32, ddr5_dmem_fw, image_pos);
 	ddr5_dmem_len = binman_sym(u32, ddr5_dmem_fw, size);
 
-	if (spl_boot_device() == BOOT_DEVICE_RAM)
-		target_base = DWC_PHY_BIN_BASE_SPI;
-	else if (spl_boot_device() == BOOT_DEVICE_MMC1)
-		target_base = DWC_PHY_BIN_BASE_SRAM;
-	else
-		printf("Unsupported Device!\n");
+	printf("SPL context base = 0x%x\n", ctx_start);
 
 	// ddr5
-	dwc_train[0][0].imem_base = ddr5_imem - base + target_base;
+	dwc_train[0][0].imem_base = ddr5_imem - base;
 	dwc_train[0][0].imem_len = ddr5_imem_len;
-	dwc_train[0][0].dmem_base = ddr5_dmem - base + target_base;
+	dwc_train[0][0].dmem_base = ddr5_dmem - base;
 	dwc_train[0][0].dmem_len = ddr5_dmem_len;
 
 	// ddr4 1d
-	dwc_train[1][0].imem_base = imem_start - base + target_base;
+	dwc_train[1][0].imem_base = imem_start - base;
 	dwc_train[1][0].imem_len = imem_len;
-	dwc_train[1][0].dmem_base = dmem_start - base + target_base;
+	dwc_train[1][0].dmem_base = dmem_start - base;
 	dwc_train[1][0].dmem_len = dmem_len;
 
 	// ddr4 2d
-	dwc_train[1][1].imem_base = imem_2d_start - base + target_base;
+	dwc_train[1][1].imem_base = imem_2d_start - base;
 	dwc_train[1][1].imem_len = imem_2d_len;
-	dwc_train[1][1].dmem_base = dmem_2d_start - base + target_base;
+	dwc_train[1][1].dmem_base = dmem_2d_start - base;
 	dwc_train[1][1].dmem_len = dmem_2d_len;
 
 	printf("ddr4 1d imem base 0x%x\n", dwc_train[1][0].imem_base);
@@ -374,10 +459,10 @@ void dwc_phy_init(struct sdramc_ac_timing *ac)
 
 	if (IS_ENABLED(CONFIG_ASPEED_DDR_PHY_TRAINING)) {
 		if (ac->type == DRAM_TYPE_4) {
-			printf("Starting ddr4 training\n");
+			printf("%s: Starting ddr4 training\n", __func__);
 			#include "dwc_ddrphy_phyinit_ddr4-3200-nodimm-train2D.c"
 		} else if (ac->type == DRAM_TYPE_5) {
-			printf("Starting ddr5 training\n");
+			printf("%s: Starting ddr5 training\n", __func__);
 			#include "dwc_ddrphy_phyinit_ddr5-3200-nodimm-train2D.c"
 		}
 	}

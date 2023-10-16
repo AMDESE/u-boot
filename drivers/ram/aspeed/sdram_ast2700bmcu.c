@@ -328,9 +328,6 @@ static int sdramc_init(struct sdramc *sdramc, struct sdramc_ac_timing **ac)
 
 static void sdramc_phy_init(struct sdramc *sdramc, struct sdramc_ac_timing *ac)
 {
-	/* release emmc pin from emmc boot */
-	writel(0, (void *)0x12c0b00c);
-
 	/* initialize phy */
 	if (IS_ENABLED(CONFIG_ASPEED_FPGA))
 		fpga_phy_init(sdramc);
