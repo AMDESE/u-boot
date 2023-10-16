@@ -9,11 +9,27 @@
 #include <image.h>
 #include <common.h>
 #include <asm/csr.h>
-#include <init.h>
 #include <asm/arch-aspeed/platform.h>
+#include <linux/bitfield.h>
+#include <linux/bitops.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
+
+#define SCU_CPU_HWSTRAP1	((void *)0x12c02010)
+#define SCU_CPU_HWSTRAP1_CLR	((void *)0x12c02014)
+#define SCU_CPU_CLK_CLR		((void *)0x12c02244)
+#define SCU_CPU_VGA_FUNC	((void *)0x12c02414)
+#define   VGA_DAC_OUTPUT	GENMASK(11, 10)
+#define   VGA_DP_OUTPUT		GENMASK(9, 8)
+#define   VGA_DAC_DISABLE	BIT(7)
+#define SCU_CPU_VGA0_SAR0	((void *)0x12c02a0c)
+#define SCU_PCI_MISC70		((void *)0x12c02a70)
+#define SCU_CPU_VGA1_SAR0	((void *)0x12c02a8c)
+#define SCU_PCI_MISCF0		((void *)0x12c02af0)
+
+// for SCU_CPU_VGAx_SAR0
+#define   VGA_FB_SIZE		GENMASK(4, 0)
 
 int dram_init(void)
 {
@@ -34,6 +50,96 @@ int dram_init(void)
 	}
 
 	gd->ram_size = ram.size;
+
+	return 0;
+}
+
+// To support 64bit address calculation for e2m
+static u32 _ast_get_e2m_addr(u32 addr)
+{
+	u32 val;
+
+	val = readl((void *)0x12c00010) >> 2 & 0x07;
+
+	debug("%s: DRAMC val(%x)\n", __func__, val);
+	return (((1 << val) - 1) << 24) | (addr >> 4);
+}
+
+int pci_vga_init(void)
+{
+	u32 val, vram_size, vram_addr;
+	u8 vram_size_cfg;
+	bool is_pcie0_enable = readl(SCU_PCI_MISC70) & BIT(0);
+	bool is_pcie1_enable = readl(SCU_PCI_MISCF0) & BIT(0);
+	bool is_64vram = readl((void *)0x12c00100) & BIT(0);
+	u8 dac_src = readl(SCU_CPU_HWSTRAP1) & BIT(28);
+	u8 dp_src = readl(SCU_CPU_HWSTRAP1) & BIT(29);
+
+	debug("%s: ENABLE 0(%d) 1(%d)\n", __func__, is_pcie0_enable, is_pcie1_enable);
+
+	// for CRAA[1:0]
+	setbits_le32(SCU_CPU_HWSTRAP1, BIT(11));
+	if (is_64vram)
+		setbits_le32(SCU_CPU_HWSTRAP1, BIT(10));
+	else
+		setbits_le32(SCU_CPU_HWSTRAP1_CLR, BIT(10));
+
+	vram_addr = 0x10000000;
+
+	vram_size_cfg = is_64vram ? 0xf : 0xe;
+	vram_size = 2 << (vram_size_cfg + 10);
+	debug("%s: VRAM size(%x) cfg(%x)\n", __func__, vram_size, vram_size_cfg);
+
+	if (is_pcie0_enable) {
+		// enable clk
+		setbits_le32(SCU_CPU_CLK_CLR, BIT(5));
+
+		vram_addr -= vram_size;
+		debug("pcie0 e2m addr(%x)\n", _ast_get_e2m_addr(vram_addr));
+		val = _ast_get_e2m_addr(vram_addr) | FIELD_PREP(VGA_FB_SIZE, vram_size_cfg);
+		debug("pcie0 debug reg(%x)\n", val);
+		writel(val, (void *)0x12c21100);
+		writel(val, SCU_CPU_VGA0_SAR0);
+
+		// Enable VRAM address offset: cursor, rvas, 2d
+		writel(BIT(10) | BIT(24) | BIT(27), (void *)0x12c00104);
+	}
+
+	if (is_pcie1_enable) {
+		// enable clk
+		setbits_le32(SCU_CPU_CLK_CLR, BIT(10));
+
+		vram_addr -= vram_size;
+		debug("pcie1 e2m addr(%x)\n", _ast_get_e2m_addr(vram_addr));
+		val = _ast_get_e2m_addr(vram_addr) | FIELD_PREP(VGA_FB_SIZE, vram_size_cfg);
+		debug("pcie1 debug reg(%x)\n", val);
+		writel(val, (void *)0x12c22100);
+		writel(val, SCU_CPU_VGA1_SAR0);
+
+		// Enable VRAM address offset: cursor, rvas, 2d
+		writel(BIT(19) | BIT(25) | BIT(28), (void *)0x12c00108);
+	}
+
+	if (is_pcie0_enable || is_pcie1_enable) {
+		// enable dac clk
+		setbits_le32(SCU_CPU_CLK_CLR, BIT(17));
+
+		val = readl(SCU_CPU_VGA_FUNC);
+		val &= ~(VGA_DAC_OUTPUT | VGA_DP_OUTPUT | VGA_DAC_DISABLE);
+		val |= FIELD_PREP(VGA_DAC_OUTPUT, dac_src)
+		     | FIELD_PREP(VGA_DP_OUTPUT, dp_src)
+		     | FIELD_PREP(VGA_DAC_DISABLE, 0);
+		writel(val, SCU_CPU_VGA_FUNC);
+
+		// vga link init
+		writel(0x00030009, (void *)0x12c1d010);
+		val = 0x10000000 | dac_src;
+		writel(val, (void *)0x12c1d050);
+		writel(0x00010002, (void *)0x12c1d044);
+		writel(0x00030009, (void *)0x12c1d110);
+		writel(0x00030009, (void *)0x14c3a010);
+		writel(0x00030009, (void *)0x14c3a110);
+	}
 
 	return 0;
 }
@@ -90,8 +196,7 @@ int spl_board_init_f(void)
 
 	dram_init();
 
-	if (IS_ENABLED(CONFIG_PCI_ENDPOINT))
-		pci_ep_init();
+	pci_vga_init();
 
 	return 0;
 }
