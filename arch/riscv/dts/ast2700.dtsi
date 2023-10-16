@@ -1,4 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0+
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/gpio/aspeed-gpio.h>
+#include <dt-bindings/clock/ast2700-clock.h>
+#include <dt-bindings/reset/ast2700-reset.h>
 
 / {
 	model = "Aspeed AST2700 BootMCU";
@@ -31,7 +35,7 @@
 
 		sdrammc: sdrammc@12c00000 {
 			compatible = "aspeed,ast2700-sdrammc";
-			reg = <0x12c00000 0x3000>, <0x13000000 0x300>;
+			reg = <0x12c00000 0x1000>, <0x13000000 0xd0000>;
 			status = "disabled";
 		};
 
@@ -43,6 +47,52 @@
 			aspeed,dac-src = <0>;
 			aspeed,dp-src = <1>;
 			status = "disabled";
+		};
+
+		emmc_controller: sdc@12090000 {
+			compatible = "aspeed,ast2700-sd-controller";
+			reg = <0x12090000 0x100>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			clocks = <&soc0_clk AST2700_SOC0_CLK_GATE_EMMCCLK>;
+			resets = <&soc0_rst ASPEED_RESET_EMMC>;
+			ranges = <0 0x12090000 0x10000>;
+			status = "disabled";
+
+			emmc: sdhci@12090100 {
+				compatible = "aspeed,ast2700-sdhci";
+				reg = <0x100 0x100>;
+				sdhci,auto-cmd12;
+				#interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&soc0_clk AST2700_SOC0_CLK_GATE_EMMCCLK>;
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_emmc_default>;
+			};
+		};
+
+		syscon0: syscon@12c02000 {
+			compatible = "syscon", "simple-mfd";
+			reg = <0x12c02000 0x1000>;
+			ranges = <0 0x12c02000 0x1000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			soc0_rst: reset-controller@12c02200 {
+				compatible = "aspeed,ast2700-reset";
+				reg = <0x200 0x40>;
+				#reset-cells = <1>;
+			};
+
+			soc0_clk: clock-controller@12c02200 {
+				compatible = "aspeed,ast2700-soc0-clk";
+				reg = <0x240 0x1c0>;
+				#clock-cells = <1>;
+			};
+
+			pinctrl0: pinctrl@12c02400 {
+				compatible = "aspeed,ast2700-soc0-pinctrl";
+				reg = <0x400 0x100>;
+			};
 		};
 	};
 

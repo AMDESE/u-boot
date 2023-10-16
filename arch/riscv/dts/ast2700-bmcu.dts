@@ -34,6 +34,41 @@
 	clock-frequency = <1846153>;
 };
 
+&syscon0 {
+	bootph-all;
+	status = "okay";
+};
+
+&soc0_rst {
+	bootph-all;
+};
+
+&soc0_clk {
+	bootph-all;
+};
+
+&emmc_controller {
+	bootph-all;
+	status = "okay";
+};
+
+&emmc {
+	bootph-all;
+	status = "okay";
+};
+
+&pinctrl0 {
+	pinctrl_emmc_default: emmc_default {
+		function = "EMMC";
+		groups = "EMMC";
+	};
+
+	pinctrl_emmc8bit_default: emmc8bit_default {
+		function = "EMMC8BIT";
+		groups = "EMMC8BIT";
+	};
+};
+
 &binman {
 	bootph-all;
 
@@ -51,6 +86,7 @@
 		};
 
 		ddr4-1d-imem-fw {
+			offset = <0x20000>;
 			bootph-all;
 			filename = "ddr4_pmu_train_imem.bin";
 			type = "blob-ext";
@@ -90,7 +126,7 @@
 
 	ast2700-u-boot-spl {
 		bootph-all;
-		filename = "u-boot-spl-sign.bin";
+		filename = "ast2700-bmcu-spl.bin";
 		pad-byte = <0x00>;
 
 //		pre-load {
@@ -103,7 +139,6 @@
 
 		u_boot_spl: u-boot-spl-ddr {
 			bootph-all;
-			offset = <0x80>;
 			filename = "u-boot-spl-ddr.bin";
 			type = "blob-ext";
 		};
