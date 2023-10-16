@@ -129,7 +129,3 @@
 &display_port {
 	status = "okay";
 };
-
-&pcie_ep {
-	status = "okay";
-};
