@@ -13,6 +13,9 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
+#define ASPEED_CPU_HW_STRAP1	0x14C02010
+#define STRAP_BOOTMODE_BIT	BIT(11)
+
 int dram_init(void)
 {
 	int ret;
@@ -63,8 +66,29 @@ int board_late_init(void)
 	return 0;
 }
 
+int spl_mmc_init(void)
+{
+	int ret;
+	struct udevice *dev;
+
+	/* release emmc pin from emmc boot */
+	writel(0, (void *)0x12c0b00c);
+
+	printf("spl probe blk\n");
+
+	ret = uclass_get_device(UCLASS_BLK, 0, &dev);
+	if (ret)
+		printf("cannot get BLK driver\n");
+
+	return ret;
+}
+
 int spl_board_init_f(void)
 {
+	/* Probe block driver to bring up mmc */
+	if (spl_boot_device() == BOOT_DEVICE_MMC1)
+		spl_mmc_init();
+
 	dram_init();
 
 	if (IS_ENABLED(CONFIG_PCI_ENDPOINT))
@@ -85,7 +109,10 @@ void *board_spl_fit_buffer_addr(ulong fit_size, int sectors, int bl_len)
 
 u32 spl_boot_device(void)
 {
-	return BOOT_DEVICE_RAM;
+	if ((readl((void *)ASPEED_CPU_HW_STRAP1) & STRAP_BOOTMODE_BIT))
+		return BOOT_DEVICE_MMC1;
+	else
+		return BOOT_DEVICE_RAM;
 }
 
 void board_fit_image_post_process(const void *fit, int node, void **p_image, size_t *p_size)

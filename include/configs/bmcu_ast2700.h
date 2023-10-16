@@ -7,6 +7,10 @@
 #define __CONFIG_H
 
 #define CFG_SYS_UBOOT_BASE		CONFIG_TEXT_BASE
+#if defined(CONFIG_ASPEED_FPGA)
 #define CFG_SYS_TIMER_RATE		(24000000)
+#else
+#define CFG_SYS_TIMER_RATE		(200000000)
+#endif
 
 #endif	/* __CONFIG_H */
