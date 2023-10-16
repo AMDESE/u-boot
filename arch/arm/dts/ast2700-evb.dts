@@ -125,7 +125,3 @@
 &hace {
 	status = "okay";
 };
-
-&display_port {
-	status = "okay";
-};
