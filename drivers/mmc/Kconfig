@@ -515,7 +515,6 @@ config FIXED_SDHCI_ALIGNED_BUFFER
 
 config MMC_SDHCI_ASPEED
 	bool "Aspeed SDHCI controller"
-	depends on ARCH_ASPEED
 	depends on DM_MMC
 	depends on MMC_SDHCI
 	select MISC
