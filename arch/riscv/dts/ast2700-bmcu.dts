@@ -80,6 +80,7 @@
 		align = <4>;
 
 		u-boot-spl {
+			offset = <0x80>;
 			bootph-all;
 			align-end = <4>;
 			filename = "u-boot-spl.bin";
