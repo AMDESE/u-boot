@@ -1,0 +1,40 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
+/*
+ * Copyright (C) ASPEED Technology Inc.
+ * Ryan Chen <ryan_chen@aspeedtech.com>
+ *
+ */
+
+#ifndef _ASPEED_PLATFORM_H_
+#define _ASPEED_PLATFORM_H_
+
+#define AST_PLL_25MHZ			25000000
+#define AST_PLL_24MHZ			24000000
+#define AST_PLL_12MHZ			12000000
+
+/*********************************************************************************/
+#if defined(CONFIG_TARGET_ASPEED_AST2700BMCU)
+#define ASPEED_REVISION_ID0	0x12C02000
+#define ASPEED_IO_HW_STRAP1	0x12C02010
+#define ASPEED_REVISION_ID1	0x14C02000
+#define ASPEED_CPU_HW_STRAP1	0x14C02010
+#define STRAP_BOOTMODE_BIT	BIT(11)
+#define ASPEED_MAC_COUNT	3
+#define ASPEED_DRAM_BASE	0x400000000
+#define ASPEED_SRAM_BASE	0x10000000
+#define ASPEED_SRAM_SIZE	0x20000
+#define ASPEED_FMC_CS0_BASE	0x20000000
+#define ASPEED_CPU_REVISION_ID	0x12C02000
+#define ASPEED_IO_REVISION_ID	0x14C02000
+#define ASPEED_CPU_RESET_LOG1	0x12C02050
+#define ASPEED_CPU_RESET_LOG2	0x12C02060
+#define ASPEED_CPU_RESET_LOG3	0x12C02070
+#define ASPEED_IO_RESET_LOG1	0x14C02050
+#define ASPEED_IO_RESET_LOG2	0x14C02060
+#define ASPEED_IO_RESET_LOG3	0x14C02070
+#define ASPEED_IO_RESET_LOG4	0x14C02080
+#else
+#err "Unrecognized Aspeed platform."
+#endif
+
+#endif

@@ -10,11 +10,10 @@
 #include <common.h>
 #include <asm/csr.h>
 #include <init.h>
+#include <asm/arch-aspeed/platform.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define ASPEED_CPU_HW_STRAP1	0x14C02010
-#define STRAP_BOOTMODE_BIT	BIT(11)
 
 int dram_init(void)
 {
