@@ -408,7 +408,7 @@ void dwc_phy_init(struct sdramc_ac_timing *ac)
 	u32 ctx_start, imem_start, dmem_start, imem_2d_start, dmem_2d_start;
 	u32 imem_len, dmem_len, imem_2d_len, dmem_2d_len;
 	u32 ddr5_imem, ddr5_imem_len, ddr5_dmem, ddr5_dmem_len;
-	u32 base = CONFIG_SPL_TEXT_BASE - 0x80;
+	u32 base = CONFIG_SPL_TEXT_BASE;
 
 	ctx_start = binman_sym(u32, u_boot_spl_ddr, image_pos);
 	imem_start = binman_sym(u32, ddr4_1d_imem_fw, image_pos);
