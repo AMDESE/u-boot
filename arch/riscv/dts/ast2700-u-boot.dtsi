@@ -14,6 +14,9 @@
 		sdrammc: sdrammc@12c00000 {
 			bootph-all;
 		};
+		display_port: dp@12c0a000 {
+			bootph-all;
+		};
 		pcie_ep: pcie_ep@12c15000 {
 			bootph-all;
 		};
