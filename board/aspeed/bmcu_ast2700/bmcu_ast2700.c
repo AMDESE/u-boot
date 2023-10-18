@@ -54,6 +54,28 @@ int dram_init(void)
 	return 0;
 }
 
+int misc_init(void)
+{
+	struct udevice *dev;
+	int i = 0;
+	int ret;
+
+	/*
+	 * Loop over all MISC uclass drivers to call the comphy code
+	 * and init all CP110 devices enabled in the DT
+	 */
+	while (1) {
+		/* Call the comphy code via the MISC uclass driver */
+		ret = uclass_get_device(UCLASS_MISC, i++, &dev);
+
+		/* We're done, once no further CP110 device is found */
+		if (ret)
+			break;
+	}
+
+	return 0;
+}
+
 // To support 64bit address calculation for e2m
 static u32 _ast_get_e2m_addr(u32 addr)
 {
@@ -146,22 +168,7 @@ int pci_vga_init(void)
 
 int board_init(void)
 {
-	struct udevice *dev;
-	int i = 0;
-	int ret;
-
-	/*
-	 * Loop over all MISC uclass drivers to call the comphy code
-	 * and init all CP110 devices enabled in the DT
-	 */
-	while (1) {
-		/* Call the comphy code via the MISC uclass driver */
-		ret = uclass_get_device(UCLASS_MISC, i++, &dev);
-
-		/* We're done, once no further CP110 device is found */
-		if (ret)
-			break;
-	}
+	misc_init();
 
 	return 0;
 }
@@ -197,6 +204,8 @@ int spl_board_init_f(void)
 	dram_init();
 
 	pci_vga_init();
+
+	misc_init();
 
 	return 0;
 }
