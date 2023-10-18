@@ -16,7 +16,6 @@ obj-$(CONFIG_CROS_EC_I2C) += cros_ec_i2c.o
 obj-$(CONFIG_CROS_EC_SPI) += cros_ec_spi.o
 obj-$(CONFIG_SANDBOX) += p2sb_sandbox.o p2sb_emul.o
 obj-$(CONFIG_SANDBOX) += swap_case.o
-obj-$(CONFIG_ASPEED_DP) += aspeed_dp.o
 endif
 
 ifdef CONFIG_$(SPL_)DM_I2C
@@ -89,3 +88,4 @@ obj-$(CONFIG_K3_AVS0) += k3_avs.o
 obj-$(CONFIG_ESM_K3) += k3_esm.o
 obj-$(CONFIG_ESM_PMIC) += esm_pmic.o
 obj-$(CONFIG_SL28CPLD) += sl28cpld.o
+obj-$(CONFIG_$(SPL_)ASPEED_DP) += aspeed_dp.o

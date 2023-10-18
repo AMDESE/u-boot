@@ -31,7 +31,13 @@ config ASPEED_VBIOS
 
 config ASPEED_DP
 	bool "Aspeed Display Port firmware driver"
-	depends on ARCH_ASPEED
+	depends on MISC
+	help
+	  Select this to enable Display Port firmware driver
+
+config SPL_ASPEED_DP
+	bool "Aspeed Display Port firmware driver in SPL"
+	depends on SPL_MISC
 	help
 	  Select this to enable Display Port firmware driver
 
