@@ -25,11 +25,11 @@
 #define IO_HWSTRAP1_DRAM_TYPE           BIT(10)
 
 #define DRAMC_PHY_BASE			(0x13000000)
-#define dwc_ddrphy_apb_wr(addr, value)		(*(unsigned short *)(DRAMC_PHY_BASE + 2 * (addr)) = (unsigned short)value)
-#define dwc_ddrphy_apb_rd(addr)			(*(unsigned short *)(DRAMC_PHY_BASE + 2 * (addr)))
+#define dwc_ddrphy_apb_wr(addr, value)		(*(volatile unsigned short *)(DRAMC_PHY_BASE + 2 * (addr)) = (unsigned short)value)
+#define dwc_ddrphy_apb_rd(addr)			(*(volatile unsigned short *)(DRAMC_PHY_BASE + 2 * (addr)))
 
-#define dwc_ddrphy_apb_wr_32b(addr, value)	(*((unsigned int *)(DRAMC_PHY_BASE + 2 * (addr))) = (unsigned int)value)
-#define dwc_ddrphy_apb_rd_32b(addr)		(*(unsigned int *)(DRAMC_PHY_BASE + 2 * (addr)))
+#define dwc_ddrphy_apb_wr_32b(addr, value)	(*((volatile unsigned int *)(DRAMC_PHY_BASE + 2 * (addr))) = (unsigned int)value)
+#define dwc_ddrphy_apb_rd_32b(addr)		(*(volatile unsigned int *)(DRAMC_PHY_BASE + 2 * (addr)))
 
 /* offset 0x04 */
 #define DRAMC_IRQSTA_PWRCTL_ERR			BIT(16)
