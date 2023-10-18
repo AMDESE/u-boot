@@ -122,6 +122,7 @@ static int aspeed_dp_probe(struct udevice *dev)
 {
 	struct aspeed_dp_priv *dp = dev_get_priv(dev);
 	struct reset_ctl dp_reset_ctl, dpmcu_reset_ctrl;
+	struct clk clk;
 	int i, ret = 0;
 	u32 mcu_ctrl, val, scu_offset;
 	bool is_mcu_stop = false;
@@ -149,6 +150,17 @@ static int aspeed_dp_probe(struct udevice *dev)
 	if (ret) {
 		dev_err(dev, "%s(): Failed to get dp mcu reset signal\n", __func__);
 		return ret;
+	}
+
+	ret = clk_get_by_index(dev, 0, &clk);
+	if (ret) {
+		debug("cannot get clock for %s: %d\n", dev->name, ret);
+	} else {
+		ret = clk_enable(&clk);
+		if (ret) {
+			dev_err(dev, "%s(): Failed to enable dp clk\n", __func__);
+			return ret;
+		}
 	}
 
 	/* reset for DPTX and DPMCU if MCU isn't running */
