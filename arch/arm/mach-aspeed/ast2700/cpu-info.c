@@ -28,8 +28,8 @@ void ast2700_print_soc_id(void)
 	int i;
 	u64 rev_id;
 
-	rev_id = readl(ASPEED_REVISION_ID0);
-	rev_id = ((u64)readl(ASPEED_REVISION_ID1) << 32) | rev_id;
+	rev_id = readl(ASPEED_CPU_REVISION_ID);
+	rev_id = ((u64)readl(ASPEED_IO_REVISION_ID) << 32) | rev_id;
 
 	for (i = 0; i < ARRAY_SIZE(soc_map_table); i++) {
 		if (rev_id == soc_map_table[i].rev_id)

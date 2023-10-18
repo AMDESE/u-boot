@@ -48,7 +48,7 @@ struct legacy_img_hdr *spl_get_load_buffer(ssize_t offset, size_t size)
  */
 u32 spl_boot_device(void)
 {
-	if ((readl(ASPEED_CPU_HW_STRAP1) & STRAP_BOOTMODE_BIT))
+	if ((readl(ASPEED_IO_HW_STRAP1) & STRAP_BOOTMODE_BIT))
 		return BOOT_DEVICE_MMC1;
 	else
 		return BOOT_DEVICE_RAM;

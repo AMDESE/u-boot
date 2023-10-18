@@ -119,8 +119,8 @@ static u32 chip_version(void)
 {
 	u32 revid0, revid1;
 
-	revid0 = readl(ASPEED_REVISION_ID0);
-	revid1 = readl(ASPEED_REVISION_ID1);
+	revid0 = readl(ASPEED_CPU_REVISION_ID);
+	revid1 = readl(ASPEED_IO_REVISION_ID);
 
 	if (revid0 == ID0_AST2700A0 && revid1 == ID1_AST2700A0) {
 		/* AST2700-A0 */
