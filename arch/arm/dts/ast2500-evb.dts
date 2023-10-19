@@ -13,6 +13,9 @@
 	};
 
 	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
 		mctp_reserved: mctp_reserved@8a000000 {
 			reg = <0x8a000000 0x10000>;
 			no-map;
