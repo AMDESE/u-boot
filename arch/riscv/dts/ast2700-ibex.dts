@@ -89,37 +89,37 @@
 		ddr4-1d-imem-fw {
 			offset = <0x20000>;
 			bootph-all;
-			filename = "ddr4_pmu_train_imem.bin";
+			filename = "board/aspeed/ibex_ast2700/prebuilt/ddr4_pmu_train_imem.bin";
 			type = "blob-ext";
 			align-end = <4>;
 		};
 		ddr4-1d-dmem-fw {
 			bootph-all;
-			filename = "ddr4_pmu_train_dmem.bin";
+			filename = "board/aspeed/ibex_ast2700/prebuilt/ddr4_pmu_train_dmem.bin";
 			type = "blob-ext";
 			align-end = <4>;
 		};
 		ddr4-2d-imem-fw {
 			bootph-all;
-			filename = "ddr4_2d_pmu_train_imem.bin";
+			filename = "board/aspeed/ibex_ast2700/prebuilt/ddr4_2d_pmu_train_imem.bin";
 			type = "blob-ext";
 			align-end = <4>;
 		};
 		ddr4-2d-dmem-fw {
 			bootph-all;
-			filename = "ddr4_2d_pmu_train_dmem.bin";
+			filename = "board/aspeed/ibex_ast2700/prebuilt/ddr4_2d_pmu_train_dmem.bin";
 			type = "blob-ext";
 			align-end = <4>;
 		};
 		ddr5-imem-fw {
 			bootph-all;
-			filename = "ddr5_pmu_train_imem.bin";
+			filename = "board/aspeed/ibex_ast2700/prebuilt/ddr5_pmu_train_imem.bin";
 			type = "blob-ext";
 			align-end = <4>;
 		};
 		ddr5-dmem-fw {
 			bootph-all;
-			filename = "ddr5_pmu_train_dmem.bin";
+			filename = "board/aspeed/ibex_ast2700/prebuilt/ddr5_pmu_train_dmem.bin";
 			type = "blob-ext";
 			align-end = <4>;
 		};
