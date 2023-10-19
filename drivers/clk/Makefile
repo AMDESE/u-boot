@@ -12,13 +12,12 @@ obj-$(CONFIG_$(SPL_TPL_)CLK_CCF) += clk-fixed-factor.o
 obj-$(CONFIG_$(SPL_TPL_)CLK_COMPOSITE_CCF) += clk-composite.o
 
 obj-y += analogbits/
+obj-y += aspeed/
 obj-y += imx/
 obj-$(CONFIG_CLK_JH7110) += starfive/
 obj-y += tegra/
 obj-y += ti/
 obj-$(CONFIG_$(SPL_TPL_)CLK_INTEL) += intel/
-obj-$(CONFIG_ARCH_ASPEED) += aspeed/
-obj-$(CONFIG_TARGET_ASPEED_AST2700BMCU) += aspeed/
 obj-$(CONFIG_ARCH_MEDIATEK) += mediatek/
 obj-$(CONFIG_ARCH_MESON) += meson/
 obj-$(CONFIG_ARCH_MTMIPS) += mtmips/

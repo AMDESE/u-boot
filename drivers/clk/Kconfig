@@ -234,6 +234,7 @@ config CLK_ZYNQMP
 	  ZynqMP platform.
 
 source "drivers/clk/analogbits/Kconfig"
+source "drivers/clk/aspeed/Kconfig"
 source "drivers/clk/at91/Kconfig"
 source "drivers/clk/exynos/Kconfig"
 source "drivers/clk/imx/Kconfig"

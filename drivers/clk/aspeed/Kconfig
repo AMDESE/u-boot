@@ -1,0 +1,5 @@
+config CLK_AST2700
+	bool "Clock support for AST2700"
+	select CLK
+	help
+	  This enables DM/DTS support for clock driver in AST2700 platforms.
