@@ -10,26 +10,35 @@
 #include <common.h>
 #include <asm/csr.h>
 #include <asm/arch-aspeed/platform.h>
+#include <asm/arch-aspeed/clk_ast2700.h>
+#include <asm/arch-aspeed/e2m_ast2700.h>
+#include <asm/arch-aspeed/scu_ast2700.h>
 #include <linux/bitfield.h>
 #include <linux/bitops.h>
+#include <linux/err.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
+static void *fdt_get_syscon_addr_ptr(struct udevice *dev)
+{
+	ofnode node = dev_ofnode(dev), parent;
+	fdt_addr_t addr;
 
-#define SCU_CPU_HWSTRAP1	((void *)0x12c02010)
-#define SCU_CPU_HWSTRAP1_CLR	((void *)0x12c02014)
-#define SCU_CPU_CLK_CLR		((void *)0x12c02244)
-#define SCU_CPU_VGA_FUNC	((void *)0x12c02414)
-#define   VGA_DAC_OUTPUT	GENMASK(11, 10)
-#define   VGA_DP_OUTPUT		GENMASK(9, 8)
-#define   VGA_DAC_DISABLE	BIT(7)
-#define SCU_CPU_VGA0_SAR0	((void *)0x12c02a0c)
-#define SCU_PCI_MISC70		((void *)0x12c02a70)
-#define SCU_CPU_VGA1_SAR0	((void *)0x12c02a8c)
-#define SCU_PCI_MISCF0		((void *)0x12c02af0)
+	if (!ofnode_valid(node)) {
+		printf("%s: node invalid\n", __func__);
+		return NULL;
+	}
 
-// for SCU_CPU_VGAx_SAR0
-#define   VGA_FB_SIZE		GENMASK(4, 0)
+	parent = ofnode_get_parent(node);
+	addr = ofnode_get_addr(parent);
+	if (addr == FDT_ADDR_T_NONE) {
+		printf("%s: node addr none\n", __func__);
+		return NULL;
+	}
+
+	debug("scu reg: %x\n", addr);
+	return (void *)(uintptr_t)addr;
+}
 
 int dram_init(void)
 {
@@ -87,24 +96,25 @@ static u32 _ast_get_e2m_addr(u32 addr)
 	return (((1 << val) - 1) << 24) | (addr >> 4);
 }
 
-int pci_vga_init(void)
+static int pci_vga_init(struct ast2700_soc0_scu *scu,
+			struct ast2700_soc0_clk *clk)
 {
 	u32 val, vram_size, vram_addr;
 	u8 vram_size_cfg;
-	bool is_pcie0_enable = readl(SCU_PCI_MISC70) & BIT(0);
-	bool is_pcie1_enable = readl(SCU_PCI_MISCF0) & BIT(0);
+	bool is_pcie0_enable = readl(&scu->pci0_misc[28]) & BIT(0);
+	bool is_pcie1_enable = readl(&scu->pci1_misc[28]) & BIT(0);
 	bool is_64vram = readl((void *)0x12c00100) & BIT(0);
-	u8 dac_src = readl(SCU_CPU_HWSTRAP1) & BIT(28);
-	u8 dp_src = readl(SCU_CPU_HWSTRAP1) & BIT(29);
+	u8 dac_src = readl(&scu->hwstrap1) & BIT(28);
+	u8 dp_src = readl(&scu->hwstrap1) & BIT(29);
 
 	debug("%s: ENABLE 0(%d) 1(%d)\n", __func__, is_pcie0_enable, is_pcie1_enable);
 
 	// for CRAA[1:0]
-	setbits_le32(SCU_CPU_HWSTRAP1, BIT(11));
+	setbits_le32(&scu->hwstrap1, BIT(11));
 	if (is_64vram)
-		setbits_le32(SCU_CPU_HWSTRAP1, BIT(10));
+		setbits_le32(&scu->hwstrap1, BIT(10));
 	else
-		setbits_le32(SCU_CPU_HWSTRAP1_CLR, BIT(10));
+		setbits_le32(&scu->hwstrap1_clr, BIT(10));
 
 	vram_addr = 0x10000000;
 
@@ -114,14 +124,15 @@ int pci_vga_init(void)
 
 	if (is_pcie0_enable) {
 		// enable clk
-		setbits_le32(SCU_CPU_CLK_CLR, BIT(5));
+		setbits_le32(&clk->clkgate_clr, SCU_CPU_CLKGATE1_VGA0);
 
 		vram_addr -= vram_size;
 		debug("pcie0 e2m addr(%x)\n", _ast_get_e2m_addr(vram_addr));
-		val = _ast_get_e2m_addr(vram_addr) | FIELD_PREP(VGA_FB_SIZE, vram_size_cfg);
+		val = _ast_get_e2m_addr(vram_addr)
+		    | FIELD_PREP(SCU_CPU_PCI_MISC0C_FB_SIZE, vram_size_cfg);
 		debug("pcie0 debug reg(%x)\n", val);
-		writel(val, (void *)0x12c21100);
-		writel(val, SCU_CPU_VGA0_SAR0);
+		writel(val, (void *)E2M0_VGA_RAM);
+		writel(val, &scu->pci0_misc[3]);
 
 		// Enable VRAM address offset: cursor, rvas, 2d
 		writel(BIT(10) | BIT(24) | BIT(27), (void *)0x12c00104);
@@ -129,14 +140,15 @@ int pci_vga_init(void)
 
 	if (is_pcie1_enable) {
 		// enable clk
-		setbits_le32(SCU_CPU_CLK_CLR, BIT(10));
+		setbits_le32(&clk->clkgate_clr, SCU_CPU_CLKGATE1_VGA1);
 
 		vram_addr -= vram_size;
 		debug("pcie1 e2m addr(%x)\n", _ast_get_e2m_addr(vram_addr));
-		val = _ast_get_e2m_addr(vram_addr) | FIELD_PREP(VGA_FB_SIZE, vram_size_cfg);
+		val = _ast_get_e2m_addr(vram_addr)
+		    | FIELD_PREP(SCU_CPU_PCI_MISC0C_FB_SIZE, vram_size_cfg);
 		debug("pcie1 debug reg(%x)\n", val);
-		writel(val, (void *)0x12c22100);
-		writel(val, SCU_CPU_VGA1_SAR0);
+		writel(val, (void *)E2M1_VGA_RAM);
+		writel(val, &scu->pci1_misc[3]);
 
 		// Enable VRAM address offset: cursor, rvas, 2d
 		writel(BIT(19) | BIT(25) | BIT(28), (void *)0x12c00108);
@@ -144,14 +156,16 @@ int pci_vga_init(void)
 
 	if (is_pcie0_enable || is_pcie1_enable) {
 		// enable dac clk
-		setbits_le32(SCU_CPU_CLK_CLR, BIT(17));
+		setbits_le32(&clk->clkgate_clr, SCU_CPU_CLKGATE1_DAC);
 
-		val = readl(SCU_CPU_VGA_FUNC);
-		val &= ~(VGA_DAC_OUTPUT | VGA_DP_OUTPUT | VGA_DAC_DISABLE);
-		val |= FIELD_PREP(VGA_DAC_OUTPUT, dac_src)
-		     | FIELD_PREP(VGA_DP_OUTPUT, dp_src)
-		     | FIELD_PREP(VGA_DAC_DISABLE, 0);
-		writel(val, SCU_CPU_VGA_FUNC);
+		val = readl(&scu->vga_func_ctrl);
+		val &= ~(SCU_CPU_VGA_FUNC_DAC_OUTPUT
+			| SCU_CPU_VGA_FUNC_DP_OUTPUT
+			| SCU_CPU_VGA_FUNC_DAC_DISABLE);
+		val |= FIELD_PREP(SCU_CPU_VGA_FUNC_DAC_OUTPUT, dac_src)
+		     | FIELD_PREP(SCU_CPU_VGA_FUNC_DP_OUTPUT, dp_src)
+		     | FIELD_PREP(SCU_CPU_VGA_FUNC_DAC_DISABLE, 0);
+		writel(val, &scu->vga_func_ctrl);
 
 		// vga link init
 		writel(0x00030009, (void *)0x12c1d010);
@@ -197,15 +211,37 @@ int spl_mmc_init(void)
 
 int spl_board_init_f(void)
 {
+	int rc;
+	struct udevice *clk_dev;
+	struct ast2700_soc0_clk *clk;
+	struct ast2700_soc0_scu *scu;
+
 	/* Probe block driver to bring up mmc */
 	if (spl_boot_device() == BOOT_DEVICE_MMC1)
 		spl_mmc_init();
 
 	dram_init();
 
-	pci_vga_init();
+	rc = uclass_get_device_by_driver(UCLASS_CLK,
+					 DM_DRIVER_GET(aspeed_ast2700_soc0_clk), &clk_dev);
+	if (rc) {
+		printf("%s: cannot find CLK device, rc=%d\n", __func__, rc);
+		return rc;
+	}
 
-	misc_init();
+	clk = devfdt_get_addr_ptr(clk_dev);
+	if (IS_ERR_OR_NULL(clk)) {
+		printf("%s: cannot get CLK address pointer\n", __func__);
+		return PTR_ERR(clk);
+	}
+
+	scu = fdt_get_syscon_addr_ptr(clk_dev);
+	if (IS_ERR_OR_NULL(scu)) {
+		printf("%s: cannot get SYSCON address pointer\n", __func__);
+		return PTR_ERR(scu);
+	}
+
+	pci_vga_init(scu, clk);
 
 	return 0;
 }
