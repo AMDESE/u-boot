@@ -2,8 +2,8 @@
 /*
  * Copyright (c) Aspeed Technology Inc.
  */
-#ifndef _ASM_ARCH_SCU_AST2700_H
-#define _ASM_ARCH_SCU_AST2700_H
+#ifndef _ASM_ARCH_CLK_AST2700_H
+#define _ASM_ARCH_CLK_AST2700_H
 
 #define CLKIN_25M 25000000UL
 
