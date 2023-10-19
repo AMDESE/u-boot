@@ -1,7 +1,7 @@
-if TARGET_ASPEED_AST2700BMCU
+if TARGET_ASPEED_AST2700
 
 config SYS_BOARD
-	default "bmcu_ast2700"
+	default "ibex_ast2700"
 
 config SYS_VENDOR
 	default "aspeed"
@@ -10,7 +10,7 @@ config SYS_CPU
 	default "ibex"
 
 config SYS_CONFIG_NAME
-	default "bmcu_ast2700"
+	default "ibex_ast2700"
 
 config BOARD_SPECIFIC_OPTIONS # dummy
 	def_bool y

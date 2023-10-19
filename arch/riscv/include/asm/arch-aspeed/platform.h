@@ -13,7 +13,7 @@
 #define AST_PLL_12MHZ			12000000
 
 /*********************************************************************************/
-#if defined(CONFIG_TARGET_ASPEED_AST2700BMCU)
+#if defined(CONFIG_TARGET_ASPEED_AST2700)
 #define ASPEED_CPU_REVISION_ID	0x12C02000
 #define ASPEED_CPU_HW_STRAP1	0x12C02010
 #define ASPEED_CPU_RESET_LOG1	0x12C02050

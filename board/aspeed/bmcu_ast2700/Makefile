@@ -1,1 +1,0 @@
-obj-$(CONFIG_TARGET_ASPEED_AST2700BMCU) += bmcu_ast2700.o
