@@ -125,6 +125,12 @@
 			type = "blob-ext";
 			align-end = <4>;
 		};
+		dp-fw {
+			bootph-all;
+			filename = "board/aspeed/ibex_ast2700/prebuilt/dp_fw.bin";
+			type = "blob-ext";
+			align-end = <4>;
+		};
 	};
 
 	ast2700-u-boot-spl {
