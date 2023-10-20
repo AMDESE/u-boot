@@ -209,12 +209,69 @@ int spl_mmc_init(void)
 	return ret;
 }
 
+#define SLI_CPU_ADRBASE			0x12c17000
+#define SLI_IOD_ADRBASE			0x14c1e000
+#define SLIM_CPU_BASE			(SLI_CPU_ADRBASE + 0x000)
+#define SLIH_CPU_BASE			(SLI_CPU_ADRBASE + 0x200)
+#define SLIV_CPU_BASE			(SLI_CPU_ADRBASE + 0x400)
+#define SLIM_IOD_BASE			(SLI_IOD_ADRBASE + 0x000)
+#define SLIH_IOD_BASE			(SLI_IOD_ADRBASE + 0x200)
+#define SLIV_IOD_BASE			(SLI_IOD_ADRBASE + 0x400)
+
+#define SLI_CTRL_I			0x00
+#define   SLI_RX_PHY_LAH_SEL_REV	BIT(13)
+#define   SLI_RX_PHY_LAH_SEL_NEG	BIT(12)
+#define SLI_INTR_EN			0x10
+#define SLI_INTR_STATUS			0x14
+#define   SLI_INTR_RX_SYNC		BIT(15)
+#define   SLI_INTR_RX_TRAIN_PKT		BIT(10)
+#define   SLI_INTR_TX_SUSPEND		BIT(4)
+#define   SLI_INTR_TX_TRAIN		BIT(3)
+#define   SLI_INTR_TX_IDLE		BIT(2)
+#define   SLI_INTR_RX_SUSPEND		BIT(1)
+#define   SLI_INTR_RX_IDLE		BIT(0)
+
+static void sli_wait_suspend(uint32_t base)
+{
+	uint32_t value;
+	uint32_t mask = SLI_INTR_TX_SUSPEND | SLI_INTR_RX_SUSPEND;
+
+	value = readl((void *)base + SLI_INTR_STATUS);
+	while ((value & mask) != mask)
+		value = readl((void *)base + SLI_INTR_STATUS);
+}
+
+static void sli_init(void)
+{
+	uint32_t value;
+
+	/* 25MHz PAD delay for AST2700A0 */
+	value = readl((void *)SLIH_IOD_BASE + SLI_CTRL_I);
+	value |= SLI_RX_PHY_LAH_SEL_NEG;
+	writel(value, (void *)SLIH_IOD_BASE + SLI_CTRL_I);
+
+	value = readl((void *)SLIM_IOD_BASE + SLI_CTRL_I);
+	value |= SLI_RX_PHY_LAH_SEL_NEG;
+	writel(value, (void *)SLIM_IOD_BASE + SLI_CTRL_I);
+
+	value = readl((void *)SLIV_IOD_BASE + SLI_CTRL_I);
+	value |= SLI_RX_PHY_LAH_SEL_NEG;
+	writel(value, (void *)SLIV_IOD_BASE + SLI_CTRL_I);
+
+	sli_wait_suspend(SLIH_IOD_BASE);
+	sli_wait_suspend(SLIH_CPU_BASE);
+	printf("SLI phase 1: 25M init done\n");
+}
+
 int spl_board_init_f(void)
 {
 	int rc;
 	struct udevice *clk_dev;
 	struct ast2700_soc0_clk *clk;
 	struct ast2700_soc0_scu *scu;
+
+	sli_init();
+	/* TBD: CPU-die SCU OTP */
 
 	/* Probe block driver to bring up mmc */
 	if (spl_boot_device() == BOOT_DEVICE_MMC1)
