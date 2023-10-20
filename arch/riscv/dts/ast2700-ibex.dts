@@ -24,13 +24,6 @@
 	bootph-all;
 };
 
-#if 0
-&display_port {
-	status = "okay";
-	bootph-all;
-};
-#endif
-
 &uart12 {
 	status = "okay";
 	clock-frequency = <1846153>;

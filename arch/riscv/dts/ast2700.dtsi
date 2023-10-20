@@ -84,28 +84,6 @@
 				reg = <0x400 0x100>;
 			};
 		};
-
-		display_port: dp@12c0a000 {
-			compatible = "aspeed,ast2700-displayport";
-			reg = <0x0 0x12c0a000 0x0 0x200>,
-			      <0x0 0x11000000 0x0 0x1000>,
-			      <0x0 0x11010000 0x0 0x100>,
-			      <0x0 0x11020000 0x0 0x4000>;
-			clocks = <&soc0_clk AST2700_SOC0_CLK_GATE_DP>;
-			resets = <&soc0_rst ASPEED_RESET_DP>, <&soc0_rst ASPEED_RESET_DP_MCU>;
-			aspeed,scu = <&syscon0>;
-			status = "disabled";
-		};
-
-		pcie_ep: pcie_ep@12c15000 {
-			compatible = "aspeed,ast2700-pcie-ep";
-			reg = <0x12c02000 0x1000>, <0x12c00000 0x200>,
-			      <0x12c21000 0x200>, <0x12c22000 0x200>,
-			      <0x12c1d000 0x200>, <0x14c3a000 0x200>;
-			aspeed,dac-src = <0>;
-			aspeed,dp-src = <1>;
-			status = "disabled";
-		};
 	};
 
 	soc1: soc@14000000 {

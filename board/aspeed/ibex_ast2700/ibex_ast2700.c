@@ -7,10 +7,12 @@
 #include <ram.h>
 #include <spl.h>
 #include <image.h>
+#include <binman_sym.h>
 #include <common.h>
 #include <asm/csr.h>
 #include <asm/arch-aspeed/platform.h>
 #include <asm/arch-aspeed/clk_ast2700.h>
+#include <asm/arch-aspeed/dp_ast2700.h>
 #include <asm/arch-aspeed/e2m_ast2700.h>
 #include <asm/arch-aspeed/scu_ast2700.h>
 #include <linux/bitfield.h>
@@ -18,6 +20,9 @@
 #include <linux/err.h>
 
 DECLARE_GLOBAL_DATA_PTR;
+
+binman_sym_declare(u32, dp_fw, image_pos);
+binman_sym_declare(u32, dp_fw, size);
 
 static void *fdt_get_syscon_addr_ptr(struct udevice *dev)
 {
@@ -180,6 +185,86 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu,
 	return 0;
 }
 
+static int dp_init(struct ast2700_soc0_scu *scu, struct ast2700_soc0_clk *clk)
+{
+	u32 *fw_addr;
+	u32 fw_size;
+	u32 mcu_ctrl, val;
+	void *scu_offset;
+	bool is_mcu_stop = false;
+
+	fw_size = binman_sym(u32, dp_fw, size);
+	if (fw_size == BINMAN_SYM_MISSING) {
+		printf("%s: Can't get dp-firmware\n", __func__);
+		return -1;
+	}
+	// TODO: SPL boot only now
+	fw_addr = (u32 *)(binman_sym(u32, dp_fw, image_pos) - CONFIG_SPL_TEXT_BASE + 0x20000000);
+
+	val = readl(&scu->vga_func_ctrl);
+	scu_offset = (((val >> 8) & 0x3) == 1)
+		   ? &scu->vga1_scratch1[0] : &scu->vga0_scratch1[0];
+	val = readl(scu_offset);
+	is_mcu_stop = ((val & BIT(13)) == 0);
+
+	// enable clk
+	setbits_le32(&clk->clkgate_clr, SCU_CPU_CLKGATE1_DP);
+
+	/* reset for DPTX and DPMCU if MCU isn't running */
+	if (is_mcu_stop) {
+		setbits_le32(&scu->modrst1_ctrl, SCU_CPU_RST_DP);
+		setbits_le32(&scu->modrst1_ctrl, SCU_CPU_RST_DPMCU);
+		setbits_le32(&scu->modrst1_clr, SCU_CPU_RST_DP);
+		setbits_le32(&scu->modrst1_clr, SCU_CPU_RST_DPMCU);
+	}
+
+	/* select HOST or BMC as display control master
+	 * enable or disable sending EDID to Host
+	 */
+	val = readl((void *)DP_HANDSHAKE);
+	val &= ~(DP_HANDSHAKE_HOST_READ_EDID | DP_HANDSHAKE_VIDEO_FMT_SRC);
+	writel(val, (void *)DP_HANDSHAKE);
+
+	/* DPMCU */
+	/* clear display format and enable region */
+	writel(0, (void *)(MCU_DMEM_BASE + 0x0de0));
+
+	/* load DPMCU firmware to internal instruction memory */
+	if (is_mcu_stop) {
+		mcu_ctrl = MCU_CTRL_CONFIG | MCU_CTRL_IMEM_CLK_OFF | MCU_CTRL_IMEM_SHUT_DOWN |
+		      MCU_CTRL_DMEM_CLK_OFF | MCU_CTRL_DMEM_SHUT_DOWN | MCU_CTRL_AHBS_SW_RST;
+		writel(mcu_ctrl, (void *)MCU_CTRL);
+
+		mcu_ctrl &= ~(MCU_CTRL_IMEM_SHUT_DOWN | MCU_CTRL_DMEM_SHUT_DOWN);
+		writel(mcu_ctrl, (void *)MCU_CTRL);
+
+		mcu_ctrl &= ~(MCU_CTRL_IMEM_CLK_OFF | MCU_CTRL_DMEM_CLK_OFF);
+		writel(mcu_ctrl, (void *)MCU_CTRL);
+
+		mcu_ctrl |= MCU_CTRL_AHBS_IMEM_EN;
+		writel(mcu_ctrl, (void *)MCU_CTRL);
+
+		for (int i = 0; i < fw_size / sizeof(u32); i++)
+			writel(fw_addr[i], (void *)(MCU_IMEM_BASE + (i * 4)));
+
+		/* release DPMCU internal reset */
+		mcu_ctrl &= ~MCU_CTRL_AHBS_IMEM_EN;
+		writel(mcu_ctrl, (void *)MCU_CTRL);
+		mcu_ctrl |= MCU_CTRL_CORE_SW_RST | MCU_CTRL_AHBM_SW_RST;
+		writel(mcu_ctrl, (void *)MCU_CTRL);
+		//disable dp interrupt
+		writel(FIELD_PREP(MCU_INTR_CTRL_EN, 0xff), (void *)MCU_INTR_CTRL);
+	}
+
+	//set vga ASTDP with DPMCU FW handling scratch
+	val = readl(scu_offset);
+	val &= ~(0x7 << 9);
+	val |= 0x7 << 9;
+	writel(val, scu_offset);
+
+	return 0;
+}
+
 int board_init(void)
 {
 	misc_init();
@@ -299,6 +384,7 @@ int spl_board_init_f(void)
 	}
 
 	pci_vga_init(scu, clk);
+	dp_init(scu, clk);
 
 	return 0;
 }
