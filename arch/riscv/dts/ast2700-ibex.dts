@@ -24,10 +24,12 @@
 	bootph-all;
 };
 
+#if 0
 &display_port {
 	status = "okay";
 	bootph-all;
 };
+#endif
 
 &uart12 {
 	status = "okay";
