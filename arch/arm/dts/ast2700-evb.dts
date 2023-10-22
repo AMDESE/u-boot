@@ -58,9 +58,9 @@
 
 	flash@0 {
 		status = "okay";
-		spi-max-frequency = <50000000>;
-		spi-tx-bus-width = <4>;
-		spi-rx-bus-width = <4>;
+		spi-max-frequency = <125000000>;
+		spi-tx-bus-width = <1>;
+		spi-rx-bus-width = <1>;
 	};
 
 	flash@1 {
