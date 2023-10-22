@@ -58,7 +58,7 @@ endchoice
 
 choice
 	prompt "AST2700 DDR target date rate"
-	default ASPEED_DDR_1600
+	default ASPEED_DDR_3200
 	depends on ASPEED_RAM
 	depends on TARGET_ASPEED_AST2700
 
