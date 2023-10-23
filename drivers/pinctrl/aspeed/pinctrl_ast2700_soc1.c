@@ -68,6 +68,30 @@ static struct ast2700_soc1_sig_desc mdio2_link[] = {
 	{ 0x40, GENMASK(6, 0), (1 << 4) | 1 },
 };
 
+static struct ast2700_soc1_sig_desc rgmii0_link[] = {
+	{ 0x44, GENMASK(31, 0),
+	  BIT(0) | BIT(4) | BIT(8) | BIT(12) | BIT(16) | BIT(20) | BIT(24) | BIT(28) },
+	{ 0x48, GENMASK(14, 0), BIT(0) | BIT(4) | BIT(8) | BIT(12) },
+};
+
+static struct ast2700_soc1_sig_desc rgmii1_link[] = {
+	{ 0x4c, GENMASK(31, 0),
+	  BIT(0) | BIT(4) | BIT(8) | BIT(12) | BIT(16) | BIT(20) | BIT(24) | BIT(28) },
+	{ 0x50, GENMASK(14, 0), BIT(0) | BIT(4) | BIT(8) | BIT(12) },
+};
+
+static struct ast2700_soc1_sig_desc rmii0_link[] = {
+	{ 0x44, GENMASK(31, 0),
+	  BIT(1) | BIT(9) | BIT(13) | BIT(17) | BIT(21) | BIT(25) | BIT(29) },
+	{ 0x48, GENMASK(6, 0), BIT(1) | BIT(5) },
+};
+
+static struct ast2700_soc1_sig_desc rmii1_link[] = {
+	{ 0x4c, GENMASK(31, 0),
+	  BIT(1) | BIT(9) | BIT(13) | BIT(17) | BIT(21) | BIT(25) | BIT(29) },
+	{ 0x50, GENMASK(6, 0), BIT(1) | BIT(5) },
+};
+
 static struct ast2700_soc1_sig_desc spi0_link[] = {
 	{ 0x34, GENMASK(2, 0) | GENMASK(6, 4) | GENMASK(10, 8) | GENMASK(14, 12),
 		BIT(0) | BIT(4) | BIT(8) | BIT(12)  },
@@ -148,6 +172,10 @@ static const struct aspeed_group_config ast2700_soc1_groups[] = {
 	{ "MDIO0", ARRAY_SIZE(mdio0_link), mdio0_link },
 	{ "MDIO1", ARRAY_SIZE(mdio1_link), mdio1_link },
 	{ "MDIO2", ARRAY_SIZE(mdio2_link), mdio2_link },
+	{ "RGMII0", ARRAY_SIZE(rgmii0_link), rgmii0_link },
+	{ "RGMII1", ARRAY_SIZE(rgmii1_link), rgmii1_link },
+	{ "RMII0", ARRAY_SIZE(rmii0_link), rmii0_link },
+	{ "RMII1", ARRAY_SIZE(rmii1_link), rmii1_link },
 	{ "SPI0", ARRAY_SIZE(spi0_link), spi0_link },
 	{ "SPI0ABR", ARRAY_SIZE(spi0abr_link), spi0abr_link },
 	{ "SPI0CS1", ARRAY_SIZE(spi0cs1_link), spi0cs1_link },
