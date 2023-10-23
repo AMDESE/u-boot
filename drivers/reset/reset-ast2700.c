@@ -64,6 +64,7 @@ static int ast2700_reset_probe(struct udevice *dev)
 
 static const struct udevice_id ast2700_reset_ids[] = {
 	{ .compatible = "aspeed,ast2700-reset" },
+	{ .compatible = "aspeed,ast2700-soc1-reset" },
 	{ }
 };
 
