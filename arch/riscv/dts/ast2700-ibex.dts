@@ -124,6 +124,12 @@
 			type = "blob-ext";
 			align-end = <4>;
 		};
+		VBIOS {
+			bootph-all;
+			filename = "board/aspeed/ibex_ast2700/prebuilt/uefi_x64_2700.bin";
+			type = "blob-ext";
+			align-end = <4>;
+		};
 	};
 
 	ast2700-u-boot-spl {
