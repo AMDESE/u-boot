@@ -17,6 +17,7 @@
 #include <asm/arch-aspeed/scu_ast2700.h>
 #include <linux/bitfield.h>
 #include <linux/bitops.h>
+#include <linux/delay.h>
 #include <linux/err.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -207,15 +208,19 @@ static int dp_init(struct ast2700_soc0_scu *scu, struct ast2700_soc0_clk *clk)
 	val = readl(scu_offset);
 	is_mcu_stop = ((val & BIT(13)) == 0);
 
-	// enable clk
-	setbits_le32(&clk->clkgate_clr, SCU_CPU_CLKGATE1_DP);
-
 	/* reset for DPTX and DPMCU if MCU isn't running */
 	if (is_mcu_stop) {
 		setbits_le32(&scu->modrst1_ctrl, SCU_CPU_RST_DP);
 		setbits_le32(&scu->modrst1_ctrl, SCU_CPU_RST_DPMCU);
+		udelay(100);
+
+		// enable clk
+		setbits_le32(&clk->clkgate_clr, SCU_CPU_CLKGATE1_DP);
+		mdelay(10);
+
 		setbits_le32(&scu->modrst1_clr, SCU_CPU_RST_DP);
 		setbits_le32(&scu->modrst1_clr, SCU_CPU_RST_DPMCU);
+		udelay(1);
 	}
 
 	/* select HOST or BMC as display control master
