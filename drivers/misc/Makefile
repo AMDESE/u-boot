@@ -89,3 +89,4 @@ obj-$(CONFIG_ESM_K3) += k3_esm.o
 obj-$(CONFIG_ESM_PMIC) += esm_pmic.o
 obj-$(CONFIG_SL28CPLD) += sl28cpld.o
 obj-$(CONFIG_$(SPL_)ASPEED_DP) += aspeed_dp.o
+obj-$(CONFIG_ASPEED_VIBOS) += aspeed_vbios.o
