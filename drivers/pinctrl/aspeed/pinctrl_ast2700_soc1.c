@@ -72,12 +72,20 @@ static struct ast2700_soc1_sig_desc rgmii0_link[] = {
 	{ 0x44, GENMASK(31, 0),
 	  BIT(0) | BIT(4) | BIT(8) | BIT(12) | BIT(16) | BIT(20) | BIT(24) | BIT(28) },
 	{ 0x48, GENMASK(14, 0), BIT(0) | BIT(4) | BIT(8) | BIT(12) },
+	/* IO Driving */
+	{ 0xD4, GENMASK(23, 0),
+	  BIT(0) | BIT(2) | BIT(4) | BIT(6) | BIT(8) | BIT(10) | BIT(12) | BIT(14) | BIT(16) |
+		  BIT(18) | BIT(20) | BIT(22) }
 };
 
 static struct ast2700_soc1_sig_desc rgmii1_link[] = {
 	{ 0x4c, GENMASK(31, 0),
 	  BIT(0) | BIT(4) | BIT(8) | BIT(12) | BIT(16) | BIT(20) | BIT(24) | BIT(28) },
 	{ 0x50, GENMASK(14, 0), BIT(0) | BIT(4) | BIT(8) | BIT(12) },
+	/* IO Driving */
+	{ 0xD8, GENMASK(23, 0),
+	  BIT(0) | BIT(2) | BIT(4) | BIT(6) | BIT(8) | BIT(10) | BIT(12) | BIT(14) | BIT(16) |
+		  BIT(18) | BIT(20) | BIT(22) }
 };
 
 static struct ast2700_soc1_sig_desc rmii0_link[] = {
