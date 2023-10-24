@@ -22,9 +22,11 @@ DECLARE_GLOBAL_DATA_PTR;
  *         | |---->| divider |---->RGMII 125M for MAC#0 & MAC#1
  * APLL -->|/
  * To simplify the control flow:
- * RGMII 0/1 always use HPLL as the internal clock source
+ * RGMII 0/1 always use HPLL (1000 MHz) as the internal clock source
  * HPLL ---->| divider |---->RGMII 125M for MAC#0 & MAC#1
  */
+#define RGMII_DEFAULT_CLK_SRC	AST2700_SOC1_CLK_HPLL
+
 #define RGMIICK_DIV4	0
 #define RGMIICK_DIV6	2
 #define RGMIICK_DIV8	3 /* recommended */
@@ -40,20 +42,6 @@ DECLARE_GLOBAL_DATA_PTR;
 
 struct ast2700_soc1_clk_priv {
 	struct ast2700_soc1_clk *clk;
-};
-
-struct ast2700_mac_clk_div {
-	uint32_t src;	/* 0=external PAD, 1=internal PLL */
-	uint32_t fin;	/* divider input speed */
-	uint32_t div;
-	uint32_t fout;	/* fout = fin / n */
-};
-
-static struct ast2700_mac_clk_div rgmii_clk_defconfig = {
-	.src = AST2700_SOC1_CLK_HPLL,
-	.fin = 1000000000,
-	.div = RGMIICK_DIV8,
-	.fout = 125000000,
 };
 
 static uint32_t ast2700_soc1_get_pll_rate(struct ast2700_soc1_clk *clk, int pll_idx)
@@ -79,6 +67,52 @@ static uint32_t ast2700_soc1_get_pll_rate(struct ast2700_soc1_clk *clk, int pll_
 	}
 
 	return ((CLKIN_25M * mul) / div);
+}
+
+static uint32_t ast2700_configure_pll(struct ast2700_soc1_clk *clk, struct ast2700_pll_cfg *p_cfg,
+				      int pll_idx)
+{
+	void *addr, *addr_ext;
+	uint32_t reg;
+
+	switch (pll_idx) {
+	case AST2700_SOC1_CLK_HPLL:
+		addr = &clk->hpll;
+		addr_ext = &clk->hpll_ext;
+		break;
+	case AST2700_SOC1_CLK_APLL:
+		addr = &clk->apll;
+		addr_ext = &clk->apll_ext;
+		break;
+	case AST2700_SOC1_CLK_DPLL:
+		addr = &clk->dpll;
+		addr_ext = &clk->dpll_ext;
+		break;
+	default:
+		debug("unknown PLL index\n");
+		return 1;
+	}
+
+	p_cfg->reg.b.bypass = 0;
+	p_cfg->reg.b.off = 0;
+	p_cfg->reg.b.reset = 1;
+
+	reg = readl(addr);
+	reg &= ~GENMASK(25, 0);
+	reg |= p_cfg->reg.w;
+	writel(reg, addr);
+
+	/* write extend parameter */
+	writel(p_cfg->ext_reg, addr_ext);
+	udelay(100);
+	p_cfg->reg.b.reset = 0;
+	reg &= ~GENMASK(25, 0);
+	reg |= p_cfg->reg.w;
+	writel(reg, addr);
+	while (!(readl(addr_ext) & BIT(31)))
+		;
+
+	return 0;
 }
 
 #define SCU_CLKSEL2_HCLK_DIV_MASK		GENMASK(22, 20)
@@ -215,21 +249,42 @@ ast2700_soc1_get_uart_clk_rate(struct ast2700_soc1_clk *clk, int uart_idx)
 	return rate;
 }
 
-static void ast2700_init_rgmii_clk(struct ast2700_soc1_clk *clk, struct ast2700_mac_clk_div *p_cfg)
+static void ast2700_init_mac_pll(struct ast2700_soc1_clk *clk, int pll_idx)
 {
-	uint32_t reg_280 = readl(&clk->clk_sel1);
+	struct ast2700_pll_desc pll;
+
+	/* 1000 MHz setting for HPLL, APLL*/
+	pll.cfg.reg.w = 0x27;
+	pll.cfg.ext_reg = 0x14;
+	ast2700_configure_pll(clk, &pll.cfg, pll_idx);
+}
+
+static void ast2700_init_rgmii_clk(struct ast2700_soc1_clk *clk, int pll_idx)
+{
 	uint32_t reg_284 = readl(&clk->clk_sel2);
 
-	/* select internal clock source */
-	if (p_cfg->src == AST2700_SOC1_CLK_HPLL)
+	if (pll_idx == AST2700_SOC1_CLK_HPLL) {
+		uint32_t reg_280 = readl(&clk->clk_sel1);
+
+		/* set clock divider */
+		reg_280 &= ~GENMASK(27, 25);
+		reg_280 |= RGMIICK_DIV8 << 25;
+		writel(reg_280, &clk->clk_sel1);
+
+		/* select HPLL clock source */
 		reg_284 &= ~BIT(18);
-	else
+	} else {
+		/* select APLL clock source */
 		reg_284 |= BIT(18);
+	}
 
-	/* set clock divider */
-	reg_280 |= (p_cfg->div & 0x7) << 25;
+	/*
+	 * re-init PLL if the current PLL output frequency doesn't match
+	 * the divider setting
+	 */
+	if (ast2700_soc1_get_pll_rate(clk, pll_idx) != 1000000000)
+		ast2700_init_mac_pll(clk, pll_idx);
 
-	writel(reg_280, &clk->clk_sel1);
 	writel(reg_284, &clk->clk_sel2);
 }
 
@@ -341,7 +396,7 @@ static int ast2700_soc1_clk_probe(struct udevice *dev)
 	if (IS_ERR(priv->clk))
 		return PTR_ERR(priv->clk);
 
-	ast2700_init_rgmii_clk(priv->clk, &rgmii_clk_defconfig);
+	ast2700_init_rgmii_clk(priv->clk, RGMII_DEFAULT_CLK_SRC);
 	ast2700_configure_mac01_clk(priv->clk);
 
 	return 0;
