@@ -74,12 +74,14 @@
 
 &fmc {
 	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_fwspiquad_default>;
 
 	flash@0 {
 		status = "okay";
 		spi-max-frequency = <12500000>;
-		spi-tx-bus-width = <1>;
-		spi-rx-bus-width = <1>;
+		spi-tx-bus-width = <4>;
+		spi-rx-bus-width = <4>;
 	};
 
 	flash@1 {

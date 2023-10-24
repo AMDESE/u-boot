@@ -715,6 +715,11 @@
 		function = "RMII1";
 		groups = "RMII1";
 	};
+
+	pinctrl_fwspiquad_default: fwspiquad_default {
+		function = "FWSPIQUAD";
+		groups = "FWSPIQUAD";
+	};
 };
 
 #ifdef CONFIG_ASPEED_DP
