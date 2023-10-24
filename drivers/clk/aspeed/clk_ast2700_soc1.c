@@ -16,8 +16,44 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
+/**
+ * RGMII clock source tree
+ * HPLL -->|\
+ *         | |---->| divider |---->RGMII 125M for MAC#0 & MAC#1
+ * APLL -->|/
+ * To simplify the control flow:
+ * RGMII 0/1 always use HPLL as the internal clock source
+ * HPLL ---->| divider |---->RGMII 125M for MAC#0 & MAC#1
+ */
+#define RGMIICK_DIV4	0
+#define RGMIICK_DIV6	2
+#define RGMIICK_DIV8	3 /* recommended */
+#define RGMIICK_DIV10	4
+#define RGMIICK_DIV12	5
+#define RGMIICK_DIV14	6
+#define RGMIICK_DIV16	7
+
+/* MAC Clock Delay settings */
+#define MAC01_DEF_DELAY_1G		0x00aac105
+#define MAC01_DEF_DELAY_100M		0x00410410
+#define MAC01_DEF_DELAY_10M		0x00410410
+
 struct ast2700_soc1_clk_priv {
 	struct ast2700_soc1_clk *clk;
+};
+
+struct ast2700_mac_clk_div {
+	uint32_t src;	/* 0=external PAD, 1=internal PLL */
+	uint32_t fin;	/* divider input speed */
+	uint32_t div;
+	uint32_t fout;	/* fout = fin / n */
+};
+
+static struct ast2700_mac_clk_div rgmii_clk_defconfig = {
+	.src = AST2700_SOC1_CLK_HPLL,
+	.fin = 1000000000,
+	.div = RGMIICK_DIV8,
+	.fout = 125000000,
 };
 
 static uint32_t ast2700_soc1_get_pll_rate(struct ast2700_soc1_clk *clk, int pll_idx)
@@ -179,6 +215,33 @@ ast2700_soc1_get_uart_clk_rate(struct ast2700_soc1_clk *clk, int uart_idx)
 	return rate;
 }
 
+static void ast2700_init_rgmii_clk(struct ast2700_soc1_clk *clk, struct ast2700_mac_clk_div *p_cfg)
+{
+	uint32_t reg_280 = readl(&clk->clk_sel1);
+	uint32_t reg_284 = readl(&clk->clk_sel2);
+
+	/* select internal clock source */
+	if (p_cfg->src == AST2700_SOC1_CLK_HPLL)
+		reg_284 &= ~BIT(18);
+	else
+		reg_284 |= BIT(18);
+
+	/* set clock divider */
+	reg_280 |= (p_cfg->div & 0x7) << 25;
+
+	writel(reg_280, &clk->clk_sel1);
+	writel(reg_284, &clk->clk_sel2);
+}
+
+static void ast2700_configure_mac01_clk(struct ast2700_soc1_clk *clk)
+{
+	clrsetbits_le32(&clk->mac_delay, GENMASK(25, 0), MAC01_DEF_DELAY_1G);
+
+	/* set 100M/10M default delay */
+	writel(MAC01_DEF_DELAY_100M, &clk->mac_100m_delay);
+	writel(MAC01_DEF_DELAY_10M, &clk->mac_10m_delay);
+}
+
 static ulong ast2700_soc1_clk_get_rate(struct clk *clk)
 {
 	struct ast2700_soc1_clk_priv *priv = dev_get_priv(clk->dev);
@@ -277,6 +340,9 @@ static int ast2700_soc1_clk_probe(struct udevice *dev)
 	priv->clk = dev_read_addr_ptr(dev);
 	if (IS_ERR(priv->clk))
 		return PTR_ERR(priv->clk);
+
+	ast2700_init_rgmii_clk(priv->clk, &rgmii_clk_defconfig);
+	ast2700_configure_mac01_clk(priv->clk);
 
 	return 0;
 }
