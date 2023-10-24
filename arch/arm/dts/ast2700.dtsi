@@ -334,7 +334,7 @@
 			#size-cells = <2>;
 
 			soc1_rst: reset-controller@14c02200 {
-				compatible = "aspeed,ast2700-soc1-reset";
+				compatible = "aspeed,ast2700-reset";
 				reg = <0 0x200 0 0x40>;
 				#reset-cells = <1>;
 			};
