@@ -6,6 +6,7 @@
 
 #include <common.h>
 #include <asm/io.h>
+#include <clk.h>
 #include <dm.h>
 #include <dm/device_compat.h>
 #include <errno.h>
@@ -15,6 +16,7 @@
 #include <linux/bitops.h>
 #include <linux/sizes.h>
 
+#define   SCU_CPU_REVISION_ID_EFUSE	GENMASK(15, 8)
 #define SCU_CPU_HWSTRAP1		(0x010)
 #define SCU_CPU_HWSTRAP1_CLR		(0x014)
 #define SCU_CPU_VGA_FUNC		(0x414)
@@ -45,8 +47,9 @@ struct ast_pcie_priv {
 	void __iomem *e2m1_base;
 	void __iomem *vga_cpu_base;
 	void __iomem *vga_io_base;
-	u32	dac_src;
-	u32	dp_src;
+	struct clk vga0_clk;
+	struct clk vga1_clk;
+	struct clk dac_clk;
 };
 
 // To support 64bit address calculation for e2m
@@ -70,8 +73,23 @@ static int ast_pci_ep_probe(struct udevice *dev)
 	bool is_pcie1_enable =
 		(readl(priv->scu_base + SCU_PCI_MISCF0) & BIT(0));
 	bool is_64vram = readl(priv->dram_base + 0x100) & BIT(0);
+	u8 dac_src = readl(priv->scu_base + SCU_CPU_HWSTRAP1) & BIT(28);
+	u8 dp_src = readl(priv->scu_base + SCU_CPU_HWSTRAP1) & BIT(29);
+	u8 efuse = FIELD_GET(SCU_CPU_REVISION_ID_EFUSE, readl(priv->scu_base));
+	int ret;
+
+	if (efuse == 1) {
+		// 2700 single node only
+		is_pcie1_enable = false;
+		dac_src = 0;
+		dp_src = 0;
+	} else if (efuse == 2) {
+		debug("%s: 2720 has no VGA\n", __func__);
+		return -1;
+	}
 
 	debug("%s: ENABLE 0(%d) 1(%d)\n", __func__, is_pcie0_enable, is_pcie1_enable);
+	debug("%s: dac_src(%d) dp_src(%d)\n", __func__, dac_src, dp_src);
 
 	vram_addr = 0x10000000;
 
@@ -86,18 +104,23 @@ static int ast_pci_ep_probe(struct udevice *dev)
 	else
 		setbits_le32(priv->scu_base + SCU_CPU_HWSTRAP1_CLR, BIT(10));
 
-	if ((is_pcie0_enable || is_pcie1_enable) &&
-	    (priv->dac_src != 3 || priv->dp_src != 3)) {
+	if ((is_pcie0_enable || is_pcie1_enable)) {
+		ret = clk_enable(&priv->dac_clk);
+		if (ret) {
+			dev_err(dev, "%s(): Failed to enable dac clk\n", __func__);
+			return ret;
+		}
+
 		val = readl(priv->scu_base + SCU_CPU_VGA_FUNC);
 		val &= ~(VGA_DAC_OUTPUT | VGA_DP_OUTPUT | VGA_DAC_DISABLE);
-		val |= FIELD_PREP(VGA_DAC_OUTPUT, priv->dac_src)
-		     | FIELD_PREP(VGA_DP_OUTPUT, priv->dp_src)
+		val |= FIELD_PREP(VGA_DAC_OUTPUT, dac_src)
+		     | FIELD_PREP(VGA_DP_OUTPUT, dp_src)
 		     | FIELD_PREP(VGA_DAC_DISABLE, 0);
 		writel(val, priv->scu_base + SCU_CPU_VGA_FUNC);
 
 		// vga link init
 		writel(0x00030009, priv->vga_cpu_base + 0x10);
-		val = 0x10000000 | priv->dac_src;
+		val = 0x10000000 | dac_src;
 		writel(val, priv->vga_cpu_base + 0x50);
 		writel(0x00010002, priv->vga_cpu_base + 0x44);
 		writel(0x00030009, priv->vga_cpu_base + 0x110);
@@ -106,8 +129,11 @@ static int ast_pci_ep_probe(struct udevice *dev)
 	}
 
 	if (is_pcie0_enable) {
-//		writel(0x800254, PCIE0_CPU_REG + 0x60);
-//		writel(0x11501a02, PCIE0_CPU_REG);
+		ret = clk_enable(&priv->vga0_clk);
+		if (ret) {
+			dev_err(dev, "%s(): Failed to enable vga0 clk\n", __func__);
+			return ret;
+		}
 
 		vram_addr -= vram_size;
 		debug("pcie0 e2m addr(%x)\n", _ast_get_e2m_addr(priv, vram_addr));
@@ -121,8 +147,11 @@ static int ast_pci_ep_probe(struct udevice *dev)
 	}
 
 	if (is_pcie1_enable) {
-//		writel(0x800254, PCIE1_CPU_REG + 0x60);
-//		writel(0x11501a02, PCIE1_CPU_REG);
+		ret = clk_enable(&priv->vga1_clk);
+		if (ret) {
+			dev_err(dev, "%s(): Failed to enable vga1 clk\n", __func__);
+			return ret;
+		}
 
 		vram_addr -= vram_size;
 		debug("pcie1 e2m addr(%x)\n", _ast_get_e2m_addr(priv, vram_addr));
@@ -184,19 +213,23 @@ static int ast_pcie_ep_of_to_plat(struct udevice *dev)
 		return -ENOMEM;
 	}
 
-	ret = dev_read_u32(dev, "aspeed,dac-src", &priv->dac_src);
+	ret = clk_get_by_index(dev, 0, &priv->vga0_clk);
 	if (ret) {
-		debug("aspeed,pcie_ep: failed to get dac src\n");
-		priv->dac_src = 3;
-	}
-	ret = dev_read_u32(dev, "aspeed,dp-src", &priv->dp_src);
-	if (ret) {
-		debug("aspeed,pcie_ep: failed to get dp src\n");
-		priv->dp_src = 3;
+		dev_err(dev, "get vga0 clk failed\n");
+		return -ENOMEM;
 	}
 
-	debug("%s: dac_src(%d) dp_src(%d)\n", __func__, priv->dac_src,
-	      priv->dp_src);
+	ret = clk_get_by_index(dev, 1, &priv->vga1_clk);
+	if (ret) {
+		dev_err(dev, "get vga1 clk failed\n");
+		return -ENOMEM;
+	}
+
+	ret = clk_get_by_index(dev, 2, &priv->dac_clk);
+	if (ret) {
+		dev_err(dev, "get dac clk failed\n");
+		return -ENOMEM;
+	}
 
 	return 0;
 }
