@@ -308,6 +308,11 @@ int spl_mmc_init(void)
 	return ret;
 }
 
+void spl_spi_driving_strength_conf(void)
+{
+	writel(0x00000fff, (void *)ASPEED_IO_FWSPI_DRIVING);
+}
+
 #define SLI_CPU_ADRBASE			0x12c17000
 #define SLI_IOD_ADRBASE			0x14c1e000
 #define SLIM_CPU_BASE			(SLI_CPU_ADRBASE + 0x000)
@@ -377,6 +382,7 @@ int spl_board_init_f(void)
 		spl_mmc_init();
 
 	dram_init();
+	spl_spi_driving_strength_conf();
 
 	rc = uclass_get_device_by_driver(UCLASS_CLK,
 					 DM_DRIVER_GET(aspeed_ast2700_soc0_clk), &clk_dev);

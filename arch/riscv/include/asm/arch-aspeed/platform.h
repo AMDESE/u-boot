@@ -31,6 +31,7 @@
 #define ASPEED_IO_RESET_LOG2	0x14C02060
 #define ASPEED_IO_RESET_LOG3	0x14C02070
 #define ASPEED_IO_RESET_LOG4	0x14C02080
+#define ASPEED_IO_FWSPI_DRIVING	0x14C024E0
 #else
 #err "Unrecognized Aspeed platform."
 #endif
