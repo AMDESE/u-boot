@@ -19,28 +19,32 @@
 struct aspeed_vbios_priv {
 	void *e2m0_ctl_base;
 	void *scu_ctl_base;
-	void *vbios_base;
+	void *vbios0_base;
 };
 
 static int aspeed_vbios_probe(struct udevice *dev)
 {
 	struct aspeed_vbios_priv *vbios = dev_get_priv(dev);
-	u32 value = (uintptr_t)(&uefi);
-	u64 temp;
+	u32 vbios0_e2m_value;
+	u64 vbios0_mem_base;
+	u32 vbios0_mem_length;
 
 	/* Get the controller base address */
-	temp = (uintptr_t)(vbios->vbios_base);
+	vbios0_mem_base = (uintptr_t)(vbios->vbios0_base);
+	vbios0_mem_length = sizeof(uefi);
 
-	memcpy((u32 *)vbios->vbios_base, uefi, sizeof(uefi));
+	memcpy((u32 *)vbios->vbios0_base, uefi, vbios0_mem_length);
+	invalidate_dcache_range(vbios0_mem_base, vbios0_mem_base
+	+ vbios0_mem_length);
 
 	/* Set VBIOS 32KB into reserved buffer */
-	value = (temp >> 4) | 0x04;
+	vbios0_e2m_value = (vbios0_mem_base >> 4) | 0x04;
 
 	/* Set VBIOS setting into e2m */
-	writel(value, vbios->e2m0_ctl_base + 0x4);
+	writel(vbios0_e2m_value, vbios->e2m0_ctl_base + 0x4);
 
 	/* Set VBIOS setting into scu */
-	writel(value, vbios->scu_ctl_base + 0x02c);
+	writel(vbios0_e2m_value, vbios->scu_ctl_base + 0x02c);
 
 	return 0;
 }
@@ -62,12 +66,12 @@ static int aspeed_vbios_of_to_plat(struct udevice *dev)
 		dev_err(dev, "can't allocate scu_ctl\n");
 		return PTR_ERR(vbios->scu_ctl_base);
 	}
-	nodeoff = fdt_path_offset(gd->fdt_blob, "/reserved-memory/vbios_base0");
+	nodeoff = fdt_path_offset(gd->fdt_blob, "/reserved-memory/pcie_vbios0");
 	fdt_get_resource(gd->fdt_blob, nodeoff, "reg", 0, &res);
-	vbios->vbios_base = (void *)res.start;
-	if (IS_ERR(vbios->vbios_base)) {
-		dev_err(dev, "can't obtain vbios_base\n");
-		return PTR_ERR(vbios->vbios_base);
+	vbios->vbios0_base = (void *)res.start;
+	if (IS_ERR(vbios->vbios0_base)) {
+		dev_err(dev, "can't obtain pcie_vbios0\n");
+		return PTR_ERR(vbios->vbios0_base);
 	}
 	return 0;
 }
