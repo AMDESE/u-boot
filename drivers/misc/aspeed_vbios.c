@@ -16,9 +16,11 @@
 #include <asm/io.h>
 #include "ast_vbios.h"
 
+#define VBIOS0_SCU_OFFSET 0xa2c
+
 struct aspeed_vbios_priv {
+	struct regmap *scu_ctl_base;
 	void *e2m0_ctl_base;
-	void *scu_ctl_base;
 	void *vbios0_base;
 };
 
@@ -28,6 +30,10 @@ static int aspeed_vbios_probe(struct udevice *dev)
 	u32 vbios0_e2m_value;
 	u64 vbios0_mem_base;
 	u32 vbios0_mem_length;
+	u64 temp;
+
+	temp = (uintptr_t)(vbios->scu_ctl_base);
+	dev_err(dev, "scu_ctl_base %llx\n", temp);
 
 	/* Get the controller base address */
 	vbios0_mem_base = (uintptr_t)(vbios->vbios0_base);
@@ -44,7 +50,7 @@ static int aspeed_vbios_probe(struct udevice *dev)
 	writel(vbios0_e2m_value, vbios->e2m0_ctl_base + 0x4);
 
 	/* Set VBIOS setting into scu */
-	writel(vbios0_e2m_value, vbios->scu_ctl_base + 0x02c);
+	regmap_write(vbios->scu_ctl_base, VBIOS0_SCU_OFFSET, vbios0_e2m_value);
 
 	return 0;
 }
@@ -61,11 +67,13 @@ static int aspeed_vbios_of_to_plat(struct udevice *dev)
 		dev_err(dev, "can't allocate e2m0_ctl\n");
 		return PTR_ERR(vbios->e2m0_ctl_base);
 	}
-	vbios->scu_ctl_base = (void *)devfdt_get_addr_index(dev, 1);
+
+	vbios->scu_ctl_base = syscon_regmap_lookup_by_phandle(dev, "aspeed,scu");
 	if (IS_ERR(vbios->scu_ctl_base)) {
-		dev_err(dev, "can't allocate scu_ctl\n");
+		dev_err(dev, "can't get regmap for scu!\n");
 		return PTR_ERR(vbios->scu_ctl_base);
 	}
+
 	nodeoff = fdt_path_offset(gd->fdt_blob, "/reserved-memory/pcie_vbios0");
 	fdt_get_resource(gd->fdt_blob, nodeoff, "reg", 0, &res);
 	vbios->vbios0_base = (void *)res.start;
