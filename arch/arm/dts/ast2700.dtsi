@@ -214,7 +214,8 @@
 
 		vbios: vbios@0 {
 			compatible = "aspeed,ast2700-vbios";
-			reg = <0 0x12c21100 0 0x100>;		// e2m0
+			reg = <0 0x12c21100 0 0x100>,		// e2m0
+			      <0 0x12c22100 0 0x100>;		// e2m1
 			aspeed,scu = <&syscon0>;
 			status = "disabled";
 		};
