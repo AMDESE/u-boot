@@ -118,6 +118,7 @@ struct ftgmac100 {
 #define FTGMAC100_DBLAC_TXBURST_SIZE(x)	(((x) & 0x3) << 10)
 #define FTGMAC100_DBLAC_RXDES_SIZE(x)	(((x) & 0xf) << 12)
 #define FTGMAC100_DBLAC_TXDES_SIZE(x)	(((x) & 0xf) << 16)
+#define FTGMAC100_DESC_UNIT		8
 #define FTGMAC100_DBLAC_IFG_CNT(x)	(((x) & 0x7) << 20)
 #define FTGMAC100_DBLAC_IFG_INC		BIT(23)
 
@@ -191,7 +192,7 @@ struct ftgmac100_txdes {
 	unsigned int	txdes1;
 	unsigned int	txdes2;	/* not used by HW */
 	unsigned int	txdes3;	/* TXBUF_BADR */
-} __aligned(16);
+} __aligned(ARCH_DMA_MINALIGN);
 
 #define FTGMAC100_TXDES0_TXBUF_SIZE(x)	((x) & 0x3fff)
 #define FTGMAC100_TXDES0_EDOTR		BIT(15)
@@ -219,7 +220,7 @@ struct ftgmac100_rxdes {
 	unsigned int	rxdes1;
 	unsigned int	rxdes2;	/* not used by HW */
 	unsigned int	rxdes3;	/* RXBUF_BADR */
-} __aligned(16);
+} __aligned(ARCH_DMA_MINALIGN);
 
 #define FTGMAC100_RXDES0_VDBC(x)	((x) & 0x3fff)
 #define FTGMAC100_RXDES0_EDORR		BIT(15)

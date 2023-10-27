@@ -339,7 +339,7 @@ static int ftgmac100_start(struct udevice *dev)
 	struct ftgmac100 *ftgmac100 = priv->iobase;
 	union ftgmac100_dma_addr dma_addr = {.hi = 0, .lo = 0};
 	struct phy_device *phydev = priv->phydev;
-	unsigned int maccr;
+	unsigned int maccr, dblac, desc_size;
 	ulong start, end;
 	int ret;
 	int i;
@@ -395,6 +395,15 @@ static int ftgmac100_start(struct udevice *dev)
 	dma_addr.addr = (dma_addr_t)priv->rxdes;
 	writel(dma_addr.lo, &ftgmac100->rxr_badr);
 	writel(dma_addr.hi, &ftgmac100->rxr_badr_hi);
+
+	/* config tx/rx desc size register */
+	desc_size = ARCH_DMA_MINALIGN / FTGMAC100_DESC_UNIT;
+	/* The descriptor size is at least 2 descriptor units. */
+	if (desc_size < 2)
+		desc_size = 2;
+	dblac = readl(&ftgmac100->dblac) & ~GENMASK(19, 12);
+	dblac |= FTGMAC100_DBLAC_RXDES_SIZE(desc_size) | FTGMAC100_DBLAC_TXDES_SIZE(desc_size);
+	writel(dblac, &ftgmac100->dblac);
 
 	/* poll receive descriptor automatically */
 	writel(FTGMAC100_APTC_RXPOLL_CNT(1), &ftgmac100->aptc);
