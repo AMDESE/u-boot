@@ -123,13 +123,13 @@ static int aspeed_vbios_probe(struct udevice *dev)
 		vbios_e2m_value = (vbios_mem_base >> 4) | 0x05;
 
 		/* Set VBIOS setting into e2m */
-		writel(vbios_e2m_value, vbios->e2m1_ctl_base + 0x4);
+		writel(vbios_e2m_value, vbios->e2m1_ctl_base + 0x24);
 
 		/* Set VBIOS setting into scu */
 		regmap_write(vbios->scu_ctl_base, VBIOS1_SCU_OFFSET, vbios_e2m_value);
 	} else {
 		/* clear VBIOS1 setting into e2m */
-		writel(0, vbios->e2m1_ctl_base + 0x4);
+		writel(0, vbios->e2m1_ctl_base + 0x24);
 
 		/* clear VBIOS1 setting into scu */
 		regmap_write(vbios->scu_ctl_base, VBIOS1_SCU_OFFSET, 0);
