@@ -157,7 +157,7 @@ static int ast_pci_ep_probe(struct udevice *dev)
 		debug("pcie1 e2m addr(%x)\n", _ast_get_e2m_addr(priv, vram_addr));
 		val = _ast_get_e2m_addr(priv, vram_addr) | FIELD_PREP(VGA_FB_SIZE, vram_size_cfg);
 		debug("pcie1 debug reg(%x)\n", val);
-		writel(val, priv->e2m1_base + 0x100);
+		writel(val, priv->e2m1_base + 0x120);
 		writel(val, priv->scu_base + SCU_CPU_VGA1_SAR0);
 
 		// Enable VRAM address offset: cursor, rvas, 2d
