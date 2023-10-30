@@ -173,10 +173,6 @@
 	status = "okay";
 };
 
-&pcie_ep {
-	status = "okay";
-};
-
 &vbios {
 	status = "okay";
 };

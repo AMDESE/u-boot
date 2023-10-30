@@ -7,6 +7,13 @@
 
 #define CLKIN_25M 25000000UL
 
+#define SCU_CPU_CLKGATE1_RVAS1			BIT(28)
+#define SCU_CPU_CLKGATE1_RVAS0			BIT(25)
+#define SCU_CPU_CLKGATE1_DP			BIT(18)
+#define SCU_CPU_CLKGATE1_DAC			BIT(17)
+#define SCU_CPU_CLKGATE1_VGA1			BIT(10)
+#define SCU_CPU_CLKGATE1_VGA0			BIT(5)
+
 /*
  * Clock divider/multiplier configuration struct.
  * For H-PLL and M-PLL the formula is
