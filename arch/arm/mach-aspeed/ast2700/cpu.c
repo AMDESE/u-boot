@@ -203,9 +203,14 @@ static void *fdt_get_syscon_addr_ptr(struct udevice *dev)
 int arch_misc_init(void)
 {
 	int rc;
+	const char *p;
 	struct udevice *clk_dev;
 	struct ast2700_soc0_clk *clk;
 	struct ast2700_soc0_scu *scu;
+
+	p = env_get("bootcmd");
+	if (p)
+		return 0;
 
 	if (IS_ENABLED(CONFIG_ARCH_MISC_INIT)) {
 		if ((readl(ASPEED_IO_HW_STRAP1) & STRAP_BOOTMODE_BIT))
