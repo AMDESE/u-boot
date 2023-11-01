@@ -606,6 +606,80 @@ static void otp_print_flash_strap_info(void)
 	}
 }
 
+static int otp_patch_prog(phys_addr_t addr, u32 offset, size_t size)
+{
+	int ret = 0;
+	u16 val;
+
+	printf("%s: addr:0x%llx, offset:0x%x, size:0x%lx\n", __func__,
+	       addr, offset, size);
+
+	for (int i = 0; i < size; i++) {
+		val = readw((u16 *)addr + i);
+		printf("read 0x%lx = 0x%x..., prog into OTP addr 0x%x\n",
+		       (uintptr_t)addr + i, val, offset + i);
+		ret += otp_prog(offset + i, val);
+	}
+
+	return ret;
+}
+
+static int otp_patch_enable_pre(u16 offset, size_t size)
+{
+	int ret;
+
+	/* Set location - OTPCFG4[10:1] */
+	ret = otp_prog_data(OTP_REGION_CONF, 4, 1, offset, 1);
+	if (ret) {
+		printf("%s: Prog location Failed, ret:0x%x\n", __func__, ret);
+		return ret;
+	}
+
+	/* Set Size - OTPCFG5[9:0] */
+	ret = otp_prog_data(OTP_REGION_CONF, 5, 0, size, 1);
+	if (ret) {
+		printf("%s: Prog size Failed, ret:0x%x\n", __func__, ret);
+		return ret;
+	}
+
+	/* enable pre_otp_patch_vld - OTPCFG4[0] */
+	ret = otp_prog_data(OTP_REGION_CONF, 4, 0, 1, 1);
+	if (ret) {
+		printf("%s: Enable pre_otp_patch_vld Failed, ret:0x%x\n", __func__, ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int otp_patch_enable_post(u16 offset, size_t size)
+{
+	int ret;
+
+	/* Set location - OTPCFG6[10:1] */
+	ret = otp_prog_data(OTP_REGION_CONF, 6, 1, offset, 1);
+	if (ret) {
+		printf("%s: Prog location Failed, ret:0x%x\n", __func__, ret);
+		return ret;
+	}
+
+	/* Set Size - OTPCFG7[9:0] */
+	ret = otp_prog_data(OTP_REGION_CONF, 7, 0, size, 1);
+	if (ret) {
+		printf("%s: Prog size Failed, ret:0x%x\n", __func__, ret);
+		return ret;
+	}
+
+	/* enable pre_otp_patch_vld - OTPCFG6[0] */
+	ret = otp_prog_data(OTP_REGION_CONF, 6, 0, 1, 1);
+	if (ret) {
+		printf("%s: Enable post_otp_patch_vld Failed, ret:0x%x\n", __func__, ret);
+		return ret;
+	}
+
+	return 0;
+}
+
 static int do_otpinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	if (argc != 2 && argc != 3)
@@ -662,30 +736,41 @@ static int do_otpread(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 	return CMD_RET_USAGE;
 }
 
-static int do_otpprogpatch(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
+static int do_otppatch(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	phys_addr_t addr;
 	u32 offset;
 	size_t size;
 	int ret;
-	u16 val;
 
 	printf("%s: argc:%d\n", __func__, argc);
 
-	if (argc == 4) {
+	if (argc != 5)
+		return CMD_RET_USAGE;
+
+	/* Drop the cmd */
+	argc--;
+	argv++;
+
+	if (!strcmp(argv[0], "prog")) {
 		addr = simple_strtoul(argv[1], NULL, 16);
 		offset = simple_strtoul(argv[2], NULL, 16);
 		size = simple_strtoul(argv[3], NULL, 16);
-	} else {
-		return CMD_RET_USAGE;
-	}
 
-	printf("%s: addr:0x%llx, offset:0x%x, size:0x%lx\n", __func__, addr, offset, size);
-	for (int i = 0; i < size; i++) {
-		val = readw((u16 *)addr + i);
-		printf("read 0x%lx = 0x%x..., prog into OTP addr 0x%x\n",
-		       (uintptr_t)addr + i, val, offset + i);
-		ret = otp_prog(offset + i, val);
+		ret = otp_patch_prog(addr, offset, size);
+
+	} else if (!strcmp(argv[0], "enable")) {
+		offset = simple_strtoul(argv[2], NULL, 16);
+		size = simple_strtoul(argv[3], NULL, 16);
+
+		if (!strcmp(argv[1], "pre"))
+			ret = otp_patch_enable_pre(offset, size);
+
+		else if (!strcmp(argv[1], "post"))
+			ret = otp_patch_enable_post(offset, size);
+
+		else
+			return CMD_RET_USAGE;
 	}
 
 	if (ret == OTP_SUCCESS)
@@ -879,7 +964,7 @@ static struct cmd_tbl cmd_otp[] = {
 	U_BOOT_CMD_MKENT(version, 1, 0, do_otpver, "", ""),
 	U_BOOT_CMD_MKENT(read, 4, 0, do_otpread, "", ""),
 	U_BOOT_CMD_MKENT(pb, 6, 0, do_otppb, "", ""),
-	U_BOOT_CMD_MKENT(progpatch, 4, 0, do_otpprogpatch, "", ""),
+	U_BOOT_CMD_MKENT(patch, 5, 0, do_otppatch, "", ""),
 	U_BOOT_CMD_MKENT(ecc, 2, 0, do_otpecc, "", ""),
 	U_BOOT_CMD_MKENT(info, 3, 0, do_otpinfo, "", ""),
 };
@@ -937,11 +1022,12 @@ static int do_ast_otp(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 U_BOOT_CMD(otp, 7, 0,  do_ast_otp,
 	   "ASPEED One-Time-Programmable sub-system",
 	   "version\n"
-	   "otp read conf|strap|f-strap|f-strap-vld|u-data|s-data|puf <otp_w_offset> <w_count>\n"
+	   "otp read rom|conf|strap|f-strap|f-strap-vld|u-data|s-data|puf <otp_w_offset> <w_count>\n"
 	   "otp pb conf|data [o] <otp_w_offset> <bit_offset> <value>\n"
 	   "otp pb strap|f-strap|f-strap-vld [o] <bit_offset> <value>\n"
 	   "otp pb f-strap-vld all\n"
 	   "otp info strap|f-strap\n"
-	   "otp progpatch <dram_addr> <otp_w_offset> <w_count>\n"
+	   "otp patch prog <dram_addr> <otp_w_offset> <w_count>\n"
+	   "otp patch enable pre|post <otp_start_w_offset> <w_count>\n"
 	   "otp ecc status|enable\n"
 	  );
