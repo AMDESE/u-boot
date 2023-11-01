@@ -19,6 +19,7 @@
 #include <linux/bitops.h>
 #include <linux/delay.h>
 #include <linux/err.h>
+#include <linux/delay.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -323,48 +324,287 @@ void spl_spi_driving_strength_conf(void)
 #define SLIV_IOD_BASE			(SLI_IOD_ADRBASE + 0x400)
 
 #define SLI_CTRL_I			0x00
+#define   SLIV_RAW_MODE			BIT(15)
+#define   SLI_TX_MODE			BIT(14)
 #define   SLI_RX_PHY_LAH_SEL_REV	BIT(13)
 #define   SLI_RX_PHY_LAH_SEL_NEG	BIT(12)
+#define   SLI_AUTO_SEND_TRN_OFF		BIT(8)
+#define   SLI_CLEAR_BUS			BIT(6)
+#define   SLI_TRANS_EN			BIT(5)
+#define   SLI_CLEAR_RX			BIT(2)
+#define   SLI_CLEAR_TX			BIT(1)
+#define   SLI_RESET_TRIGGER		BIT(0)
+#define SLI_CTRL_II			0x04
+#define SLI_CTRL_III			0x08
+#define   SLI_CLK_SEL			GENMASK(31, 28)
+#define     SLI_CLK_500M		0x6
+#define     SLI_CLK_200M		0x3
+#define   SLI_PHYCLK_SEL		GENMASK(27, 24)
+#define     SLI_PHYCLK_25M		0x0
+#define     SLI_PHYCLK_800M		0x1
+#define     SLI_PHYCLK_400M		0x2
+#define     SLI_PHYCLK_200M		0x3
+#define     SLI_PHYCLK_1G		0x5
+#define     SLI_PHYCLK_500M		0x6
+#define   SLIH_PAD_DLY_TX1		GENMASK(23, 18)
+#define   SLIH_PAD_DLY_TX0		GENMASK(17, 12)
+#define   SLIH_PAD_DLY_RX1		GENMASK(11, 6)
+#define   SLIH_PAD_DLY_RX0		GENMASK(5, 0)
+#define   SLIM_PAD_DLY_RX3		GENMASK(23, 18)
+#define   SLIM_PAD_DLY_RX2		GENMASK(17, 12)
+#define   SLIM_PAD_DLY_RX1		GENMASK(11, 6)
+#define   SLIM_PAD_DLY_RX0		GENMASK(5, 0)
+#define SLI_CTRL_IV			0x0c
+#define   SLIM_PAD_DLY_TX3		GENMASK(23, 18)
+#define   SLIM_PAD_DLY_TX2		GENMASK(17, 12)
+#define   SLIM_PAD_DLY_TX1		GENMASK(11, 6)
+#define   SLIM_PAD_DLY_TX0		GENMASK(5, 0)
 #define SLI_INTR_EN			0x10
 #define SLI_INTR_STATUS			0x14
 #define   SLI_INTR_RX_SYNC		BIT(15)
+#define   SLI_INTR_RX_ERR		BIT(13)
+#define   SLI_INTR_RX_NACK		BIT(12)
 #define   SLI_INTR_RX_TRAIN_PKT		BIT(10)
+#define   SLI_INTR_RX_DISCONN		BIT(6)
 #define   SLI_INTR_TX_SUSPEND		BIT(4)
 #define   SLI_INTR_TX_TRAIN		BIT(3)
 #define   SLI_INTR_TX_IDLE		BIT(2)
 #define   SLI_INTR_RX_SUSPEND		BIT(1)
 #define   SLI_INTR_RX_IDLE		BIT(0)
+#define   SLI_INTR_RX_ERRORS                                                     \
+	  (SLI_INTR_RX_ERR | SLI_INTR_RX_NACK | SLI_INTR_RX_DISCONN)
 
-static void sli_wait_suspend(uint32_t base)
+static int sli_wait(uint32_t base, uint32_t mask)
 {
 	uint32_t value;
-	uint32_t mask = SLI_INTR_TX_SUSPEND | SLI_INTR_RX_SUSPEND;
 
-	value = readl((void *)base + SLI_INTR_STATUS);
-	while ((value & mask) != mask)
+	writel(0xffffffff, (void *)base + SLI_INTR_STATUS);
+
+	do {
 		value = readl((void *)base + SLI_INTR_STATUS);
+		if (value & SLI_INTR_RX_ERRORS)
+			return -1;
+	} while ((value & mask) != mask);
+
+	return 0;
 }
 
+static int sli_wait_suspend(uint32_t base)
+{
+	return sli_wait(base, SLI_INTR_TX_SUSPEND | SLI_INTR_RX_SUSPEND);
+}
+
+static int is_sli_suspend(uint32_t base)
+{
+	uint32_t value;
+	uint32_t suspend = SLI_INTR_TX_SUSPEND | SLI_INTR_RX_SUSPEND;
+
+	value = readl((void *)base + SLI_INTR_STATUS);
+	if (value & SLI_INTR_RX_ERRORS)
+		return -1;
+	else if ((value & suspend) == suspend)
+		return 1;
+	else
+		return 0;
+}
+
+static void sli_calibrate_ahb_delay(void)
+{
+	uint32_t value;
+	int d0, d1, i;
+	int d0_start = -1;
+	int d0_end = -1;
+	int win[32][2];
+
+	for (i = 0; i < 32; i++) {
+		win[i][0] = -1;
+		win[i][1] = -1;
+	}
+
+	/* calibrate IOD-SLIH DS pad delay */
+	for (d0 = 6; d0 < 20; d0++) {
+		for (d1 = 6; d1 < 20; d1++) {
+			/* set IOD SLIH DS (RX) delay */
+			value = readl((void *)SLIH_IOD_BASE + SLI_CTRL_III);
+			value &= ~(SLIH_PAD_DLY_RX1 | SLIH_PAD_DLY_RX0);
+			value |= FIELD_PREP(SLIH_PAD_DLY_RX1, d1) |
+				 FIELD_PREP(SLIH_PAD_DLY_RX0, d0);
+			writel(value, (void *)SLIH_IOD_BASE + SLI_CTRL_III);
+
+			writel(SLI_TRANS_EN | SLI_CLEAR_RX,
+			       (void *)SLIH_IOD_BASE + SLI_CTRL_I);
+			udelay(100);
+
+			/* check interrupt status */
+			writel(0xffffffff, (void *)SLIH_IOD_BASE + SLI_INTR_STATUS);
+			udelay(10);
+			if (is_sli_suspend(SLIH_IOD_BASE) > 0) {
+				if (win[d0][0] == -1)
+					win[d0][0] = d1;
+
+				win[d0][1] = d1;
+			} else if (win[d0][1] != -1) {
+				break;
+			}
+		}
+	}
+
+	d0_start = -1;
+	d0_end = -1;
+	for (i = 0; i < 32; i++) {
+		if (win[i][0] != -1) {
+			if (d0_start == -1)
+				d0_start = i;
+
+			d0_end = i;
+		} else if (d0_end != -1) {
+			break;
+		}
+	}
+
+	d0 = (d0_start + d0_end + 1) >> 1;
+	d1 = (win[d0][0] + win[d0][1] + 1) >> 1;
+
+	printf("IOD SLIH[0] DS win: {%d, %d} -> select %d\n", d0_start, d0_end, d0);
+	printf("IOD SLIH[1] DS win: {%d, %d} -> select %d\n", win[d0][0], win[d0][1], d1);
+
+	/* Load the calibrated delay values */
+	writel(SLI_AUTO_SEND_TRN_OFF | SLI_TRANS_EN,
+	       (void *)SLIH_IOD_BASE + SLI_CTRL_I);
+	value = readl((void *)SLIH_IOD_BASE + SLI_CTRL_III);
+	value &= ~(SLIH_PAD_DLY_RX1 | SLIH_PAD_DLY_RX0);
+	value |= FIELD_PREP(SLIH_PAD_DLY_RX1, d1) |
+		 FIELD_PREP(SLIH_PAD_DLY_RX0, d0);
+	writel(value, (void *)SLIH_IOD_BASE + SLI_CTRL_III);
+	udelay(1);
+
+	/* Reset IOD SLIH Bus (to reset the counters) and RX */
+	writel(SLI_CLEAR_BUS | SLI_TRANS_EN | SLI_CLEAR_RX,
+	       (void *)SLIH_IOD_BASE + SLI_CTRL_I);
+	sli_wait_suspend(SLIH_IOD_BASE);
+}
+
+static void sli_calibrate_mbus_delay(void)
+{
+	uint32_t value;
+	int d0, i;
+	int win[32][2];
+
+	for (i = 0; i < 32; i++) {
+		win[i][0] = -1;
+		win[i][1] = -1;
+	}
+
+	for (d0 = 0; d0 < 16; d0++) {
+		value = readl((void *)SLIM_IOD_BASE + SLI_CTRL_III);
+		value &= ~(SLIM_PAD_DLY_RX3 | SLIM_PAD_DLY_RX2 |
+			   SLIM_PAD_DLY_RX1 | SLIM_PAD_DLY_RX0);
+		value |= FIELD_PREP(SLIM_PAD_DLY_RX3, d0) |
+			 FIELD_PREP(SLIM_PAD_DLY_RX2, d0) |
+			 FIELD_PREP(SLIM_PAD_DLY_RX1, d0) |
+			 FIELD_PREP(SLIM_PAD_DLY_RX0, d0);
+		writel(value, (void *)SLIM_IOD_BASE + SLI_CTRL_III);
+		udelay(1);
+
+		/* Reset CPU TX */
+		writel(SLI_TRANS_EN | SLI_CLEAR_TX, (void *)SLIM_CPU_BASE + SLI_CTRL_I);
+		udelay(1);
+
+		/* Reset IOD RX */
+		writel(SLI_TRANS_EN | SLI_CLEAR_RX, (void *)SLIM_IOD_BASE + SLI_CTRL_I);
+		udelay(1);
+
+		/* Check interrupt status */
+		writel(0xffffffff, (void *)SLIM_IOD_BASE + SLI_INTR_STATUS);
+		udelay(10);
+		if (is_sli_suspend(SLIM_IOD_BASE) > 0) {
+			if (win[0][0] == -1)
+				win[0][0] = d0;
+
+			win[0][1] = d0;
+		} else if (win[0][1] != -1) {
+			break;
+		}
+	}
+
+	d0 = (win[0][0] + win[0][1] + 1) >> 1;
+	printf("IOD SLIM[3:0] DS win: {%d, %d} -> select %d\n", win[0][0], win[0][1], d0);
+
+	/* Load the calibrated delay values */
+	writel(SLI_AUTO_SEND_TRN_OFF | SLI_TRANS_EN,
+	       (void *)SLIM_IOD_BASE + SLI_CTRL_I);
+	value = readl((void *)SLIM_IOD_BASE + SLI_CTRL_III);
+	value &= ~(SLIM_PAD_DLY_RX3 | SLIM_PAD_DLY_RX2 | SLIM_PAD_DLY_RX1 |
+		   SLIM_PAD_DLY_RX0);
+	value |= FIELD_PREP(SLIM_PAD_DLY_RX3, d0) |
+		 FIELD_PREP(SLIM_PAD_DLY_RX2, d0) |
+		 FIELD_PREP(SLIM_PAD_DLY_RX1, d0) |
+		 FIELD_PREP(SLIM_PAD_DLY_RX0, d0);
+	writel(value, (void *)SLIM_IOD_BASE + SLI_CTRL_III);
+	udelay(1);
+
+	/* Reset CPU SLIM TX */
+	writel(SLI_TRANS_EN | SLI_CLEAR_TX, (void *)SLIM_CPU_BASE + SLI_CTRL_I);
+	udelay(1);
+
+	/* Reset IOD SLIM Bus (to reset the counters) and RX */
+	writel(SLI_CLEAR_BUS | SLI_TRANS_EN | SLI_CLEAR_RX,
+	       (void *)SLIM_IOD_BASE + SLI_CTRL_I);
+	sli_wait_suspend(SLIM_IOD_BASE);
+}
+
+/*
+ * CPU die  --- downstream pads ---> I/O die
+ * CPU die  <--- upstream pads ----- I/O die
+ *
+ * US/DS PAD[3:0] : SLIM[3:0]
+ * US/DS PAD[5:4] : SLIH[1:0]
+ * US/DS PAD[7:6] : SLIV[1:0]
+ */
 static void sli_init(void)
 {
 	uint32_t value;
 
+	/* Return if SLI had been calibrated */
+	value = readl((void *)SLIH_IOD_BASE + SLI_CTRL_III);
+	value = FIELD_GET(SLI_CLK_SEL, value);
+	if (value)
+		return;
+
 	/* 25MHz PAD delay for AST2700A0 */
-	value = readl((void *)SLIH_IOD_BASE + SLI_CTRL_I);
-	value |= SLI_RX_PHY_LAH_SEL_NEG;
+	value = SLI_RX_PHY_LAH_SEL_NEG | SLI_TRANS_EN;
 	writel(value, (void *)SLIH_IOD_BASE + SLI_CTRL_I);
-
-	value = readl((void *)SLIM_IOD_BASE + SLI_CTRL_I);
-	value |= SLI_RX_PHY_LAH_SEL_NEG;
 	writel(value, (void *)SLIM_IOD_BASE + SLI_CTRL_I);
-
-	value = readl((void *)SLIV_IOD_BASE + SLI_CTRL_I);
-	value |= SLI_RX_PHY_LAH_SEL_NEG;
-	writel(value, (void *)SLIV_IOD_BASE + SLI_CTRL_I);
-
+	writel(value | SLIV_RAW_MODE, (void *)SLIV_IOD_BASE + SLI_CTRL_I);
 	sli_wait_suspend(SLIH_IOD_BASE);
 	sli_wait_suspend(SLIH_CPU_BASE);
 	printf("SLI phase 1: 25M init done\n");
+
+	/* IOD SLIM/H/V training off */
+	value |= SLI_AUTO_SEND_TRN_OFF;
+	writel(value, (void *)SLIH_IOD_BASE + SLI_CTRL_I);
+	writel(value, (void *)SLIM_IOD_BASE + SLI_CTRL_I);
+	writel(value | SLIV_RAW_MODE, (void *)SLIV_IOD_BASE + SLI_CTRL_I);
+
+	/* Change IOD SLIH engine clock to 500M */
+	value = FIELD_PREP(SLI_CLK_SEL, SLI_CLK_500M);
+	writel(value, (void *)SLIH_IOD_BASE + SLI_CTRL_III);
+	writel(value, (void *)SLIH_CPU_BASE + SLI_CTRL_III);
+	sli_wait_suspend(SLIH_IOD_BASE);
+	sli_wait_suspend(SLIH_CPU_BASE);
+
+	/* Speed up the CPU SLIH PHY clock. Don't access CPU-die from now on */
+	value |= FIELD_PREP(SLI_PHYCLK_SEL, SLI_PHYCLK_500M);
+	writel(value, (void *)SLIH_CPU_BASE + SLI_CTRL_III);
+	mdelay(10);
+
+	/* Calibrate SLIH DS delay */
+	sli_calibrate_ahb_delay();
+
+	/* It's okay to access CPU-die now. Calibrate SLIM DS delay */
+	sli_calibrate_mbus_delay();
+
+	printf("SLI phase 2: 500M init done\n");
 }
 
 int spl_board_init_f(void)
