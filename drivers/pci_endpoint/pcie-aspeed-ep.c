@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (c) 2019
- * Written by Ramon Fried <ramon.fried@gmail.com>
+ * Copyright 2023 Aspeed Technology Inc.
  */
 
 #include <common.h>
