@@ -62,7 +62,7 @@ enum env_location env_get_location(enum env_operation op, int prio)
 	if (prio)
 		return env_loc;
 
-	if ((readl(ASPEED_IO_HW_STRAP1) & STRAP_BOOTMODE_BIT))
+	if ((readl(ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_EMMC))
 		env_loc =  ENVL_MMC;
 	else
 		env_loc =  ENVL_SPI_FLASH;
@@ -213,7 +213,7 @@ int arch_misc_init(void)
 		return 0;
 
 	if (IS_ENABLED(CONFIG_ARCH_MISC_INIT)) {
-		if ((readl(ASPEED_IO_HW_STRAP1) & STRAP_BOOTMODE_BIT))
+		if ((readl(ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_EMMC))
 			env_set("bootcmd", EMMC_BOOTCOMMAND);
 		else
 			env_set("bootcmd", SPI_BOOTCOMMAND);

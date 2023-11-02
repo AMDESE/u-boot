@@ -606,7 +606,7 @@ void *board_spl_fit_buffer_addr(ulong fit_size, int sectors, int bl_len)
 
 u32 spl_boot_device(void)
 {
-	if ((readl((void *)ASPEED_IO_HW_STRAP1) & STRAP_BOOTMODE_BIT))
+	if ((readl((void *)ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_EMMC))
 		return BOOT_DEVICE_MMC1;
 	else
 		return BOOT_DEVICE_RAM;

@@ -5,6 +5,7 @@
 #ifndef _ASM_ARCH_SCU_AST2700_H
 #define _ASM_ARCH_SCU_AST2700_H
 
+/* SoC0 SCU Register */
 #define SCU_CPU_REVISION_ID_HW			GENMASK(23, 16)
 #define SCU_CPU_REVISION_ID_EFUSE		GENMASK(15, 8)
 
@@ -37,6 +38,9 @@
 #define SCU_CPU_PCI_MISC70_EN_EHCI		BIT(2)
 #define SCU_CPU_PCI_MISC70_EN_IPMI		BIT(1)
 #define SCU_CPU_PCI_MISC70_EN_VGA		BIT(0)
+
+/* SoC1 SCU Register */
+#define SCU_IO_HWSTRAP_EMMC			BIT(11)
 
 #ifndef __ASSEMBLY__
 struct ast2700_soc0_scu {
