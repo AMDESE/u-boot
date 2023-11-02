@@ -14,9 +14,6 @@
 
 #define CONFIG_SYS_UBOOT_BASE		CONFIG_TEXT_BASE
 
-#define SPI_BOOTCOMMAND "run bootspi"
-#define EMMC_BOOTCOMMAND "run bootmmc"
-
 #define CFG_EXTRA_ENV_SETTINGS \
 	"bootspi=fdt addr 100220000 && fdt header get fitsize totalsize && " \
 	"cp.b 100220000 ${loadaddr} ${fitsize} && bootm; " \

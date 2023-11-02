@@ -8,6 +8,7 @@
 #include <asm/io.h>
 #include <env.h>
 #include <env_internal.h>
+#include <asm/arch/scu_ast2600.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -18,7 +19,7 @@ enum env_location env_get_location(enum env_operation op, int prio)
 	if (prio)
 		return env_loc;
 
-	if (readl(ASPEED_HW_STRAP1) & BIT(2))
+	if (readl(ASPEED_HW_STRAP1) & SCU_HWSTRAP1_BOOT_EMMC)
 		env_loc =  ENVL_MMC;
 	else
 		env_loc =  ENVL_SPI_FLASH;
@@ -28,17 +29,11 @@ enum env_location env_get_location(enum env_operation op, int prio)
 
 int arch_misc_init(void)
 {
-	const char *p;
-
-	p = env_get("bootcmd");
-	if (p)
-		return 0;
-
 	if (IS_ENABLED(CONFIG_ARCH_MISC_INIT)) {
-		if (readl(ASPEED_HW_STRAP1) & BIT(2))
-			env_set("bootcmd", EMMC_BOOTCOMMAND);
+		if ((readl(ASPEED_HW_STRAP1) & SCU_HWSTRAP1_BOOT_EMMC))
+			env_set("boot_device", "mmc");
 		else
-			env_set("bootcmd", SPI_BOOTCOMMAND);
+			env_set("boot_device", "spi");
 	}
 
 	return 0;

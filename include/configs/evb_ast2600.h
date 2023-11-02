@@ -14,9 +14,6 @@
 #define STR_HELPER(s)	#s
 #define STR(s)		STR_HELPER(s)
 
-#define SPI_BOOTCOMMAND "run bootspi"
-#define EMMC_BOOTCOMMAND "run bootmmc"
-
 #define CFG_EXTRA_ENV_SETTINGS \
 	"loadaddr=" STR(CONFIG_SYS_LOAD_ADDR) "\0" \
 	"bootspi=fdt addr 20160000 && fdt header get fitsize totalsize && " \

@@ -203,20 +203,15 @@ static void *fdt_get_syscon_addr_ptr(struct udevice *dev)
 int arch_misc_init(void)
 {
 	int rc;
-	const char *p;
 	struct udevice *clk_dev;
 	struct ast2700_soc0_clk *clk;
 	struct ast2700_soc0_scu *scu;
 
-	p = env_get("bootcmd");
-	if (p)
-		return 0;
-
 	if (IS_ENABLED(CONFIG_ARCH_MISC_INIT)) {
 		if ((readl(ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_EMMC))
-			env_set("bootcmd", EMMC_BOOTCOMMAND);
+			env_set("boot_device", "mmc");
 		else
-			env_set("bootcmd", SPI_BOOTCOMMAND);
+			env_set("boot_device", "spi");
 	}
 
 	rc = uclass_get_device_by_driver(UCLASS_CLK,

@@ -32,6 +32,8 @@ CONFIG_FIT_SIGNATURE=y
 CONFIG_LEGACY_IMAGE_FORMAT=y
 CONFIG_USE_BOOTARGS=y
 CONFIG_BOOTARGS="console=ttyS12,115200n8 root=/dev/ram rw earlycon"
+CONFIG_USE_BOOTCOMMAND=y
+CONFIG_BOOTCOMMAND="echo Boot from ${boot_device}; if test ${boot_device} = mmc; then run bootmmc; fi; if test ${boot_device} = spi; then run bootspi; fi;echo Boot from ${boot_device}; if test ${boot_device} = mmc; then run bootmmc; fi; if test ${boot_device} = spi; then run bootspi; fi;echo Boot from ${boot_device}; if test echo Boot from ${boot_device}; if test ${boot_device} = mmc; then run bootmmc; fi; if test ${boot_device} = spi; then run bootspi; fi;"
 CONFIG_DISPLAY_BOARDINFO_LATE=y
 CONFIG_HUSH_PARSER=y
 # CONFIG_AUTO_COMPLETE is not set
