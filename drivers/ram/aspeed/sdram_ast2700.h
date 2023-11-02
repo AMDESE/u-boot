@@ -224,7 +224,7 @@ struct sdramc {
 };
 
 struct sdramc_port {
-	u32 configuration;
+	u32 cfg;
 	u32 timeout;
 	u32 read_qos;
 	u32 write_qos;

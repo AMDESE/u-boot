@@ -243,7 +243,6 @@ void dwc_ddrphy_phyinit_userCustom_G_waitFwDone(void)
 
 	printf("Firmware training process is complete!!!\n");
 }
-
 void dwc_ddrphy_phyinit_userCustom_J_enterMissionMode(void)
 {
 	uint32_t  value;
@@ -254,26 +253,39 @@ void dwc_ddrphy_phyinit_userCustom_J_enterMissionMode(void)
   //// training is used, the DRAM state is not initialized.
 	writel(0xffffffff, (void *)0x12c0000c);//DRAMC_IRQMSK);
 
-	value = readl((void *)0x12c00004);//DRAMC_IRQSTA);
-	while (value) {
-		value = readl((void *)0x12c00004);//DRAMC_IRQSTA);
-	};
-
 	writel(0x0, (void *)0x12c00040);//DRAMC_DFICFG); // [16] reset=0
+
+	if (!is_ddr4()) {
+		dwc_ddrphy_apb_wr(0xd0000, 0); // DWC_DDRPHYA_APBONLY0_MicroContMuxSel
+		dwc_ddrphy_apb_wr(0x20240, 0x3900); // DWC_DDRPHYA_MASTER0_base0_D5ACSMPtr0lat0
+		dwc_ddrphy_apb_wr(0x900da, 8); // DWC_DDRPHYA_INITENG0_base0_SequenceReg0b59s0
+		dwc_ddrphy_apb_wr(0xd0000, 1); // DWC_DDRPHYA_APBONLY0_MicroContMuxSel
+	}
+
+	printf("dfi init start\n");
 	value = readl((void *)0x12c00014);//DRAMC_MCTL);
 	value = value | 0x1;
 	writel(value, (void *)0x12c00014);//DRAMC_MCTL); // [0] init_start
 
+	printf("wait dfi init complete\n");
 	value = readl((void *)0x12c00004);//DRAMC_IRQSTA);
 	while ((value & 0x1) != 1) {
 		value = readl((void *)0x12c00004);//DRAMC_IRQSTA);
 	};
-	writel(0x1, (void *)0x12c00008);//DRAMC_IRQCLR);
+	printf("INT: 0x%x\n", readl((void *)0x12c00004));
+	writel(0xffff, (void *)0x12c00008);//DRAMC_IRQCLR);
 
 	value = readl((void *)0x12c00004);//DRAMC_IRQSTA);
 	while (value) {
 		value = readl((void *)0x12c00004);//DRAMC_IRQSTA);
 	};
+
+	if (!is_ddr4()) {
+		dwc_ddrphy_apb_wr(0xd0000, 0); // DWC_DDRPHYA_APBONLY0_MicroContMuxSel
+		dwc_ddrphy_apb_wr(0x20240, 0x4300); // DWC_DDRPHYA_MASTER0_base0_D5ACSMPtr0lat0
+		dwc_ddrphy_apb_wr(0x900da, 0); // DWC_DDRPHYA_INITENG0_base0_SequenceReg0b59s0
+		dwc_ddrphy_apb_wr(0xd0000, 1); // DWC_DDRPHYA_APBONLY0_MicroContMuxSel
+	}
 }
 
 u32 spl_boot_list;

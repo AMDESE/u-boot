@@ -4611,7 +4611,7 @@ dwc_ddrphy_apb_wr(0xd0000, 0x0); // DWC_DDRPHYA_APBONLY0_MicroContMuxSel
 if (IS_ENABLED(CONFIG_ASPEED_DDR_PHY_TRAINING))
 	dwc_ddrphy_phyinit_userCustom_F_loadDMEM(0, 0);
 
-dwc_ddrphy_apb_wr_32b(0x58000, 0x700);
+dwc_ddrphy_apb_wr_32b(0x58000, 0x100);
 dwc_ddrphy_apb_wr_32b(0x58002, 0xc800000);
 dwc_ddrphy_apb_wr_32b(0x58004, 0x0);
 dwc_ddrphy_apb_wr_32b(0x58006, 0x40);
@@ -4622,16 +4622,18 @@ printf("- <DWC_DDRPHY TRAIN>: Debug level = 0x05: Detailed debug messages (e.g. 
 dwc_ddrphy_apb_wr_32b(0x58008, 0x058263);
   #else
 printf("- <DWC_DDRPHY TRAIN>: Debug level = 0xC8: Stage completion\n");
-dwc_ddrphy_apb_wr_32b(0x58008, 0xc88263);
+//dwc_ddrphy_apb_wr_32b(0x58008, 0xc88263);
+dwc_ddrphy_apb_wr_32b(0x58008, 0xc8827f);
   #endif
 // Redmine 1392: Set X16Present=1 by Synopsys's comment
+// 0x5800b[7:0]=DFIMRLMargin, 0x5800b[15:8]=X16Present
 dwc_ddrphy_apb_wr_32b(0x5800a, 0x01020000);
 // Redmine 1456: Skip_CA13_during_CAtraining during DDR5
 dwc_ddrphy_apb_wr_32b(0x5800c, 0x18000001);
 // Redmine 1392: To speed up data collection, set the voltage and delay step size in Rx2D_TrainOpt and Tx2D_TrainOpt to its maximum value.
 //   uint8_t  RX2D_TrainOpt;    // Byte offset 0x1d, CSR Addr 0x5800e, Direction=In
 //   uint8_t  TX2D_TrainOpt;    // Byte offset 0x1e, CSR Addr 0x5800f, Direction=In
-dwc_ddrphy_apb_wr_32b(0x5800e, 0x001e1e00);
+//dwc_ddrphy_apb_wr_32b(0x5800e, 0x001e1e00);
 //#elif defined(TRAIN_1D)
 //printf("- <DWC_DDRPHY TRAIN>: Enable RdDQS1D, WrDQ1D for 1D training");
 //  #ifdef DWC_DEBUG

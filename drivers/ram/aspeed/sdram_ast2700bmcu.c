@@ -81,9 +81,9 @@ struct sdramc_ac_timing ac_table[] = {
 	{
 		DRAM_TYPE_5,
 		"DDR5 3200",
-		22, 20, 16,
+		26, 24, 16,
 	/*     rcd, rp, ras, rrd, rrd_l, faw, rtp */
-		22, 22, 52,  8,   8,     40,  12,
+		26, 26, 52,  8,   8,     40,  12,
 		4,	/* t_wtr */
 		16,	/* t_wtr_l */
 		36,	/* t_wtr_a */
@@ -94,7 +94,7 @@ struct sdramc_ac_timing ac_table[] = {
 		23,	/* t_mrd */
 		48,	/* t_refsbrd */
 		208,	/* t_rfcsb */
-		21,	/* t_cshsr */
+		30,	/* t_cshsr */
 		48,	/* zq */
 	},
 };
@@ -157,7 +157,8 @@ static void sdramc_configure_ac_timing(struct sdramc *sdramc, struct sdramc_ac_t
 		       ac->t_cwl + ac->t_bl / 2 + ac->t_wtp,
 		       ac->t_rtp),
 	       &regs->actime3);
-	writel(ACTIME4(ac->t_wtr_a, ac->t_cwl + ac->t_bl / 2 + ac->t_wtr_l),
+	writel(ACTIME4(ac->t_cwl + ac->t_bl / 2 + ac->t_wtr_a,
+		       ac->t_cwl + ac->t_bl / 2 + ac->t_wtr_l),
 	       &regs->actime4);
 	writel(ACTIME5(ac->t_refsbrd, ac->t_rfcsb, ac->t_rfc),
 	       &regs->actime5);
@@ -354,7 +355,7 @@ static int sdramc_exit_self_refresh(struct sdramc *sdramc)
 	return 0;
 }
 
-static void sdramc_enter_self_refresh(struct sdramc *sdramc)
+static void sdramc_enable_refresh(struct sdramc *sdramc)
 {
 	struct sdramc_regs *regs = sdramc->regs;
 
@@ -617,50 +618,51 @@ struct ddr_command {
 };
 
 struct ddr_command command_sequence_tbl[] = {
-	{"RTT_CK group A",
-	MR_MPC, (MPC_OP_RTT_CK_A + MR32_CK_ODT_RTT_OFF)},
-	{"RTT_CK group B",
-	MR_MPC, (MPC_OP_RTT_CK_B + MR32_CK_ODT_40)},
-	{"RTT_CS group A",
-	MR_MPC, (MPC_OP_RTT_CS_A + MR32_CS_ODT_RTT_OFF)},
-	{"RTT_CS group B",
-	MR_MPC, (MPC_OP_RTT_CS_B + MR32_CS_ODT_40)},
-	{"RTT_CA group A",
-	MR_MPC, (MPC_OP_RTT_CA_A + MR33_CA_ODT_RTT_OFF)},
-	{"RTT_CA group B",
-	MR_MPC, (MPC_OP_RTT_CA_B + MR33_CA_ODT_40)},
-	{"Set DQS_RTT_PARK",
-	MR_MPC, (MPC_OP_SET_DQS_RTT_PARK + MR33_DQS_RTT_PARK_240)},
-	{"Set RTT_PARK",
-	MR_MPC, (MPC_OP_SET_RTT_PARK + MR34_RTT_PARK_240)},
-	{"VrefCS",
-	MR_VREFCS, MR12_VREFCS_RANGE_75},
-	{"VrefCA",
-	MR_VREFCA, MR11_VREFCA_RANGE_75},
-	{"Apply VrefCA/VrefCS/RTT",
-	MR_MPC, MPC_OP_APPLY},
-	{"Set 1N command timing",
-	MR_MPC, MPC_OP_SET_1N_CMD},
-	{"MR0",
-	MR_ADDR(0), 0},//((((CL - 22) >> 1) << 2) + 0),
+	//{"RTT_CK group A",
+	//MR_MPC, (MPC_OP_RTT_CK_A + MR32_CK_ODT_480)},
+	//{"RTT_CK group B",
+	//MR_MPC, (MPC_OP_RTT_CK_B + MR32_CK_ODT_480)},
+	//{"RTT_CS group A",
+	//MR_MPC, (MPC_OP_RTT_CS_A + MR32_CK_ODT_480)},
+	//{"RTT_CS group B",
+	//MR_MPC, (MPC_OP_RTT_CS_B + MR32_CK_ODT_480)},
+	//{"RTT_CA group A",
+	//MR_MPC, (MPC_OP_RTT_CA_A + MR32_CK_ODT_480)},
+	//{"RTT_CA group B",
+	//MR_MPC, (MPC_OP_RTT_CA_B + MR32_CK_ODT_480)},
+	//{"Set DQS_RTT_PARK",
+	//MR_MPC, (MPC_OP_SET_DQS_RTT_PARK + MR33_DQS_RTT_PARK_34)},
+	//{"Set RTT_PARK",
+	//MR_MPC, (MPC_OP_SET_RTT_PARK + MR34_RTT_PARK_34)},
+	//{"VrefCS",
+	//MR_VREFCS, MR12_VREFCS_RANGE_75},
+	//{"VrefCA",
+	//MR_VREFCA, MR11_VREFCA_RANGE_75},
+	//{"Apply VrefCA/VrefCS/RTT",
+	//MR_MPC, MPC_OP_APPLY},
+	//{"Set 1N command timing",
+	//MR_MPC, MPC_OP_SET_1N_CMD},
+	//{"MR0",
+	//MR_ADDR(0), 8},//((((CL - 22) >> 1) << 2) + 0),
 	{"MR4/5/6",
 	MR_ADDR(4) | MR_NUM(2), 0x2000},
 	{"MR8",
 	MR_ADDR(8), MR8_WRITE_PREAMBLE_2TCK},
-	{"MR10",
-	MR_ADDR(10), MR10_VREFDQ_RANGE_75},
-	{"MR23",
-	MR_ADDR(23), 0},
+	////{"MR10",
+	////MR_ADDR(10), MR10_VREFDQ_RANGE_75},
+	////{"MR23",
+	////MR_ADDR(23), 0},
 	{"MR2",
 	MR_ADDR(2), MR2_CS_ASSERTION},
 	{"MR13",
-	MR_1T_MODE | MR_MPC, MPC_OP_CONFIG_DLLK_CCD},
-	{"DLL Reset",
-	MR_1T_MODE | MR_DLL_RESET | MR_MPC, MPC_OP_DLL_RESET},
-	{"ZQ Cali",
-	MR_1T_MODE | MR_MPC, MPC_OP_ZQCAL_START},
-	{"ZQ Latch",
-	MR_1T_MODE | MR_MPC, MPC_OP_ZQCAL_LATCH},
+	//MR_1T_MODE | MR_MPC, MPC_OP_CONFIG_DLLK_CCD},
+	MR_MPC, MPC_OP_CONFIG_DLLK_CCD},
+	//{"DLL Reset",
+	//MR_1T_MODE | MR_DLL_RESET | MR_MPC, MPC_OP_DLL_RESET},
+	//{"ZQ Cali",
+	//MR_1T_MODE | MR_MPC, MPC_OP_ZQCAL_START},
+	//{"ZQ Latch",
+	//MR_1T_MODE | MR_MPC, MPC_OP_ZQCAL_LATCH},
 };
 
 static void sdramc_configure_ddr5_mrs(struct sdramc *sdramc, struct sdramc_ac_timing *ac)
@@ -732,7 +734,7 @@ static int ast2700_sdramc_probe(struct udevice *dev)
 	else
 		sdramc_configure_ddr5_mrs(sdramc, ac);
 
-	sdramc_enter_self_refresh(sdramc);
+	sdramc_enable_refresh(sdramc);
 
 	bistcfg = FIELD_PREP(DRAMC_BISTCFG_PMODE, BIST_PMODE_CRC)
 		| FIELD_PREP(DRAMC_BISTCFG_BMODE, BIST_BMODE_RW_SWITCH)
