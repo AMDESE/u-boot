@@ -193,6 +193,35 @@ ast2700_soc1_get_uart_clk_rate(struct ast2700_soc1_clk *clk, int uart_idx)
 	return rate;
 }
 
+static void ast2700_init_mac_clk(struct udevice *dev)
+{
+	struct ast2700_soc1_clk_priv *priv = dev_get_priv(dev);
+	uint32_t src_clk = ast2700_soc1_get_pll_rate(priv->clk, AST2700_SOC1_CLK_HPLL);
+	uint32_t reg_280;
+	uint8_t div_idx;
+
+	/* Calculate the corresponding divider:
+	 * 1: div 2
+	 * 2: div 3
+	 * ...
+	 * 7: div 8
+	 */
+	for (div_idx = 1; div_idx <= 7; div_idx++)
+		if (DIV_ROUND_UP(src_clk, div_idx + 1) == 200000000)
+			break;
+
+	if (div_idx == 8) {
+		dev_err(dev, "Error: MAC clock cannot divide to 200 MHz\n");
+		return;
+	}
+
+	/* set HPLL clock divider */
+	reg_280 = readl(&priv->clk->clk_sel1);
+	reg_280 &= ~GENMASK(31, 29);
+	reg_280 |= div_idx << 29;
+	writel(reg_280, &priv->clk->clk_sel1);
+}
+
 static void ast2700_init_rgmii_clk(struct udevice *dev)
 {
 	struct ast2700_soc1_clk_priv *priv = dev_get_priv(dev);
@@ -349,6 +378,7 @@ static int ast2700_soc1_clk_probe(struct udevice *dev)
 	if (IS_ERR(priv->clk))
 		return PTR_ERR(priv->clk);
 
+	ast2700_init_mac_clk(dev);
 	ast2700_init_rgmii_clk(dev);
 	ast2700_configure_mac01_clk(priv->clk);
 
