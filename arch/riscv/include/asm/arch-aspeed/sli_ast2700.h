@@ -63,4 +63,6 @@
 #define   SLI_INTR_RX_IDLE		BIT(0)
 #define   SLI_INTR_RX_ERRORS                                                     \
 	  (SLI_INTR_RX_ERR | SLI_INTR_RX_NACK | SLI_INTR_RX_DISCONN)
+
+#define SLI_TARGET_PHYCLK		SLI_PHYCLK_500M
 #endif
