@@ -22,6 +22,11 @@
 		#address-cells = <2>;
 		#size-cells = <2>;
 
+		mcu_fw: mcu-firmware@42fe00000 {
+			reg = <0x4 0x2fe00000 0x0 0x200000>;
+			no-map;
+		};
+
 		atf: trusted-firmware-a@430000000 {
 			reg = <0x4 0x30000000 0x0 0x80000>;
 			no-map;
