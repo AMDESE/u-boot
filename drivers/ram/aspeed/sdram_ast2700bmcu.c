@@ -717,7 +717,7 @@ static int ast2700_sdramc_probe(struct udevice *dev)
 	int err = 0;
 
 	if (is_ddr_initialized())
-		return 0;
+		goto out;
 
 	sdramc_unlock(sdramc);
 
@@ -749,6 +749,7 @@ static int ast2700_sdramc_probe(struct udevice *dev)
 	printf("%s is successfully initialized\n", ac->desc);
 	sdramc_set_flag(DRAMC_INIT_DONE);
 
+out:
 	sdramc->info.base = 0x80000000;
 	sdramc->info.size = 0x40000000;
 

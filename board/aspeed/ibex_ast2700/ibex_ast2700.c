@@ -27,6 +27,8 @@ DECLARE_GLOBAL_DATA_PTR;
 binman_sym_declare(u32, dp_fw, image_pos);
 binman_sym_declare(u32, dp_fw, size);
 
+static bool ibex_boot2fw;
+
 static void *fdt_get_syscon_addr_ptr(struct udevice *dev)
 {
 	ofnode node = dev_ofnode(dev), parent;
@@ -705,11 +707,21 @@ u32 spl_boot_device(void)
 void board_fit_image_post_process(const void *fit, int node, void **p_image, size_t *p_size)
 {
 	uint64_t ep_arm;
+	uint8_t arch;
+	uint8_t type;
 	uint8_t os;
 	ulong ep;
 
+	fit_image_get_arch(fit, node, &arch);
+	fit_image_get_type(fit, node, &type);
 	fit_image_get_os(fit, node, &os);
 	fit_image_get_entry(fit, node, &ep);
+
+	/* ibex firmware recognized */
+	if (arch == IH_ARCH_RISCV && type == IH_TYPE_FIRMWARE) {
+		ibex_boot2fw = true;
+		return;
+	}
 
 	/* convert to Arm view */
 	ep_arm = ((uint64_t)ep - 0x80000000) | 0x400000000ULL;
@@ -742,7 +754,11 @@ void spl_board_prepare_for_boot(void)
 	/* release CA35 reset */
 	writel(0x1, (void *)0x12c0210c);
 
-	/* sleep well */
+	/* keep going if ibex has further FW to run */
+	if (ibex_boot2fw)
+		return;
+
+	/* sleep well otherwise */
 	while (1)
 		__asm__("wfi");
 }
