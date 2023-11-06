@@ -281,6 +281,15 @@ static void ast2700_configure_mac01_clk(struct ast2700_soc1_clk *clk)
 	writel(MAC01_DEF_DELAY_10M, &clk->mac_10m_delay);
 }
 
+static void ast2700_init_mac(struct udevice *dev)
+{
+	struct ast2700_soc1_clk_priv *priv = dev_get_priv(dev);
+
+	ast2700_init_mac_clk(dev);
+	ast2700_init_rgmii_clk(dev);
+	ast2700_configure_mac01_clk(priv->clk);
+}
+
 static ulong ast2700_soc1_clk_get_rate(struct clk *clk)
 {
 	struct ast2700_soc1_clk_priv *priv = dev_get_priv(clk->dev);
@@ -380,9 +389,7 @@ static int ast2700_soc1_clk_probe(struct udevice *dev)
 	if (IS_ERR(priv->clk))
 		return PTR_ERR(priv->clk);
 
-	ast2700_init_mac_clk(dev);
-	ast2700_init_rgmii_clk(dev);
-	ast2700_configure_mac01_clk(priv->clk);
+	ast2700_init_mac(dev);
 
 	return 0;
 }
