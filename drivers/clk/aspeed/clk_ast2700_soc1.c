@@ -200,7 +200,9 @@ static void ast2700_init_mac_clk(struct udevice *dev)
 	uint32_t reg_280;
 	uint8_t div_idx;
 
-	/* Calculate the corresponding divider:
+	/* The MAC source clock selects HPLL only, and the default clock
+	 * setting is 200 Mhz.
+	 * Calculate the corresponding divider:
 	 * 1: div 2
 	 * 2: div 3
 	 * ...
