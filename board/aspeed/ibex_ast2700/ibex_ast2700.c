@@ -314,7 +314,23 @@ int spl_mmc_init(void)
 
 void spl_spi_driving_strength_conf(void)
 {
-	writel(0x00000fff, (void *)ASPEED_IO_FWSPI_DRIVING);
+	uint32_t reg_val;
+
+	reg_val = readl((void *)ASPEED_IO_FWSPI_DRIVING);
+	reg_val |= 0x00000fff;
+	writel(reg_val, (void *)ASPEED_IO_FWSPI_DRIVING);
+
+	reg_val = readl((void *)ASPEED_IO_SPI0_DRIVING);
+	reg_val |= 0x00000fff;
+	writel(reg_val, (void *)ASPEED_IO_SPI0_DRIVING);
+
+	reg_val = readl((void *)ASPEED_IO_SPI1_DRIVING);
+	reg_val |= 0x0fff0000;
+	writel(reg_val, (void *)ASPEED_IO_SPI1_DRIVING);
+
+	reg_val = readl((void *)ASPEED_IO_SPI2_DRIVING);
+	reg_val |= 0x00000fff;
+	writel(reg_val, (void *)ASPEED_IO_SPI2_DRIVING);
 }
 
 static int sli_wait(uint32_t base, uint32_t mask)
