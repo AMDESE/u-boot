@@ -36,6 +36,7 @@
 #define     SLI_PHYCLK_200M		0x3
 #define     SLI_PHYCLK_1G		0x5
 #define     SLI_PHYCLK_500M		0x6
+#define     SLI_PHYCLK_250M		0x7
 #define   SLIH_PAD_DLY_TX1		GENMASK(23, 18)
 #define   SLIH_PAD_DLY_TX0		GENMASK(17, 12)
 #define   SLIH_PAD_DLY_RX1		GENMASK(11, 6)
@@ -64,5 +65,5 @@
 #define   SLI_INTR_RX_ERRORS                                                     \
 	  (SLI_INTR_RX_ERR | SLI_INTR_RX_NACK | SLI_INTR_RX_DISCONN)
 
-#define SLI_TARGET_PHYCLK		SLI_PHYCLK_500M
+#define SLI_TARGET_PHYCLK		SLI_PHYCLK_800M
 #endif
