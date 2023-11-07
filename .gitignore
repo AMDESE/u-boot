@@ -109,3 +109,8 @@ __pycache__
 
 # moveconfig database
 /moveconfig.db
+
+# generated files
+tools/generated/*
+include/autoconf.mk*
+include/config.h
