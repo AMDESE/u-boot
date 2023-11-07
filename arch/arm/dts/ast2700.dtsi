@@ -302,6 +302,30 @@
 			};
 		};
 
+		spi2: flash-controller@14030000 {
+			reg = <0x0 0x14030000 0x0 0xc4>,
+			      <0x2 0x80000000 0x0 0x80000000>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			compatible = "aspeed,ast2700-spi";
+			status = "disabled";
+			clocks = <&soc1_clk AST2700_SOC1_CLK_AHB>;
+			resets = <&soc1_rst ASPEED_RESET_SPI3>;
+			num-cs = <2>;
+
+			flash@0 {
+				reg = <0>;
+				compatible = "jedec,spi-nor";
+				status = "disabled";
+			};
+
+			flash@1 {
+				reg = <1>;
+				compatible = "jedec,spi-nor";
+				status = "disabled";
+			};
+		};
+
 		mdio: bus@14040000 {
 			compatible = "simple-bus";
 			#address-cells = <2>;
@@ -794,6 +818,21 @@
 	};
 
 	pinctrl_spi1_quad_default: spi1_quad_default {
+		function = "SPI1QUAD";
+		groups = "SPI1QUAD";
+	};
+
+	pinctrl_spi2_default: spi2_default {
+		function = "SPI2";
+		groups = "SPI2";
+	};
+
+	pinctrl_spi2_cs1_default: spi2_cs1_default {
+		function = "SPI2CS1";
+		groups = "SPI2CS1";
+	};
+
+	pinctrl_spi2_quad_default: spi2_quad_default {
 		function = "SPI1QUAD";
 		groups = "SPI1QUAD";
 	};

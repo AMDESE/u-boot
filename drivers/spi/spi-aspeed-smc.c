@@ -23,6 +23,7 @@
 #include <linux/mtd/spi-nor.h>
 #include <linux/sizes.h>
 #include <malloc.h>
+#include <reset.h>
 #include <spi.h>
 #include <spi-mem.h>
 #include <inttypes.h>
@@ -76,6 +77,7 @@ struct aspeed_spi_plat {
 	uintptr_t ahb_base; /* AHB address base for all flash devices. */
 	fdt_size_t ahb_sz; /* Overall AHB window size for all flash device. */
 	u32 hclk_rate; /* AHB clock rate */
+	struct reset_ctl rst_ctl;
 };
 
 enum aspeed_spi_cmd_mode {
@@ -1812,6 +1814,12 @@ static int apseed_spi_of_to_plat(struct udevice *bus)
 		goto end;
 	}
 
+	ret = reset_get_by_index(bus, 0, &plat->rst_ctl);
+	if (ret) {
+		plat->rst_ctl.dev = NULL;
+		ret = 0;
+	}
+
 	plat->hclk_rate = clk_get_rate(&hclk);
 	clk_free(&hclk);
 
@@ -1831,6 +1839,7 @@ end:
 static int aspeed_spi_probe(struct udevice *bus)
 {
 	int ret;
+	struct aspeed_spi_plat *plat = dev_get_plat(bus);
 	struct aspeed_spi_priv *priv = dev_get_priv(bus);
 	struct udevice *dev;
 
@@ -1856,6 +1865,9 @@ static int aspeed_spi_probe(struct udevice *bus)
 	} else {
 		priv->tmp_buf = NULL;
 	}
+
+	if (plat->rst_ctl.dev)
+		reset_deassert(&plat->rst_ctl);
 
 	ret = aspeed_spi_ctrl_init(bus);
 
