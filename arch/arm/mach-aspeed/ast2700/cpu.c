@@ -128,7 +128,8 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu,
 		vram_addr -= vram_size;
 		debug("pcie0 e2m addr(%x)\n", _ast_get_e2m_addr(vram_addr));
 		val = _ast_get_e2m_addr(vram_addr)
-		    | FIELD_PREP(SCU_CPU_PCI_MISC0C_FB_SIZE, vram_size_cfg);
+		    | FIELD_PREP(SCU_CPU_PCI_MISC0C_FB_SIZE, vram_size_cfg)
+		    | (ASPEED_DRAM_BASE >> 4);
 		debug("pcie0 debug reg(%x)\n", val);
 		writel(val, (void *)E2M0_VGA_RAM);
 		writel(val, &scu->pci0_misc[3]);
@@ -144,7 +145,8 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu,
 		vram_addr -= vram_size;
 		debug("pcie1 e2m addr(%x)\n", _ast_get_e2m_addr(vram_addr));
 		val = _ast_get_e2m_addr(vram_addr)
-		    | FIELD_PREP(SCU_CPU_PCI_MISC0C_FB_SIZE, vram_size_cfg);
+		    | FIELD_PREP(SCU_CPU_PCI_MISC0C_FB_SIZE, vram_size_cfg)
+		    | (ASPEED_DRAM_BASE >> 4);
 		debug("pcie1 debug reg(%x)\n", val);
 		writel(val, (void *)E2M1_VGA_RAM);
 		writel(val, &scu->pci1_misc[3]);
