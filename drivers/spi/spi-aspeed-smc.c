@@ -438,7 +438,7 @@ static u32 ast2700_spi_segment_reg(uintptr_t start, uintptr_t end)
 	if (start == end)
 		return 0;
 
-	return ((((start) >> 16) & 0xffff) | ((end + 1) & 0xffff0000));
+	return ((((start) >> 16) & 0x7fff) | ((end + 1) & 0x7fff0000));
 }
 
 static void ast2600_spi_chip_set_4byte(struct udevice *bus, u32 cs)
