@@ -429,6 +429,12 @@ static void sli_calibrate_ahb_delay(int config)
 	d0 = (d0_start + d0_end) >> 1;
 	d1 = (win[d0][0] + win[d0][1]) >> 1;
 
+	if (d0 < 0)
+		d0 = SLIH_DEFAULT_DELAY;
+
+	if (d1 < 0)
+		d1 = SLIH_DEFAULT_DELAY;
+
 	printf("IOD SLIH[0] DS win: {%d, %d} -> select %d\n", d0_start, d0_end, d0);
 	printf("IOD SLIH[1] DS win: {%d, %d} -> select %d\n", win[d0][0], win[d0][1], d1);
 
@@ -543,6 +549,8 @@ static void sli_calibrate_mbus_delay(int config)
 	}
 
 	dc = (win[0] + win[1]) >> 1;
+	if (dc < 0)
+		dc = SLIM_DEFAULT_DELAY;
 	printf("IOD SLIM DS coarse win: {%d, %d} -> select %d\n", win[0],
 	       win[1], dc);
 
@@ -561,24 +569,32 @@ static void sli_calibrate_mbus_delay(int config)
 
 	/* Fine-tune per-PAD delay */
 	d0 = sli_calibrate_mbus_pad_delay(config, 0, begin, end);
+	if (d0 < 0)
+		d0 = SLIM_DEFAULT_DELAY;
 	value = readl((void *)SLIM_IOD_BASE + SLI_CTRL_III);
 	value &= ~SLIM_PAD_DLY_RX0;
 	value |= FIELD_PREP(SLIM_PAD_DLY_RX0, d0);
 	writel(value, (void *)SLIM_IOD_BASE + SLI_CTRL_III);
 
 	d1 = sli_calibrate_mbus_pad_delay(config, 1, begin, end);
+	if (d1 < 0)
+		d1 = SLIM_DEFAULT_DELAY;
 	value = readl((void *)SLIM_IOD_BASE + SLI_CTRL_III);
 	value &= ~SLIM_PAD_DLY_RX1;
 	value |= FIELD_PREP(SLIM_PAD_DLY_RX1, d1);
 	writel(value, (void *)SLIM_IOD_BASE + SLI_CTRL_III);
 
 	d2 = sli_calibrate_mbus_pad_delay(config, 2, begin, end);
+	if (d2 < 0)
+		d2 = SLIM_DEFAULT_DELAY;
 	value = readl((void *)SLIM_IOD_BASE + SLI_CTRL_III);
 	value &= ~SLIM_PAD_DLY_RX2;
 	value |= FIELD_PREP(SLIM_PAD_DLY_RX2, d2);
 	writel(value, (void *)SLIM_IOD_BASE + SLI_CTRL_III);
 
 	d3 = sli_calibrate_mbus_pad_delay(config, 3, begin, end);
+	if (d3 < 0)
+		d3 = SLIM_DEFAULT_DELAY;
 	value = readl((void *)SLIM_IOD_BASE + SLI_CTRL_III);
 	value &= ~SLIM_PAD_DLY_RX3;
 	value |= FIELD_PREP(SLIM_PAD_DLY_RX3, d3);
