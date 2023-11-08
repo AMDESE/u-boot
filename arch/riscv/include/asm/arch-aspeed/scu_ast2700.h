@@ -41,6 +41,7 @@
 
 /* SoC1 SCU Register */
 #define SCU_IO_HWSTRAP_EMMC			BIT(11)
+#define SCU_IO_HWSTRAP_SCM			BIT(3)
 
 #ifndef __ASSEMBLY__
 struct ast2700_soc0_scu {

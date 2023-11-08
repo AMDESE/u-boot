@@ -16,6 +16,7 @@
 #include <asm/arch-aspeed/e2m_ast2700.h>
 #include <asm/arch-aspeed/scu_ast2700.h>
 #include <asm/arch-aspeed/sli_ast2700.h>
+#include <asm/arch-aspeed/ltpi_ast2700.h>
 #include <linux/bitfield.h>
 #include <linux/bitops.h>
 #include <linux/delay.h>
@@ -672,6 +673,19 @@ static void sli_init(void)
 	printf("SLI DS @ %dHz init done\n", phyclk_lookup[SLI_TARGET_PHYCLK]);
 }
 
+static void ltpi_init_address_map(void)
+{
+	uint32_t reg = readl((void *)ASPEED_LTPI0_BASE + LTPI_LINK_MANAGE_ST);
+
+	if (reg & LTPI_LINK_PARTNER_AST1700)
+		reg = FIELD_PREP(REMAP_ENTRY0, LTPI_REMOTE_AST1700_IOD_SPACE);
+	else
+		reg = 0;
+
+	writel(reg, (void *)ASPEED_LTPI0_BASE + LTPI_ADDR_REMAP_REG0);
+	writel(reg, (void *)ASPEED_LTPI1_BASE + LTPI_ADDR_REMAP_REG0);
+}
+
 int spl_board_init_f(void)
 {
 	int rc;
@@ -681,6 +695,9 @@ int spl_board_init_f(void)
 
 	sli_init();
 	/* TBD: CPU-die SCU OTP */
+
+	if ((readl((void *)ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_SCM))
+		ltpi_init_address_map();
 
 	/* Probe block driver to bring up mmc */
 	if (spl_boot_device() == BOOT_DEVICE_MMC1)

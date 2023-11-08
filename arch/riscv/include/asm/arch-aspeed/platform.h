@@ -34,6 +34,8 @@
 #define ASPEED_IO_SPI0_DRIVING	0x14C024CC
 #define ASPEED_IO_SPI1_DRIVING	0x14C024CC
 #define ASPEED_IO_SPI2_DRIVING	0x14C024D0
+#define ASPEED_LTPI0_BASE	0x14c34000
+#define ASPEED_LTPI1_BASE	0x14c35000
 #else
 #err "Unrecognized Aspeed platform."
 #endif
