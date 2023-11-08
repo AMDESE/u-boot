@@ -421,7 +421,8 @@ static int ftgmac100_start(struct udevice *dev)
 		FTGMAC100_MACCR_RX_RUNT |
 		FTGMAC100_MACCR_RX_BROADPKT;
 
-	if (priv->is_ast2700 && priv->phydev->interface == PHY_INTERFACE_MODE_RMII)
+	if (priv->is_ast2700 && (priv->phydev->interface == PHY_INTERFACE_MODE_RMII ||
+				 priv->phydev->interface == PHY_INTERFACE_MODE_NCSI))
 		maccr |= FTGMAC100_MACCR_RMII_ENABLE;
 
 	writel(maccr, &ftgmac100->maccr);
