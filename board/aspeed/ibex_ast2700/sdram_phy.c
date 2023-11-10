@@ -243,6 +243,7 @@ void dwc_ddrphy_phyinit_userCustom_G_waitFwDone(void)
 
 	printf("Firmware training process is complete!!!\n");
 }
+
 void dwc_ddrphy_phyinit_userCustom_J_enterMissionMode(void)
 {
 	uint32_t  value;

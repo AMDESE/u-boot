@@ -73,3 +73,4 @@
 #define SLIM_DEFAULT_DELAY		12
 #endif
 #endif
+int sli_init(void);
