@@ -36,9 +36,6 @@ static int ast2600_wdt_stop(struct udevice *dev)
 
 	clrbits_le32(&wdt->ctrl, WDT_CTRL_EN);
 
-	writel(WDT_RESET_MASK1_DEFAULT, &wdt->reset_mask1);
-	writel(WDT_RESET_MASK2_DEFAULT, &wdt->reset_mask2);
-
 	return 0;
 }
 
