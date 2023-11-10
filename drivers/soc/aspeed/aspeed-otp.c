@@ -484,7 +484,6 @@ static int aspeed_otp_probe(struct udevice *dev)
 	int rc;
 
 	otp->base = devfdt_get_addr(dev);
-	printf("%s: otp base: 0x%llx\n", __func__, otp->base);
 
 	/* OTP ECC init */
 	rc = aspeed_otp_ecc_init(dev);
