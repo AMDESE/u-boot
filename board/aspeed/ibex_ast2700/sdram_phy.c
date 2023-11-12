@@ -2,6 +2,7 @@
 #include "sdram_ast2700.h"
 #include <binman_sym.h>
 #include <spl.h>
+#include <asm/arch-aspeed/stor_ast2700.h>
 
 #define DWC_PHY_BIN_BASE_SPI	(0x20000000)
 #define DWC_PHY_BIN_BASE_SRAM	(0x10000000)
@@ -289,135 +290,36 @@ void dwc_ddrphy_phyinit_userCustom_J_enterMissionMode(void)
 	}
 }
 
-u32 spl_boot_list;
 int dwc_ddrphy_phyinit_userCustom_D_loadIMEM(const int train2D)
 {
-	u32 i;
 	u32 imem_base = DWC_PHY_IMEM_OFFSET;
-	u32 *src;
 	int type;
 	int ret = 0;
-	u32 blk, blks, target_base;
-	struct mmc *mmc;
-	struct blk_desc *bd;
 
 	printf("%s %d\n", __func__, train2D);
 
 	type = is_ddr4();
 
-	if (spl_boot_device() == BOOT_DEVICE_RAM) {
-		target_base = DWC_PHY_BIN_BASE_SPI;
-	} else if (spl_boot_device() == BOOT_DEVICE_MMC1) {
-		target_base = DWC_PHY_BIN_BASE_SRAM;
-
-		printf("%s: mmc init device\n", __func__);
-		ret = mmc_init_device(0);
-		if (ret)
-			printf("cannot init mmc\n");
-
-		printf("%s: find mmc device\n", __func__);
-		mmc = find_mmc_device(0);
-		ret = mmc ? 0 : -ENODEV;
-		if (ret)
-			printf("cannot find mmc device\n");
-
-		printf("mmc=0x%x\n", (u32)mmc);
-
-		bd = mmc_get_blk_desc(mmc);
-		printf("bd=0x%x\n", (u32)bd);
-
-		ret = blk_dselect_hwpart(bd, 1);
-		if (ret)
-			printf("bd selet part fail\n");
-
-		blk = dwc_train[type][train2D].imem_base / 512;
-		dwc_train[type][train2D].imem_base %= 512;
-		blks = dwc_train[type][train2D].imem_len / 512;
-
-		if (dwc_train[type][train2D].imem_len % 512)
-			blks++;
-
-		printf("blk read blk=0x%x, blks=0x%x\n", blk, blks);
-		ret = blk_dread(bd, blk, blks, (void *)target_base);
-
-		printf("blk read cnt=%d\n", ret);
-	} else {
-		printf("Unsupported Device!\n");
-	}
-
-	src = (u32 *)(dwc_train[type][train2D].imem_base + target_base);
-	printf("imem target src = 0x%x\n", (u32)src);
-	printf("imem target 1st dword = 0x%x\n", (u32)*src);
-	printf("imem target len = 0x%x\n", dwc_train[type][train2D].imem_len);
-
-	for (i = 0; i < dwc_train[type][train2D].imem_len / 4; i++)
-		writel(*(src + i), (void *)DRAMC_PHY_BASE + 2 * (imem_base + 2 * i));
+	stor_copy((u32 *)dwc_train[type][train2D].imem_base,
+		  (u32 *)(DRAMC_PHY_BASE + 2 * imem_base),
+		  dwc_train[type][train2D].imem_len);
 
 	return ret;
 }
 
 int dwc_ddrphy_phyinit_userCustom_F_loadDMEM(const int pState, const int train2D)
 {
-	u32 i;
 	u32 dmem_base = DWC_PHY_DMEM_OFFSET;
-	u32 *src;
 	int type;
 	int ret = 0;
-	u32 blk, blks, target_base;
-	struct mmc *mmc;
-	struct blk_desc *bd;
 
 	printf("%s %d\n", __func__, train2D);
 
 	type = is_ddr4();
 
-	if (spl_boot_device() == BOOT_DEVICE_RAM) {
-		target_base = DWC_PHY_BIN_BASE_SPI;
-	} else if (spl_boot_device() == BOOT_DEVICE_MMC1) {
-		target_base = DWC_PHY_BIN_BASE_SRAM;
-
-		printf("%s: mmc init device\n", __func__);
-		ret = mmc_init_device(0);
-		if (ret)
-			printf("cannot init mmc\n");
-
-		printf("%s: find mmc device\n", __func__);
-		mmc = find_mmc_device(0);
-		ret = mmc ? 0 : -ENODEV;
-		if (ret)
-			printf("cannot find mmc device\n");
-
-		printf("mmc=0x%x\n", (u32)mmc);
-
-		bd = mmc_get_blk_desc(mmc);
-		printf("bd=0x%x\n", (u32)bd);
-
-		ret = blk_dselect_hwpart(bd, 1);
-		if (ret)
-			printf("bd selet part fail\n");
-
-		blk = dwc_train[type][train2D].dmem_base / 512;
-		dwc_train[type][train2D].dmem_base %= 512;
-		blks = dwc_train[type][train2D].dmem_len / 512;
-
-		if (dwc_train[type][train2D].dmem_len % 512)
-			blks++;
-
-		printf("blk read blk=0x%x, blks=0x%x\n", blk, blks);
-		ret = blk_dread(bd, blk, blks, (void *)target_base);
-
-		printf("blk read cnt=%d\n", ret);
-	} else {
-		printf("Unsupported Device!\n");
-	}
-
-	src = (u32 *)(dwc_train[type][train2D].dmem_base + target_base);
-	printf("dmem target src = 0x%x\n", (u32)src);
-	printf("dmem target 1st dword = 0x%x\n", (u32)*src);
-	printf("dmem target len = 0x%x\n", dwc_train[type][train2D].dmem_len);
-
-	for (i = 0; i < dwc_train[type][train2D].dmem_len / 4; i++)
-		writel(*(src + i), (void *)DRAMC_PHY_BASE + 2 * (dmem_base + 2 * i));
+	stor_copy((u32 *)dwc_train[type][train2D].dmem_base,
+		  (u32 *)(DRAMC_PHY_BASE + 2 * dmem_base),
+		  dwc_train[type][train2D].dmem_len);
 
 	return ret;
 }

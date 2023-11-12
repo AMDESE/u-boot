@@ -40,6 +40,7 @@
 #define SCU_CPU_PCI_MISC70_EN_VGA		BIT(0)
 
 /* SoC1 SCU Register */
+#define SCU_IO_HWSTRAP_UFS			BIT(23)
 #define SCU_IO_HWSTRAP_EMMC			BIT(11)
 #define SCU_IO_HWSTRAP_SCM			BIT(3)
 

@@ -18,6 +18,7 @@
 #include <asm/arch-aspeed/sli_ast2700.h>
 #include <asm/arch-aspeed/ltpi_ast2700.h>
 #include <asm/arch-aspeed/sdram_ast2700.h>
+#include <asm/arch-aspeed/stor_ast2700.h>
 #include <linux/bitfield.h>
 #include <linux/bitops.h>
 #include <linux/delay.h>
@@ -26,7 +27,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-bool ibex_boot2fw;
+static bool ibex_boot2fw;
 
 int misc_init(void)
 {
@@ -70,49 +71,6 @@ u32 spl_boot_device(void)
 		return BOOT_DEVICE_RAM;
 }
 
-int emmc_init(void)
-{
-	int ret = 0;
-	struct udevice *dev;
-
-	if (spl_boot_device() != BOOT_DEVICE_MMC1)
-		return 0;
-
-	/* release emmc pin from emmc boot */
-	writel(0, (void *)0x12c0b00c);
-
-	printf("spl probe blk\n");
-
-	ret = uclass_get_device(UCLASS_BLK, 0, &dev);
-	if (ret)
-		printf("cannot get BLK driver\n");
-
-	return ret;
-}
-
-int spi_init(void)
-{
-	uint32_t reg_val;
-
-	reg_val = readl((void *)ASPEED_IO_FWSPI_DRIVING);
-	reg_val |= 0x00000fff;
-	writel(reg_val, (void *)ASPEED_IO_FWSPI_DRIVING);
-
-	reg_val = readl((void *)ASPEED_IO_SPI0_DRIVING);
-	reg_val |= 0x00000fff;
-	writel(reg_val, (void *)ASPEED_IO_SPI0_DRIVING);
-
-	reg_val = readl((void *)ASPEED_IO_SPI1_DRIVING);
-	reg_val |= 0x0fff0000;
-	writel(reg_val, (void *)ASPEED_IO_SPI1_DRIVING);
-
-	reg_val = readl((void *)ASPEED_IO_SPI2_DRIVING);
-	reg_val |= 0x00000fff;
-	writel(reg_val, (void *)ASPEED_IO_SPI2_DRIVING);
-
-	return 0;
-}
-
 struct init_callback {
 	char name[10];
 	int (*init_cb)(void);
@@ -121,9 +79,8 @@ struct init_callback {
 struct init_callback board_init_seq[] = {
 	{"SLI",		sli_init},
 	{"LTPI",	ltpi_init},
-	{"MMC",		emmc_init},
+	{"STOR",	stor_init},
 	{"DRAM",	dram_init},
-	{"SPI",		spi_init},
 	{"VGA",		pci_vga_init},
 };
 
