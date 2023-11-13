@@ -4050,7 +4050,7 @@ dwc_ddrphy_phyinit_userCustom_A_bringupPower();
 ////##############################################################
 //
 //
-dwc_ddrphy_phyinit_userCustom_B_startClockResetPhy();
+dwc_ddrphy_phyinit_userCustom_B_startClockResetPhy(sdramc);
 
 //// [dwc_ddrphy_phyinit_userCustom_B_startClockResetPhy] End of dwc_ddrphy_phyinit_userCustom_B_startClockResetPhy()
 //
@@ -6930,7 +6930,7 @@ dwc_ddrphy_phyinit_userCustom_customPostTrain();
 ////
 ////##############################################################
 //
-dwc_ddrphy_phyinit_userCustom_J_enterMissionMode();
+dwc_ddrphy_phyinit_userCustom_J_enterMissionMode(sdramc);
 
 //
 //// [dwc_ddrphy_phyinit_userCustom_J_enterMissionMode] End of dwc_ddrphy_phyinit_userCustom_J_enterMissionMode()

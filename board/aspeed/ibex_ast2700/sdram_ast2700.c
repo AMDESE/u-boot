@@ -325,7 +325,6 @@ static int sdramc_init(struct sdramc *sdramc, struct sdramc_ac_timing **ac)
 
 	*ac = &tbl[speed];
 
-	printf("ac_table type=%d\n", tbl[speed].type);
 	return 0;
 }
 
@@ -335,7 +334,7 @@ static void sdramc_phy_init(struct sdramc *sdramc, struct sdramc_ac_timing *ac)
 	if (IS_ENABLED(CONFIG_ASPEED_FPGA))
 		fpga_phy_init(sdramc);
 	else
-		dwc_phy_init(ac);
+		dwc_phy_init(sdramc);
 }
 
 static int sdramc_exit_self_refresh(struct sdramc *sdramc)
@@ -717,7 +716,8 @@ int dram_init(void)
 	u32 bistcfg;
 	int err = 0;
 
-	sdramc->regs = (struct sdramc_regs *)0x12c00000;
+	sdramc->regs = (struct sdramc_regs *)DRAMC_BASE;
+	sdramc->phy_regs = (u32 *)DRAMC_PHY_BASE;
 
 	if (is_ddr_initialized())
 		goto out;
@@ -758,41 +758,3 @@ out:
 
 	return 0;
 }
-
-//static int ast2700_sdramc_of_to_plat(struct udevice *dev)
-//{
-//	struct sdramc *sdramc = (struct sdramc *)dev_get_priv(dev);
-//
-//	sdramc->regs = (void *)(uintptr_t)devfdt_get_addr_index(dev, 0);
-//	sdramc->phy_setting = (void *)(uintptr_t)devfdt_get_addr_index(dev, 1);
-//
-//	return 0;
-//}
-//
-//static int ast2700_sdramc_get_info(struct udevice *dev, struct ram_info *info)
-//{
-//	struct sdramc *sdramc = (struct sdramc *)dev_get_priv(dev);
-//
-//	*info = sdramc->info;
-//
-//	return 0;
-//}
-//
-//static struct ram_ops ast2700_sdramc_ops = {
-//	.get_info = ast2700_sdramc_get_info,
-//};
-//
-//static const struct udevice_id ast2700_sdramc_ids[] = {
-//	{ .compatible = "aspeed,ast2700-sdrammc" },
-//	{ }
-//};
-//
-//U_BOOT_DRIVER(sdrammc_ast2700) = {
-//	.name = "aspeed_ast2700_sdrammc",
-//	.id = UCLASS_RAM,
-//	.of_match = ast2700_sdramc_ids,
-//	.ops = &ast2700_sdramc_ops,
-//	.of_to_plat = ast2700_sdramc_of_to_plat,
-//	.probe = ast2700_sdramc_probe,
-//	.priv_auto = sizeof(struct sdramc),
-//};

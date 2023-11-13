@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0+
-#include "sdram_ast2700.h"
 #include <binman_sym.h>
 #include <spl.h>
+#include <asm/arch-aspeed/sdram_ast2700.h>
 #include <asm/arch-aspeed/stor_ast2700.h>
-
-#define DWC_PHY_BIN_BASE_SPI	(0x20000000)
-#define DWC_PHY_BIN_BASE_SRAM	(0x10000000)
 
 #define DWC_PHY_IMEM_OFFSET	(0x50000)
 #define DWC_PHY_DMEM_OFFSET	(0x58000)
@@ -33,67 +30,45 @@ struct train_bin {
 };
 
 struct train_bin dwc_train[DRAM_TYPE_MAX][2] = {
-	/* sync with hw strap 0:ddr5, 1:ddr4 */
-	{// one binary for ddr5 1d/2d together
-		{
-		//CONFIG_DDR5_PMU_TRAIN_IMEM_OFS, CONFIG_DDR5_PMU_TRAIN_IMEM_LEN,
-		//CONFIG_DDR5_PMU_TRAIN_DMEM_OFS, CONFIG_DDR5_PMU_TRAIN_DMEM_LEN,
-		0, 0, 0, 0,
-		},
-		{
-		0, 0, 0, 0,
-		},
-	},
-	{// two binary for ddr4 1d and 2d separatedly
-		{
-		//CONFIG_DDR4_PMU_TRAIN_IMEM_OFS, CONFIG_DDR4_PMU_TRAIN_IMEM_LEN,
-		//CONFIG_DDR4_PMU_TRAIN_DMEM_OFS, CONFIG_DDR4_PMU_TRAIN_DMEM_LEN,
-		0, 0, 0, 0,
-		},
-		{
-		//CONFIG_DDR4_2D_PMU_TRAIN_IMEM_OFS, CONFIG_DDR4_2D_PMU_TRAIN_IMEM_LEN,
-		//CONFIG_DDR4_2D_PMU_TRAIN_DMEM_OFS, CONFIG_DDR4_2D_PMU_TRAIN_DMEM_LEN,
-		0, 0, 0, 0,
-		},
-	},
+	{{0, 0, 0, 0}, {0, 0, 0, 0}},
+	{{0, 0, 0, 0}, {0, 0, 0, 0}},
 };
 
-void dwc_get_mailbox(const int bit32_mode, uint32_t *mail)
-{
-	uint32_t ddrphy_val;
+#define DWC_UCTWRITEPROTSHADOW		BIT(0)
+#define DWC_UCTSHADOWREGS		(0xd0004)
+#define DWC_DCTWRITEPROT		(0xd0031)
+#define DWC_UCTWRITEONLYSHADOW		(0xd0032)
+#define	DWC_UCTWRITEPROT		(0xc0033)
+#define DWC_UCTDATWRITEONLYSHADOW	(0xd0034)
 
+void dwc_get_mailbox(const int mode, uint32_t *mail)
+{
 	/* 1. Poll the UctWriteProtShadow, looking for a 0 */
-	while (1) {
-		ddrphy_val = dwc_ddrphy_apb_rd(0xd0004);
-		if (!(ddrphy_val & 0x1))
-			break;
-	}
+	while (dwc_ddrphy_apb_rd(DWC_UCTSHADOWREGS) & DWC_UCTWRITEPROTSHADOW)
+		;
 
 	/* 2. When a 0 is seen, read the UctWriteOnlyShadow register to get the major message number. */
-	*mail = dwc_ddrphy_apb_rd(0xd0032) & 0xffff;
+	*mail = dwc_ddrphy_apb_rd(DWC_UCTWRITEONLYSHADOW) & 0xffff;
 
 	/* 3. If reading a streaming or SMBus message, also read the UctDatWriteOnlyShadow register. */
-	if (bit32_mode)
-		*mail += (dwc_ddrphy_apb_rd(0xd0034) & 0xffff) << 16;
+	if (mode)
+		*mail |= ((dwc_ddrphy_apb_rd(DWC_UCTDATWRITEONLYSHADOW) & 0xffff) << 16);
 
 	/* 4. Write the DctWriteProt to 0 to acknowledge the reception of the message */
-	dwc_ddrphy_apb_wr(0xd0031, 0);
+	dwc_ddrphy_apb_wr(DWC_DCTWRITEPROT, 0);
 
 	/* 5. Poll the UctWriteProtShadow, looking for a 1 */
-	while (1) {
-		ddrphy_val = dwc_ddrphy_apb_rd(0xd0004);
-		if (ddrphy_val & 0x1)
-			break;
-	};
+	while (!(dwc_ddrphy_apb_rd(DWC_UCTSHADOWREGS) & DWC_UCTWRITEPROTSHADOW))
+		;
 
 	/* 6. When a 1 is seen, write the DctWriteProt to 1 to complete the protocol */
-	dwc_ddrphy_apb_wr(0xd0031, 1);
+	dwc_ddrphy_apb_wr(DWC_DCTWRITEPROT, 1);
 }
 
 void dwc_init_mailbox(void)
 {
-	dwc_ddrphy_apb_wr(0xd0031, 1);
-	dwc_ddrphy_apb_wr(0xd0033, 1);
+	dwc_ddrphy_apb_wr(DWC_DCTWRITEPROT, 1);
+	dwc_ddrphy_apb_wr(DWC_UCTWRITEPROT, 1);
 }
 
 uint32_t dwc_readMsgBlock(const uint32_t addr_half)
@@ -110,82 +85,41 @@ uint32_t dwc_readMsgBlock(const uint32_t addr_half)
 	return data_word;
 }
 
+#define DWC_PHY_DDR4_MB_PMU_REV		(0x58001)
+#define DWC_PHY_DDR4_MB_RESULT		(0x5800a)
+#define DWC_PHY_DDR5_MB_PMU_REV		(0x58001)
+#define DWC_PHY_DDR5_MB_RESULT		(0x58007)
+#define DWC_PHY_DDR5_MB_RESULT_ADR	(0x5800a)
+
 int dwc_ddrphy_phyinit_userCustom_H_readMsgBlock(int train2D)
 {
 	uint32_t  message;
 
 	if (is_ddr4()) {
-		if (train2D) {
-			printf("%s: Read 2D message block by train2D = 1\n", __func__);
-
-			/* uint16_t PmuRevision;  // Byte offset 0x02, CSR Addr 0x58001, Direction=Out */
-			message = dwc_readMsgBlock(0x58001);
-			printf("%s: PMU firmware revision ID (0x%x)\n", __func__, message);
-
-			/* uint8_t CsTestFail;   // Byte offset 0x14, CSR Addr 0x5800a, Direction=Out */
-			message = dwc_readMsgBlock(0x5800a);
-
-			if ((message & 0xff) > 0) {
-				printf("%s: Training Failure index (0x%x)\n", __func__, message);
-			} else {
-				message = dwc_readMsgBlock(0x58012);
-				printf("%s:- <DWC_DDRPHY Message Block>: R0_RxClkDly_Margin=0x%x\n", __func__, (message & 0xff00) >> 8);
-
-				message = dwc_readMsgBlock(0x58013);
-				printf("%s:- <DWC_DDRPHY Message Block>: R0_VrefDac_Margin=0x%x\n", __func__, (message & 0xff));
-				printf("%s:- <DWC_DDRPHY Message Block>: R0_VrefDac_Margin=0x%x\n", __func__, (message & 0xff00) >> 8);
-
-				message = dwc_readMsgBlock(0x58014);
-				printf("%s:- <DWC_DDRPHY Message Block>: R0_DeviceVref_Margin=0x%x\n", __func__, (message & 0xff));
-
-				message = dwc_readMsgBlock(0x58016);
-				printf("%s:- <DWC_DDRPHY Message Block>: MR1_RX_CTLE_CTRL0=0x%x\n", __func__, (message & 0xff));
-				printf("%s:- <DWC_DDRPHY Message Block>: MR1_RX_CTLE_CTRL1=0x%x\n", __func__, (message & 0xff00) >> 8);
-
-				message = dwc_readMsgBlock(0x58017);
-				printf("%s:- <DWC_DDRPHY Message Block>: MR1_RX_CTLE_CTRL2=0x%x\n", __func__, (message & 0xff));
-				printf("%s:- <DWC_DDRPHY Message Block>: MR1_RX_CTLE_CTRL3=0x%x\n", __func__, (message & 0xff00) >> 8);
-
-				message = dwc_readMsgBlock(0x5801d);
-				printf("%s:- <DWC_DDRPHY Message Block>: MR6_RX_CTLE_CTRL0=0x%x\n", __func__, (message & 0xff));
-				printf("%s:- <DWC_DDRPHY Message Block>: MR6_RX_CTLE_CTRL1=0x%x\n", __func__, (message & 0xff00) >> 8);
-
-				message = dwc_readMsgBlock(0x5801e);
-				printf("%s:- <DWC_DDRPHY Message Block>: MR6_RX_CTLE_CTRL2=0x%x\n", __func__, (message & 0xff));
-				printf("%s:- <DWC_DDRPHY Message Block>: MR6_RX_CTLE_CTRL3=0x%x\n", __func__, (message & 0xff00) >> 8);
-				printf("%s: 2D Training Passed\n", __func__);
-			}
-		} else {  // train 1D
-			printf("%s: Read 1D message block by train2D = 0\n", __func__);
-			// 1. Check PMU revision
-			message = dwc_readMsgBlock(0x58001);
-			printf("%s: PMU firmware revision ID (0x%x)\n", __func__, message);
-
-			// 2. Check pass / Failure of the training (CsTestFail)
-			message = dwc_readMsgBlock(0x5800a);
-			if ((message & 0xff) > 0)
-				printf("%s: Training Failure index (0x%x)\n", __func__, message);
-			else
-				printf("%s: 1D Training Passed\n", __func__);
-		}
-	} else {
-		printf("%s: Read 2D message block by train2D = 1\n", __func__);
-		// 1. Check PMU revision
-		// uint16_t PmuRevision;  // Byte offset 0x02, CSR Addr 0x58001, Direction=Out
-		message = dwc_readMsgBlock(0x58001);
+		/* 1. Check PMU revision */
+		message = dwc_readMsgBlock(DWC_PHY_DDR4_MB_PMU_REV);
 		printf("%s: PMU firmware revision ID (0x%x)\n", __func__, message);
 
-		// 2. Check pass / Failure of the training (CsTestFail)
-		// uint8_t CsTestFail;   // Byte offset 0x0f, CSR Addr 0x58007, Direction=Out
-		message = dwc_readMsgBlock(0x58007);
-		if (((message >> 8) & 0xff) > 0)
+		/* 2. Check pass */
+		message = dwc_readMsgBlock(DWC_PHY_DDR4_MB_RESULT);
+		if (message & 0xff)
+			printf("%s: Training Failure index (0x%x)\n", __func__, message);
+		else
+			printf("%s: %dD Training Passed\n", __func__, train2D ? 2 : 1);
+	} else {
+		/* 1. Check PMU revision */
+		message = dwc_readMsgBlock(DWC_PHY_DDR5_MB_PMU_REV);
+		printf("%s: PMU firmware revision ID (0x%x)\n", __func__, message);
+
+		/* 2. Check pass / Failure of the training (CsTestFail) */
+		message = dwc_readMsgBlock(DWC_PHY_DDR5_MB_RESULT);
+		if (message & 0xff00)
 			printf("%s: Training Failure index (0x%x)\n", __func__, message);
 		else
 			printf("%s: DDR5 1D/2D Training Passed\n", __func__);
 
-		// 3. Read ResultAddrOffset
-		// uint16_t ResultAddrOffset; // Byte offset 0x14, CSR Addr 0x5800a, Direction=Out
-		message = dwc_readMsgBlock(0x5800a);
+		/* 3. Read ResultAddrOffset */
+		message = dwc_readMsgBlock(DWC_PHY_DDR5_MB_RESULT_ADR);
 		printf("%s: Result Address Offset (0x%x)\n", __func__, message);
 	}
 
@@ -196,26 +130,37 @@ void dwc_ddrphy_phyinit_userCustom_A_bringupPower(void)
 {
 }
 
-void dwc_ddrphy_phyinit_userCustom_B_startClockResetPhy(void)
+void dwc_ddrphy_phyinit_userCustom_B_startClockResetPhy(struct sdramc *sdramc)
 {
-	//// 1. Drive PwrOkIn to 0. Note: Reset, DfiClk, and APBCLK can be X.
-	//// 2. Start DfiClk and APBCLK
-	//// 3. Drive Reset to 1 and PRESETn_APB to 0.
-	////	Note: The combination of PwrOkIn=0 and Reset=1 signals a cold reset to the PHY.
-	writel(0x00020000, (void *)0x12c00014);//DRAMC_MCTL);
-	//// 4. Wait a minimum of 8 cycles.
+	struct sdramc_regs *regs = sdramc->regs;
+
+	/*
+	 * 1. Drive PwrOkIn to 0. Note: Reset, DfiClk, and APBCLK can be X.
+	 * 2. Start DfiClk and APBCLK
+	 * 3. Drive Reset to 1 and PRESETn_APB to 0.
+	 * Note: The combination of PwrOkIn=0 and Reset=1 signals a cold reset to the PHY.
+	 */
+	writel(DRAMC_MCTL_PHY_RESET, (void *)&regs->mctl);
 	udelay(2);
-	//// 5. Drive PwrOkIn to 1. Once the PwrOkIn is asserted (and Reset is still asserted),
-	////	DfiClk synchronously switches to any legal input frequency.
-	writel(0x00030000, (void *)0x12c00014);//DRAMC_MCTL);
-	//// 6. Wait a minimum of 64 cycles. Note: This is the reset period for the PHY.
+
+	/*
+	 * 5. Drive PwrOkIn to 1. Once the PwrOkIn is asserted (and Reset is still asserted),
+	 * DfiClk synchronously switches to any legal input frequency.
+	 */
+	writel(DRAMC_MCTL_PHY_RESET | DRAMC_MCTL_PHY_POWER_ON, (void *)&regs->mctl);
 	udelay(2);
-	//// 7. Drive Reset to 0. Note: All DFI and APB inputs must be driven at valid reset states before the deassertion of Reset.
-	writel(0x00010000, (void *)0x12c00014);//DRAMC_MCTL);
-	//// 8. Wait a minimum of 1 Cycle.
-	//// 9. Drive PRESETn_APB to 1 to de-assert reset on the ABP bus.
-	////10. The PHY is now in the reset state and is ready to accept APB transactions.
+
+	/*
+	 * 7. Drive Reset to 0. Note: All DFI and APB inputs must be driven at valid reset states
+	 * before the deassertion of Reset.
+	 */
+	writel(DRAMC_MCTL_PHY_POWER_ON, (void *)&regs->mctl);
 	udelay(2);
+
+	/*
+	 * 9. Drive PRESETn_APB to 1 to de-assert reset on the ABP bus.
+	 * 10. The PHY is now in the reset state and is ready to accept APB transactions.
+	 */
 }
 
 void dwc_ddrphy_phyinit_userCustom_overrideUserInput(void)
@@ -231,13 +176,15 @@ void dwc_ddrphy_phyinit_userCustom_E_setDfiClk(int a)
 	dwc_init_mailbox();
 }
 
+#define DWC_PHY_MB_TRAIN_SUCCESS	0x7
+#define DWC_PHY_MB_TRAIN_FAIL		0xff
 void dwc_ddrphy_phyinit_userCustom_G_waitFwDone(void)
 {
 	uint32_t message = 0, mail;
 
 	printf("dwc_ddrphy wait fw done\n");
 
-	while (message != 0x07 && message != 0xff) {
+	while (message != DWC_PHY_MB_TRAIN_SUCCESS && message != DWC_PHY_MB_TRAIN_FAIL) {
 		dwc_get_mailbox(0, &mail);
 		message = mail & 0xffff;
 	}
@@ -245,48 +192,49 @@ void dwc_ddrphy_phyinit_userCustom_G_waitFwDone(void)
 	printf("Firmware training process is complete!!!\n");
 }
 
-void dwc_ddrphy_phyinit_userCustom_J_enterMissionMode(void)
+void dwc_ddrphy_phyinit_userCustom_J_enterMissionMode(struct sdramc *sdramc)
 {
-	uint32_t  value;
-  //// 1. Set the PHY input clocks to the desired frequency.
-  //// 2. Initialize the PHY to mission mode by performing DFI Initialization.
-  ////	  Please see the DFI specification for more information. See the DFI frequency bus encoding in section <XXX>.
-  //// Note: The PHY training firmware initializes the DRAM state. if skip
-  //// training is used, the DRAM state is not initialized.
-	writel(0xffffffff, (void *)0x12c0000c);//DRAMC_IRQMSK);
+	struct sdramc_regs *regs = sdramc->regs;
+	uint32_t val;
 
-	writel(0x0, (void *)0x12c00040);//DRAMC_DFICFG); // [16] reset=0
+	/*
+	 * 1. Set the PHY input clocks to the desired frequency.
+	 * 2. Initialize the PHY to mission mode by performing DFI Initialization.
+	 * Please see the DFI specification for more information. See the DFI frequency bus encoding in section <XXX>.
+	 * Note: The PHY training firmware initializes the DRAM state. if skip
+	 * training is used, the DRAM state is not initialized.
+	 */
+
+	writel(0xffffffff, (void *)&regs->intr_mask);
+
+	writel(0x0, (void *)&regs->dcfg); // [16] reset=0
 
 	if (!is_ddr4()) {
-		dwc_ddrphy_apb_wr(0xd0000, 0); // DWC_DDRPHYA_APBONLY0_MicroContMuxSel
-		dwc_ddrphy_apb_wr(0x20240, 0x3900); // DWC_DDRPHYA_MASTER0_base0_D5ACSMPtr0lat0
-		dwc_ddrphy_apb_wr(0x900da, 8); // DWC_DDRPHYA_INITENG0_base0_SequenceReg0b59s0
-		dwc_ddrphy_apb_wr(0xd0000, 1); // DWC_DDRPHYA_APBONLY0_MicroContMuxSel
+		dwc_ddrphy_apb_wr(0xd0000, 0);		// DWC_DDRPHYA_APBONLY0_MicroContMuxSel
+		dwc_ddrphy_apb_wr(0x20240, 0x3900);	// DWC_DDRPHYA_MASTER0_base0_D5ACSMPtr0lat0
+		dwc_ddrphy_apb_wr(0x900da, 8);		// DWC_DDRPHYA_INITENG0_base0_SequenceReg0b59s0
+		dwc_ddrphy_apb_wr(0xd0000, 1);		// DWC_DDRPHYA_APBONLY0_MicroContMuxSel
 	}
 
-	printf("dfi init start\n");
-	value = readl((void *)0x12c00014);//DRAMC_MCTL);
-	value = value | 0x1;
-	writel(value, (void *)0x12c00014);//DRAMC_MCTL); // [0] init_start
+	/* phy init start */
+	val = readl((void *)&regs->mctl);
+	val = val | DRAMC_MCTL_PHY_INIT_START;
+	writel(val, (void *)&regs->mctl);
 
-	printf("wait dfi init complete\n");
-	value = readl((void *)0x12c00004);//DRAMC_IRQSTA);
-	while ((value & 0x1) != 1) {
-		value = readl((void *)0x12c00004);//DRAMC_IRQSTA);
-	};
-	printf("INT: 0x%x\n", readl((void *)0x12c00004));
-	writel(0xffff, (void *)0x12c00008);//DRAMC_IRQCLR);
+	/* wait phy complete */
+	while ((readl((void *)&regs->intr_status) & DRAMC_IRQSTA_PHY_INIT_DONE) != DRAMC_IRQSTA_PHY_INIT_DONE)
+		;
 
-	value = readl((void *)0x12c00004);//DRAMC_IRQSTA);
-	while (value) {
-		value = readl((void *)0x12c00004);//DRAMC_IRQSTA);
-	};
+	writel(0xffff, (void *)&regs->intr_clear);
+
+	while (readl((void *)&regs->intr_status))
+		;
 
 	if (!is_ddr4()) {
-		dwc_ddrphy_apb_wr(0xd0000, 0); // DWC_DDRPHYA_APBONLY0_MicroContMuxSel
-		dwc_ddrphy_apb_wr(0x20240, 0x4300); // DWC_DDRPHYA_MASTER0_base0_D5ACSMPtr0lat0
-		dwc_ddrphy_apb_wr(0x900da, 0); // DWC_DDRPHYA_INITENG0_base0_SequenceReg0b59s0
-		dwc_ddrphy_apb_wr(0xd0000, 1); // DWC_DDRPHYA_APBONLY0_MicroContMuxSel
+		dwc_ddrphy_apb_wr(0xd0000, 0);		// DWC_DDRPHYA_APBONLY0_MicroContMuxSel
+		dwc_ddrphy_apb_wr(0x20240, 0x4300);	// DWC_DDRPHYA_MASTER0_base0_D5ACSMPtr0lat0
+		dwc_ddrphy_apb_wr(0x900da, 0);		// DWC_DDRPHYA_INITENG0_base0_SequenceReg0b59s0
+		dwc_ddrphy_apb_wr(0xd0000, 1);		// DWC_DDRPHYA_APBONLY0_MicroContMuxSel
 	}
 }
 
@@ -324,7 +272,7 @@ int dwc_ddrphy_phyinit_userCustom_F_loadDMEM(const int pState, const int train2D
 	return ret;
 }
 
-void dwc_phy_init(struct sdramc_ac_timing *ac)
+void dwc_phy_init(struct sdramc *sdramc)
 {
 	u32 ctx_start, imem_start, dmem_start, imem_2d_start, dmem_2d_start;
 	u32 imem_len, dmem_len, imem_2d_len, dmem_2d_len;
@@ -379,10 +327,10 @@ void dwc_phy_init(struct sdramc_ac_timing *ac)
 	printf("ddr5 dmem size 0x%x\n", dwc_train[0][0].dmem_len);
 
 	if (IS_ENABLED(CONFIG_ASPEED_DDR_PHY_TRAINING)) {
-		if (ac->type == DRAM_TYPE_4) {
+		if (is_ddr4()) {
 			printf("%s: Starting ddr4 training\n", __func__);
 			#include "dwc_ddrphy_phyinit_ddr4-3200-nodimm-train2D.c"
-		} else if (ac->type == DRAM_TYPE_5) {
+		} else {
 			printf("%s: Starting ddr5 training\n", __func__);
 			#include "dwc_ddrphy_phyinit_ddr5-3200-nodimm-train2D.c"
 		}

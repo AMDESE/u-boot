@@ -24,6 +24,7 @@
 #define SCU_IO_HWSTRAP1                 (SCU_IO_REG + 0x010)
 #define IO_HWSTRAP1_DRAM_TYPE           BIT(10)
 
+#define DRAMC_BASE			(0x12c00000)
 #define DRAMC_PHY_BASE			(0x13000000)
 #define dwc_ddrphy_apb_wr(addr, value)		(*(volatile unsigned short *)(DRAMC_PHY_BASE + 2 * (addr)) = (unsigned short)value)
 #define dwc_ddrphy_apb_rd(addr)			(*(volatile unsigned short *)(DRAMC_PHY_BASE + 2 * (addr)))
@@ -218,6 +219,7 @@
 struct sdramc {
 	struct ram_info info;
 	struct sdramc_regs *regs;
+	u32 *phy_regs;
 	void __iomem *phy_setting;
 	void __iomem *phy_status;
 	ulong clock_rate;
@@ -375,7 +377,7 @@ struct sdramc_ac_timing {
 };
 
 void fpga_phy_init(struct sdramc *sdramc);
-void dwc_phy_init(struct sdramc_ac_timing *ac);
+void dwc_phy_init(struct sdramc *sdramc);
 bool is_ddr4(void);
 int dram_init(void);//struct udevice *dev)
 #endif

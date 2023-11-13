@@ -1131,7 +1131,7 @@ dwc_ddrphy_phyinit_userCustom_A_bringupPower();
 ////##############################################################
 //
 //
-dwc_ddrphy_phyinit_userCustom_B_startClockResetPhy();
+dwc_ddrphy_phyinit_userCustom_B_startClockResetPhy(sdramc);
 
 //// [dwc_ddrphy_phyinit_userCustom_B_startClockResetPhy] End of dwc_ddrphy_phyinit_userCustom_B_startClockResetPhy()
 //
@@ -2015,7 +2015,7 @@ dwc_ddrphy_apb_wr_32b(0x58002, 0xc800000);
 dwc_ddrphy_apb_wr_32b(0x58004, 0x0);
 dwc_ddrphy_apb_wr_32b(0x58006, 0x10000240);
 dwc_ddrphy_apb_wr_32b(0x58008, 0x1);
-printf("- <DWC_DDRPHY/TRAIN>: Override 2D DMEM image for SequenceCtrl, RX2D_TrainOpt, TX2D_TrainOpt, Delay_Weight2D, and Voltage_Weight2D\n");
+//printf("- <DWC_DDRPHY/TRAIN>: Override 2D DMEM image for SequenceCtrl, RX2D_TrainOpt, TX2D_TrainOpt, Delay_Weight2D, and Voltage_Weight2D\n");
 //	  uint16_t SequenceCtrl;	 // Byte offset 0x16, CSR Addr 0x5800b, Direction=In
 							  // SequenceCtrl[0] = Run DevInit - Device/PHY initialization. Should always be set
 							  // SequenceCtrl[5] = Run rd2D - 2d read dqs training
@@ -2694,7 +2694,7 @@ dwc_ddrphy_phyinit_userCustom_customPostTrain();
 ////
 ////##############################################################
 //
-dwc_ddrphy_phyinit_userCustom_J_enterMissionMode();
+dwc_ddrphy_phyinit_userCustom_J_enterMissionMode(sdramc);
 
 //
 //// [dwc_ddrphy_phyinit_userCustom_J_enterMissionMode] End of dwc_ddrphy_phyinit_userCustom_J_enterMissionMode()
