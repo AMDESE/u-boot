@@ -6,7 +6,6 @@
 #include <dm.h>
 #include <ram.h>
 #include <spl.h>
-#include <binman_sym.h>
 #include <common.h>
 #include <asm/csr.h>
 #include <asm/arch-aspeed/platform.h>
