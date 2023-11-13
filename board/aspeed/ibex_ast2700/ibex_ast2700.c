@@ -77,7 +77,9 @@ struct init_callback {
 };
 
 struct init_callback board_init_seq[] = {
+#ifndef CONFIG_ASPEED_FPGA
 	{"SLI",		sli_init},
+#endif
 	{"LTPI",	ltpi_init},
 	{"STOR",	stor_init},
 	{"DRAM",	dram_init},
