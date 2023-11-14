@@ -315,6 +315,9 @@ int sli_init(void)
 		25, 800, 400, 200, 2000, 1000, 500, 250,
 	};
 
+	if (IS_ENABLED(CONFIG_ASPEED_FPGA))
+		return 0;
+
 	/* Return if SLI had been calibrated */
 	value = readl((void *)SLIH_IOD_BASE + SLI_CTRL_III);
 	value = FIELD_GET(SLI_CLK_SEL, value);

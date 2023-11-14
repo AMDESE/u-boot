@@ -71,9 +71,7 @@ struct init_callback {
 };
 
 struct init_callback board_init_seq[] = {
-#ifndef CONFIG_ASPEED_FPGA
 	{"SLI",		sli_init},
-#endif
 	{"LTPI",	ltpi_init},
 	{"STOR",	stor_init},
 	{"DRAM",	dram_init},
@@ -147,10 +145,9 @@ void board_fit_image_post_process(const void *fit, int node, void **p_image, siz
 
 void spl_board_prepare_for_boot(void)
 {
-#ifdef CONFIG_ASPEED_FPGA
-	/* for v7 FPGA only */
-	writel(0x1, (void *)0x12c02014);
-#endif
+	/* for v7 FPGA only to switch to uart12. */
+	if (IS_ENABLED(CONFIG_ASPEED_FPGA))
+		writel(0x1, (void *)0x12c02014);
 
 	/* clean up secondary entries */
 	writeq(0x0, (void *)0x12c02788);
