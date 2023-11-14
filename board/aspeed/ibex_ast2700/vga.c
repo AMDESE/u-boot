@@ -72,7 +72,7 @@ static int dp_init(struct ast2700_soc0_scu *scu, struct ast2700_soc0_clk *clk)
 	// TODO: SPL boot only now
 	fw_addr = (u32 *)(binman_sym(u32, dp_fw, image_pos) - CONFIG_SPL_TEXT_BASE + 0x20000000);
 
-	val = readl(&scu->vga_func_ctrl);
+	val = scu->vga_func_ctrl;
 	scu_offset = (((val >> 8) & 0x3) == 1)
 		   ? &scu->vga1_scratch1[0] : &scu->vga0_scratch1[0];
 	val = readl(scu_offset);
@@ -80,6 +80,7 @@ static int dp_init(struct ast2700_soc0_scu *scu, struct ast2700_soc0_clk *clk)
 
 	/* reset for DPTX and DPMCU if MCU isn't running */
 	if (is_mcu_stop) {
+		debug("%s: reset DP & MCU\n", __func__);
 		setbits_le32(&scu->modrst1_ctrl, SCU_CPU_RST_DP);
 		setbits_le32(&scu->modrst1_ctrl, SCU_CPU_RST_DPMCU);
 		udelay(100);
@@ -106,6 +107,7 @@ static int dp_init(struct ast2700_soc0_scu *scu, struct ast2700_soc0_clk *clk)
 
 	/* load DPMCU firmware to internal instruction memory */
 	if (is_mcu_stop) {
+		debug("%s: DPMCU fw loaded\n", __func__);
 		mcu_ctrl = MCU_CTRL_CONFIG | MCU_CTRL_IMEM_CLK_OFF | MCU_CTRL_IMEM_SHUT_DOWN |
 		      MCU_CTRL_DMEM_CLK_OFF | MCU_CTRL_DMEM_SHUT_DOWN | MCU_CTRL_AHBS_SW_RST;
 		writel(mcu_ctrl, (void *)MCU_CTRL);
@@ -142,6 +144,7 @@ static int dp_init(struct ast2700_soc0_scu *scu, struct ast2700_soc0_clk *clk)
 
 int pci_vga_init(void)
 {
+	struct udevice *clk_dev;
 	struct ast2700_soc0_clk *clk;
 	struct ast2700_soc0_scu *scu;
 	u32 val, vram_size, vram_addr;
@@ -151,9 +154,10 @@ int pci_vga_init(void)
 	bool is_64vram = readl((void *)0x12c00100) & BIT(0);
 	u8 dac_src;
 	u8 dp_src;
+	u8 efuse;
 	int rc;
-	struct udevice *clk_dev;
 
+	// get reg struct from dts
 	rc = uclass_get_device_by_driver(UCLASS_CLK,
 					 DM_DRIVER_GET(aspeed_ast2700_soc0_clk), &clk_dev);
 	if (rc) {
@@ -173,20 +177,29 @@ int pci_vga_init(void)
 		return PTR_ERR(scu);
 	}
 
-	if (!((FIELD_GET(SCU_CPU_REVISION_ID_EFUSE, scu->chip_id1) != 2) &&
-	      (FIELD_GET(SCU_CPU_REVISION_ID_HW, scu->chip_id1) != 0)))
+	// leave works to u-boot
+	if (FIELD_GET(SCU_CPU_REVISION_ID_HW, scu->chip_id1) == 0) {
+		debug("%s: Do nothing in A0\n", __func__);
 		return 0;
+	}
 
-	is_pcie0_enable = readl(&scu->pci0_misc[28]) & BIT(0);
-	is_pcie1_enable = readl(&scu->pci1_misc[28]) & BIT(0);
-	dac_src = readl(&scu->hwstrap1) & BIT(28);
-	dp_src = readl(&scu->hwstrap1) & BIT(29);
-
-	// 2700 has only 1 VGA
-	if (FIELD_GET(SCU_CPU_REVISION_ID_EFUSE, scu->chip_id1) == 1) {
+	is_pcie0_enable = scu->pci0_misc[28] & BIT(0);
+	is_pcie1_enable = scu->pci1_misc[28] & BIT(0);
+	dac_src = scu->hwstrap1 & BIT(28);
+	dp_src = scu->hwstrap1 & BIT(29);
+	efuse = FIELD_GET(SCU_CPU_REVISION_ID_EFUSE, scu->chip_id1);
+	/* Decide feature by efuse
+	 *  0: 2750 has full function
+	 *  1: 2700 has only 1 VGA
+	 *  2: 2720 has no VGA
+	 */
+	if (efuse == 1) {
 		is_pcie1_enable = false;
 		dac_src = 0;
 		dp_src = 0;
+	} else if (efuse == 2) {
+		debug("%s: 2720 has no VGA\n", __func__);
+		return 0;
 	}
 
 	debug("%s: ENABLE 0(%d) 1(%d)\n", __func__, is_pcie0_enable, is_pcie1_enable);
@@ -211,7 +224,8 @@ int pci_vga_init(void)
 		vram_addr -= vram_size;
 		debug("pcie0 e2m addr(%x)\n", _ast_get_e2m_addr(vram_addr));
 		val = _ast_get_e2m_addr(vram_addr)
-		    | FIELD_PREP(SCU_CPU_PCI_MISC0C_FB_SIZE, vram_size_cfg);
+		    | FIELD_PREP(SCU_CPU_PCI_MISC0C_FB_SIZE, vram_size_cfg)
+		    | (ASPEED_DRAM_BASE >> 4);
 		debug("pcie0 debug reg(%x)\n", val);
 		writel(val, (void *)E2M0_VGA_RAM);
 		writel(val, &scu->pci0_misc[3]);
@@ -227,7 +241,8 @@ int pci_vga_init(void)
 		vram_addr -= vram_size;
 		debug("pcie1 e2m addr(%x)\n", _ast_get_e2m_addr(vram_addr));
 		val = _ast_get_e2m_addr(vram_addr)
-		    | FIELD_PREP(SCU_CPU_PCI_MISC0C_FB_SIZE, vram_size_cfg);
+		    | FIELD_PREP(SCU_CPU_PCI_MISC0C_FB_SIZE, vram_size_cfg)
+		    | (ASPEED_DRAM_BASE >> 4);
 		debug("pcie1 debug reg(%x)\n", val);
 		writel(val, (void *)E2M1_VGA_RAM);
 		writel(val, &scu->pci1_misc[3]);
@@ -240,7 +255,7 @@ int pci_vga_init(void)
 		// enable dac clk
 		setbits_le32(&clk->clkgate_clr, SCU_CPU_CLKGATE1_DAC);
 
-		val = readl(&scu->vga_func_ctrl);
+		val = scu->vga_func_ctrl;
 		val &= ~(SCU_CPU_VGA_FUNC_DAC_OUTPUT
 			| SCU_CPU_VGA_FUNC_DP_OUTPUT
 			| SCU_CPU_VGA_FUNC_DAC_DISABLE);
@@ -250,13 +265,13 @@ int pci_vga_init(void)
 		writel(val, &scu->vga_func_ctrl);
 
 		// vga link init
-		writel(0x00030009, (void *)0x12c1d010);
+		writel(0x00030008, (void *)0x12c1d010);
 		val = 0x10000000 | dac_src;
 		writel(val, (void *)0x12c1d050);
 		writel(0x00010002, (void *)0x12c1d044);
 		writel(0x00030009, (void *)0x12c1d110);
 		writel(0x00030009, (void *)0x14c3a010);
-		writel(0x00030009, (void *)0x14c3a110);
+		writel(0x00230009, (void *)0x14c3a110);
 
 		dp_init(scu, clk);
 	}
