@@ -611,7 +611,7 @@ __used void * memmove(void * dest,const void *src,size_t count)
 {
 	char *tmp, *s;
 
-	if (IS_ENABLED(CONFIG_SPI_ASPEED_DMA)) {
+	if (IS_ENABLED(CONFIG_SPI_ASPEED_DMA) && count > 128) {
 		size_t dma_count;
 
 		dma_count = aspeed_memmove_dma_op(dest, src, count);
