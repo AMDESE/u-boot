@@ -24,6 +24,10 @@
 		uart12: serial@14c33b00 {
 			bootph-all;
 		};
+
+		edaf: edaf-bridge@14c38000 {
+			bootph-all;
+		};
 	};
 
 };

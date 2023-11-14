@@ -107,5 +107,11 @@
 			no-loopback-test;
 			status = "disabled";
 		};
+
+		edaf: edaf-bridge@14c38000 {
+			compatible = "aspeed,ast2700-edaf";
+			reg = <0x14c38000 0x1000>;
+			status = "disabled";
+		};
 	};
 };

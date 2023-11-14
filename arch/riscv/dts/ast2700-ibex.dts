@@ -64,6 +64,15 @@
 	};
 };
 
+&edaf {
+	status = "okay";
+	cmd-read = <0x30701>;
+	cmd-write = <0x20702>;
+	cmd-erase-4k = <0x20070e>;
+	cmd-erase-32k = <0x52070e>;
+	cmd-erase-64k = <0xd8070e>;
+};
+
 &binman {
 	bootph-all;
 
