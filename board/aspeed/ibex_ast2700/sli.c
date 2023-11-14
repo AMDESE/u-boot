@@ -307,8 +307,7 @@ int sli_init(void)
 {
 	uint32_t value;
 	const int phyclk_lookup[8] = {
-		25000000,   800000000,	400000000, 200000000,
-		1000000000, 1000000000, 500000000, 250000000,
+		25, 800, 400, 200, 2000, 1000, 500, 250,
 	};
 
 	/* Return if SLI had been calibrated */
@@ -326,7 +325,7 @@ int sli_init(void)
 	writel(value | SLIV_RAW_MODE, (void *)SLIV_IOD_BASE + SLI_CTRL_I);
 	sli_wait_suspend(SLIH_IOD_BASE);
 	sli_wait_suspend(SLIH_CPU_BASE);
-	printf("SLI US/DS @ 25000000Hz init done\n");
+	printf("SLI US/DS @ 25MHz init done\n");
 
 	/* IOD SLIM/H/V training off */
 	value |= SLI_AUTO_SEND_TRN_OFF;
@@ -355,6 +354,6 @@ int sli_init(void)
 	else
 		sli_calibrate_mbus_delay(0);
 
-	printf("SLI DS @ %dHz init done\n", phyclk_lookup[SLI_TARGET_PHYCLK]);
+	printf("SLI DS @ %dMHz init done\n", phyclk_lookup[SLI_TARGET_PHYCLK]);
 	return 0;
 }
