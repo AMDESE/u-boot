@@ -35,15 +35,9 @@ int misc_init(void)
 	int i = 0;
 	int ret;
 
-	/*
-	 * Loop over all MISC uclass drivers to call the comphy code
-	 * and init all CP110 devices enabled in the DT
-	 */
+	/* Loop over all MISC uclass drivers */
 	while (1) {
-		/* Call the comphy code via the MISC uclass driver */
 		ret = uclass_get_device(UCLASS_MISC, i++, &dev);
-
-		/* We're done, once no further CP110 device is found */
 		if (ret)
 			break;
 	}
@@ -97,6 +91,9 @@ int spl_board_init_f(void)
 		if (err)
 			printf("%s: %s init failed.\n", __func__, board_init_seq[i].name);
 	}
+
+	if (CONFIG_IS_ENABLED(MISC))
+		misc_init();
 
 	return 0;
 }
