@@ -24,6 +24,9 @@ size_t aspeed_memmove_dma_op(void *dest, const void *src, size_t count)
 	if (dest == src)
 		return 0;
 
+	if ((u32)dest % 4 != 0 || (u32)src % 4 != 0)
+		return 0;
+
 	if ((u32)src >= ASPEED_FMC_CS0_BASE &&
 	    (u32)src < (ASPEED_FMC_CS0_BASE + ASPEED_FMC_CS0_SIZE) &&
 	    (u32)dest >= ASPEED_DRAM_BASE) {
