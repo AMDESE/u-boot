@@ -18,4 +18,8 @@ config BOARD_SPECIFIC_OPTIONS # dummy
 	select SUPPORT_SPL
 	imply SPL_DRIVERS_MISC
 
+config SPI_ASPEED_DMA
+	bool "Enable ASPEED SPI DMA"
+	default n
+
 endif

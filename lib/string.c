@@ -21,7 +21,7 @@
 #include <linux/string.h>
 #include <linux/ctype.h>
 #include <malloc.h>
-
+#include <stdio.h>
 
 /**
  * strncasecmp - Case insensitive, length-limited string comparison
@@ -550,7 +550,10 @@ __used void * memset(void * s,int c,size_t count)
 }
 #endif
 
+size_t aspeed_memmove_dma_op(void *dest, const void *src, size_t count);
+
 #ifndef __HAVE_ARCH_MEMCPY
+
 /**
  * memcpy - Copy one area of memory to another
  * @dest: Where to copy to
@@ -567,6 +570,15 @@ __used void * memcpy(void *dest, const void *src, size_t count)
 
 	if (src == dest)
 		return dest;
+
+	if (IS_ENABLED(CONFIG_SPI_ASPEED_DMA) && count > 128) {
+		size_t dma_count;
+
+		dma_count = aspeed_memmove_dma_op(dest, src, count);
+		count -= dma_count;
+		dest += dma_count;
+		src += dma_count;
+	}
 
 	/* while all data is aligned (common case), copy a word at a time */
 	if ( (((ulong)dest | (ulong)src) & (sizeof(*dl) - 1)) == 0) {
@@ -586,8 +598,6 @@ __used void * memcpy(void *dest, const void *src, size_t count)
 #endif
 
 #ifndef __HAVE_ARCH_MEMMOVE
-
-size_t aspeed_memmove_dma_op(void *dest, const void *src, size_t count);
 
 /**
  * memmove - Copy one area of memory to another
