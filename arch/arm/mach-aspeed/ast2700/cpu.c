@@ -172,10 +172,11 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu,
 		writel(0x00030008, (void *)0x12c1d010);
 		val = 0x10000000 | dac_src;
 		writel(val, (void *)0x12c1d050);
-		writel(0x00010002, (void *)0x12c1d044);
+		writel(0x00100010, (void *)0x12c1d044);
 		writel(0x00030009, (void *)0x12c1d110);
 		writel(0x00030009, (void *)0x14c3a010);
 		writel(0x00030009, (void *)0x14c3a110);
+		writel(0x00100010, (void *)0x14c3a144);
 	}
 
 	return 0;
