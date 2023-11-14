@@ -110,14 +110,13 @@ static void sli_calibrate_ahb_delay(int config)
 		}
 	}
 
-	d0 = (d0_start + d0_end) >> 1;
-	d1 = (win[d0][0] + win[d0][1]) >> 1;
-
-	if (d0 < 0)
+	if (d0_start == -1) {
 		d0 = SLIH_DEFAULT_DELAY;
-
-	if (d1 < 0)
 		d1 = SLIH_DEFAULT_DELAY;
+	} else {
+		d0 = (d0_start + d0_end) >> 1;
+		d1 = (win[d0][0] + win[d0][1]) >> 1;
+	}
 
 	printf("IOD SLIH[0] DS win: {%d, %d} -> select %d\n", d0_start, d0_end, d0);
 	printf("IOD SLIH[1] DS win: {%d, %d} -> select %d\n", win[d0][0], win[d0][1], d1);
@@ -179,7 +178,11 @@ static int sli_calibrate_mbus_pad_delay(int config, int index, int begin,
 		}
 	}
 
-	d = (win[0] + win[1]) >> 1;
+	if (win[0] == -1)
+		d = SLIM_DEFAULT_DELAY;
+	else
+		d = (win[0] + win[1]) >> 1;
+
 	printf("IOD SLIM[%d] DS win: {%d, %d} -> select %d\n", index, win[0],
 	       win[1], d);
 
@@ -232,9 +235,11 @@ static void sli_calibrate_mbus_delay(int config)
 		}
 	}
 
-	dc = (win[0] + win[1]) >> 1;
-	if (dc < 0)
+	if (win[0] < 0)
 		dc = SLIM_DEFAULT_DELAY;
+	else
+		dc = (win[0] + win[1]) >> 1;
+
 	printf("IOD SLIM DS coarse win: {%d, %d} -> select %d\n", win[0],
 	       win[1], dc);
 
