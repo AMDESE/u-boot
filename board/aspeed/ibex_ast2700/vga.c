@@ -13,7 +13,9 @@
 #include <asm/arch-aspeed/platform.h>
 #include <asm/arch-aspeed/dp_ast2700.h>
 #include <asm/arch-aspeed/e2m_ast2700.h>
+#include <asm/arch-aspeed/sdram_ast2700.h>
 #include <asm/arch-aspeed/scu_ast2700.h>
+#include <asm/arch-aspeed/vga_ast2700.h>
 #include <linux/bitfield.h>
 #include <linux/bitops.h>
 #include <linux/delay.h>
@@ -24,11 +26,11 @@ binman_sym_declare(u32, dp_fw, image_pos);
 binman_sym_declare(u32, dp_fw, size);
 
 // To support 64bit address calculation for e2m
-static u32 _ast_get_e2m_addr(u32 addr)
+static u32 _ast_get_e2m_addr(struct sdramc_regs *ram, u32 addr)
 {
 	u32 val;
 
-	val = readl((void *)0x12c00010) >> 2 & 0x07;
+	val = ram->mcfg >> 2 & 0x07;
 
 	debug("%s: DRAMC val(%x)\n", __func__, val);
 	return (((1 << val) - 1) << 24) | (addr >> 4);
@@ -123,11 +125,12 @@ static int dp_init(struct ast2700_soc0_scu *scu)
 int pci_vga_init(void)
 {
 	struct ast2700_soc0_scu *scu;
+	struct sdramc_regs *ram = (struct sdramc_regs *)DRAMC_BASE;
 	u32 val, vram_size, vram_addr;
 	u8 vram_size_cfg;
 	bool is_pcie0_enable;
 	bool is_pcie1_enable;
-	bool is_64vram = readl((void *)0x12c00100) & BIT(0);
+	bool is_64vram;
 	int nodeoffset;
 	ofnode node;
 	u8 dac_src;
@@ -159,6 +162,7 @@ int pci_vga_init(void)
 
 	is_pcie0_enable = scu->pci0_misc[28] & BIT(0);
 	is_pcie1_enable = scu->pci1_misc[28] & BIT(0);
+	is_64vram = ram->gfmcfg & BIT(0);
 	dac_src = scu->hwstrap1 & BIT(28);
 	dp_src = scu->hwstrap1 & BIT(29);
 	efuse = FIELD_GET(SCU_CPU_REVISION_ID_EFUSE, scu->chip_id1);
@@ -178,7 +182,7 @@ int pci_vga_init(void)
 
 	debug("%s: ENABLE 0(%d) 1(%d)\n", __func__, is_pcie0_enable, is_pcie1_enable);
 
-	// for CRAA[1:0]
+	/* scratch for VGA CRAA[1:0] : 10b: 32Mbytes, 11b: 64Mbytes */
 	setbits_le32(&scu->hwstrap1, BIT(11));
 	if (is_64vram)
 		setbits_le32(&scu->hwstrap1, BIT(10));
@@ -196,16 +200,20 @@ int pci_vga_init(void)
 		setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_VGA0);
 
 		vram_addr -= vram_size;
-		debug("pcie0 e2m addr(%x)\n", _ast_get_e2m_addr(vram_addr));
-		val = _ast_get_e2m_addr(vram_addr)
+		debug("pcie0 e2m addr(%x)\n", _ast_get_e2m_addr(ram, vram_addr));
+		val = _ast_get_e2m_addr(ram, vram_addr)
 		    | FIELD_PREP(SCU_CPU_PCI_MISC0C_FB_SIZE, vram_size_cfg)
 		    | (ASPEED_DRAM_BASE >> 4);
 		debug("pcie0 debug reg(%x)\n", val);
 		writel(val, (void *)E2M0_VGA_RAM);
 		writel(val, &scu->pci0_misc[3]);
 
+		// scratch for VGA CRD0[12]: Disable P2A
+		setbits_le32(&scu->vga0_scratch1[0], BIT(7));
+		setbits_le32(&scu->vga0_scratch1[0], BIT(12));
+
 		// Enable VRAM address offset: cursor, rvas, 2d
-		writel(BIT(10) | BIT(24) | BIT(27), (void *)0x12c00104);
+		writel(BIT(10) | BIT(24) | BIT(27), &ram->gfm0ctl);
 	}
 
 	if (is_pcie1_enable) {
@@ -213,19 +221,26 @@ int pci_vga_init(void)
 		setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_VGA1);
 
 		vram_addr -= vram_size;
-		debug("pcie1 e2m addr(%x)\n", _ast_get_e2m_addr(vram_addr));
-		val = _ast_get_e2m_addr(vram_addr)
+		debug("pcie1 e2m addr(%x)\n", _ast_get_e2m_addr(ram, vram_addr));
+		val = _ast_get_e2m_addr(ram, vram_addr)
 		    | FIELD_PREP(SCU_CPU_PCI_MISC0C_FB_SIZE, vram_size_cfg)
 		    | (ASPEED_DRAM_BASE >> 4);
 		debug("pcie1 debug reg(%x)\n", val);
 		writel(val, (void *)E2M1_VGA_RAM);
 		writel(val, &scu->pci1_misc[3]);
 
+		// scratch for VGA CRD0[12]: Disable P2A
+		setbits_le32(&scu->vga1_scratch1[0], BIT(7));
+		setbits_le32(&scu->vga1_scratch1[0], BIT(12));
+
 		// Enable VRAM address offset: cursor, rvas, 2d
-		writel(BIT(19) | BIT(25) | BIT(28), (void *)0x12c00108);
+		writel(BIT(19) | BIT(25) | BIT(28), &ram->gfm1ctl);
 	}
 
 	if (is_pcie0_enable || is_pcie1_enable) {
+		struct ast2700_vga_link *packer_cpu, *retimer_cpu, *packer_io,
+					*retimer_io;
+
 		// enable dac clk
 		setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_DAC);
 
@@ -239,13 +254,19 @@ int pci_vga_init(void)
 		writel(val, &scu->vga_func_ctrl);
 
 		// vga link init
-		writel(0x00030008, (void *)0x12c1d010);
+		packer_cpu = (struct ast2700_vga_link *)VGA_PACKER_CPU_BASE;
+		retimer_cpu = (struct ast2700_vga_link *)VGA_RETIMER_CPU_BASE;
+		packer_io = (struct ast2700_vga_link *)VGA_PACKER_IO_BASE;
+		retimer_io = (struct ast2700_vga_link *)VGA_RETIMER_IO_BASE;
+
+		packer_cpu->REG10.value  = 0x00030008;
 		val = 0x10000000 | dac_src;
-		writel(val, (void *)0x12c1d050);
-		writel(0x00010002, (void *)0x12c1d044);
-		writel(0x00030009, (void *)0x12c1d110);
-		writel(0x00030009, (void *)0x14c3a010);
-		writel(0x00230009, (void *)0x14c3a110);
+		packer_cpu->REG50.value  = val;
+		packer_cpu->REG44.value  = 0x00100010;
+		retimer_cpu->REG10.value = 0x00030009;
+		packer_io->REG10.value   = 0x00030009;
+		retimer_io->REG10.value  = 0x00230009;
+		retimer_io->REG44.value  = 0x00100010;
 
 		dp_init(scu);
 	}

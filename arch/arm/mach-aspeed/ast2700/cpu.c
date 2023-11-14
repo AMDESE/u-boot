@@ -136,6 +136,7 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu)
 		writel(val, &scu->pci0_misc[3]);
 
 		// scratch for VGA CRD0[12]: Disable P2A
+		setbits_le32(&scu->vga0_scratch1[0], BIT(7));
 		setbits_le32(&scu->vga0_scratch1[0], BIT(12));
 
 		// Enable VRAM address offset: cursor, rvas, 2d
@@ -156,6 +157,7 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu)
 		writel(val, &scu->pci1_misc[3]);
 
 		// scratch for VGA CRD0[12]: Disable P2A
+		setbits_le32(&scu->vga1_scratch1[0], BIT(7));
 		setbits_le32(&scu->vga1_scratch1[0], BIT(12));
 
 		// Enable VRAM address offset: cursor, rvas, 2d
