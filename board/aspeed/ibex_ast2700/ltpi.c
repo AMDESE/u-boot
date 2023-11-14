@@ -19,11 +19,12 @@
 
 int ltpi_init(void)
 {
-	uint32_t reg = readl((void *)ASPEED_LTPI0_BASE + LTPI_LINK_MANAGE_ST);
+	uint32_t reg;
 
 	if (!(readl((void *)ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_SCM))
 		return 0;
 
+	reg = readl((void *)ASPEED_LTPI0_BASE + LTPI_LINK_MANAGE_ST);
 	if (reg & LTPI_LINK_PARTNER_AST1700)
 		reg = FIELD_PREP(REMAP_ENTRY0, LTPI_REMOTE_AST1700_IOD_SPACE);
 	else
