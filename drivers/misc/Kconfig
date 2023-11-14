@@ -41,6 +41,18 @@ config SPL_ASPEED_DP
 	help
 	  Select this to enable Display Port firmware driver
 
+config ASPEED_EDAF
+	bool "Aspeed eDAF driver"
+	depends on MISC
+	help
+	  Select this to enable eDAF driver
+
+config SPL_ASPEED_EDAF
+	bool "Aspeed eDAF driver in SPL"
+	depends on SPL_MISC
+	help
+	  Select this to enable eDAF driver for SPL
+
 config TPL_MISC
 	bool "Enable Driver Model for Misc drivers in TPL"
 	depends on TPL_DM
