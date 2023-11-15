@@ -56,8 +56,6 @@ static int aspeed_edaf_probe(struct udevice *dev)
 	if (!rc)
 		writel(cfg, edaf_base + EDAF_CMD_ERASE_64K);
 
-	printf("[CHIAWEI]: %s:%d\n", __func__, __LINE__);
-
 	return 0;
 }
 
