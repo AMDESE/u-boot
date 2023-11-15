@@ -99,15 +99,21 @@ static uint32_t ast2700_soc0_get_mphyclk_rate(struct ast2700_soc0_clk *clk)
 	return (rate / (mphy_div + 1));
 }
 
-#define SCU_CLKSEL1_EMMCCLK_DIV_MASK		GENMASK(14, 12)
-#define SCU_CLKSEL1_EMMCCLK_DIV_SHIFT		12
+#define SCU_CLKSRC1_EMMC_DIV_MASK		GENMASK(14, 12)
+#define SCU_CLKSRC1_EMMC_DIV_SHIFT		12
+#define SCU_CLKSRC1_EMMC_SEL			BIT(11)
 
 static uint32_t ast2700_soc0_get_emmcclk_rate(struct ast2700_soc0_clk *clk)
 {
+	u32 rate;
 	u32 clksel1 = readl(&clk->clk_sel1);
-	u32 emmcclk_div = (clksel1 & SCU_CLKSEL1_EMMCCLK_DIV_MASK) >>
-			     SCU_CLKSEL1_EMMCCLK_DIV_SHIFT;
-	u32 rate = ast2700_soc0_get_pll_rate(clk, AST2700_SOC0_CLK_MPLL);
+	u32 emmcclk_div = (clksel1 & SCU_CLKSRC1_EMMC_DIV_MASK) >>
+			     SCU_CLKSRC1_EMMC_DIV_SHIFT;
+
+	if (clksel1 & SCU_CLKSRC1_EMMC_SEL)
+		rate = ast2700_soc0_get_pll_rate(clk, AST2700_SOC0_CLK_HPLL) / 4;
+	else
+		rate = ast2700_soc0_get_pll_rate(clk, AST2700_SOC0_CLK_MPLL) / 4;
 
 	return (rate / ((emmcclk_div + 1) * 2));
 }
@@ -182,9 +188,6 @@ struct clk_ops ast2700_soc0_clk_ops = {
 	.enable = ast2700_soc0_clk_enable,
 };
 
-#define SCU_CLKSRC1_EMMC_DIV_MASK		GENMASK(14, 12)
-#define SCU_CLKSRC1_EMMC_DIV_SHIFT		12
-
 static int ast2700_soc0_clk_probe(struct udevice *dev)
 {
 	struct ast2700_soc0_clk_priv *priv = dev_get_priv(dev);
@@ -199,17 +202,16 @@ static int ast2700_soc0_clk_probe(struct udevice *dev)
 		return PTR_ERR(priv->clk);
 
 	cpu_clk = priv->clk;
-	/* emmc clk src div to 200Mhz */
+	/* set emmc clk src mpll/4:400Mhz */
 	clksrc1 = readl(&cpu_clk->clk_sel1);
-
-	rate = ast2700_soc0_get_pll_rate(cpu_clk, AST2700_SOC0_CLK_MPLL);
+	rate = ast2700_soc0_get_pll_rate(cpu_clk, AST2700_SOC0_CLK_MPLL) / 4;
 	for (i = 0; i < 8; i++) {
 		div = (i + 1) * 2;
 		if ((rate / div) <= 200000000)
 			break;
 	}
 
-	clksrc1 &= ~SCU_CLKSRC1_EMMC_DIV_MASK;
+	clksrc1 &= ~(SCU_CLKSRC1_EMMC_DIV_MASK | SCU_CLKSRC1_EMMC_SEL);
 	clksrc1 |= (i << SCU_CLKSRC1_EMMC_DIV_SHIFT);
 	writel(clksrc1, &cpu_clk->clk_sel1);
 
