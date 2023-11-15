@@ -130,13 +130,13 @@ void board_fit_image_post_process(const void *fit, int node, void **p_image, siz
 
 	switch (os) {
 	case IH_OS_ARM_TRUSTED_FIRMWARE:
-		writel(ep_arm >> 4, (void *)0x12c02110);
-		writel(ep_arm >> 4, (void *)0x12c02114);
-		writel(ep_arm >> 4, (void *)0x12c02118);
-		writel(ep_arm >> 4, (void *)0x12c0211c);
+		writel(ep_arm >> 4, (void *)ASPEED_CPU_CA35_RVBAR0);
+		writel(ep_arm >> 4, (void *)ASPEED_CPU_CA35_RVBAR1);
+		writel(ep_arm >> 4, (void *)ASPEED_CPU_CA35_RVBAR2);
+		writel(ep_arm >> 4, (void *)ASPEED_CPU_CA35_RVBAR3);
 		break;
 	case IH_OS_U_BOOT:
-		writeq(ep_arm, (void *)0x12c02780);
+		writeq(ep_arm, (void *)ASPEED_CPU_SMP_EP0);
 		break;
 	default:
 		break;
@@ -147,15 +147,15 @@ void spl_board_prepare_for_boot(void)
 {
 	/* for v7 FPGA only to switch to uart12. */
 	if (IS_ENABLED(CONFIG_ASPEED_FPGA))
-		writel(0x1, (void *)0x12c02014);
+		writel(SCU_CPU_HWSTRAP_DIS_CPU, (void *)ASPEED_CPU_HW_STRAP1_CLR);
 
 	/* clean up secondary entries */
-	writeq(0x0, (void *)0x12c02788);
-	writeq(0x0, (void *)0x12c02790);
-	writeq(0x0, (void *)0x12c02798);
+	writeq(0x0, (void *)ASPEED_CPU_SMP_EP1);
+	writeq(0x0, (void *)ASPEED_CPU_SMP_EP2);
+	writeq(0x0, (void *)ASPEED_CPU_SMP_EP3);
 
 	/* release CA35 reset */
-	writel(0x1, (void *)0x12c0210c);
+	writel(0x1, (void *)ASPEED_CPU_CA35_REL);
 
 	/* keep going if ibex has further FW to run */
 	if (ibex_boot2fw)
