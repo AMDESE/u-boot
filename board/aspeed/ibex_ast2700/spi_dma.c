@@ -3,7 +3,7 @@
  * Copyright (c) Aspeed Technology Inc.
  */
 
-#include <asm/arch-aspeed/platform.h>
+#include <asm/arch-aspeed/spi.h>
 #include <asm/io.h>
 #include <common.h>
 
