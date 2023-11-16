@@ -7,6 +7,29 @@
 #include <asm/io.h>
 #include <common.h>
 
+int spi_init(void)
+{
+	u32 reg_val;
+
+	reg_val = readl((void *)ASPEED_IO_FWSPI_DRIVING);
+	reg_val |= 0x00000fff;
+	writel(reg_val, (void *)ASPEED_IO_FWSPI_DRIVING);
+
+	reg_val = readl((void *)ASPEED_IO_SPI0_DRIVING);
+	reg_val |= 0x00000fff;
+	writel(reg_val, (void *)ASPEED_IO_SPI0_DRIVING);
+
+	reg_val = readl((void *)ASPEED_IO_SPI1_DRIVING);
+	reg_val |= 0x0fff0000;
+	writel(reg_val, (void *)ASPEED_IO_SPI1_DRIVING);
+
+	reg_val = readl((void *)ASPEED_IO_SPI2_DRIVING);
+	reg_val |= 0x00000fff;
+	writel(reg_val, (void *)ASPEED_IO_SPI2_DRIVING);
+
+	return 0;
+}
+
 #define INTR_CTRL	(ASPEED_FMC_REG_BASE + 0x008)
 #define DRAM_HI_ADDR	(ASPEED_FMC_REG_BASE + 0x07C)
 #define DMA_CTRL	(ASPEED_FMC_REG_BASE + 0x080)
@@ -47,6 +70,17 @@ size_t aspeed_memmove_dma_op(void *dest, const void *src, size_t count)
 
 		return count;
 	}
+
+	return 0;
+}
+
+int spi_load_image(u32 *src, u32 *dest, u32 len)
+{
+	const void *base = (const void *)(ASPEED_FMC_CS0_BASE + (u32)src);
+
+	printf("spi load image base = %x\n", (u32)base);
+
+	memcpy((void *)dest, base, len);
 
 	return 0;
 }

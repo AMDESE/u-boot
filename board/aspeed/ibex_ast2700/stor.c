@@ -26,43 +26,6 @@ enum {
 	BOOT_DEV_UFS,
 };
 
-int spi_init(void)
-{
-	uint32_t reg_val;
-
-	reg_val = readl((void *)ASPEED_IO_FWSPI_DRIVING);
-	reg_val |= 0x00000fff;
-	writel(reg_val, (void *)ASPEED_IO_FWSPI_DRIVING);
-
-	reg_val = readl((void *)ASPEED_IO_SPI0_DRIVING);
-	reg_val |= 0x00000fff;
-	writel(reg_val, (void *)ASPEED_IO_SPI0_DRIVING);
-
-	reg_val = readl((void *)ASPEED_IO_SPI1_DRIVING);
-	reg_val |= 0x0fff0000;
-	writel(reg_val, (void *)ASPEED_IO_SPI1_DRIVING);
-
-	reg_val = readl((void *)ASPEED_IO_SPI2_DRIVING);
-	reg_val |= 0x00000fff;
-	writel(reg_val, (void *)ASPEED_IO_SPI2_DRIVING);
-
-	return 0;
-}
-
-int spi_load_image(u32 *src, u32 *dest, u32 len)
-{
-	u32 i;
-	u32 *base = (u32 *)(ASPEED_FMC_CS0_BASE + (u32)src);
-
-	printf("spi load image base = %x\n", (u32)base);
-	printf("spi load image base[0] = %x\n", *base);
-
-	for (i = 0; i < len / 4; i++)
-		writel(*(base + i), dest + i);
-
-	return 0;
-}
-
 struct stor_info {
 	char name[10];
 	int (*init_cb)(void);

@@ -9,6 +9,7 @@
 #define _ASPEED_SPI_H_
 
 #include <asm/arch-aspeed/platform.h>
+#include <linux/types.h>
 
 #define ASPEED_FMC_CS0_SIZE		0x10000000
 
@@ -16,5 +17,8 @@
 #define ASPEED_IO_SPI0_DRIVING		(ASPEED_IO_SCU_BASE + 0x4CC)
 #define ASPEED_IO_SPI1_DRIVING		(ASPEED_IO_SCU_BASE + 0x4CC)
 #define ASPEED_IO_SPI2_DRIVING		(ASPEED_IO_SCU_BASE + 0x4D0)
+
+int spi_init(void);
+int spi_load_image(u32 *src, u32 *dest, u32 len);
 
 #endif
