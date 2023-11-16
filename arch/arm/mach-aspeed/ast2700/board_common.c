@@ -13,6 +13,10 @@
 #include <linux/err.h>
 #include <dm/uclass.h>
 
+#define AHBC_GROUP(x)				(0x40 * (x))
+#define AHBC_HREADY_WAIT_CNT_REG		0x34
+#define   AHBC_HREADY_WAIT_CNT_MAX		0x3f
+
 DECLARE_GLOBAL_DATA_PTR;
 
 int dram_init(void)
@@ -37,11 +41,28 @@ int dram_init(void)
 	return 0;
 }
 
+static void ahbc_init(void)
+{
+	int i;
+
+	/* CPU-die AHBC timeout counter */
+	for (i = 0; i < 4; i++)
+		writel(AHBC_HREADY_WAIT_CNT_MAX,
+		       (void *)ASPEED_CPU_AHBC_BASE + AHBC_GROUP(i) + AHBC_HREADY_WAIT_CNT_REG);
+
+	/* IO-die AHBC timeout counter */
+	for (i = 0; i < 8; i++)
+		writel(AHBC_HREADY_WAIT_CNT_MAX,
+		       (void *)ASPEED_IO_AHBC_BASE + AHBC_GROUP(i) + AHBC_HREADY_WAIT_CNT_REG);
+}
+
 int board_init(void)
 {
 	struct udevice *dev;
 	int i = 0;
 	int ret;
+
+	ahbc_init();
 
 	/*
 	 * Loop over all MISC uclass drivers to call the comphy code
