@@ -16,6 +16,7 @@
 #define   REMAP_ENTRY2			GENMASK(9, 0)
 
 #define LTPI_REMOTE_AST1700_IOD_SPACE	(0x14000000 >> 26)
+#define LTPI_REMOTE_AST1700_SPI2_SPACE	(0x280000000U >> 26)
 
 int ltpi_init(void);
 #endif
