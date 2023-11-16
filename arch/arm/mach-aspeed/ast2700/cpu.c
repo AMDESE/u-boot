@@ -8,7 +8,9 @@
 #include <asm/armv8/mmu.h>
 #include <asm/arch-aspeed/clk_ast2700.h>
 #include <asm/arch-aspeed/e2m_ast2700.h>
+#include <asm/arch-aspeed/sdram_ast2700.h>
 #include <asm/arch-aspeed/scu_ast2700.h>
+#include <asm/arch-aspeed/vga_ast2700.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
 #include <env.h>
@@ -70,11 +72,11 @@ enum env_location env_get_location(enum env_operation op, int prio)
 	return env_loc;
 }
 
-static u32 _ast_get_e2m_addr(u32 addr)
+static u32 _ast_get_e2m_addr(struct sdramc_regs *ram, u32 addr)
 {
 	u32 val;
 
-	val = readl((void *)0x12c00010) >> 2 & 0x07;
+	val = ram->mcfg >> 2 & 0x07;
 
 	debug("%s: DRAMC val(%x)\n", __func__, val);
 	return (((1 << val) - 1) << 24) | (addr >> 4);
@@ -83,13 +85,14 @@ static u32 _ast_get_e2m_addr(u32 addr)
 static int pci_vga_init(struct ast2700_soc0_scu *scu,
 			struct ast2700_soc0_clk *clk)
 {
+	struct sdramc_regs *ram = (struct sdramc_regs *)DRAMC_BASE;
 	u32 val, vram_size, vram_addr;
 	u8 vram_size_cfg;
-	bool is_pcie0_enable = readl(&scu->pci0_misc[28]) & BIT(0);
-	bool is_pcie1_enable = readl(&scu->pci1_misc[28]) & BIT(0);
-	bool is_64vram = readl((void *)0x12c00100) & BIT(0);
-	u8 dac_src = readl(&scu->hwstrap1) & BIT(28);
-	u8 dp_src = readl(&scu->hwstrap1) & BIT(29);
+	bool is_pcie0_enable = scu->pci0_misc[28] & BIT(0);
+	bool is_pcie1_enable = scu->pci1_misc[28] & BIT(0);
+	bool is_64vram = ram->gfmcfg & BIT(0);
+	u8 dac_src = scu->hwstrap1 & BIT(28);
+	u8 dp_src = scu->hwstrap1 & BIT(29);
 	u8 efuse = FIELD_GET(SCU_CPU_REVISION_ID_EFUSE, scu->chip_id1);
 
 	/* Decide feature by efuse
@@ -126,8 +129,8 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu,
 		setbits_le32(&clk->clkgate_clr, SCU_CPU_CLKGATE1_VGA0);
 
 		vram_addr -= vram_size;
-		debug("pcie0 e2m addr(%x)\n", _ast_get_e2m_addr(vram_addr));
-		val = _ast_get_e2m_addr(vram_addr)
+		debug("pcie0 e2m addr(%x)\n", _ast_get_e2m_addr(ram, vram_addr));
+		val = _ast_get_e2m_addr(ram, vram_addr)
 		    | FIELD_PREP(SCU_CPU_PCI_MISC0C_FB_SIZE, vram_size_cfg)
 		    | (ASPEED_DRAM_BASE >> 4);
 		debug("pcie0 debug reg(%x)\n", val);
@@ -135,7 +138,7 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu,
 		writel(val, &scu->pci0_misc[3]);
 
 		// Enable VRAM address offset: cursor, rvas, 2d
-		writel(BIT(10) | BIT(24) | BIT(27), (void *)0x12c00104);
+		writel(BIT(10) | BIT(24) | BIT(27), &ram->gfm0ctl);
 	}
 
 	if (is_pcie1_enable) {
@@ -143,8 +146,8 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu,
 		setbits_le32(&clk->clkgate_clr, SCU_CPU_CLKGATE1_VGA1);
 
 		vram_addr -= vram_size;
-		debug("pcie1 e2m addr(%x)\n", _ast_get_e2m_addr(vram_addr));
-		val = _ast_get_e2m_addr(vram_addr)
+		debug("pcie1 e2m addr(%x)\n", _ast_get_e2m_addr(ram, vram_addr));
+		val = _ast_get_e2m_addr(ram, vram_addr)
 		    | FIELD_PREP(SCU_CPU_PCI_MISC0C_FB_SIZE, vram_size_cfg)
 		    | (ASPEED_DRAM_BASE >> 4);
 		debug("pcie1 debug reg(%x)\n", val);
@@ -152,14 +155,17 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu,
 		writel(val, &scu->pci1_misc[3]);
 
 		// Enable VRAM address offset: cursor, rvas, 2d
-		writel(BIT(19) | BIT(25) | BIT(28), (void *)0x12c00108);
+		writel(BIT(19) | BIT(25) | BIT(28), &ram->gfm1ctl);
 	}
 
 	if (is_pcie0_enable || is_pcie1_enable) {
+		struct ast2700_vga_link *packer_cpu, *retimer_cpu, *packer_io,
+					*retimer_io;
+
 		// enable dac clk
 		setbits_le32(&clk->clkgate_clr, SCU_CPU_CLKGATE1_DAC);
 
-		val = readl(&scu->vga_func_ctrl);
+		val = scu->vga_func_ctrl;
 		val &= ~(SCU_CPU_VGA_FUNC_DAC_OUTPUT
 			| SCU_CPU_VGA_FUNC_DP_OUTPUT
 			| SCU_CPU_VGA_FUNC_DAC_DISABLE);
@@ -169,14 +175,19 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu,
 		writel(val, &scu->vga_func_ctrl);
 
 		// vga link init
-		writel(0x00030008, (void *)0x12c1d010);
+		packer_cpu = (struct ast2700_vga_link *)VGA_PACKER_CPU_BASE;
+		retimer_cpu = (struct ast2700_vga_link *)VGA_RETIMER_CPU_BASE;
+		packer_io = (struct ast2700_vga_link *)VGA_PACKER_IO_BASE;
+		retimer_io = (struct ast2700_vga_link *)VGA_RETIMER_IO_BASE;
+
+		packer_cpu->REG10.value  = 0x00030008;
 		val = 0x10000000 | dac_src;
-		writel(val, (void *)0x12c1d050);
-		writel(0x00100010, (void *)0x12c1d044);
-		writel(0x00030009, (void *)0x12c1d110);
-		writel(0x00030009, (void *)0x14c3a010);
-		writel(0x00030009, (void *)0x14c3a110);
-		writel(0x00100010, (void *)0x14c3a144);
+		packer_cpu->REG50.value  = val;
+		packer_cpu->REG44.value  = 0x00100010;
+		retimer_cpu->REG10.value = 0x00030009;
+		packer_io->REG10.value   = 0x00030009;
+		retimer_io->REG10.value  = 0x00230009;
+		retimer_io->REG44.value  = 0x00100010;
 	}
 
 	return 0;

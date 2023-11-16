@@ -14,6 +14,10 @@
 #define SCU_CPU_HWSTRAP_DAC_SRC			BIT(28)
 #define SCU_CPU_HWSTRAP_VRAM_SIZE		GENMASK(11, 10)
 
+#define SCU_CPU_MISC_DP_RESET_SRC		BIT(11)
+#define SCU_CPU_MISC_XDMA_CLIENT_EN		BIT(4)
+#define SCU_CPU_MISC_2D_CLIENT_EN		BIT(3)
+
 #define SCU_CPU_RST_DPMCU			BIT(29)
 #define SCU_CPU_RST_DP				BIT(28)
 #define SCU_CPU_RST_XDMA1			BIT(26)
@@ -53,7 +57,9 @@ struct ast2700_soc0_scu {
 	uint32_t hwstrap1_prot1;	/* 0x024 */
 	uint32_t hwstrap1_prot2;	/* 0x028 */
 	uint32_t hwstrap1_prot3;	/* 0x02C */
-	uint32_t rsv_0x30[116];		/* 0x030 ~ 0x1FC */
+	uint32_t rsv_0x30[36];		/* 0x030 ~ 0xBC */
+	uint32_t misc;			/* 0x0C0 */
+	uint32_t rsv_0xC8[79];		/* 0x0C4 ~ 0x1FC */
 	uint32_t modrst1_ctrl;		/* 0x200 */
 	uint32_t modrst1_clr;		/* 0x204 */
 	uint32_t rsv_0x208[2];		/* 0x208 ~ 0x20C */
