@@ -57,16 +57,21 @@ static void sli_calibrate_ahb_delay(int config)
 	int d0, d1, i;
 	int d0_start = -1;
 	int d0_end = -1;
-	int win[32][2];
+	int *buf, *win_s, *win_e;
 	int latch_sel = 0;
 
 	if (config)
 		latch_sel = SLI_RX_PHY_LAH_SEL_NEG;
 
-	for (i = 0; i < 32; i++) {
-		win[i][0] = -1;
-		win[i][1] = -1;
+	buf = malloc(sizeof(int) * 32 * 2);
+	if (!buf) {
+		printf("ERROR in SLI init. Failed to allocate memory\n");
+		return;
 	}
+
+	memset(buf, -1, sizeof(int) * 32 * 2);
+	win_s = &buf[0];
+	win_e = &buf[32];
 
 	/* calibrate IOD-SLIH DS pad delay */
 	for (d0 = 6; d0 < 20; d0++) {
@@ -87,11 +92,11 @@ static void sli_calibrate_ahb_delay(int config)
 			       (void *)SLIH_IOD_BASE + SLI_INTR_STATUS);
 			udelay(10);
 			if (is_sli_suspend(SLIH_IOD_BASE) > 0) {
-				if (win[d0][0] == -1)
-					win[d0][0] = d1;
+				if (win_s[d0] == -1)
+					win_s[d0] = d1;
 
-				win[d0][1] = d1;
-			} else if (win[d0][1] != -1) {
+				win_e[d0] = d1;
+			} else if (win_e[d0] != -1) {
 				break;
 			}
 		}
@@ -100,7 +105,7 @@ static void sli_calibrate_ahb_delay(int config)
 	d0_start = -1;
 	d0_end = -1;
 	for (i = 0; i < 32; i++) {
-		if (win[i][0] != -1) {
+		if (win_s[i] != -1) {
 			if (d0_start == -1)
 				d0_start = i;
 
@@ -115,11 +120,11 @@ static void sli_calibrate_ahb_delay(int config)
 		d1 = SLIH_DEFAULT_DELAY;
 	} else {
 		d0 = (d0_start + d0_end) >> 1;
-		d1 = (win[d0][0] + win[d0][1]) >> 1;
+		d1 = (win_s[d0] + win_e[d0]) >> 1;
 	}
 
 	printf("IOD SLIH[0] DS win: {%d, %d} -> select %d\n", d0_start, d0_end, d0);
-	printf("IOD SLIH[1] DS win: {%d, %d} -> select %d\n", win[d0][0], win[d0][1], d1);
+	printf("IOD SLIH[1] DS win: {%d, %d} -> select %d\n", win_s[d0], win_e[d0], d1);
 
 	/* Load the calibrated delay values */
 	writel(latch_sel | SLI_AUTO_SEND_TRN_OFF | SLI_TRANS_EN,
@@ -135,6 +140,8 @@ static void sli_calibrate_ahb_delay(int config)
 	writel(latch_sel | SLI_CLEAR_BUS | SLI_TRANS_EN | SLI_CLEAR_RX,
 	       (void *)SLIH_IOD_BASE + SLI_CTRL_I);
 	sli_wait_suspend(SLIH_IOD_BASE);
+
+	free(buf);
 }
 
 static int sli_calibrate_mbus_pad_delay(int config, int index, int begin,
