@@ -65,7 +65,7 @@
 #define   SLI_INTR_RX_ERRORS                                                     \
 	  (SLI_INTR_RX_ERR | SLI_INTR_RX_NACK | SLI_INTR_RX_DISCONN)
 
-#define SLI_TARGET_PHYCLK		SLI_PHYCLK_800M
+#define SLI_TARGET_PHYCLK		SLI_PHYCLK_500M
 #define SLIH_DEFAULT_DELAY		11
 #if (SLI_TARGET_PHYCLK == SLI_PHYCLK_800M)
 #define SLIM_DEFAULT_DELAY		5
