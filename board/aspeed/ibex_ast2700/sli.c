@@ -339,7 +339,7 @@ int sli_init(void)
 	}
 
 	/* 25MHz PAD delay for AST2700A0 */
-	value = SLI_RX_PHY_LAH_SEL_NEG | SLI_TRANS_EN;
+	value = SLI_RX_PHY_LAH_SEL_NEG | SLI_TRANS_EN | SLI_CLEAR_BUS;
 	writel(value, (void *)SLIH_IOD_BASE + SLI_CTRL_I);
 	writel(value, (void *)SLIM_IOD_BASE + SLI_CTRL_I);
 	writel(value | SLIV_RAW_MODE, (void *)SLIV_IOD_BASE + SLI_CTRL_I);
@@ -348,7 +348,7 @@ int sli_init(void)
 	printf("SLI US/DS @ 25MHz init done\n");
 
 	/* IOD SLIM/H/V training off */
-	value |= SLI_AUTO_SEND_TRN_OFF;
+	value = SLI_RX_PHY_LAH_SEL_NEG | SLI_TRANS_EN | SLI_AUTO_SEND_TRN_OFF;
 	writel(value, (void *)SLIH_IOD_BASE + SLI_CTRL_I);
 	writel(value, (void *)SLIM_IOD_BASE + SLI_CTRL_I);
 	writel(value | SLIV_RAW_MODE, (void *)SLIV_IOD_BASE + SLI_CTRL_I);
