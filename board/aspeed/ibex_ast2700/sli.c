@@ -305,6 +305,11 @@ static void sli_calibrate_mbus_delay(int config)
 	writel(latch_sel | SLI_CLEAR_BUS | SLI_TRANS_EN | SLI_CLEAR_RX,
 	       (void *)SLIM_IOD_BASE + SLI_CTRL_I);
 	sli_wait_suspend(SLIM_IOD_BASE);
+
+	/* Enable the MARB RR mode for AST2700A0 */
+	value = readl((void *)SLIM_IOD_BASE + SLIM_MARB_FUNC_I);
+	value |= SLIM_SLI_MARB_RR;
+	writel(value, (void *)SLIM_IOD_BASE + SLIM_MARB_FUNC_I);
 }
 
 /*

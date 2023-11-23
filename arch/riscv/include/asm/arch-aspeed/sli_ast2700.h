@@ -65,6 +65,9 @@
 #define   SLI_INTR_RX_ERRORS                                                     \
 	  (SLI_INTR_RX_ERR | SLI_INTR_RX_NACK | SLI_INTR_RX_DISCONN)
 
+#define SLIM_MARB_FUNC_I		0x60
+#define   SLIM_SLI_MARB_RR		BIT(0)
+
 #define SLI_TARGET_PHYCLK		SLI_PHYCLK_500M
 #define SLIH_DEFAULT_DELAY		11
 #if (SLI_TARGET_PHYCLK == SLI_PHYCLK_800M)
