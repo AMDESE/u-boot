@@ -376,6 +376,13 @@ struct sdramc_ac_timing {
 	u32 t_zq;
 };
 
+struct train_bin {
+	u32 imem_base;
+	u32 imem_len;
+	u32 dmem_base;
+	u32 dmem_len;
+};
+
 void fpga_phy_init(struct sdramc *sdramc);
 void dwc_phy_init(struct sdramc *sdramc);
 bool is_ddr4(void);

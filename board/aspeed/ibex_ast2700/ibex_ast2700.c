@@ -14,6 +14,7 @@
 #include <asm/arch-aspeed/clk_ast2700.h>
 #include <asm/arch-aspeed/dp_ast2700.h>
 #include <asm/arch-aspeed/e2m_ast2700.h>
+#include <asm/arch-aspeed/recovery.h>
 #include <asm/arch-aspeed/scu_ast2700.h>
 #include <asm/arch-aspeed/sli_ast2700.h>
 #include <asm/arch-aspeed/ltpi_ast2700.h>
@@ -59,7 +60,9 @@ int board_late_init(void)
 
 u32 spl_boot_device(void)
 {
-	if ((readl((void *)ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_EMMC))
+	if (is_recovery())
+		return BOOT_DEVICE_UART;
+	else if ((readl((void *)ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_EMMC))
 		return BOOT_DEVICE_MMC1;
 	else
 		return BOOT_DEVICE_RAM;

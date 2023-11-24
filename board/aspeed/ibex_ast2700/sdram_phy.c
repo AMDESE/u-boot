@@ -3,6 +3,7 @@
 #include <spl.h>
 #include <asm/arch-aspeed/sdram_ast2700.h>
 #include <asm/arch-aspeed/stor_ast2700.h>
+#include <asm/arch-aspeed/recovery.h>
 
 #define DWC_PHY_IMEM_OFFSET	(0x50000)
 #define DWC_PHY_DMEM_OFFSET	(0x58000)
@@ -21,13 +22,6 @@ binman_sym_declare(u32, ddr5_imem_fw, image_pos);
 binman_sym_declare(u32, ddr5_imem_fw, size);
 binman_sym_declare(u32, ddr5_dmem_fw, image_pos);
 binman_sym_declare(u32, ddr5_dmem_fw, size);
-
-struct train_bin {
-	u32 imem_base;
-	u32 imem_len;
-	u32 dmem_base;
-	u32 dmem_len;
-};
 
 struct train_bin dwc_train[DRAM_TYPE_MAX][2] = {
 	{{0, 0, 0, 0}, {0, 0, 0, 0}},
@@ -248,6 +242,15 @@ int dwc_ddrphy_phyinit_userCustom_D_loadIMEM(const int train2D)
 
 	type = is_ddr4();
 
+	if (is_recovery()) {
+		aspeed_spl_ddr_image_ymodem_load(dwc_train, type,
+						 1, train2D);
+		memcpy((void *)(DRAMC_PHY_BASE + 2 * imem_base),
+		       (void *)dwc_train[type][train2D].imem_base,
+		       dwc_train[type][train2D].imem_len);
+		return ret;
+	}
+
 	stor_copy((u32 *)dwc_train[type][train2D].imem_base,
 		  (u32 *)(DRAMC_PHY_BASE + 2 * imem_base),
 		  dwc_train[type][train2D].imem_len);
@@ -264,6 +267,15 @@ int dwc_ddrphy_phyinit_userCustom_F_loadDMEM(const int pState, const int train2D
 	printf("%s %d\n", __func__, train2D);
 
 	type = is_ddr4();
+
+	if (is_recovery()) {
+		aspeed_spl_ddr_image_ymodem_load(dwc_train, type,
+						 0, train2D);
+		memcpy((void *)(DRAMC_PHY_BASE + 2 * dmem_base),
+		       (void *)dwc_train[type][train2D].dmem_base,
+		       dwc_train[type][train2D].dmem_len);
+		return ret;
+	}
 
 	stor_copy((u32 *)dwc_train[type][train2D].dmem_base,
 		  (u32 *)(DRAMC_PHY_BASE + 2 * dmem_base),
