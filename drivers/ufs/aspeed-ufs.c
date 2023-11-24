@@ -12,10 +12,112 @@
 #include <linux/bitops.h>
 #include <linux/err.h>
 #include <linux/delay.h>
+#include <ufs.h>
+#include "ufs.h"
 
 #define UFS_MPHY_RST_REG		0x0
 #define UFS_MPHY_RST_N			BIT(0)
 #define UFS_MPHY_RST_N_PCS		BIT(4)
+
+#define USEC_PER_SEC			1000000L
+#define ASPEED_UFS_REG_HCLKDIV		0xFC
+
+static int aspeed_ufs_link_startup_notify(struct ufs_hba *hba,
+					  enum ufs_notify_change_status status)
+{
+	hba->quirks |= UFSHCD_QUIRK_BROKEN_LCC;
+	switch (status) {
+	case PRE_CHANGE:
+		return ufshcd_dme_set(hba,
+				      UIC_ARG_MIB(PA_LOCAL_TX_LCC_ENABLE),
+				      0);
+	case POST_CHANGE:
+		ufshcd_writel(hba, 0, REG_AUTO_HIBERNATE_IDLE_TIMER);
+	}
+
+	return 0;
+}
+
+static int aspeed_ufs_set_hclkdiv(struct ufs_hba *hba)
+{
+	struct clk clk;
+	unsigned long core_clk_rate = 0;
+	u32 core_clk_div = 0;
+	int ret;
+
+	ret = clk_get_by_name(hba->dev, "core_clk", &clk);
+	if (ret) {
+		dev_err(hba->dev, "failed to get core_clk clock\n");
+		return ret;
+	}
+
+	core_clk_rate = clk_get_rate(&clk);
+	if (IS_ERR_VALUE(core_clk_rate)) {
+		dev_err(hba->dev, "%s: unable to find core_clk rate\n",
+			__func__);
+		return core_clk_rate;
+	}
+
+	/*
+	 * scu010[7]: 1=HPLL, 0=MPLL
+	 * scu010[6:5]: 00/01: PLL/4, 2: PLL/6, 3: PLL/8
+	 */
+	core_clk_div = (core_clk_rate / USEC_PER_SEC) / 4;
+	ufshcd_writel(hba, core_clk_div, ASPEED_UFS_REG_HCLKDIV);
+
+	return 0;
+}
+
+static int aspeed_ufs_hce_enable_notify(struct ufs_hba *hba,
+					enum ufs_notify_change_status status)
+{
+	switch (status) {
+	case PRE_CHANGE:
+		return aspeed_ufs_set_hclkdiv(hba);
+	case POST_CHANGE:
+	;
+	}
+
+	return 0;
+}
+
+static struct ufs_hba_ops aspeed_pltfm_hba_ops = {
+	.hce_enable_notify = aspeed_ufs_hce_enable_notify,
+	.link_startup_notify = aspeed_ufs_link_startup_notify,
+};
+
+static int aspeed_ufs_pltfm_probe(struct udevice *dev)
+{
+	int err;
+
+	err = ufshcd_probe(dev, &aspeed_pltfm_hba_ops);
+	if (err)
+		dev_err(dev, "ufshcd_probe() failed %d\n", err);
+
+	return err;
+}
+
+static int aspeed_ufs_pltfm_bind(struct udevice *dev)
+{
+	struct udevice *scsi_dev;
+
+	return ufs_scsi_bind(dev, &scsi_dev);
+}
+
+static const struct udevice_id aspeed_ufs_pltfm_ids[] = {
+	{
+		.compatible = "aspeed,ufshc-m31-16nm",
+	},
+	{},
+};
+
+U_BOOT_DRIVER(aspeed_ufs_pltfm) = {
+	.name		= "aspeed-ufs-pltfm",
+	.id		=  UCLASS_UFS,
+	.of_match	= aspeed_ufs_pltfm_ids,
+	.probe		= aspeed_ufs_pltfm_probe,
+	.bind		= aspeed_ufs_pltfm_bind,
+};
 
 static int aspeed_ufs_probe(struct udevice *dev)
 {
