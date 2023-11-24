@@ -10,6 +10,7 @@
 #include <asm/csr.h>
 #include <asm/arch-aspeed/platform.h>
 #include <asm/arch-aspeed/sli_ast2700.h>
+#include <asm/arch-aspeed/scu_ast2700.h>
 #include <linux/bitfield.h>
 #include <linux/bitops.h>
 #include <linux/delay.h>
@@ -325,7 +326,7 @@ int sli_init(void)
 {
 	uint32_t value;
 	const int phyclk_lookup[8] = {
-		25, 800, 400, 200, 2000, 1000, 500, 250,
+		25, 800, 400, 200, 2000, 788, 500, 250,
 	};
 
 	if (IS_ENABLED(CONFIG_ASPEED_FPGA))
@@ -347,6 +348,22 @@ int sli_init(void)
 	sli_wait_suspend(SLIH_IOD_BASE);
 	sli_wait_suspend(SLIH_CPU_BASE);
 	printf("SLI US/DS @ 25MHz init done\n");
+
+	/* Switch CPU-die HPLL to 1575M */
+	value = readl((void *)ASPEED_CPU_HPLL);
+	value &= ~(SCU_CPU_HPLL_P | SCU_CPU_HPLL_N | SCU_CPU_HPLL_M);
+	value |= FIELD_PREP(SCU_CPU_HPLL_P, 0x0) |
+		 FIELD_PREP(SCU_CPU_HPLL_N, 0x0) |
+		 FIELD_PREP(SCU_CPU_HPLL_M, 0x7d);
+	writel(value, (void *)ASPEED_CPU_HPLL);
+
+	value = readl((void *)ASPEED_CPU_HPLL2);
+	value &= ~SCU_CPU_HPLL2_BWADJ;
+	value |= FIELD_PREP(SCU_CPU_HPLL2_BWADJ, 0x3e);
+	writel(value, (void *)ASPEED_CPU_HPLL2);
+	do {
+		value = readl((void *)ASPEED_CPU_HPLL2);
+	} while ((value & SCU_CPU_HPLL2_LOCK) == 0);
 
 	/* IOD SLIM/H/V training off */
 	value = SLI_RX_PHY_LAH_SEL_NEG | SLI_TRANS_EN | SLI_AUTO_SEND_TRN_OFF;
