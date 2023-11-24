@@ -72,8 +72,10 @@
 #define SLIH_DEFAULT_DELAY		11
 #if (SLI_TARGET_PHYCLK == SLI_PHYCLK_800M)
 #define SLIM_DEFAULT_DELAY		5
+#define SLIM_LAH_CONFIG			1
 #else
 #define SLIM_DEFAULT_DELAY		12
+#define SLIM_LAH_CONFIG			0
 #endif
 #endif
 int sli_init(void);

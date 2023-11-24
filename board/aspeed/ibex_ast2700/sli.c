@@ -369,10 +369,7 @@ int sli_init(void)
 	sli_calibrate_ahb_delay(0);
 
 	/* It's okay to access CPU-die now. Calibrate SLIM DS delay */
-	if (SLI_TARGET_PHYCLK == SLI_PHYCLK_800M)
-		sli_calibrate_mbus_delay(1);
-	else
-		sli_calibrate_mbus_delay(0);
+	sli_calibrate_mbus_delay(SLIM_LAH_CONFIG);
 
 	printf("SLI DS @ %dMHz init done\n", phyclk_lookup[SLI_TARGET_PHYCLK]);
 	return 0;
