@@ -64,7 +64,7 @@
 	};
 };
 
-&edaf {
+&edaf_bridge {
 	status = "okay";
 	cmd-read = <0x30701>;
 	cmd-write = <0x20702>;
