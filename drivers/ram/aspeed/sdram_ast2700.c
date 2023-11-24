@@ -173,19 +173,28 @@ static size_t ast2700_sdrammc_get_vga_mem_size(struct dram_priv *priv)
 	return vga_ram_size[vga_sz_sel] * dual;
 }
 
+struct ddr_capacity {
+	size_t size;
+	int rfc[2];
+};
+
+#define SCU_IO_REG                      0x14c02000
+#define SCU_IO_HWSTRAP1                 (SCU_IO_REG + 0x010)
+#define IO_HWSTRAP1_DRAM_TYPE           BIT(10)
+
 static int ast2700_sdrammc_calc_size(struct dram_priv *priv)
 {
-	size_t ram_size[] = {
-		0x10000000, // 256MB
-		0x20000000, // 512MB
-		0x40000000, // 1GB
-		0x80000000, // 2GB
-		0x100000000, // 4GB
-		0x200000000, // 8GB
+	struct ddr_capacity ram_size[] = {
+		{0x10000000,	{184, 256}}, // 256MB
+		{0x20000000,	{184, 416}}, // 512MB
+		{0x40000000,	{184, 560}}, // 1GB
+		{0x80000000,	{208, 880}}, // 2GB
+		{0x100000000,	{304, 880}}, // 4GB
+		{0x200000000,	{880, 880}}, // 8GB
 		};
 	u32 test_pattern = 0xdeadbeef;
 	u32 val;
-	int sz;
+	int sz, type;
 
 	/* Configure ram size to max to enable whole area */
 	val = readl(&priv->regs->main_configuration);
@@ -197,7 +206,7 @@ static int ast2700_sdrammc_calc_size(struct dram_priv *priv)
 
 	for (sz = SDRAM_SIZE_8GB - 1; sz > SDRAM_SIZE_256MB; sz--) {
 		test_pattern = (test_pattern << 4) + sz;
-		writel(test_pattern, CFG_SYS_SDRAM_BASE + ram_size[sz]);
+		writel(test_pattern, CFG_SYS_SDRAM_BASE + ram_size[sz].size);
 
 		if (readl(CFG_SYS_SDRAM_BASE) != test_pattern)
 			break;
@@ -208,9 +217,17 @@ static int ast2700_sdrammc_calc_size(struct dram_priv *priv)
 	val &= ~(0x7 << 2);
 	writel(val | ((sz + 1) << 2), &priv->regs->main_configuration);
 
+	type = ((readl(SCU_IO_HWSTRAP1) & IO_HWSTRAP1_DRAM_TYPE) ? 1 : 0);
+
+	/* update rfc in ac_timing5 register. */
+	val = readl(&priv->regs->ac_timing[4]);
+	val &= ~(0x3ff);
+	val |= (ram_size[sz + 1].rfc[type] >> 1);
+	writel(val, &priv->regs->ac_timing[4]);
+
 	/* report actual ram base and size to kernel */
 	priv->info.base = CFG_SYS_SDRAM_BASE;
-	priv->info.size = ram_size[sz + 1] - ast2700_sdrammc_get_vga_mem_size(priv);
+	priv->info.size = ram_size[sz + 1].size - ast2700_sdrammc_get_vga_mem_size(priv);
 
 	return 0;
 }
