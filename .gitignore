@@ -114,3 +114,4 @@ __pycache__
 tools/generated/*
 include/autoconf.mk*
 include/config.h
+ast2700-u-boot-spl.map
