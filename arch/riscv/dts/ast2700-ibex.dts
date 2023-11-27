@@ -66,11 +66,15 @@
 
 &edaf_bridge {
 	status = "okay";
-	cmd-read = <0x30701>;
-	cmd-write = <0x20702>;
-	cmd-erase-4k = <0x20070e>;
-	cmd-erase-32k = <0x52070e>;
-	cmd-erase-64k = <0xd8070e>;
+	ctl-base = <0x0 0x14010000>;
+	mem-base = <0x1 0x80000000>;
+	cmd-read = <0x130401>;
+	cmd-write-enable = <0x6041e>;
+	cmd-write = <0x120402>;
+	cmd-read-status = <0x50415>;
+	cmd-erase-4k = <0x21040e>;
+	cmd-erase-32k = <0x5c040e>;
+	cmd-erase-64k = <0xdc040e>;
 };
 
 &binman {
