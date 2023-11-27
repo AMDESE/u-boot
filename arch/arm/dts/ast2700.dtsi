@@ -133,7 +133,7 @@
 		};
 
 		syscon0: syscon@12c02000 {
-			compatible = "syscon", "simple-mfd";
+			compatible = "aspeed,ast2700-scu0", "syscon", "simple-mfd";
 			reg = <0x0 0x12c02000 0x0 0x1000>;
 			ranges = <0 0 0x0 0x12c02000 0x0 0x1000>;
 			#address-cells = <2>;
@@ -407,7 +407,7 @@
 		};
 
 		syscon1: syscon@14c02000 {
-			compatible = "syscon", "simple-mfd";
+			compatible = "aspeed,ast2700-scu1", "syscon", "simple-mfd";
 			reg = <0x0 0x14c02000 0x0 0x1000>;
 			ranges = <0 0 0 0x14c02000 0 0x1000>;
 			#address-cells = <2>;
