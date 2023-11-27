@@ -83,7 +83,8 @@ static void sli_calibrate_ahb_delay(int config)
 				 FIELD_PREP(SLIH_PAD_DLY_RX0, d0);
 			writel(value, (void *)SLIH_IOD_BASE + SLI_CTRL_III);
 
-			writel(latch_sel | SLI_TRANS_EN | SLI_CLEAR_RX,
+			writel(latch_sel | SLI_TRANS_EN | SLI_CLEAR_RX |
+				       SLI_CLEAR_BUS,
 			       (void *)SLIH_IOD_BASE + SLI_CTRL_I);
 			udelay(100);
 
@@ -163,12 +164,12 @@ static int sli_calibrate_mbus_pad_delay(int config, int index, int begin,
 		udelay(1);
 
 		/* Reset CPU TX */
-		writel(SLI_TRANS_EN | SLI_CLEAR_TX,
+		writel(SLI_TRANS_EN | SLI_CLEAR_TX | SLI_CLEAR_BUS,
 		       (void *)SLIM_CPU_BASE + SLI_CTRL_I);
 		udelay(1);
 
 		/* Reset IOD RX */
-		writel(latch_sel | SLI_TRANS_EN | SLI_CLEAR_RX,
+		writel(latch_sel | SLI_TRANS_EN | SLI_CLEAR_RX | SLI_CLEAR_BUS,
 		       (void *)SLIM_IOD_BASE + SLI_CTRL_I);
 		udelay(1);
 
@@ -220,12 +221,12 @@ static void sli_calibrate_mbus_delay(int config)
 		udelay(1);
 
 		/* Reset CPU TX */
-		writel(SLI_TRANS_EN | SLI_CLEAR_TX,
+		writel(SLI_TRANS_EN | SLI_CLEAR_TX | SLI_CLEAR_BUS,
 		       (void *)SLIM_CPU_BASE + SLI_CTRL_I);
 		udelay(1);
 
 		/* Reset IOD RX */
-		writel(latch_sel | SLI_TRANS_EN | SLI_CLEAR_RX,
+		writel(latch_sel | SLI_TRANS_EN | SLI_CLEAR_RX | SLI_CLEAR_BUS,
 		       (void *)SLIM_IOD_BASE + SLI_CTRL_I);
 		udelay(1);
 
@@ -298,7 +299,8 @@ static void sli_calibrate_mbus_delay(int config)
 	udelay(1);
 
 	/* Reset CPU SLIM TX */
-	writel(SLI_TRANS_EN | SLI_CLEAR_TX, (void *)SLIM_CPU_BASE + SLI_CTRL_I);
+	writel(SLI_TRANS_EN | SLI_CLEAR_TX | SLI_CLEAR_BUS,
+	       (void *)SLIM_CPU_BASE + SLI_CTRL_I);
 	udelay(1);
 
 	/* Reset IOD SLIM Bus (to reset the counters) and RX */
