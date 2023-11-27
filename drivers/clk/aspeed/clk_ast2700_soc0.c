@@ -3,14 +3,11 @@
  * Copyright (C) ASPEED Technology Inc.
  */
 
-#include <common.h>
 #include <clk-uclass.h>
 #include <dm.h>
-#include <asm/io.h>
-#include <dm/lists.h>
-#include <linux/delay.h>
+#include <regmap.h>
+#include <syscon.h>
 #include <asm/arch-aspeed/clk_ast2700.h>
-#include <asm/global_data.h>
 #include <dt-bindings/clock/ast2700-clock.h>
 #include <dt-bindings/reset/ast2700-reset.h>
 
@@ -19,23 +16,23 @@ DECLARE_GLOBAL_DATA_PTR;
 #define CLKIN_25M 25000000UL
 
 struct ast2700_soc0_clk_priv {
-	struct ast2700_soc0_clk *clk;
+	struct regmap *map;
 };
 
-extern uint32_t ast2700_soc0_get_pll_rate(struct ast2700_soc0_clk *clk, int pll_idx)
+static uint32_t ast2700_soc0_get_pll_rate(struct regmap *map, int pll_idx)
 {
 	union ast2700_pll_reg pll_reg;
 	uint32_t mul = 1, div = 1;
 
 	switch (pll_idx) {
 	case AST2700_SOC0_CLK_HPLL:
-		pll_reg.w = readl(&clk->hpll);
+		regmap_read(map, SOC0_CLK_HPLL, &pll_reg.w);
 		break;
 	case AST2700_SOC0_CLK_DPLL:
-		pll_reg.w = readl(&clk->dpll);
+		regmap_read(map, SOC0_CLK_DPLL, &pll_reg.w);
 		break;
 	case AST2700_SOC0_CLK_MPLL:
-		pll_reg.w = readl(&clk->mpll);
+		regmap_read(map, SOC0_CLK_MPLL, &pll_reg.w);
 		break;
 	}
 
@@ -54,82 +51,115 @@ extern uint32_t ast2700_soc0_get_pll_rate(struct ast2700_soc0_clk *clk, int pll_
 	return ((CLKIN_25M * mul) / div);
 }
 
-static uint32_t ast2700_soc0_get_hclk_rate(struct ast2700_soc0_clk *clk)
+static uint32_t ast2700_soc0_get_axiclk_rate(struct regmap *map)
 {
-	u32 rate = ast2700_soc0_get_pll_rate(clk, AST2700_SOC0_CLK_HPLL);
-	u32 fixed_div = 4;
+	uint reg;
 
-	return (rate / fixed_div);
+	regmap_read(map, SOC0_HWSTRAP1, &reg);
+	if (reg & BIT(7))
+		return ast2700_soc0_get_pll_rate(map, AST2700_SOC0_CLK_HPLL) / 2;
+	else
+		return ast2700_soc0_get_pll_rate(map, AST2700_SOC0_CLK_MPLL) / 2;
+}
+
+#define SCU_AHB_DIV_MASK		GENMASK(6, 5)
+#define SCU_AHB_DIV_SHIFT		5
+static uint32_t ast2700_soc0_get_hclk_rate(struct regmap *map)
+{
+	u32 rate = ast2700_soc0_get_axiclk_rate(map);
+	uint reg;
+	int div;
+
+	regmap_read(map, SOC0_HWSTRAP1, &reg);
+	div = (reg & SCU_AHB_DIV_MASK) >> SCU_AHB_DIV_SHIFT;
+
+	if (!div)
+		div = 2;
+	else
+		div++;
+
+	return (rate / div);
 }
 
 #define SCU_CLKSEL1_PCLK_DIV_MASK		GENMASK(25, 23)
 #define SCU_CLKSEL1_PCLK_DIV_SHIFT		23
 
-static uint32_t ast2700_soc0_get_pclk_rate(struct ast2700_soc0_clk *clk)
+static uint32_t ast2700_soc0_get_pclk_rate(struct regmap *map)
 {
-	u32 rate = ast2700_soc0_get_pll_rate(clk, AST2700_SOC0_CLK_HPLL);
-	u32 clksel1 = readl(&clk->clk_sel1);
-	u32 pclk_div = (clksel1 & SCU_CLKSEL1_PCLK_DIV_MASK) >>
+	u32 rate = ast2700_soc0_get_axiclk_rate(map);
+	uint reg;
+	int div;
+
+	regmap_read(map, SOC0_CLK_SELECT1, &reg);
+	div = (reg & SCU_CLKSEL1_PCLK_DIV_MASK) >>
 			    SCU_CLKSEL1_PCLK_DIV_SHIFT;
 
-	return (rate / ((pclk_div + 1) * 4));
+	return (rate / ((div + 1) * 2));
 }
 
 #define SCU_CLKSEL1_BCLK_DIV_MASK		GENMASK(22, 20)
 #define SCU_CLKSEL1_BCLK_DIV_SHIFT		20
-
-static uint32_t ast2700_soc0_get_bclk_rate(struct ast2700_soc0_clk *clk)
+static uint32_t ast2700_soc0_get_bclk_rate(struct regmap *map)
 {
-	u32 rate = ast2700_soc0_get_pll_rate(clk, AST2700_SOC0_CLK_HPLL);
-	u32 clksel1 = readl(&clk->clk_sel1);
-	u32 bclk_div = (clksel1 & SCU_CLKSEL1_BCLK_DIV_MASK) >>
+	u32 rate = ast2700_soc0_get_pll_rate(map, AST2700_SOC0_CLK_MPLL);
+	uint reg;
+	int div;
+
+	regmap_read(map, SOC0_CLK_SELECT1, &reg);
+	div = (reg & SCU_CLKSEL1_BCLK_DIV_MASK) >>
 			     SCU_CLKSEL1_BCLK_DIV_SHIFT;
 
-	return (rate / ((bclk_div + 1) * 4));
+	return (rate / ((div + 1) * 4));
 }
 
 #define SCU_CLKSEL1_MPHYCLK_DIV_MASK		GENMASK(7, 0)
-
-static uint32_t ast2700_soc0_get_mphyclk_rate(struct ast2700_soc0_clk *clk)
+static uint32_t ast2700_soc0_get_mphyclk_rate(struct regmap *map)
 {
-	u32 rate = ast2700_soc0_get_pll_rate(clk, AST2700_SOC0_CLK_HPLL);
-	u32 mphy_para = readl(&clk->mphyclk_para);
-	u32 mphy_div = (mphy_para & SCU_CLKSEL1_BCLK_DIV_MASK);
+	u32 rate = ast2700_soc0_get_pll_rate(map, AST2700_SOC0_CLK_HPLL);
+	uint reg;
+	int div;
 
-	return (rate / (mphy_div + 1));
+	regmap_read(map, SOC0_CLK_MPHY_PARA, &reg);
+	div = (reg & SCU_CLKSEL1_BCLK_DIV_MASK);
+
+	return (rate / (div + 1));
 }
 
 #define SCU_CLKSRC1_EMMC_DIV_MASK		GENMASK(14, 12)
 #define SCU_CLKSRC1_EMMC_DIV_SHIFT		12
 #define SCU_CLKSRC1_EMMC_SEL			BIT(11)
-
-static uint32_t ast2700_soc0_get_emmcclk_rate(struct ast2700_soc0_clk *clk)
+static uint32_t ast2700_soc0_get_emmcclk_rate(struct regmap *map)
 {
 	u32 rate;
-	u32 clksel1 = readl(&clk->clk_sel1);
-	u32 emmcclk_div = (clksel1 & SCU_CLKSRC1_EMMC_DIV_MASK) >>
+	uint reg;
+	int div;
+
+	regmap_read(map, SOC0_CLK_SELECT1, &reg);
+	div = (reg & SCU_CLKSRC1_EMMC_DIV_MASK) >>
 			     SCU_CLKSRC1_EMMC_DIV_SHIFT;
 
-	if (clksel1 & SCU_CLKSRC1_EMMC_SEL)
-		rate = ast2700_soc0_get_pll_rate(clk, AST2700_SOC0_CLK_HPLL) / 4;
+	if (reg & SCU_CLKSRC1_EMMC_SEL)
+		rate = ast2700_soc0_get_pll_rate(map, AST2700_SOC0_CLK_HPLL) / 4;
 	else
-		rate = ast2700_soc0_get_pll_rate(clk, AST2700_SOC0_CLK_MPLL) / 4;
+		rate = ast2700_soc0_get_pll_rate(map, AST2700_SOC0_CLK_MPLL) / 4;
 
-	return (rate / ((emmcclk_div + 1) * 2));
+	return (rate / ((div + 1) * 2));
 }
 
-static uint32_t ast2700_soc0_get_uartclk_rate(struct ast2700_soc0_clk *clk)
+static uint32_t ast2700_soc0_get_uartclk_rate(struct regmap *map)
 {
-	u32 clksel2 = readl(&clk->clk_sel2);
 	u32 div = 1;
 	u32 rate;
+	uint reg;
 
-	if (clksel2 & BIT(15))
+	regmap_read(map, SOC0_CLK_SELECT2, &reg);
+
+	if (reg & BIT(15))
 		rate = 192000000;
 	else
 		rate = 24000000;
 
-	if (clksel2 & BIT(30))
+	if (reg & BIT(30))
 		div = 13;
 	return (rate / div);
 }
@@ -143,25 +173,25 @@ static ulong ast2700_soc0_clk_get_rate(struct clk *clk)
 	case AST2700_SOC0_CLK_HPLL:
 	case AST2700_SOC0_CLK_DPLL:
 	case AST2700_SOC0_CLK_MPLL:
-		rate = ast2700_soc0_get_pll_rate(priv->clk, clk->id);
+		rate = ast2700_soc0_get_pll_rate(priv->map, clk->id);
 		break;
 	case AST2700_SOC0_CLK_AHB:
-		rate = ast2700_soc0_get_hclk_rate(priv->clk);
+		rate = ast2700_soc0_get_hclk_rate(priv->map);
 		break;
 	case AST2700_SOC0_CLK_APB:
-		rate = ast2700_soc0_get_pclk_rate(priv->clk);
+		rate = ast2700_soc0_get_pclk_rate(priv->map);
 		break;
 	case AST2700_SOC0_CLK_BCLK:
-		rate = ast2700_soc0_get_bclk_rate(priv->clk);
+		rate = ast2700_soc0_get_bclk_rate(priv->map);
 		break;
 	case AST2700_SOC0_CLK_GATE_EMMCCLK:
-		rate = ast2700_soc0_get_emmcclk_rate(priv->clk);
+		rate = ast2700_soc0_get_emmcclk_rate(priv->map);
 		break;
 	case AST2700_SOC0_CLK_GATE_UART4CLK:
-		rate = ast2700_soc0_get_uartclk_rate(priv->clk);
+		rate = ast2700_soc0_get_uartclk_rate(priv->map);
 		break;
 	case AST2700_SOC0_CLK_MPHY:
-		rate = ast2700_soc0_get_mphyclk_rate(priv->clk);
+		rate = ast2700_soc0_get_mphyclk_rate(priv->map);
 		break;
 	default:
 		debug("%s: unknown clk %ld\n", __func__, clk->id);
@@ -174,11 +204,8 @@ static ulong ast2700_soc0_clk_get_rate(struct clk *clk)
 static int ast2700_soc0_clk_enable(struct clk *clk)
 {
 	struct ast2700_soc0_clk_priv *priv = dev_get_priv(clk->dev);
-	struct ast2700_soc0_clk *cpu_clk = priv->clk;
-	u32 clkgate_bit = BIT(clk->id);
 
-	if (readl(&cpu_clk->clkgate_ctrl) & clkgate_bit)
-		writel(clkgate_bit, &cpu_clk->clkgate_clr);
+	regmap_write(priv->map, SOC0_CLKGATE_CLR, BIT(clk->id));
 
 	return 0;
 }
@@ -191,29 +218,25 @@ struct clk_ops ast2700_soc0_clk_ops = {
 static int ast2700_soc0_clk_probe(struct udevice *dev)
 {
 	struct ast2700_soc0_clk_priv *priv = dev_get_priv(dev);
-	struct ast2700_soc0_clk *cpu_clk;
 	u32 rate = 0;
 	u32 div = 0;
 	int i = 0;
-	u32 clksrc1;
 
-	priv->clk = dev_read_addr_ptr(dev);
-	if (IS_ERR(priv->clk))
-		return PTR_ERR(priv->clk);
+	priv->map = syscon_node_to_regmap(dev_ofnode(dev_get_parent(dev)));
+	if (IS_ERR(priv->map))
+		return PTR_ERR(priv->map);
 
-	cpu_clk = priv->clk;
 	/* set emmc clk src mpll/4:400Mhz */
-	clksrc1 = readl(&cpu_clk->clk_sel1);
-	rate = ast2700_soc0_get_pll_rate(cpu_clk, AST2700_SOC0_CLK_MPLL) / 4;
+	rate = ast2700_soc0_get_pll_rate(priv->map, AST2700_SOC0_CLK_MPLL) / 4;
 	for (i = 0; i < 8; i++) {
 		div = (i + 1) * 2;
 		if ((rate / div) <= 200000000)
 			break;
 	}
 
-	clksrc1 &= ~(SCU_CLKSRC1_EMMC_DIV_MASK | SCU_CLKSRC1_EMMC_SEL);
-	clksrc1 |= (i << SCU_CLKSRC1_EMMC_DIV_SHIFT);
-	writel(clksrc1, &cpu_clk->clk_sel1);
+	regmap_update_bits(priv->map, SOC0_CLK_SELECT1,
+			   SCU_CLKSRC1_EMMC_DIV_MASK | SCU_CLKSRC1_EMMC_SEL,
+			   (i << SCU_CLKSRC1_EMMC_DIV_SHIFT));
 
 	return 0;
 }

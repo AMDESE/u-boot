@@ -54,6 +54,80 @@ struct aspeed_clks {
 	const char *name;
 };
 
+#define SOC0_REVISIONID		0x000
+
+#define SOC0_HWSTRAP1		0x010
+#define SOC0_HWSTRAP1_CLR	0x014
+#define SOC0_HWSTRAP1_LOCK	0x020
+#define SOC0_HWSTRAP1_SECURE1	0x024
+#define SOC0_HWSTRAP1_SECURE2	0x028
+#define SOC0_HWSTRAP1_SECURE3	0x02c
+
+#define SOC0_CLKGATE_CTRL	0x240
+#define SOC0_CLKGATE_CLR	0x244
+/* reserved */
+#define SOC0_CLKGATE_LOCK	0x250
+#define SOC0_CLKGATE_SECURE1	0x254
+#define SOC0_CLKGATE_SECURE2	0x258
+#define SOC0_CLKGATE_SECURE3	0x25c
+/* reserved */
+#define SOC0_CLK_SELECT1		0x280
+#define SOC0_CLK_SELECT2		0x284
+#define SOC0_CLK_SELECT3		0x288
+/* reserved */
+#define SOC0_CLK_SEL1_LOCK		0x290
+#define SOC0_CLK_SEL2_LOCK		0x294
+#define SOC0_CLK_SEL3_LOCK		0x298
+/* reserved */
+#define SOC0_CLK_SEL1_SECURE1	0x2a0
+#define SOC0_CLK_SEL1_SECURE2	0x2a4
+#define SOC0_CLK_SEL1_SECURE3	0x2a8
+/* reserved */
+#define SOC0_CLK_SEL2_SECURE1	0x2b0
+#define SOC0_CLK_SEL2_SECURE2	0x2b4
+#define SOC0_CLK_SEL2_SECURE3	0x2b8
+/* reserved */
+#define SOC0_CLK_SEL3_SECURE1	0x2c0
+#define SOC0_CLK_SEL3_SECURE2	0x2c4
+#define SOC0_CLK_SEL3_SECURE3	0x2c8
+/* reserved */
+#define SOC0_CLK_EXTRST_SEL		0x2f0
+/* reserved */
+#define SOC0_CLK_HPLL			0x300
+#define SOC0_CLK_HPLL_EXT		0x304
+#define SOC0_CLK_DPLL			0x308
+#define SOC0_CLK_DPLL_EXT		0x30c
+#define SOC0_CLK_MPLL			0x310
+#define SOC0_CLK_MPLL_EXT		0x314
+/* reserved */
+#define SOC0_CLK_D1_PARA		0x320
+/* reserved */
+#define SOC0_CLK_D2_PARA		0x330
+/* reserved */
+#define SOC0_CLK_CRT1_PARA		0x340
+/* reserved */
+#define SOC0_CLK_CRT2_PARA		0x350
+/* reserved */
+#define SOC0_CLK_MPHY_PARA		0x360
+/* reserved */
+#define SOC0_CLK_DUTY_MEAS_CTRL	0x380
+/* reserved */
+#define SOC0_CLK_FREQ_COUNTER_CTRL	0x3a0
+#define SOC0_CLK_FREQ_COUNTER_CMP	0x3a4
+
+#define SOC0_VGA_FUN_CTRL	0x414
+
+#define SOC0_PCI0_MISC00	0xa00
+#define SOC0_PCI0_MISC04	0xa04
+#define SOC0_PCI0_MISC08	0xa08
+#define SOC0_PCI0_MISC0C	0xa0c
+#define SOC0_PCI0_MISC70	0xa70
+#define SOC0_PCI1_MISC00	0xa80
+#define SOC0_PCI1_MISC04	0xa84
+#define SOC0_PCI1_MISC08	0xa88
+#define SOC0_PCI1_MISC0C	0xa8c
+#define SOC0_PCI1_MISC70	0xaf0
+
 #ifndef __ASSEMBLY__
 struct ast2700_soc0_clk {
 	u32 clkgate_ctrl;		/* 0x240 */
