@@ -82,8 +82,7 @@ static u32 _ast_get_e2m_addr(struct sdramc_regs *ram, u32 addr)
 	return (((1 << val) - 1) << 24) | (addr >> 4);
 }
 
-static int pci_vga_init(struct ast2700_soc0_scu *scu,
-			struct ast2700_soc0_clk *clk)
+static int pci_vga_init(struct ast2700_soc0_scu *scu)
 {
 	struct sdramc_regs *ram = (struct sdramc_regs *)DRAMC_BASE;
 	u32 val, vram_size, vram_addr;
@@ -111,7 +110,7 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu,
 
 	debug("%s: ENABLE 0(%d) 1(%d)\n", __func__, is_pcie0_enable, is_pcie1_enable);
 
-	// for CRAA[1:0]
+	/* scratch for VGA CRAA[1:0] : 10b: 32Mbytes, 11b: 64Mbytes */
 	setbits_le32(&scu->hwstrap1, BIT(11));
 	if (is_64vram)
 		setbits_le32(&scu->hwstrap1, BIT(10));
@@ -126,7 +125,7 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu,
 
 	if (is_pcie0_enable) {
 		// enable clk
-		setbits_le32(&clk->clkgate_clr, SCU_CPU_CLKGATE1_VGA0);
+		setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_VGA0);
 
 		vram_addr -= vram_size;
 		debug("pcie0 e2m addr(%x)\n", _ast_get_e2m_addr(ram, vram_addr));
@@ -143,7 +142,7 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu,
 
 	if (is_pcie1_enable) {
 		// enable clk
-		setbits_le32(&clk->clkgate_clr, SCU_CPU_CLKGATE1_VGA1);
+		setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_VGA1);
 
 		vram_addr -= vram_size;
 		debug("pcie1 e2m addr(%x)\n", _ast_get_e2m_addr(ram, vram_addr));
@@ -163,7 +162,7 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu,
 					*retimer_io;
 
 		// enable dac clk
-		setbits_le32(&clk->clkgate_clr, SCU_CPU_CLKGATE1_DAC);
+		setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_DAC);
 
 		val = scu->vga_func_ctrl;
 		val &= ~(SCU_CPU_VGA_FUNC_DAC_OUTPUT
@@ -193,33 +192,10 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu,
 	return 0;
 }
 
-static void *fdt_get_syscon_addr_ptr(struct udevice *dev)
-{
-	ofnode node = dev_ofnode(dev), parent;
-	fdt_addr_t addr;
-
-	if (!ofnode_valid(node)) {
-		printf("%s: node invalid\n", __func__);
-		return NULL;
-	}
-
-	parent = ofnode_get_parent(node);
-	addr = ofnode_get_addr(parent);
-	if (addr == FDT_ADDR_T_NONE) {
-		printf("%s: node addr none\n", __func__);
-		return NULL;
-	}
-
-	debug("scu reg: %llx\n", addr);
-	return (void *)(uintptr_t)addr;
-}
-
 int arch_misc_init(void)
 {
-	int rc;
-	struct udevice *clk_dev;
-	struct ast2700_soc0_clk *clk;
-	struct ast2700_soc0_scu *scu;
+	int nodeoffset;
+	ofnode node;
 
 	if (IS_ENABLED(CONFIG_ARCH_MISC_INIT)) {
 		if ((readl(ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_EMMC))
@@ -228,26 +204,18 @@ int arch_misc_init(void)
 			env_set("boot_device", "spi");
 	}
 
-	rc = uclass_get_device_by_driver(UCLASS_CLK,
-					 DM_DRIVER_GET(aspeed_ast2700_soc0_clk), &clk_dev);
-	if (rc) {
-		printf("%s: cannot find CLK device, rc=%d\n", __func__, rc);
-		return rc;
+	/* find the offset of compatible node */
+	nodeoffset = fdt_node_offset_by_compatible(gd->fdt_blob, -1,
+						   "aspeed,ast2700-scu0");
+	if (nodeoffset < 0) {
+		printf("%s: failed to get aspeed,ast2700-scu0\n", __func__);
+		return -ENODEV;
 	}
 
-	clk = devfdt_get_addr_ptr(clk_dev);
-	if (IS_ERR_OR_NULL(clk)) {
-		printf("%s: cannot get CLK address pointer\n", __func__);
-		return PTR_ERR(clk);
-	}
+	/* get ast2700-scu0 node */
+	node = offset_to_ofnode(nodeoffset);
 
-	scu = fdt_get_syscon_addr_ptr(clk_dev);
-	if (IS_ERR_OR_NULL(scu)) {
-		printf("%s: cannot get SYSCON address pointer\n", __func__);
-		return PTR_ERR(scu);
-	}
-
-	pci_vga_init(scu, clk);
+	pci_vga_init((struct ast2700_soc0_scu *)ofnode_get_addr(node));
 
 	return 0;
 }
