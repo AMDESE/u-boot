@@ -5,6 +5,7 @@
 #include <common.h>
 #include <dm.h>
 #include <asm/arch-aspeed/sdram_ast2700.h>
+#include <asm/arch-aspeed/pll.h>
 
 #define DRAMC_UNLOCK_KEY		0x1688a8a8
 #define DRAMC_VIDEO_UNLOCK_KEY		0x00440003
@@ -721,6 +722,8 @@ int dram_init(void)
 
 	if (is_ddr_initialized())
 		goto out;
+
+	mpll_init();
 
 	sdramc_unlock(sdramc);
 

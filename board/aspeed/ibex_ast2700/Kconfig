@@ -22,4 +22,35 @@ config SPI_ASPEED_DMA
 	bool "Enable ASPEED SPI DMA"
 	default n
 
+choice
+	prompt "AST2700 MPLL frequency"
+	default ASPEED_MPLL_1600
+
+config ASPEED_MPLL_800
+	bool "800MHz"
+	help
+	  set mpll default speed at 800Mhz
+
+config ASPEED_MPLL_1000
+	bool "1000MHz"
+	help
+	  set mpll default speed at 1000Mhz
+
+config ASPEED_MPLL_1200
+	bool "1200MHz"
+	help
+	  set mpll default speed at 1200Mhz
+
+config ASPEED_MPLL_1400
+	bool "1400MHz"
+	help
+	  set mpll default speed at 1400Mhz
+
+config ASPEED_MPLL_1600
+	bool "1600MHz"
+	help
+	  set mpll default speed at 1600Mhz
+
+endchoice
+
 endif
