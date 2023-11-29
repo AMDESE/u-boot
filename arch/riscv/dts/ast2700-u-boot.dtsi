@@ -21,11 +21,16 @@
 
 	soc1: soc@14000000 {
 		bootph-all;
+
 		uart12: serial@14c33b00 {
 			bootph-all;
 		};
 
-		edaf: edaf-bridge@14c38000 {
+		edaf_bridge0: edaf-bridge@14c38000 {
+			bootph-all;
+		};
+
+		edaf_bridge1: edaf-bridge@14c38200 {
 			bootph-all;
 		};
 	};

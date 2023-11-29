@@ -108,9 +108,15 @@
 			status = "disabled";
 		};
 
-		edaf_bridge: edaf-bridge@14c38000 {
+		edaf_bridge0: edaf-bridge@14c38000 {
 			compatible = "aspeed,ast2700-edaf-bridge";
-			reg = <0x14c38000 0x1000>;
+			reg = <0x14c38000 0x200>;
+			status = "disabled";
+		};
+
+		edaf_bridge1: edaf-bridge@14c38200 {
+			compatible = "aspeed,ast2700-edaf-bridge";
+			reg = <0x14c38200 0x200>;
 			status = "disabled";
 		};
 	};
