@@ -128,41 +128,30 @@ enum {
 
 static size_t ast2700_sdrammc_get_vga_mem_size(struct dram_priv *priv)
 {
-	struct udevice *clk_dev;
 	struct ast2700_soc0_scu *scu;
-	ofnode node, parent;
-	fdt_addr_t addr;
+	int nodeoffset;
 	size_t vga_ram_size[] = {
 		0x2000000, // 32MB
 		0x4000000, // 64MB
 		};
 	int vga_sz_sel;
+	ofnode node;
 	int dual = 0;
-	int ret;
 
 	vga_sz_sel = readl(&priv->regs->graphic_memory_config) & 0x1;
 
-	ret = uclass_get_device_by_driver(UCLASS_CLK,
-					  DM_DRIVER_GET(aspeed_ast2700_soc0_clk), &clk_dev);
-	if (ret) {
-		printf("%s: cannot get CLK device\n", __func__);
-		return vga_ram_size[vga_sz_sel];
+	/* find the offset of compatible node */
+	nodeoffset = fdt_node_offset_by_compatible(gd->fdt_blob, -1,
+						   "aspeed,ast2700-scu0");
+	if (nodeoffset < 0) {
+		printf("%s: failed to get aspeed,ast2700-scu0\n", __func__);
+		return -ENODEV;
 	}
 
-	node = dev_ofnode(clk_dev);
-	if (!ofnode_valid(node)) {
-		printf("%s: node invalid\n", __func__);
-		return vga_ram_size[vga_sz_sel];
-	}
+	/* get ast2700-scu0 node */
+	node = offset_to_ofnode(nodeoffset);
 
-	parent = ofnode_get_parent(node);
-	addr = ofnode_get_addr(parent);
-	if (addr == FDT_ADDR_T_NONE) {
-		printf("%s: node addr none\n", __func__);
-		return vga_ram_size[vga_sz_sel];
-	}
-
-	scu = (void *)(uintptr_t)addr;
+	scu = (struct ast2700_soc0_scu *)ofnode_get_addr(node);
 
 	if (scu->pci0_misc[28] & BIT(0))
 		dual++;

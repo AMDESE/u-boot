@@ -6,7 +6,6 @@
 #include <common.h>
 #include <dm.h>
 #include <asm/armv8/mmu.h>
-#include <asm/arch-aspeed/clk_ast2700.h>
 #include <asm/arch-aspeed/e2m_ast2700.h>
 #include <asm/arch-aspeed/sdram_ast2700.h>
 #include <asm/arch-aspeed/scu_ast2700.h>

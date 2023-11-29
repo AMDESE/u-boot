@@ -9,7 +9,6 @@
 #include <common.h>
 #include <asm/csr.h>
 #include <asm/arch-aspeed/platform.h>
-#include <asm/arch-aspeed/scu_ast2700.h>
 #include <asm/arch-aspeed/sli_ast2700.h>
 #include <linux/bitfield.h>
 #include <linux/bitops.h>

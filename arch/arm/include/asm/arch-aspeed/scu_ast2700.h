@@ -49,7 +49,115 @@
 #define SCU_IO_HWSTRAP_EMMC			BIT(11)
 #define SCU_IO_HWSTRAP_SCM			BIT(3)
 
+/* CLK information */
+#define CLKIN_25M 25000000UL
+
+#define SCU_CPU_CLKGATE1_RVAS1			BIT(28)
+#define SCU_CPU_CLKGATE1_RVAS0			BIT(25)
+#define SCU_CPU_CLKGATE1_DP			BIT(18)
+#define SCU_CPU_CLKGATE1_DAC			BIT(17)
+#define SCU_CPU_CLKGATE1_VGA1			BIT(10)
+#define SCU_CPU_CLKGATE1_VGA0			BIT(5)
+
+/*
+ * Clock divider/multiplier configuration struct.
+ * For H-PLL and M-PLL the formula is
+ * (Output Frequency) = CLKIN * ((M + 1) / (N + 1)) / (P + 1)
+ * M - Numerator
+ * N - Denumerator
+ * P - Post Divider
+ * They have the same layout in their control register.
+ *
+ */
+union ast2700_pll_reg {
+	uint32_t w;
+	struct {
+		unsigned int m : 13;			/* bit[12:0]	*/
+		unsigned int n : 6;			/* bit[18:13]	*/
+		unsigned int p : 4;			/* bit[22:19]	*/
+		unsigned int off : 1;			/* bit[23]	*/
+		unsigned int bypass : 1;		/* bit[24]	*/
+		unsigned int reset : 1;			/* bit[25]	*/
+		unsigned int reserved : 6;		/* bit[31:26]	*/
+
+	} b;
+};
+
+struct ast2700_pll_cfg {
+	union ast2700_pll_reg reg;
+	unsigned int ext_reg;
+};
+
+struct ast2700_pll_desc {
+	uint32_t in;
+	uint32_t out;
+	struct ast2700_pll_cfg cfg;
+};
+
+struct aspeed_clks {
+	ulong id;
+	const char *name;
+};
+
 #ifndef __ASSEMBLY__
+struct ast2700_soc1_clk {
+	u32 clkgate_ctrl1;		/* 0x240 */
+	u32 clkgate_clr1;		/* 0x244 */
+	u32 rsv_0x248[2];		/* 0x248 */
+	u32 clkgate_lock1;		/* 0x250 */
+	u32 clkgate_secure11;		/* 0x254 */
+	u32 clkgate_secure12;		/* 0x258 */
+	u32 clkgate_secure13;		/* 0x25c */
+	u32 clkgate_ctrl2;		/* 0x260 */
+	u32 clkgate_clr2;		/* 0x264 */
+	u32 rsv_0x268[2];		/* 0x268 */
+	u32 clkgate_lock2;		/* 0x270 */
+	u32 clkgate_secure21;		/* 0x274 */
+	u32 clkgate_secure22;		/* 0x278 */
+	u32 clkgate_secure23;		/* 0x27c */
+	u32 clk_sel1;		/* 0x280 */
+	u32 clk_sel2;		/* 0x284 */
+	u32 rsv_0x288[2];		/* 0x288 */
+	u32 clk_sel1_lock;		/* 0x290 */
+	u32 clk_sel2_lock;		/* 0x294 */
+	u32 rsv_0x298[2];		/* 0x298 */
+	u32 clk_sel1_secure1;		/* 0x2a0 */
+	u32 clk_sel1_secure2;		/* 0x2a4 */
+	u32 rsv_0x2a8[2];		/* 0x2a8 */
+	u32 clk_sel2_secure1;		/* 0x2b0 */
+	u32 clk_sel2_secure2;		/* 0x2b4 */
+	u32 rsv_0x2b8[2];		/* 0x2b8 */
+	u32 clk_sel3_secure1;		/* 0x2c0 */
+	u32 clk_sel3_secure2;		/* 0x2c4 */
+	u32 rsv_0x2c8[10];		/* 0x2c8 */
+	u32 extrst_sel1;		/* 0x2f0 */
+	u32 extrst_sel2;		/* 0x2f4 */
+	u32 rsv_0x2f8[2];		/* 0x2f8 */
+	u32 hpll;			/* 0x300 */
+	u32 hpll_ext;		/* 0x304 */
+	u32 rsv_0x308[2];		/* 0x308 ~ 0x30C */
+	u32 apll;			/* 0x310 */
+	u32 apll_ext;		/* 0x314 */
+	u32 rsv_0x318[2];		/* 0x318 ~ 0x31C */
+	u32 dpll;			/* 0x320 */
+	u32 dpll_ext;		/* 0x324 */
+	u32 rsv_0x328[2];		/* 0x328 ~ 0x32C */
+	u32 uxclk_ctrl;		/* 0x330 */
+	u32 huxclk_ctrl;		/* 0x334 */
+	u32 rsv_0x338[18];		/* 0x338 ~ 0x37C */
+	u32 clkduty_meas_ctrl;	/* 0x380 */
+	u32 clkduty1;		/* 0x384 */
+	u32 clkduty2;		/* 0x388 */
+	u32 rsv_0x38c;		/* 0x38c */
+	u32 mac_delay;		/* 0x390 */
+	u32 mac_100m_delay;		/* 0x394 */
+	u32 mac_10m_delay;		/* 0x398 */
+	u32 rsv_0x39c;		/* 0x39c */
+	u32 freq_counter_ctrl;	/* 0x3a0 */
+	u32 freq_counter_cmp;	/* 0x3a4 */
+	u32 rsv_0x3a8[2];		/* 0x3a8 ~ 0x3aC */
+};
+
 struct ast2700_soc0_scu {
 	uint32_t chip_id1;		/* 0x000 */
 	uint32_t rsv_0x04[3];		/* 0x004 ~ 0x00C */
@@ -60,9 +168,36 @@ struct ast2700_soc0_scu {
 	uint32_t hwstrap1_prot1;	/* 0x024 */
 	uint32_t hwstrap1_prot2;	/* 0x028 */
 	uint32_t hwstrap1_prot3;	/* 0x02C */
-	uint32_t rsv_0x30[36];		/* 0x030 ~ 0xBC */
+	uint32_t rsv_0x30[8];		/* 0x030 ~ 0x4C */
+	uint32_t sysrest_log1;		/* 0x050 */
+	uint32_t sysrest_log1_sec1;	/* 0x054 */
+	uint32_t sysrest_log1_sec2;	/* 0x058 */
+	uint32_t sysrest_log1_sec3;	/* 0x05C */
+	uint32_t sysrest_log2;		/* 0x060 */
+	uint32_t sysrest_log2_sec1;	/* 0x064 */
+	uint32_t sysrest_log2_sec2;	/* 0x068 */
+	uint32_t sysrest_log2_sec3;	/* 0x06C */
+	uint32_t sysrest_log3;		/* 0x070 */
+	uint32_t sysrest_log3_sec1; /* 0x074 */
+	uint32_t sysrest_log3_sec2; /* 0x078 */
+	uint32_t sysrest_log3_sec3; /* 0x07C */
+	uint32_t rsv_0x80[8];		/* 0x080 ~ 0x9C */
+	uint32_t probe_sig_select;	/* 0x0A0 */
+	uint32_t probe_sig_enable1;	/* 0x0A4 */
+	uint32_t probe_sig_enable2; /* 0x0A8 */
+	uint32_t uart_dbg_rate;		/* 0x0AC */
+	uint32_t rsv_0xB0[4];		/* 0x0B0 ~ 0xBC*/
 	uint32_t misc;			/* 0x0C0 */
-	uint32_t rsv_0xC8[79];		/* 0x0C4 ~ 0x1FC */
+	uint32_t rsv_0xC4;		/* 0x0C4 */
+	uint32_t debug_ctrl;		/* 0x0C8 */
+	uint32_t rsv_0xCC[5];		/* 0x0CC ~ 0x0DC */
+	uint32_t free_counter_read_low;		/* 0x0E0 */
+	uint32_t free_counter_read_high;	/* 0x0E4 */
+	uint32_t rsv_0xE8[2];		/* 0x0E8 ~ 0x0EC */
+	uint32_t random_num_ctrl;	/* 0x0F0 */
+	uint32_t random_num_data;	/* 0x0F4 */
+	uint32_t rsv_0xF0[2];		/* 0x0F8 ~ 0x0FC */
+	uint32_t rsv_0x100[64];		/* 0x100 ~ 0x1FC */
 	uint32_t modrst1_ctrl;		/* 0x200 */
 	uint32_t modrst1_clr;		/* 0x204 */
 	uint32_t rsv_0x208[2];		/* 0x208 ~ 0x20C */

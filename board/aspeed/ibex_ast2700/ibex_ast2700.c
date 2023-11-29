@@ -11,7 +11,6 @@
 #include <common.h>
 #include <asm/csr.h>
 #include <asm/arch-aspeed/platform.h>
-#include <asm/arch-aspeed/clk_ast2700.h>
 #include <asm/arch-aspeed/dp_ast2700.h>
 #include <asm/arch-aspeed/e2m_ast2700.h>
 #include <asm/arch-aspeed/recovery.h>
