@@ -167,23 +167,23 @@ struct ddr_capacity {
 	int rfc[2];
 };
 
-#define SCU_IO_REG                      0x14c02000
-#define SCU_IO_HWSTRAP1                 (SCU_IO_REG + 0x010)
-#define IO_HWSTRAP1_DRAM_TYPE           BIT(10)
+#define SCU_IO_REG			0x14c02000
+#define SCU_IO_HWSTRAP1			(SCU_IO_REG + 0x010)
+#define IO_HWSTRAP1_DRAM_TYPE		BIT(10)
 
 static int ast2700_sdrammc_calc_size(struct dram_priv *priv)
 {
 	struct ddr_capacity ram_size[] = {
-		{0x10000000,	{184, 256}}, // 256MB
-		{0x20000000,	{184, 416}}, // 512MB
-		{0x40000000,	{184, 560}}, // 1GB
-		{0x80000000,	{208, 880}}, // 2GB
-		{0x100000000,	{304, 880}}, // 4GB
+		{0x10000000,	{208, 256}}, // 256MB
+		{0x20000000,	{208, 416}}, // 512MB
+		{0x40000000,	{208, 560}}, // 1GB
+		{0x80000000,	{472, 880}}, // 2GB
+		{0x100000000,	{656, 880}}, // 4GB
 		{0x200000000,	{880, 880}}, // 8GB
 		};
 	u32 test_pattern = 0xdeadbeef;
 	u32 val;
-	int sz, type;
+	int sz, ddr4;
 
 	/* Configure ram size to max to enable whole area */
 	val = readl(&priv->regs->main_configuration);
@@ -206,12 +206,12 @@ static int ast2700_sdrammc_calc_size(struct dram_priv *priv)
 	val &= ~(0x7 << 2);
 	writel(val | ((sz + 1) << 2), &priv->regs->main_configuration);
 
-	type = ((readl(SCU_IO_HWSTRAP1) & IO_HWSTRAP1_DRAM_TYPE) ? 1 : 0);
+	ddr4 = ((readl(SCU_IO_HWSTRAP1) & IO_HWSTRAP1_DRAM_TYPE) ? 1 : 0);
 
 	/* update rfc in ac_timing5 register. */
 	val = readl(&priv->regs->ac_timing[4]);
 	val &= ~(0x3ff);
-	val |= (ram_size[sz + 1].rfc[type] >> 1);
+	val |= (ram_size[sz + 1].rfc[ddr4] >> 1);
 	writel(val, &priv->regs->ac_timing[4]);
 
 	/* report actual ram base and size to kernel */
