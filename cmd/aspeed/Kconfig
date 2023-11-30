@@ -40,3 +40,11 @@ config AST2700_CMD_LTPI
 	default n
 	help
 	  Enable AST2700 LTPI commands.
+
+config AST2600_CMD_DPTEST
+	bool "ASPEED AST2600 DP CTS utility"
+	default n
+
+config AST2700_CMD_DPTEST
+	bool "ASPEED AST2700 DP CTS utility"
+	default n
