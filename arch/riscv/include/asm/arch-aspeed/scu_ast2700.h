@@ -100,64 +100,6 @@ struct aspeed_clks {
 };
 
 #ifndef __ASSEMBLY__
-struct ast2700_soc1_clk {
-	u32 clkgate_ctrl1;		/* 0x240 */
-	u32 clkgate_clr1;		/* 0x244 */
-	u32 rsv_0x248[2];		/* 0x248 */
-	u32 clkgate_lock1;		/* 0x250 */
-	u32 clkgate_secure11;		/* 0x254 */
-	u32 clkgate_secure12;		/* 0x258 */
-	u32 clkgate_secure13;		/* 0x25c */
-	u32 clkgate_ctrl2;		/* 0x260 */
-	u32 clkgate_clr2;		/* 0x264 */
-	u32 rsv_0x268[2];		/* 0x268 */
-	u32 clkgate_lock2;		/* 0x270 */
-	u32 clkgate_secure21;		/* 0x274 */
-	u32 clkgate_secure22;		/* 0x278 */
-	u32 clkgate_secure23;		/* 0x27c */
-	u32 clk_sel1;		/* 0x280 */
-	u32 clk_sel2;		/* 0x284 */
-	u32 rsv_0x288[2];		/* 0x288 */
-	u32 clk_sel1_lock;		/* 0x290 */
-	u32 clk_sel2_lock;		/* 0x294 */
-	u32 rsv_0x298[2];		/* 0x298 */
-	u32 clk_sel1_secure1;		/* 0x2a0 */
-	u32 clk_sel1_secure2;		/* 0x2a4 */
-	u32 rsv_0x2a8[2];		/* 0x2a8 */
-	u32 clk_sel2_secure1;		/* 0x2b0 */
-	u32 clk_sel2_secure2;		/* 0x2b4 */
-	u32 rsv_0x2b8[2];		/* 0x2b8 */
-	u32 clk_sel3_secure1;		/* 0x2c0 */
-	u32 clk_sel3_secure2;		/* 0x2c4 */
-	u32 rsv_0x2c8[10];		/* 0x2c8 */
-	u32 extrst_sel1;		/* 0x2f0 */
-	u32 extrst_sel2;		/* 0x2f4 */
-	u32 rsv_0x2f8[2];		/* 0x2f8 */
-	u32 hpll;			/* 0x300 */
-	u32 hpll_ext;		/* 0x304 */
-	u32 rsv_0x308[2];		/* 0x308 ~ 0x30C */
-	u32 apll;			/* 0x310 */
-	u32 apll_ext;		/* 0x314 */
-	u32 rsv_0x318[2];		/* 0x318 ~ 0x31C */
-	u32 dpll;			/* 0x320 */
-	u32 dpll_ext;		/* 0x324 */
-	u32 rsv_0x328[2];		/* 0x328 ~ 0x32C */
-	u32 uxclk_ctrl;		/* 0x330 */
-	u32 huxclk_ctrl;		/* 0x334 */
-	u32 rsv_0x338[18];		/* 0x338 ~ 0x37C */
-	u32 clkduty_meas_ctrl;	/* 0x380 */
-	u32 clkduty1;		/* 0x384 */
-	u32 clkduty2;		/* 0x388 */
-	u32 rsv_0x38c;		/* 0x38c */
-	u32 mac_delay;		/* 0x390 */
-	u32 mac_100m_delay;		/* 0x394 */
-	u32 mac_10m_delay;		/* 0x398 */
-	u32 rsv_0x39c;		/* 0x39c */
-	u32 freq_counter_ctrl;	/* 0x3a0 */
-	u32 freq_counter_cmp;	/* 0x3a4 */
-	u32 rsv_0x3a8[2];		/* 0x3a8 ~ 0x3aC */
-};
-
 struct ast2700_soc0_scu {
 	uint32_t chip_id1;		/* 0x000 */
 	uint32_t rsv_0x04[3];		/* 0x004 ~ 0x00C */
@@ -165,18 +107,18 @@ struct ast2700_soc0_scu {
 	uint32_t hwstrap1_clr;		/* 0x014 */
 	uint32_t rsv_0x18[2];		/* 0x018 ~ 0x01C */
 	uint32_t hwstrap1_lock;		/* 0x020 */
-	uint32_t hwstrap1_prot1;	/* 0x024 */
-	uint32_t hwstrap1_prot2;	/* 0x028 */
-	uint32_t hwstrap1_prot3;	/* 0x02C */
+	uint32_t hwstrap1_sec1;	/* 0x024 */
+	uint32_t hwstrap1_sec2;	/* 0x028 */
+	uint32_t hwstrap1_sec3;	/* 0x02C */
 	uint32_t rsv_0x30[8];		/* 0x030 ~ 0x4C */
 	uint32_t sysrest_log1;		/* 0x050 */
 	uint32_t sysrest_log1_sec1;	/* 0x054 */
 	uint32_t sysrest_log1_sec2;	/* 0x058 */
 	uint32_t sysrest_log1_sec3;	/* 0x05C */
 	uint32_t sysrest_log2;		/* 0x060 */
-	uint32_t sysrest_log2_sec1; /* 0x064 */
-	uint32_t sysrest_log2_sec2; /* 0x068 */
-	uint32_t sysrest_log2_sec3; /* 0x06C */
+	uint32_t sysrest_log2_sec1;	/* 0x064 */
+	uint32_t sysrest_log2_sec2;	/* 0x068 */
+	uint32_t sysrest_log2_sec3;	/* 0x06C */
 	uint32_t sysrest_log3;		/* 0x070 */
 	uint32_t sysrest_log3_sec1; /* 0x074 */
 	uint32_t sysrest_log3_sec2; /* 0x078 */
@@ -188,7 +130,7 @@ struct ast2700_soc0_scu {
 	uint32_t uart_dbg_rate;		/* 0x0AC */
 	uint32_t rsv_0xB0[4];		/* 0x0B0 ~ 0xBC*/
 	uint32_t misc;			/* 0x0C0 */
-	uint32_t rsv_0xC4;			/* 0x0C4 */
+	uint32_t rsv_0xC4;		/* 0x0C4 */
 	uint32_t debug_ctrl;		/* 0x0C8 */
 	uint32_t rsv_0xCC[5];		/* 0x0CC ~ 0x0DC */
 	uint32_t free_counter_read_low;		/* 0x0E0 */
@@ -302,5 +244,126 @@ struct ast2700_soc0_scu {
 	uint32_t pci0_misc[32];		/* 0xA00 ~ 0xA7C */
 	uint32_t pci1_misc[32];		/* 0xA80 ~ 0xAFC */
 };
+
+struct ast2700_soc1_scu {
+	uint32_t chip_id1;		/* 0x000 */
+	uint32_t rsv_0x04[3];		/* 0x004 ~ 0x00C */
+	uint32_t hwstrap1;		/* 0x010 */
+	uint32_t hwstrap1_clr;		/* 0x014 */
+	uint32_t rsv_0x18[2];		/* 0x018 ~ 0x01C */
+	uint32_t hwstrap1_lock;		/* 0x020 */
+	uint32_t hwstrap1_sec1;	/* 0x024 */
+	uint32_t hwstrap1_sec2;	/* 0x028 */
+	uint32_t hwstrap1_sec3;	/* 0x02C */
+	uint32_t hwstrap2;		/* 0x030 */
+	uint32_t hwstrap2_clr;		/* 0x034 */
+	uint32_t rsv_0x38[2];		/* 0x038 ~ 0x03C */
+	uint32_t hwstrap2_lock;		/* 0x040 */
+	uint32_t hwstrap2_sec1;	/* 0x044 */
+	uint32_t hwstrap2_sec2;	/* 0x048 */
+	uint32_t hwstrap2_sec3;	/* 0x04C */
+	uint32_t sysrest_log1;		/* 0x050 */
+	uint32_t sysrest_log1_sec1;	/* 0x054 */
+	uint32_t sysrest_log1_sec2;	/* 0x058 */
+	uint32_t sysrest_log1_sec3;	/* 0x05C */
+	uint32_t sysrest_log2;		/* 0x060 */
+	uint32_t sysrest_log2_sec1;	/* 0x064 */
+	uint32_t sysrest_log2_sec2;	/* 0x068 */
+	uint32_t sysrest_log2_sec3;	/* 0x06C */
+	uint32_t sysrest_log3;		/* 0x070 */
+	uint32_t sysrest_log3_sec1; /* 0x074 */
+	uint32_t sysrest_log3_sec2; /* 0x078 */
+	uint32_t sysrest_log3_sec3; /* 0x07C */
+	uint32_t sysrest_log4;		/* 0x080 */
+	uint32_t sysrest_log4_sec1; /* 0x084 */
+	uint32_t sysrest_log4_sec2; /* 0x088 */
+	uint32_t sysrest_log4_sec3; /* 0x08C */
+	uint32_t rsv_0x90[7];		/* 0x090 ~ 0xA8 */
+	uint32_t uart_dbg_rate;		/* 0x0AC */
+	uint32_t rsv_0xB0[4];		/* 0x0B0 ~ 0xBC*/
+	uint32_t misc;			/* 0x0C0 */
+	uint32_t rsv_0xC4;		/* 0x0C4 */
+	uint32_t debug_ctrl;		/* 0x0C8 */
+	uint32_t rsv_0xCC;		/* 0x0CC */
+	uint32_t dac_ctrl;		/* 0x0D0 */
+	uint32_t dac_crc_ctrl;		/* 0x0D4 */
+	uint32_t rsv_0xD8[2];		/* 0x0D8 ~ 0x0DC */
+	uint32_t video_input_ctrl;		/* 0x0E0 */
+	uint32_t rsv_0xE4[3];		/* 0x0E4 ~ 0x0EC */
+	uint32_t random_num_ctrl;	/* 0x0F0 */
+	uint32_t random_num_data;	/* 0x0F4 */
+	uint32_t rsv_0xF0[2];		/* 0x0F8 ~ 0x0FC */
+	uint32_t rsv_0x100[64];		/* 0x100 ~ 0x1FC */
+	uint32_t modrst1_ctrl;		/* 0x200 */
+	uint32_t modrst1_clr;		/* 0x204 */
+	uint32_t rsv_0x208[2];		/* 0x208 ~ 0x20C */
+	uint32_t modrst_lock1;		/* 0x210 */
+	uint32_t modrst1_sec1;		/* 0x214 */
+	uint32_t modrst1_sec2;		/* 0x218 */
+	uint32_t modrst1_sec3;		/* 0x21C */
+	uint32_t modrst2_ctrl;		/* 0x220 */
+	uint32_t modrst2_clr;		/* 0x224 */
+	uint32_t rsv_0x228[2];		/* 0x228 ~ 0x22C */
+	uint32_t modrst2_lock;		/* 0x230 */
+	uint32_t modrst2_prot1;		/* 0x234 */
+	uint32_t modrst2_prot2;		/* 0x238 */
+	uint32_t modrst2_prot3;		/* 0x23C */
+	uint32_t clkgate_ctrl1;		/* 0x240 */
+	uint32_t clkgate_clr1;		/* 0x244 */
+	uint32_t rsv_0x248[2];		/* 0x248 */
+	uint32_t clkgate_lock1;		/* 0x250 */
+	uint32_t clkgate_secure11;		/* 0x254 */
+	uint32_t clkgate_secure12;		/* 0x258 */
+	uint32_t clkgate_secure13;		/* 0x25c */
+	uint32_t clkgate_ctrl2;		/* 0x260 */
+	uint32_t clkgate_clr2;		/* 0x264 */
+	uint32_t rsv_0x268[2];		/* 0x268 */
+	uint32_t clkgate_lock2;		/* 0x270 */
+	uint32_t clkgate_secure21;		/* 0x274 */
+	uint32_t clkgate_secure22;		/* 0x278 */
+	uint32_t clkgate_secure23;		/* 0x27c */
+	uint32_t clk_sel1;		/* 0x280 */
+	uint32_t clk_sel2;		/* 0x284 */
+	uint32_t rsv_0x288[2];		/* 0x288 */
+	uint32_t clk_sel1_lock;		/* 0x290 */
+	uint32_t clk_sel2_lock;		/* 0x294 */
+	uint32_t rsv_0x298[2];		/* 0x298 */
+	uint32_t clk_sel1_secure1;		/* 0x2a0 */
+	uint32_t clk_sel1_secure2;		/* 0x2a4 */
+	uint32_t rsv_0x2a8[2];		/* 0x2a8 */
+	uint32_t clk_sel2_secure1;		/* 0x2b0 */
+	uint32_t clk_sel2_secure2;		/* 0x2b4 */
+	uint32_t rsv_0x2b8[2];		/* 0x2b8 */
+	uint32_t clk_sel3_secure1;		/* 0x2c0 */
+	uint32_t clk_sel3_secure2;		/* 0x2c4 */
+	uint32_t rsv_0x2c8[10];		/* 0x2c8 */
+	uint32_t extrst_sel1;		/* 0x2f0 */
+	uint32_t extrst_sel2;		/* 0x2f4 */
+	uint32_t rsv_0x2f8[2];		/* 0x2f8 */
+	uint32_t hpll;			/* 0x300 */
+	uint32_t hpll_ext;		/* 0x304 */
+	uint32_t rsv_0x308[2];		/* 0x308 ~ 0x30C */
+	uint32_t apll;			/* 0x310 */
+	uint32_t apll_ext;		/* 0x314 */
+	uint32_t rsv_0x318[2];		/* 0x318 ~ 0x31C */
+	uint32_t dpll;			/* 0x320 */
+	uint32_t dpll_ext;		/* 0x324 */
+	uint32_t rsv_0x328[2];		/* 0x328 ~ 0x32C */
+	uint32_t uxclk_ctrl;		/* 0x330 */
+	uint32_t huxclk_ctrl;		/* 0x334 */
+	uint32_t rsv_0x338[18];		/* 0x338 ~ 0x37C */
+	uint32_t clkduty_meas_ctrl;	/* 0x380 */
+	uint32_t clkduty1;		/* 0x384 */
+	uint32_t clkduty2;		/* 0x388 */
+	uint32_t rsv_0x38c;		/* 0x38c */
+	uint32_t mac_delay;		/* 0x390 */
+	uint32_t mac_100m_delay;		/* 0x394 */
+	uint32_t mac_10m_delay;		/* 0x398 */
+	uint32_t rsv_0x39c;		/* 0x39c */
+	uint32_t freq_counter_ctrl;	/* 0x3a0 */
+	uint32_t freq_counter_cmp;	/* 0x3a4 */
+	uint32_t rsv_0x3a8[2];		/* 0x3a8 ~ 0x3aC */
+};
+
 #endif
 #endif
