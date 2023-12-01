@@ -131,7 +131,7 @@ static uint32_t ast2700_soc1_get_uart_uxclk_rate(struct ast2700_soc1_scu *scu)
 
 static uint32_t ast2700_soc1_get_uart_huxclk_rate(struct ast2700_soc1_scu *scu)
 {
-	u32 huxclk_sel = readl(&scu->clk_sel2) & GENMASK(4, 3);
+	u32 huxclk_sel = (readl(&scu->clk_sel2) & GENMASK(4, 3)) >> 3;
 	u32 huxclk_ctrl = readl(&scu->huxclk_ctrl);
 	uint32_t n = (huxclk_ctrl & SCU_HUART_CLKGEN_N_MASK) >>
 		      SCU_HUART_CLKGEN_N_SHIFT;
