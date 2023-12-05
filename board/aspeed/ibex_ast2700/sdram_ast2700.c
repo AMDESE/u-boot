@@ -647,7 +647,7 @@ struct ddr_command command_sequence_tbl[] = {
 	//{"MR0",
 	//MR_ADDR(0), 8},//((((CL - 22) >> 1) << 2) + 0),
 	{"MR4/5/6",
-	MR_ADDR(4) | MR_NUM(2), 0x2000},
+	MR_ADDR(4) | MR_NUM(2), 0x6200},
 	{"MR8",
 	MR_ADDR(8), MR8_WRITE_PREAMBLE_2TCK},
 	////{"MR10",

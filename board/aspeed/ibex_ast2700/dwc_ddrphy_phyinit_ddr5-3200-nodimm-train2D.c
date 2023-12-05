@@ -4227,10 +4227,10 @@ dwc_ddrphy_apb_wr(0x200fd, 0xf5); // DWC_DDRPHYA_MASTER0_base0_DqPreamblePattern
 dwc_ddrphy_apb_wr(0x2003a, 0x2); // DWC_DDRPHYA_MASTER0_base0_DbyteDllModeCntrl
 //// [phyinit_C_initPhyConfig] Pstate=0, Memclk=1600MHz, Programming TxOdtDrvStren::TxOdtStrenPu to 0x4
 //// [phyinit_C_initPhyConfig] Pstate=0, Memclk=1600MHz, Programming TxOdtDrvStren::TxOdtStrenPd to 0x0
-dwc_ddrphy_apb_wr(0x1004d, 0x4); // DWC_DDRPHYA_DBYTE0_base0_TxOdtDrvStren_b0_p0
-dwc_ddrphy_apb_wr(0x1014d, 0x4); // DWC_DDRPHYA_DBYTE0_base0_TxOdtDrvStren_b1_p0
-dwc_ddrphy_apb_wr(0x1104d, 0x4); // DWC_DDRPHYA_DBYTE1_base0_TxOdtDrvStren_b0_p0
-dwc_ddrphy_apb_wr(0x1114d, 0x4); // DWC_DDRPHYA_DBYTE1_base0_TxOdtDrvStren_b1_p0
+dwc_ddrphy_apb_wr(0x1004d, 0x104); // DWC_DDRPHYA_DBYTE0_base0_TxOdtDrvStren_b0_p0
+dwc_ddrphy_apb_wr(0x1014d, 0x104); // DWC_DDRPHYA_DBYTE0_base0_TxOdtDrvStren_b1_p0
+dwc_ddrphy_apb_wr(0x1104d, 0x104); // DWC_DDRPHYA_DBYTE1_base0_TxOdtDrvStren_b0_p0
+dwc_ddrphy_apb_wr(0x1114d, 0x104); // DWC_DDRPHYA_DBYTE1_base0_TxOdtDrvStren_b1_p0
 //// [phyinit_C_initPhyConfig] Pstate=0, Memclk=1600MHz, Programming ATxImpedance::ADrvStrenP to 0x3f
 //// [phyinit_C_initPhyConfig] Pstate=0, Memclk=1600MHz, Programming ATxImpedance::ADrvStrenN to 0x3f
 //// [phyinit_C_initPhyConfig] Pstate=0, Memclk=1600MHz, Programming ATxImpedance::ATxReserved13x12 to 0x0
@@ -4253,16 +4253,16 @@ dwc_ddrphy_apb_wr(0x9043, 0xcfff); // DWC_DDRPHYA_ANIB9_base0_ATxImpedance
 //// [phyinit_C_initPhyConfig] Pstate=0, Memclk=1600MHz, Programming TxImpedanceCtrl2::TxStrenEqLoPu to 0x0
 //// [phyinit_C_initPhyConfig] Pstate=0, Memclk=1600MHz, Programming TxImpedanceCtrl2::TxStrenEqHiPd to 0x0
 dwc_ddrphy_apb_wr(0x10041, 0x30c); // DWC_DDRPHYA_DBYTE0_base0_TxImpedanceCtrl0_b0_p0
-dwc_ddrphy_apb_wr(0x10049, 0xfff); // DWC_DDRPHYA_DBYTE0_base0_TxImpedanceCtrl1_b0_p0
+dwc_ddrphy_apb_wr(0x10049, 0x79e); // DWC_DDRPHYA_DBYTE0_base0_TxImpedanceCtrl1_b0_p0
 dwc_ddrphy_apb_wr(0x1004b, 0x0); // DWC_DDRPHYA_DBYTE0_base0_TxImpedanceCtrl2_b0_p0
 dwc_ddrphy_apb_wr(0x10141, 0x30c); // DWC_DDRPHYA_DBYTE0_base0_TxImpedanceCtrl0_b1_p0
-dwc_ddrphy_apb_wr(0x10149, 0xfff); // DWC_DDRPHYA_DBYTE0_base0_TxImpedanceCtrl1_b1_p0
+dwc_ddrphy_apb_wr(0x10149, 0x79e); // DWC_DDRPHYA_DBYTE0_base0_TxImpedanceCtrl1_b1_p0
 dwc_ddrphy_apb_wr(0x1014b, 0x0); // DWC_DDRPHYA_DBYTE0_base0_TxImpedanceCtrl2_b1_p0
 dwc_ddrphy_apb_wr(0x11041, 0x30c); // DWC_DDRPHYA_DBYTE1_base0_TxImpedanceCtrl0_b0_p0
-dwc_ddrphy_apb_wr(0x11049, 0xfff); // DWC_DDRPHYA_DBYTE1_base0_TxImpedanceCtrl1_b0_p0
+dwc_ddrphy_apb_wr(0x11049, 0x79e); // DWC_DDRPHYA_DBYTE1_base0_TxImpedanceCtrl1_b0_p0
 dwc_ddrphy_apb_wr(0x1104b, 0x0); // DWC_DDRPHYA_DBYTE1_base0_TxImpedanceCtrl2_b0_p0
 dwc_ddrphy_apb_wr(0x11141, 0x30c); // DWC_DDRPHYA_DBYTE1_base0_TxImpedanceCtrl0_b1_p0
-dwc_ddrphy_apb_wr(0x11149, 0xfff); // DWC_DDRPHYA_DBYTE1_base0_TxImpedanceCtrl1_b1_p0
+dwc_ddrphy_apb_wr(0x11149, 0x79e); // DWC_DDRPHYA_DBYTE1_base0_TxImpedanceCtrl1_b1_p0
 dwc_ddrphy_apb_wr(0x1114b, 0x0); // DWC_DDRPHYA_DBYTE1_base0_TxImpedanceCtrl2_b1_p0
 //// [phyinit_C_initPhyConfig] Programming DfiMode to 0x1
 dwc_ddrphy_apb_wr(0x20018, 0x1); // DWC_DDRPHYA_MASTER0_base0_DfiMode
@@ -4615,14 +4615,9 @@ dwc_ddrphy_apb_wr_32b(0x58000, 0x100);
 dwc_ddrphy_apb_wr_32b(0x58002, 0xc800000);
 dwc_ddrphy_apb_wr_32b(0x58004, 0x0);
 dwc_ddrphy_apb_wr_32b(0x58006, 0x40);
-//#if CONFIG_IS_ENABLED(ASPEED_DDR_PHY_TRAINING)//defined(CONFIG_ASPEED_DDR_PHY_TRAINING)
-printf("- <DWC_DDRPHY TRAIN>: Enable rd2D, wr2D for 2D training\n");
   #ifdef DWC_DEBUG
-printf("- <DWC_DDRPHY TRAIN>: Debug level = 0x05: Detailed debug messages (e.g. Eye delays)\n");
 dwc_ddrphy_apb_wr_32b(0x58008, 0x058263);
   #else
-printf("- <DWC_DDRPHY TRAIN>: Debug level = 0xC8: Stage completion\n");
-//dwc_ddrphy_apb_wr_32b(0x58008, 0xc88263);
 dwc_ddrphy_apb_wr_32b(0x58008, 0xc8827f);
   #endif
 // Redmine 1392: Set X16Present=1 by Synopsys's comment
