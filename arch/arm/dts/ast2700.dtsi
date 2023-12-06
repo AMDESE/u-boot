@@ -617,7 +617,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0 0x100 0 0x80>;
-		compatible = "aspeed,ast2700-i2c-bus";
+		compatible = "aspeed,ast2700-i2cv2";
 		aspeed,global-regs = <&i2c_global>;
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 110 IRQ_TYPE_LEVEL_HIGH>;
@@ -634,7 +634,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0 0x200 0 0x80>;
-		compatible = "aspeed,ast2700-i2c-bus";
+		compatible = "aspeed,ast2700-i2cv2";
 		aspeed,global-regs = <&i2c_global>;
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>;
@@ -651,7 +651,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0 0x300 0 0x80>;
-		compatible = "aspeed,ast2700-i2c-bus";
+		compatible = "aspeed,ast2700-i2cv2";
 		aspeed,global-regs = <&i2c_global>;
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>;
@@ -668,7 +668,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0 0x400 0 0x80>;
-		compatible = "aspeed,ast2700-i2c-bus";
+		compatible = "aspeed,ast2700-i2cv2";
 		aspeed,global-regs = <&i2c_global>;
 		bus-frequency = <100000>;
 		interrupts = <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>;
