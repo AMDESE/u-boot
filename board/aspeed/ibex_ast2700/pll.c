@@ -24,14 +24,10 @@ int mpll_init(void)
 		rate = 1200;
 	else if (IS_ENABLED(CONFIG_ASPEED_MPLL_1400))
 		rate = 1400;
-	else if (IS_ENABLED(CONFIG_ASPEED_MPLL_1600))
-		rate = 1600;
 	else
-		rate = 1600;
+		return 0;
 
 	printf("%s %d\n", __func__, rate);
-
-	writel(MPLL_RESET | MPLL_BYPASS, (void *)ASPEED_CPU_MPLL);
 
 	switch (rate) {
 	case 1600:
@@ -65,6 +61,8 @@ int mpll_init(void)
 		printf("error input rate %d\n", rate);
 		return 1;
 	}
+
+	writel(MPLL_RESET | MPLL_BYPASS, (void *)ASPEED_CPU_MPLL);
 
 	writel(mpll | MPLL_BYPASS, (void *)ASPEED_CPU_MPLL);
 
