@@ -18,7 +18,8 @@
 #include <time.h>
 
 #define SCU_CPU_REG                     0x12c02000
-#define SCU_CPU_SOC1_SCRATCH            (SCU_CPU_REG + 0x900)
+#define SCU_CPU_VGA0_SCRATCH            (SCU_CPU_REG + 0x900)
+#define SCU_CPU_VGA1_SCRATCH            (SCU_CPU_REG + 0x910)
 
 #define SCU_IO_REG                      0x14c02000
 #define SCU_IO_HWSTRAP1                 (SCU_IO_REG + 0x010)

@@ -105,7 +105,7 @@ struct sdramc_ac_timing ac_table[] = {
 #define DRAMC_INIT_DONE		0x70
 static bool is_ddr_initialized(void)
 {
-	if (readl((void *)SCU_CPU_SOC1_SCRATCH) & DRAMC_INIT_DONE) {
+	if (readl((void *)SCU_CPU_VGA0_SCRATCH) & DRAMC_INIT_DONE) {
 		printf("DDR has been initialized\n");
 		return 1;
 	}
@@ -288,9 +288,13 @@ static void sdramc_set_flag(u32 flag)
 {
 	u32 val;
 
-	val = readl((void *)SCU_CPU_SOC1_SCRATCH);
+	val = readl((void *)SCU_CPU_VGA0_SCRATCH);
 	val |= flag;
-	writel(val, (void *)SCU_CPU_SOC1_SCRATCH);
+	writel(val, (void *)SCU_CPU_VGA0_SCRATCH);
+
+	val = readl((void *)SCU_CPU_VGA1_SCRATCH);
+	val |= flag;
+	writel(val, (void *)SCU_CPU_VGA1_SCRATCH);
 }
 
 static int sdramc_init(struct sdramc *sdramc, struct sdramc_ac_timing **ac)
