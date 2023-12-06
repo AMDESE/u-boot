@@ -305,8 +305,6 @@ void dwc_phy_init(struct sdramc *sdramc)
 	ddr5_dmem = binman_sym(u32, ddr5_dmem_fw, image_pos);
 	ddr5_dmem_len = binman_sym(u32, ddr5_dmem_fw, size);
 
-	printf("SPL context base = 0x%x\n", ctx_start);
-
 	// ddr5
 	dwc_train[0][0].imem_base = ddr5_imem - base;
 	dwc_train[0][0].imem_len = ddr5_imem_len;
@@ -324,19 +322,6 @@ void dwc_phy_init(struct sdramc *sdramc)
 	dwc_train[1][1].imem_len = imem_2d_len;
 	dwc_train[1][1].dmem_base = dmem_2d_start - base;
 	dwc_train[1][1].dmem_len = dmem_2d_len;
-
-	printf("ddr4 1d imem base 0x%x\n", dwc_train[1][0].imem_base);
-	printf("ddr4 1d imem size 0x%x\n", dwc_train[1][0].imem_len);
-	printf("ddr4 1d dmem base 0x%x\n", dwc_train[1][0].dmem_base);
-	printf("ddr4 1d dmem size 0x%x\n", dwc_train[1][0].dmem_len);
-	printf("ddr4 2d imem base 0x%x\n", dwc_train[1][1].imem_base);
-	printf("ddr4 2d imem size 0x%x\n", dwc_train[1][1].imem_len);
-	printf("ddr4 2d dmem base 0x%x\n", dwc_train[1][1].dmem_base);
-	printf("ddr4 2d dmem size 0x%x\n", dwc_train[1][1].dmem_len);
-	printf("ddr5 imem base 0x%x\n", dwc_train[0][0].imem_base);
-	printf("ddr5 imem size 0x%x\n", dwc_train[0][0].imem_len);
-	printf("ddr5 dmem base 0x%x\n", dwc_train[0][0].dmem_base);
-	printf("ddr5 dmem size 0x%x\n", dwc_train[0][0].dmem_len);
 
 	if (IS_ENABLED(CONFIG_ASPEED_DDR_PHY_TRAINING)) {
 		if (is_ddr4()) {
