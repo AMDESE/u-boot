@@ -25,7 +25,7 @@ int emmc_init(void)
 	int ret = 0;
 
 	/* set clk/cmd driving */
-	writel(1, (void *)MMC_CLK_DRIVING_REG);
+	writel(2, (void *)MMC_CLK_DRIVING_REG);
 	writel(1, (void *)MMC_CMD_DRIVING_REG);
 	writel(1, (void *)MMC_DAT0_DRIVING_REG);
 	writel(1, (void *)MMC_DAT1_DRIVING_REG);
