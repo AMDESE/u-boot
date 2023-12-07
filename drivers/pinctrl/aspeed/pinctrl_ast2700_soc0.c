@@ -52,6 +52,11 @@ static struct aspeed_sig_desc emmc_8bit_link[] = {
 	{ 0x00, GENMASK(11, 0), 0 },
 };
 
+static struct aspeed_sig_desc dac_edid[] = {
+	{ 0x04, BIT(10), 0 },
+	{ 0x04, BIT(11), 0 },
+};
+
 static struct aspeed_sig_desc usb2ad_link[] = {
 	{ 0x10, BIT(24), 0 },
 	{ 0x10, BIT(25), 1 },
@@ -75,6 +80,7 @@ static struct aspeed_sig_desc usb2bh_link[] = {
 static const struct aspeed_group_config ast2700_soc0_groups[] = {
 	{ "EMMC", ARRAY_SIZE(emmc_link), emmc_link },
 	{ "EMMC8BIT", ARRAY_SIZE(emmc_8bit_link), emmc_8bit_link },
+	{ "DACEDID", ARRAY_SIZE(dac_edid), dac_edid },
 	{ "USB2AD", ARRAY_SIZE(usb2ad_link), usb2ad_link },
 	{ "USB2AH", ARRAY_SIZE(usb2ah_link), usb2ah_link },
 	{ "USB2BD", ARRAY_SIZE(usb2bd_link), usb2bd_link },
