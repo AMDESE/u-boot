@@ -216,6 +216,8 @@
 			reg = <0 0x12c21100 0 0x100>,		// e2m0
 			      <0 0x12c22100 0 0x100>;		// e2m1
 			aspeed,scu = <&syscon0>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_dacedid_default>;
 			status = "disabled";
 		};
 	};
@@ -691,6 +693,10 @@
 		groups = "EMMC8BIT";
 	};
 
+	pinctrl_dacedid_default: dacedid_default {
+		function = "DACEDID";
+		groups = "DACEDID";
+	};
 };
 
 &pinctrl1 {
