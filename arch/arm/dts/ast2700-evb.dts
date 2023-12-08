@@ -85,7 +85,7 @@
 
 &mac0 {
 	status = "okay";
-	phy-mode = "rgmii-rxid";
+	phy-mode = "rgmii";
 	phy-handle = <&ethphy0>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_rgmii0_default>;
@@ -93,7 +93,7 @@
 
 &mac1 {
 	status = "okay";
-	phy-mode = "rgmii-rxid";
+	phy-mode = "rgmii";
 	phy-handle = <&ethphy1>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_rgmii1_default>;
@@ -237,4 +237,13 @@
 
 &vbios {
 	status = "okay";
+};
+
+&soc1_clk {
+	mac0-clk-delay = <0x35 0x34
+			  0x10 0x10
+			  0x10 0x10>;
+	mac1-clk-delay = <0x35 0x33
+			  0x10 0x10
+			  0x10 0x10>;
 };
