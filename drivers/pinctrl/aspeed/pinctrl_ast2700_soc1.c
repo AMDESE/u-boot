@@ -176,7 +176,7 @@ static struct ast2700_soc1_sig_desc i2c1[] = {
 };
 
 static struct ast2700_soc1_sig_desc i2c2[] = {
-	{ 0x54, GENMASK(22, 20) | GENMASK(18, 16), BIT(10) | BIT(16) },
+	{ 0x54, GENMASK(22, 20) | GENMASK(18, 16), BIT(20) | BIT(16) },
 };
 
 static struct ast2700_soc1_sig_desc i2c3[] = {
