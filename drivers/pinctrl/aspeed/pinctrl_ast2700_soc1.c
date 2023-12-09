@@ -167,6 +167,22 @@ static struct ast2700_soc1_sig_desc fwspiquad_link[] = {
 	{ 0x50, GENMASK(30, 28) | GENMASK(26, 24), BIT(28) | BIT(24) },
 };
 
+static struct ast2700_soc1_sig_desc i2c0[] = {
+	{ 0x54, GENMASK(6, 4) | GENMASK(2, 0), BIT(4) | BIT(0) },
+};
+
+static struct ast2700_soc1_sig_desc i2c1[] = {
+	{ 0x54, GENMASK(14, 12) | GENMASK(10, 8), BIT(12) | BIT(8) },
+};
+
+static struct ast2700_soc1_sig_desc i2c2[] = {
+	{ 0x54, GENMASK(22, 20) | GENMASK(18, 16), BIT(10) | BIT(16) },
+};
+
+static struct ast2700_soc1_sig_desc i2c3[] = {
+	{ 0x54, GENMASK(30, 28) | GENMASK(26, 24), BIT(28) | BIT(24) },
+};
+
 static struct ast2700_soc1_sig_desc pwm0[] = {
 	{ 0x0c, GENMASK(2, 0), BIT(0) },
 };
@@ -223,6 +239,10 @@ static const struct aspeed_group_config ast2700_soc1_groups[] = {
 	{ "SPI2", ARRAY_SIZE(spi2_link), spi2_link },
 	{ "SPI2CS1", ARRAY_SIZE(spi2cs1_link), spi2cs1_link },
 	{ "SPI2QUAD", ARRAY_SIZE(spi2quad_link), spi2quad_link },
+	{ "I2C0", ARRAY_SIZE(i2c0), i2c0 },
+	{ "I2C1", ARRAY_SIZE(i2c1), i2c1 },
+	{ "I2C2", ARRAY_SIZE(i2c2), i2c2 },
+	{ "I2C3", ARRAY_SIZE(i2c3), i2c3 },
 	{ "PWM0", ARRAY_SIZE(pwm0), pwm0 },
 	{ "PWM1", ARRAY_SIZE(pwm1), pwm1 },
 	{ "PWM2", ARRAY_SIZE(pwm2), pwm2 },
