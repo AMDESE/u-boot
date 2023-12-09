@@ -15,6 +15,14 @@ struct ast2600_i2c_regs {
 	u32 cmd_sts;
 };
 
+struct ast2600_i2c_global_regs {
+	u32 master_int;
+	u32 slave_int;
+	u32 dummy_offset8;
+	u32 global_ctrl;
+	u32 clk_divid;
+};
+
 /* 0x00 : I2CC Master/Slave Function Control Register  */
 #define I2CC_SLAVE_ADDR_RX_EN	BIT(20)
 #define I2CC_MASTER_RETRY_MASK	GENMASK(19, 18)

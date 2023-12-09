@@ -20,7 +20,7 @@
 struct ast2600_i2c_priv {
 	struct clk clk;
 	struct ast2600_i2c_regs *regs;
-	struct regmap *global_regs;
+	struct ast2600_i2c_global_regs *global_regs;
 };
 
 static int ast2600_i2c_read_data(struct ast2600_i2c_priv *priv, u8 chip_addr,
@@ -70,6 +70,7 @@ static int ast2600_i2c_write_data(struct ast2600_i2c_priv *priv, u8 chip_addr,
 	if (!len) {
 		cmd = I2CM_PKT_EN | I2CM_PKT_ADDR(chip_addr) |
 		      I2CM_START_CMD;
+
 		writel(cmd, &priv->regs->cmd_sts);
 		ret = readl_poll_timeout(&priv->regs->isr, isr,
 					 isr & I2CM_PKT_DONE,
@@ -193,7 +194,7 @@ static int ast2600_i2c_set_speed(struct udevice *dev, unsigned int speed)
 
 	apb_clk = clk_get_rate(&priv->clk);
 
-	regmap_read(priv->global_regs, I2CG_CLK_DIV_CTRL, &clk_div_reg);
+	clk_div_reg = readl(&priv->global_regs->clk_divid);
 	base_clk1 = (apb_clk * multiply) / (((GET_CLK1_DIV(clk_div_reg) + 2) * multiply) / 2);
 	base_clk2 = (apb_clk * multiply) / (((GET_CLK2_DIV(clk_div_reg) + 2) * multiply) / 2);
 	base_clk3 = (apb_clk * multiply) / (((GET_CLK3_DIV(clk_div_reg) + 2) * multiply) / 2);
@@ -269,9 +270,8 @@ static int ast2600_i2c_probe(struct udevice *dev)
 		reset_deassert(&reset_ctl);
 	}
 
-	/* global register initial */
-	regmap_write(priv->global_regs, I2CG_CTRL, GLOBAL_INIT);
-	regmap_write(priv->global_regs, I2CCG_DIV_CTRL, I2CG_CLK_DIV_CTRL);
+	writel(GLOBAL_INIT, &priv->global_regs->global_ctrl);
+	writel(I2CCG_DIV_CTRL, &priv->global_regs->clk_divid);
 
 	/* Reset device */
 	writel(0, &priv->regs->fun_ctrl);
@@ -303,11 +303,7 @@ static int ast2600_i2c_of_to_plat(struct udevice *dev)
 		return ret;
 	}
 
-	priv->global_regs = syscon_regmap_lookup_by_phandle(dev, "aspeed,global-regs");
-	if (!IS_ERR(priv->global_regs)) {
-		debug("%s(): can't get global register\n", __func__);
-		return PTR_ERR(priv->global_regs);
-	}
+	priv->global_regs = (struct ast2600_i2c_global_regs *)((uintptr_t)priv->regs & 0xFFFFF000);
 
 	return 0;
 }
