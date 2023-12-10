@@ -913,5 +913,7 @@ enum {
 #define UTP_TASK_REQ_LIST_RUN_STOP_BIT		0x1
 
 int ufshcd_probe(struct udevice *dev, struct ufs_hba_ops *hba_ops);
+int ufshcd_change_power_mode(struct ufs_hba *hba,
+			     struct ufs_pa_layer_attr *pwr_mode);
 
 #endif

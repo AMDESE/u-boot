@@ -19,12 +19,20 @@
 #define UFS_MPHY_RST_N			BIT(0)
 #define UFS_MPHY_RST_N_PCS		BIT(4)
 
+#define UFS_MPHY_VCONTROL		0x98
+#define UFS_MPHY_CALI_IN_1		0x90
+#define UFS_MPHY_CALI_IN_0		0x8c
+
 #define USEC_PER_SEC			1000000L
 #define ASPEED_UFS_REG_HCLKDIV		0xFC
 
 static int aspeed_ufs_link_startup_notify(struct ufs_hba *hba,
 					  enum ufs_notify_change_status status)
 {
+	struct ufs_pa_layer_attr pwr_info;
+	u32 max_gear = UFS_HS_G2;
+	int ret;
+
 	hba->quirks |= UFSHCD_QUIRK_BROKEN_LCC;
 	switch (status) {
 	case PRE_CHANGE:
@@ -33,6 +41,26 @@ static int aspeed_ufs_link_startup_notify(struct ufs_hba *hba,
 				      0);
 	case POST_CHANGE:
 		ufshcd_writel(hba, 0, REG_AUTO_HIBERNATE_IDLE_TIMER);
+
+		ufshcd_dme_set(hba, UIC_ARG_MIB(PA_MAXRXHSGEAR), max_gear);
+		ufshcd_dme_peer_set(hba, UIC_ARG_MIB(PA_MAXRXHSGEAR), max_gear);
+
+		pwr_info.lane_rx = 2;
+		pwr_info.lane_tx = 2;
+		pwr_info.pwr_rx = SLOWAUTO_MODE;
+		pwr_info.pwr_tx = SLOWAUTO_MODE;
+		pwr_info.gear_rx = UFS_PWM_G1;
+		pwr_info.gear_tx = UFS_PWM_G1;
+		pwr_info.hs_rate = PA_HS_MODE_A;
+		pwr_info.hs_rate = PA_HS_MODE_A;
+
+		ret = ufshcd_change_power_mode(hba, &pwr_info);
+		if (ret) {
+			dev_err(hba->dev, "%s: Failed setting power mode, err = %d\n",
+				__func__, ret);
+
+			return ret;
+		}
 	}
 
 	return 0;
@@ -151,6 +179,12 @@ static int aspeed_ufs_probe(struct udevice *dev)
 	reset_deassert(&rst_ctl);
 
 	base = dev_remap_addr_index(dev, 0);
+
+	/* reduce signal swing */
+	writel(0xe8, base + UFS_MPHY_VCONTROL);
+	writel(0xd0000, base + UFS_MPHY_CALI_IN_1);
+	writel(0xff00, base + UFS_MPHY_CALI_IN_0);
+	writel(0, base + UFS_MPHY_VCONTROL);
 
 	/* Reset MPHY */
 	reg = readl(base + UFS_MPHY_RST_REG);
