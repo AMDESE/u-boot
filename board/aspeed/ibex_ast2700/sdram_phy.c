@@ -90,10 +90,6 @@ int dwc_ddrphy_phyinit_userCustom_H_readMsgBlock(int train2D)
 	uint32_t  message;
 
 	if (is_ddr4()) {
-		/* 1. Check PMU revision */
-		message = dwc_readMsgBlock(DWC_PHY_DDR4_MB_PMU_REV);
-		printf("%s: PMU firmware revision ID (0x%x)\n", __func__, message);
-
 		/* 2. Check pass */
 		message = dwc_readMsgBlock(DWC_PHY_DDR4_MB_RESULT);
 		if (message & 0xff)
@@ -101,10 +97,6 @@ int dwc_ddrphy_phyinit_userCustom_H_readMsgBlock(int train2D)
 		else
 			printf("%s: %dD Training Passed\n", __func__, train2D ? 2 : 1);
 	} else {
-		/* 1. Check PMU revision */
-		message = dwc_readMsgBlock(DWC_PHY_DDR5_MB_PMU_REV);
-		printf("%s: PMU firmware revision ID (0x%x)\n", __func__, message);
-
 		/* 2. Check pass / Failure of the training (CsTestFail) */
 		message = dwc_readMsgBlock(DWC_PHY_DDR5_MB_RESULT);
 		if (message & 0xff00)
@@ -176,14 +168,10 @@ void dwc_ddrphy_phyinit_userCustom_G_waitFwDone(void)
 {
 	uint32_t message = 0, mail;
 
-	printf("dwc_ddrphy wait fw done\n");
-
 	while (message != DWC_PHY_MB_TRAIN_SUCCESS && message != DWC_PHY_MB_TRAIN_FAIL) {
 		dwc_get_mailbox(0, &mail);
 		message = mail & 0xffff;
 	}
-
-	printf("Firmware training process is complete!!!\n");
 }
 
 void dwc_ddrphy_phyinit_userCustom_J_enterMissionMode(struct sdramc *sdramc)

@@ -599,14 +599,6 @@ static void sdramc_configure_mrs(struct sdramc *sdramc, struct sdramc_ac_timing 
 	writel((mr5_val << 16) + mr4_val, &regs->mr45);
 	writel(mr6_val, &regs->mr67);
 
-	printf("MR0: 0x%x\n", mr0_val);
-	printf("MR1: 0x%x\n", mr1_val);
-	printf("MR2: 0x%x\n", mr2_val);
-	printf("MR3: 0x%x\n", mr3_val);
-	printf("MR4: 0x%x\n", mr4_val);
-	printf("MR5: 0x%x\n", mr5_val);
-	printf("MR6: 0x%x\n", mr6_val);
-
 	/* Power-up initialization sequence */
 	sdramc_mr_send(sdramc, MR_ADDR(3), 0);
 	sdramc_mr_send(sdramc, MR_ADDR(6), 0);

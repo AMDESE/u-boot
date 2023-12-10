@@ -38,8 +38,6 @@ int emmc_init(void)
 	/* release emmc pin from emmc boot */
 	writel(0, (void *)0x12c0b00c);
 
-	printf("spl probe blk\n");
-
 	ret = uclass_get_device(UCLASS_BLK, 0, &dev);
 	if (ret) {
 		printf("cannot get BLK driver\n");
