@@ -102,7 +102,7 @@ struct sdramc_ac_timing ac_table[] = {
 	},
 };
 
-#define DRAMC_INIT_DONE		0x70
+#define DRAMC_INIT_DONE		BIT(6)
 static bool is_ddr_initialized(void)
 {
 	if (readl((void *)SCU_CPU_VGA0_SCRATCH) & DRAMC_INIT_DONE) {
