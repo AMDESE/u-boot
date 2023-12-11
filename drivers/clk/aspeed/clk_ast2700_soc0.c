@@ -235,6 +235,17 @@ static int ast2700_soc0_clk_probe(struct udevice *dev)
 	clksrc1 |= (i << SCU_CLKSRC1_EMMC_DIV_SHIFT);
 	writel(clksrc1, &scu->clk_sel1);
 
+	/* set mphy clk from hpll */
+	rate = ast2700_soc0_get_pll_rate(priv->scu, AST2700_SOC0_CLK_HPLL);
+	for (i = 1; i < 256; i++) {
+		if ((rate / i) <= 26000000)
+			break;
+	}
+
+	/* register defined the value plus 1 is divider*/
+	i--;
+	writel(i, &scu->mphyclk_para);
+
 	return 0;
 }
 
