@@ -118,7 +118,8 @@ static uint32_t ast2700_soc1_get_hclk_rate(struct ast2700_soc1_scu *scu)
 
 static uint32_t ast2700_soc1_get_pclk_rate(struct ast2700_soc1_scu *scu)
 {
-	u32 rate = ast2700_soc1_get_hclk_rate(scu);
+	u32 rate = ast2700_soc1_get_pll_rate(scu, AST2700_SOC1_CLK_HPLL);
+
 	u32 clk_sel1 = readl(&scu->clk_sel1);
 	u32 pclk_div = (clk_sel1 & SCU_CLKSEL1_PCLK_DIV_MASK) >>
 			     SCU_CLKSEL1_PCLK_DIV_SHIFT;
