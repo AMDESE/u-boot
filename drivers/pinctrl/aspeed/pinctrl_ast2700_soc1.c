@@ -108,6 +108,10 @@ static struct ast2700_soc1_sig_desc rmii1_link[] = {
 		  BIT(18) }
 };
 
+static struct ast2700_soc1_sig_desc sgmii_link[] = {
+	{0x7c, BIT(0), BIT(0)},
+};
+
 static struct ast2700_soc1_sig_desc spi0_link[] = {
 	{ 0x34, GENMASK(2, 0) | GENMASK(6, 4) | GENMASK(10, 8) | GENMASK(14, 12),
 		BIT(0) | BIT(4) | BIT(8) | BIT(12)  },
@@ -225,6 +229,7 @@ static const struct aspeed_group_config ast2700_soc1_groups[] = {
 	{ "RGMII1", ARRAY_SIZE(rgmii1_link), rgmii1_link },
 	{ "RMII0", ARRAY_SIZE(rmii0_link), rmii0_link },
 	{ "RMII1", ARRAY_SIZE(rmii1_link), rmii1_link },
+	{ "SGMII", ARRAY_SIZE(sgmii_link), sgmii_link },
 	{ "FWSPIQUAD", ARRAY_SIZE(fwspiquad_link), fwspiquad_link },
 	{ "SPI0", ARRAY_SIZE(spi0_link), spi0_link },
 	{ "SPI0ABR", ARRAY_SIZE(spi0abr_link), spi0abr_link },
