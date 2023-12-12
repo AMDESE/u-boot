@@ -26,6 +26,8 @@
 #include <linux/bitfield.h>
 #include <linux/io.h>
 #include <linux/iopoll.h>
+#include <generic-phy.h>
+#include <dm/of_extra.h>
 #include <reset.h>
 
 #include "ftgmac100.h"
@@ -108,6 +110,7 @@ struct ftgmac100_data {
 	u32 txdes0_edotr_mask;
 
 	bool is_ast2700;
+	struct phy sgmii;
 };
 
 /*
@@ -213,7 +216,8 @@ static int ftgmac100_phy_adjust_link(struct ftgmac100_data *priv)
 		  FTGMAC100_MACCR_FAST_MODE |
 		  FTGMAC100_MACCR_FULLDUP);
 
-	if (phy_interface_is_rgmii(phydev) && phydev->speed == 1000)
+	if ((phy_interface_is_rgmii(phydev) || priv->phy_mode == PHY_INTERFACE_MODE_SGMII) &&
+	    phydev->speed == 1000)
 		maccr |= FTGMAC100_MACCR_GIGA_MODE;
 
 	if (phydev->speed == 100)
@@ -432,6 +436,11 @@ static int ftgmac100_start(struct udevice *dev)
 		dev_err(phydev->dev, "Could not start PHY\n");
 		return ret;
 	}
+
+	/* If fixed link, it configures the speed of fixed-link property */
+	if (priv->is_ast2700 && priv->phydev->interface == PHY_INTERFACE_MODE_SGMII)
+		if (ofnode_phy_is_fixed_link(dev_ofnode(dev), NULL))
+			generic_phy_set_speed(&priv->sgmii, priv->phydev->speed);
 
 	ret = ftgmac100_phy_adjust_link(priv);
 	if (ret) {
@@ -676,6 +685,12 @@ static int ftgmac100_probe(struct udevice *dev)
 	}
 
 	ftgmac_read_hwaddr(dev);
+
+	/* Get sgmii phy driver and initialize the sgmii */
+	if (priv->is_ast2700 && pdata->phy_interface == PHY_INTERFACE_MODE_SGMII) {
+		ret = generic_phy_get_by_name(dev, "sgmii", &priv->sgmii);
+		generic_phy_init(&priv->sgmii);
+	}
 
 out:
 	if (ret)
