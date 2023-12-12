@@ -65,7 +65,7 @@ static void sli_calibrate_ahb_delay(int config)
 
 	buf = malloc(sizeof(int) * 32 * 2);
 	if (!buf) {
-		printf("ERROR in SLI init. Failed to allocate memory\n");
+		debug("ERROR in SLI init. Failed to allocate memory\n");
 		return;
 	}
 
@@ -124,8 +124,8 @@ static void sli_calibrate_ahb_delay(int config)
 		d1 = (win_s[d0] + win_e[d0]) >> 1;
 	}
 
-	printf("IOD SLIH[0] DS win: {%d, %d} -> select %d\n", d0_start, d0_end, d0);
-	printf("IOD SLIH[1] DS win: {%d, %d} -> select %d\n", win_s[d0], win_e[d0], d1);
+	debug("IOD SLIH[0] DS win: {%d, %d} -> select %d\n", d0_start, d0_end, d0);
+	debug("IOD SLIH[1] DS win: {%d, %d} -> select %d\n", win_s[d0], win_e[d0], d1);
 
 	/* Load the calibrated delay values */
 	writel(latch_sel | SLI_AUTO_SEND_TRN_OFF | SLI_TRANS_EN,
@@ -191,8 +191,8 @@ static int sli_calibrate_mbus_pad_delay(int config, int index, int begin,
 	else
 		d = (win[0] + win[1]) >> 1;
 
-	printf("IOD SLIM[%d] DS win: {%d, %d} -> select %d\n", index, win[0],
-	       win[1], d);
+	debug("IOD SLIM[%d] DS win: {%d, %d} -> select %d\n", index, win[0],
+	      win[1], d);
 
 	return d;
 }
@@ -248,8 +248,8 @@ static void sli_calibrate_mbus_delay(int config)
 	else
 		dc = (win[0] + win[1]) >> 1;
 
-	printf("IOD SLIM DS coarse win: {%d, %d} -> select %d\n", win[0],
-	       win[1], dc);
+	debug("IOD SLIM DS coarse win: {%d, %d} -> select %d\n", win[0], win[1],
+	      dc);
 
 	value = readl((void *)SLIM_IOD_BASE + SLI_CTRL_III);
 	value &= ~(SLIM_PAD_DLY_RX3 | SLIM_PAD_DLY_RX2 | SLIM_PAD_DLY_RX1 |
@@ -325,7 +325,7 @@ static void sli_calibrate_mbus_delay(int config)
 int sli_init(void)
 {
 	uint32_t value;
-	const int phyclk_lookup[8] = {
+	__maybe_unused const int phyclk_lookup[8] = {
 		25, 800, 400, 200, 2000, 788, 500, 250,
 	};
 
@@ -336,7 +336,7 @@ int sli_init(void)
 	value = readl((void *)SLIH_IOD_BASE + SLI_CTRL_III);
 	value = FIELD_GET(SLI_CLK_SEL, value);
 	if (value) {
-		printf("SLI has been initialized\n");
+		debug("SLI has been initialized\n");
 		return 0;
 	}
 
@@ -347,7 +347,7 @@ int sli_init(void)
 	writel(value | SLIV_RAW_MODE, (void *)SLIV_IOD_BASE + SLI_CTRL_I);
 	sli_wait_suspend(SLIH_IOD_BASE);
 	sli_wait_suspend(SLIH_CPU_BASE);
-	printf("SLI US/DS @ 25MHz init done\n");
+	debug("SLI US/DS @ 25MHz init done\n");
 
 	/* Switch CPU-die HPLL to 1575M */
 	value = readl((void *)ASPEED_CPU_HPLL);
@@ -389,6 +389,6 @@ int sli_init(void)
 	/* It's okay to access CPU-die now. Calibrate SLIM DS delay */
 	sli_calibrate_mbus_delay(SLIM_LAH_CONFIG);
 
-	printf("SLI DS @ %dMHz init done\n", phyclk_lookup[SLI_TARGET_PHYCLK]);
+	debug("SLI DS @ %dMHz init done\n", phyclk_lookup[SLI_TARGET_PHYCLK]);
 	return 0;
 }
