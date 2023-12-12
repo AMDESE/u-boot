@@ -1,0 +1,1 @@
+obj-$(CONFIG_PHY_ASPEED_SGMII) += aspeed-sgmii.o

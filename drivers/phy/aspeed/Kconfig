@@ -1,0 +1,8 @@
+config PHY_ASPEED_SGMII
+	tristate "ASPEED SGMII PHY driver"
+	depends on PHY
+	depends on SYSCON
+	depends on ASPEED_AST2700
+	default n
+	help
+	  Enable driver support for Aspeed AST2700 PHY SGMII.
