@@ -13,6 +13,7 @@
 #include <asm/global_data.h>
 #include <linux/err.h>
 #include <linux/kernel.h>
+#include <linux/sizes.h>
 #include <dt-bindings/clock/ast2700-clock.h>
 #include <asm/arch-aspeed/scu_ast2700.h>
 
@@ -153,11 +154,15 @@ static size_t ast2700_sdrammc_get_vga_mem_size(struct dram_priv *priv)
 
 	scu = (struct ast2700_soc0_scu *)ofnode_get_addr(node);
 
-	if (scu->pci0_misc[28] & BIT(0))
+	if (scu->pci0_misc[28] & BIT(0)) {
+		printf("VGA0:%ldMiB, ", vga_ram_size[vga_sz_sel] / SZ_1M);
 		dual++;
+	}
 
-	if (scu->pci1_misc[28] & BIT(0))
+	if (scu->pci1_misc[28] & BIT(0)) {
+		printf("VGA1:%ldMiB, ", vga_ram_size[vga_sz_sel] / SZ_1M);
 		dual++;
+	}
 
 	return vga_ram_size[vga_sz_sel] * dual;
 }
