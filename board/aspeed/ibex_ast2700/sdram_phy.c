@@ -93,20 +93,20 @@ int dwc_ddrphy_phyinit_userCustom_H_readMsgBlock(int train2D)
 		/* 2. Check pass */
 		message = dwc_readMsgBlock(DWC_PHY_DDR4_MB_RESULT);
 		if (message & 0xff)
-			printf("%s: Training Failure index (0x%x)\n", __func__, message);
+			debug("%s: Training Failure index (0x%x)\n", __func__, message);
 		else
-			printf("%s: %dD Training Passed\n", __func__, train2D ? 2 : 1);
+			debug("%s: %dD Training Passed\n", __func__, train2D ? 2 : 1);
 	} else {
 		/* 2. Check pass / Failure of the training (CsTestFail) */
 		message = dwc_readMsgBlock(DWC_PHY_DDR5_MB_RESULT);
 		if (message & 0xff00)
-			printf("%s: Training Failure index (0x%x)\n", __func__, message);
+			debug("%s: Training Failure index (0x%x)\n", __func__, message);
 		else
-			printf("%s: DDR5 1D/2D Training Passed\n", __func__);
+			debug("%s: DDR5 1D/2D Training Passed\n", __func__);
 
 		/* 3. Read ResultAddrOffset */
 		message = dwc_readMsgBlock(DWC_PHY_DDR5_MB_RESULT_ADR);
-		printf("%s: Result Address Offset (0x%x)\n", __func__, message);
+		debug("%s: Result Address Offset (0x%x)\n", __func__, message);
 	}
 
 	return 0;
@@ -226,7 +226,7 @@ int dwc_ddrphy_phyinit_userCustom_D_loadIMEM(const int train2D)
 	int type;
 	int ret = 0;
 
-	printf("%s %d\n", __func__, train2D);
+	debug("%s %d\n", __func__, train2D);
 
 	type = is_ddr4();
 
@@ -252,7 +252,7 @@ int dwc_ddrphy_phyinit_userCustom_F_loadDMEM(const int pState, const int train2D
 	int type;
 	int ret = 0;
 
-	printf("%s %d\n", __func__, train2D);
+	debug("%s %d\n", __func__, train2D);
 
 	type = is_ddr4();
 
@@ -313,19 +313,11 @@ void dwc_phy_init(struct sdramc *sdramc)
 
 	if (IS_ENABLED(CONFIG_ASPEED_DDR_PHY_TRAINING)) {
 		if (is_ddr4()) {
-			printf("%s: Starting ddr4 training\n", __func__);
+			debug("%s: Starting ddr4 training\n", __func__);
 			#include "dwc_ddrphy_phyinit_ddr4-3200-nodimm-train2D.c"
 		} else {
-			printf("%s: Starting ddr5 training\n", __func__);
+			debug("%s: Starting ddr5 training\n", __func__);
 			#include "dwc_ddrphy_phyinit_ddr5-3200-nodimm-train2D.c"
 		}
 	}
-//	else {
-//printf("Skip ddr phy training procedure\n");
-//		if (ac->type == DRAM_TYPE_4) {
-//#include "dwc_ddrphy_phyinit_ddr4-3200-nodimm-skiptrain.c"
-//		} else if (ac->type == DRAM_TYPE_5) {
-//#include "dwc_ddrphy_phyinit_ddr5-3200-nodimm-skiptrain.c"
-//		}
-//	}
 }

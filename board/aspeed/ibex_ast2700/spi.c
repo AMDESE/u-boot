@@ -78,7 +78,7 @@ int spi_load_image(u32 *src, u32 *dest, u32 len)
 {
 	const void *base = (const void *)(ASPEED_FMC_CS0_BASE + (u32)src);
 
-	printf("spi load image base = %x\n", (u32)base);
+	debug("spi load image base = %x\n", (u32)base);
 
 	memcpy((void *)dest, base, len);
 

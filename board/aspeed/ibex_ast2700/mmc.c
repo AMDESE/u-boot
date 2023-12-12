@@ -67,9 +67,9 @@ int emmc_load_image(u32 *src, u32 *dest, u32 len)
 
 	blks++;
 
-	printf("blk read blk=0x%x, blks=0x%x\n", blk, blks);
+	debug("blk read blk=0x%x, blks=0x%x\n", blk, blks);
 	ret = blk_read(dev, blk, blks, (void *)ASPEED_SRAM_BASE);
-	printf("blk read cnt=%d\n", ret);
+	debug("blk read cnt=%d\n", ret);
 	if (ret != blks) {
 		printf("blk read is incomplete!!!\n");
 		return 1;
@@ -77,8 +77,8 @@ int emmc_load_image(u32 *src, u32 *dest, u32 len)
 
 	base = (u32 *)(ASPEED_SRAM_BASE + ofst_in_blk);
 
-	printf("mmc load image base = %x\n", (u32)base);
-	printf("mmc load image base[0] = %x\n", *base);
+	debug("mmc load image base = %x\n", (u32)base);
+	debug("mmc load image base[0] = %x\n", *base);
 
 	for (i = 0; i < len / 4; i++)
 		writel(*(base + i), dest + i);

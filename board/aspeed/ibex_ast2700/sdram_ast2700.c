@@ -106,7 +106,7 @@ struct sdramc_ac_timing ac_table[] = {
 static bool is_ddr_initialized(void)
 {
 	if (readl((void *)SCU_CPU_VGA0_SCRATCH) & DRAMC_INIT_DONE) {
-		printf("DDR has been initialized\n");
+		debug("DDR has been initialized\n");
 		return 1;
 	}
 
@@ -312,7 +312,7 @@ static int sdramc_init(struct sdramc *sdramc, struct sdramc_ac_timing **ac)
 		} else if (IS_ENABLED(CONFIG_ASPEED_DDR_3200)) {
 			speed = DDR4_3200;
 		} else {
-			printf("Speed %d is not supported!!!\n", speed);
+			debug("Speed %d is not supported!!!\n", speed);
 			return 1;
 		}
 	} else {
@@ -320,7 +320,7 @@ static int sdramc_init(struct sdramc *sdramc, struct sdramc_ac_timing **ac)
 		speed = DDR5_3200;
 	}
 
-	printf("%s is selected\n", tbl[speed].desc);
+	debug("%s is selected\n", tbl[speed].desc);
 
 	/* Configure ac timing */
 	sdramc_configure_ac_timing(sdramc, &tbl[speed]);
@@ -662,10 +662,8 @@ static void sdramc_configure_ddr5_mrs(struct sdramc *sdramc, struct sdramc_ac_ti
 	struct ddr_command *cmd = command_sequence_tbl;
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(command_sequence_tbl); i++) {
-		printf("%s 0x%x\n", cmd[i].desc, cmd[i].data);
+	for (i = 0; i < ARRAY_SIZE(command_sequence_tbl); i++)
 		sdramc_mr_send(sdramc, cmd[i].type, cmd[i].data);
-	}
 }
 
 static int sdramc_bist(struct sdramc *sdramc, u32 addr, u32 size, u32 cfg, u32 timeout)
@@ -742,7 +740,7 @@ int dram_init(void)
 		return err;
 	}
 
-	printf("%s is successfully initialized\n", ac->desc);
+	debug("%s is successfully initialized\n", ac->desc);
 	sdramc_set_flag(DRAMC_INIT_DONE);
 
 out:
