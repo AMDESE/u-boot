@@ -361,6 +361,22 @@
 			};
 		};
 
+		plda: plda@14C1C000 {
+			compatible = "aspeed,plda", "syscon", "simple-mfd";
+			reg = <0x0 0x14c1c000 0x0 0x400>;
+		};
+
+		sgmii: phy@14c01000 {
+			compatible = "aspeed,ast2700-sgmii";
+			reg = <0x0 0x14c01000 0x0 0x40>;
+			#phy-cells = <0>;
+
+			aspeed,plda = <&plda>;
+
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_sgmii_default>;
+		};
+
 		mac0: ftgmac@14050000 {
 			compatible = "aspeed,ast2700-mac", "faraday,ftgmac100";
 			reg = <0x0 0x14050000 0x0 0x200>;
@@ -380,6 +396,10 @@
 		mac2: ftgmac@14070000 {
 			compatible = "aspeed,ast2700-mac", "faraday,ftgmac100";
 			reg = <0x0 0x14070000 0x0 0x200>;
+
+			phys = <&sgmii>;
+			phy-names = "sgmii";
+
 			clocks = <&soc1_clk AST2700_SOC1_CLK_GATE_MAC2CLK>;
 			resets = <&soc1_rst ASPEED_RESET_MAC2>;
 			status = "disabled";
