@@ -171,7 +171,7 @@
 				reg = <0x0 0x200 0x0 0x100>;
 				interrupts = <GIC_SPI 118 IRQ_TYPE_LEVEL_HIGH>;
 				freq-table-hz = <400000000 400000000>;
-				clocks = <&soc0_clk AST2700_SOC0_CLK_MPLL>;
+				clocks = <&soc0_clk AST2700_SOC0_CLK_AXI1>;
 				clock-names = "core_clk";
 				dma-coherent;
 			};
