@@ -86,11 +86,8 @@ static int aspeed_ufs_set_hclkdiv(struct ufs_hba *hba)
 		return core_clk_rate;
 	}
 
-	/*
-	 * scu010[7]: 1=HPLL, 0=MPLL
-	 * scu010[6:5]: 00/01: PLL/4, 2: PLL/6, 3: PLL/8
-	 */
-	core_clk_div = (core_clk_rate / USEC_PER_SEC) / 4;
+	core_clk_div = core_clk_rate / USEC_PER_SEC;
+
 	ufshcd_writel(hba, core_clk_div, ASPEED_UFS_REG_HCLKDIV);
 
 	return 0;
