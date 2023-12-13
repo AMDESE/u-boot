@@ -33,7 +33,6 @@
 #define SGMII_MODE_USE_LOCAL_CONFIG	BIT(2)
 
 #define PLDA_CLK		0x268
-#define PLDA_STATUS		0x300
 
 #define PLDA_CLK_SEL_INTERNAL_25M	BIT(8)
 #define PLDA_CLK_FREQ_MULTI		GENMASK(7, 0)
@@ -48,7 +47,6 @@ static int aspeed_sgmii_phy_init(struct phy *phy)
 	struct udevice *dev = phy->dev;
 	struct aspeed_sgmii *sgmii = dev_get_priv(dev);
 	u32 reg;
-	int i;
 
 	/*
 	 * The PLDA frequency multiplication is X xor 0x19.
@@ -70,13 +68,6 @@ static int aspeed_sgmii_phy_init(struct phy *phy)
 	writel(SGMII_PCTL_TX_DEEMPH_3_5DB, sgmii->regs + SGMII_PHY_PIPE_CTL);
 	reg = SGMII_MODE_USE_LOCAL_CONFIG | SGMII_MODE_ENABLE;
 	writel(reg, sgmii->regs + SGMII_MODE);
-
-	for (i = 0; i < 200; i++) {
-		regmap_read(sgmii->plda_regmap, PLDA_STATUS, &reg);
-		if (reg & BIT(24))
-			break;
-		mdelay(1);
-	}
 
 	return 0;
 }
