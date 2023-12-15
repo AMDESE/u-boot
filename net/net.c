@@ -433,7 +433,7 @@ int net_loop(enum proto_t protocol)
 	enum net_loop_state prev_net_state = net_state;
 
 #if defined(CONFIG_CMD_PING)
-	if (protocol != PING)
+	if (protocol != PING && protocol != NCSI)
 		net_ping_ip.s_addr = 0;
 #endif
 	net_restarted = 0;
