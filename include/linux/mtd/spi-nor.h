@@ -41,6 +41,7 @@
 
 /* Flash opcodes. */
 #define SPINOR_OP_WREN		0x06	/* Write enable */
+#define SPINOR_OP_VSR_WREN	0x50	/* Write enable for voatile register */
 #define SPINOR_OP_RDSR		0x05	/* Read status register */
 #define SPINOR_OP_WRSR		0x01	/* Write status register 1 byte */
 #define SPINOR_OP_RDSR2		0x3f	/* Read status register 2 */
@@ -574,6 +575,7 @@ struct spi_nor {
 	void (*unprepare)(struct spi_nor *nor, enum spi_nor_ops ops);
 	int (*read_reg)(struct spi_nor *nor, u8 opcode, u8 *buf, int len);
 	int (*write_reg)(struct spi_nor *nor, u8 opcode, u8 *buf, int len);
+	int (*write_sr)(struct spi_nor *nor, u8 val);
 
 	ssize_t (*read)(struct spi_nor *nor, loff_t from,
 			size_t len, u_char *read_buf);

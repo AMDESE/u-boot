@@ -551,6 +551,9 @@ static int read_cr(struct spi_nor *nor)
  */
 static int write_sr(struct spi_nor *nor, u8 val)
 {
+	if (nor->write_sr)
+		return nor->write_sr(nor, val);
+
 	nor->cmd_buf[0] = val;
 	return nor->write_reg(nor, SPINOR_OP_WRSR, nor->cmd_buf, 1);
 }
@@ -3838,6 +3841,27 @@ static struct spi_nor_fixups mt35xu512aba_fixups = {
 #endif /* CONFIG_SPI_FLASH_MT35XU */
 
 #if CONFIG_IS_ENABLED(SPI_FLASH_WINBOND)
+int write_sr_w25q01gjv(struct spi_nor *nor, u8 val)
+{
+	int ret = 0;
+
+	write_disable(nor);
+	spi_nor_wait_till_ready(nor);
+
+	ret = nor->write_reg(nor, SPINOR_OP_VSR_WREN, NULL, 0);
+	if (ret)
+		return ret;
+
+	nor->cmd_buf[0] = val;
+	ret = nor->write_reg(nor, SPINOR_OP_WRSR, nor->cmd_buf, 1);
+	if (ret)
+		return ret;
+
+	udelay(50);
+
+	return ret;
+}
+
 static ssize_t spi_nor_read_data_w25q02gjv(struct spi_nor *nor, loff_t from,
 					   size_t len, u_char *buf)
 {
@@ -4154,9 +4178,12 @@ void spi_nor_set_fixups(struct spi_nor *nor)
 	}
 
 	if (CONFIG_IS_ENABLED(SPI_FLASH_WINBOND) &&
-	    JEDEC_MFR(nor->info) == SNOR_MFR_WINBOND &&
-	    nor->info->id[1] == 0x70 && nor->info->id[2] == 0x22)
-		nor->fixups = &w25q02gjv_fixups;
+	    JEDEC_MFR(nor->info) == SNOR_MFR_WINBOND) {
+		if (nor->info->id[1] == 0x70 && nor->info->id[2] == 0x22)
+			nor->fixups = &w25q02gjv_fixups;
+		if (nor->info->id[1] == 0x40 && nor->info->id[2] == 0x21)
+			nor->write_sr = write_sr_w25q01gjv;
+	}
 
 	if (CONFIG_IS_ENABLED(SPI_FLASH_BAR) &&
 	    !strcmp(nor->info->name, "s25fl256l"))
