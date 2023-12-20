@@ -176,7 +176,7 @@ do_ast_dptest(struct cmd_tbl *cmdtp, int flags, int argc, char *const argv[])
 				PRINT_RATE_2_70;
 				break;
 			case '3':
-				printf("Please give the voltage swing level (0~2): ");
+				printf("Please give the voltage swing level (0~3): ");
 				received = getchar();
 				printf("%c", received);
 				getchar();
@@ -190,12 +190,15 @@ do_ast_dptest(struct cmd_tbl *cmdtp, int flags, int argc, char *const argv[])
 				} else if (received == '2') {
 					Swing_Level = DP_SWING_2;
 					PRINT_SWING_2;
+				} else if (received == '3') {
+					Swing_Level = DP_SWING_3;
+					PRINT_SWING_3;
 				} else {
 					printf("Invalid voltage swing-%c\n", received);
 				}
 				break;
 			case '4':
-				printf("Please give the pre-emphasis level (0~2):");
+				printf("Please give the pre-emphasis level (0~3):");
 				received = getchar();
 				printf("%c", received);
 				getchar();
@@ -209,6 +212,9 @@ do_ast_dptest(struct cmd_tbl *cmdtp, int flags, int argc, char *const argv[])
 				} else if (received == '2') {
 					Preemphasis_Level = DP_PREEMP_2;
 					PRINT_DEEMP_2;
+				} else if (received == '3') {
+					Preemphasis_Level = DP_PREEMP_3;
+					PRINT_DEEMP_3;
 				} else {
 					printf("Invalid pre-emphasis-%c\n", received);
 				}
@@ -506,9 +512,13 @@ uchar Adjust_CR_EQ_Train(int TrainPat, uchar ADJStatus)
 			val = DP_SWING_1;
 			AUX_W_Level = 01;
 			break;
-		default:
+		case 0x22:
 			val = DP_SWING_2;
-			AUX_W_Level = 06;
+			AUX_W_Level = 02;
+			break;
+		default:
+			val = DP_SWING_3;
+			AUX_W_Level = 07;
 			break;
 		}
 
@@ -521,9 +531,13 @@ uchar Adjust_CR_EQ_Train(int TrainPat, uchar ADJStatus)
 			val |= DP_PREEMP_1;
 			AUX_W_Level  |= 0x08;
 			break;
-		default:
+		case 0x88:
 			val |= DP_PREEMP_2;
-			AUX_W_Level  |= 0x30;
+			AUX_W_Level  |= 0x10;
+			break;
+		default:
+			val |= DP_PREEMP_3;
+			AUX_W_Level  |= 0x38;
 			break;
 		}
 
@@ -965,9 +979,13 @@ void Apply_HPD_Auto_Test(void)
 
 			/* Check Swing0 */
 			switch (temp0) {
+			case 0x3:
+				swing0 = 0x3;
+				temp206 |= 7;
+				break;
 			case 0x2:
 				swing0 = 0x2;
-				temp206 |= 6;
+				temp206 |= 2;
 				break;
 			case 0x1:
 				swing0 = 0x1;
@@ -983,9 +1001,13 @@ void Apply_HPD_Auto_Test(void)
 
 			/* Check Swing1 */
 			switch (temp1) {
+			case 0x30:
+				swing1 = 0x3;
+				temp206 |= 7;
+				break;
 			case 0x20:
 				swing1 = 0x2;
-				temp206 |= 6;
+				temp206 |= 2;
 				break;
 			case 0x10:
 				swing1 = 0x1;
@@ -1008,9 +1030,13 @@ void Apply_HPD_Auto_Test(void)
 
 			/* Check Pre-emphasis0 */
 			switch (temp0) {
+			case 0xc:
+				preemphasis0 = 0x3;
+				temp206 |= 0x38;
+				break;
 			case 0x8:
 				preemphasis0 = 0x2;
-				temp206 |= 0x30;
+				temp206 |= 0x10;
 				break;
 			case 0x4:
 				preemphasis0 = 0x1;
@@ -1026,9 +1052,13 @@ void Apply_HPD_Auto_Test(void)
 
 			/* Check Pre-emphasis1 */
 			switch (temp1) {
+			case 0xc0:
+				preemphasis1 = 0x3;
+				temp206 |= 0x38;
+				break;
 			case 0x80:
 				preemphasis1 = 0x2;
-				temp206 |= 0x30;
+				temp206 |= 0x10;
 				break;
 			case 0x40:
 				preemphasis1 = 0x1;
@@ -1046,14 +1076,19 @@ void Apply_HPD_Auto_Test(void)
 				DBG(DBG_ERR, "Preemphasis 0 / 1 diff val %x!\n", AUX_Data[0]);
 
 			/* Judgement */
-			if (swing0 == 0x2 || swing1 == 0x2)
+			if (swing0 == 0x3 || swing1 == 0x3)
+				Swing_Level = DP_SWING_3;
+			else if (swing0 == 0x2 || swing1 == 0x2)
 				Swing_Level = DP_SWING_2;
 			else if (swing0 == 1 || swing1 == 0x1)
 				Swing_Level = DP_SWING_1;
 			else if (swing0 == 0x0 || swing1 == 0x0)
 				Swing_Level = DP_SWING_0;
 
-			if (preemphasis0 == 0x2 || preemphasis1 == 0x2) {
+			if (preemphasis0 == 0x3 || preemphasis1 == 0x3) {
+				Preemphasis_Level = DP_PREEMP_3;
+				DBG(DBG_ERR, "!!Pre-emp-type P_3 !!\n");
+			} else if (preemphasis0 == 0x2 || preemphasis1 == 0x2) {
 				Preemphasis_Level = DP_PREEMP_2;
 				DBG(DBG_ERR, "!!Pre-emp-type P_2 !!\n");
 			} else if (preemphasis0 == 0x1 || preemphasis1 == 0x1) {
@@ -1290,6 +1325,10 @@ char DPPHYTX_Show_Cfg(void)
 		PRINT_DEEMP_2;
 		break;
 
+	case DP_PREEMP_3:
+		PRINT_DEEMP_3;
+		break;
+
 	default:
 		PRINT_INVALID;
 		printf("Deemphasis Level\n");
@@ -1308,6 +1347,10 @@ char DPPHYTX_Show_Cfg(void)
 
 	case DP_SWING_2:
 		PRINT_SWING_2;
+		break;
+
+	case DP_SWING_3:
+		PRINT_SWING_3;
 		break;
 
 	default:

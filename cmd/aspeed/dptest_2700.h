@@ -77,11 +77,13 @@
 #define DP_PREEMP_0		0x00000000
 #define DP_PREEMP_1		0x11000000
 #define DP_PREEMP_2		0x22000000
+#define DP_PREEMP_3		0x33000000
 
 /* DP Voltage Swing setting */
 #define DP_SWING_0		0x00000000
 #define DP_SWING_1		0x44000000
 #define DP_SWING_2		0x88000000
+#define DP_SWING_3		0xCC000000
 
 /* DP Main link SSCG setting */
 #define DP_SSCG_ON		0x00000010
@@ -127,10 +129,12 @@
 #define PRINT_SWING_0		printf("DP Swing Level 0!\n")
 #define PRINT_SWING_1		printf("DP Swing Level 1!\n")
 #define PRINT_SWING_2		printf("DP Swing Level 2!\n")
+#define PRINT_SWING_3		printf("DP Swing Level 3!\n")
 
 #define PRINT_DEEMP_0		printf("DP Pre - Emphasis Level 0!\n")
 #define PRINT_DEEMP_1		printf("DP Pre - Emphasis Level 1!\n")
 #define PRINT_DEEMP_2		printf("DP Pre - Emphasis Level 2!\n")
+#define PRINT_DEEMP_3		printf("DP Pre - Emphasis Level 3!\n")
 
 #define PRINT_SSCG_ON		printf("DP SSCG ON !\n")
 #define PRINT_SSCG_OFF		printf("DP SSCG OFF !\n")
