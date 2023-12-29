@@ -22,8 +22,8 @@ DECLARE_GLOBAL_DATA_PTR;
 
 static struct mm_region aspeed2700_mem_map[] = {
 		{
-				.virt =  0x0UL,
-				.phys =  0x0UL,
+				.virt =  0x10000000UL,
+				.phys =  0x10000000UL,
 				.size =  0x40000000UL,
 				.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
 					 PTE_BLOCK_NON_SHARE |
