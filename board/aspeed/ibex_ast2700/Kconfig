@@ -1,5 +1,10 @@
 if TARGET_ASPEED_AST2700
 
+config ASPEED_FPGA
+	bool "Enable FPGA support"
+	help
+	  Say Y is platform is FPGA.
+
 config SYS_BOARD
 	default "ibex_ast2700"
 
@@ -21,6 +26,33 @@ config BOARD_SPECIFIC_OPTIONS # dummy
 config SPI_ASPEED_DMA
 	bool "Enable ASPEED SPI DMA"
 	default n
+
+config ASPEED_PHY_TRAINING_MESSAGE
+	bool "Enable DDR PHY TRAINING MESSAGE"
+	default n
+
+choice
+	prompt "AST2700 DDR target date rate"
+	default ASPEED_DDR_3200
+	depends on ASPEED_RAM
+	depends on TARGET_ASPEED_AST2700
+
+config ASPEED_DDR_1600
+	bool "1600Mbps"
+	help
+	  select DDR4 target data rate at 1600M
+
+config ASPEED_DDR_2400
+	bool "2400Mbps"
+	help
+	  select DDR4 target data rate at 2400M
+
+config ASPEED_DDR_3200
+	bool "3200Mbps"
+	help
+	  select DDR4 target data rate at 3200M
+
+endchoice
 
 choice
 	prompt "AST2700 MPLL frequency"
