@@ -4159,13 +4159,13 @@ dwc_ddrphy_apb_wr(0x200c5, 0x19); // DWC_DDRPHYA_MASTER0_base0_PllCtrl2_p0
 //// [phyinit_C_initPhyConfig] Pstate=0,  Memclk=1600MHz, Programming PllCtrl1::PllCpPropCtrl to 0x3 based on DfiClk frequency = 800.
 //// [phyinit_C_initPhyConfig] Pstate=0,  Memclk=1600MHz, Programming PllCtrl1::PllCpIntCtrl to 0x1 based on DfiClk frequency = 800.
 //// [phyinit_C_initPhyConfig] Pstate=0,  Memclk=1600MHz, Programming PllCtrl1 to 0x61 based on DfiClk frequency = 800.
-dwc_ddrphy_apb_wr(0x200c7, 0x61); // DWC_DDRPHYA_MASTER0_base0_PllCtrl1_p0
+dwc_ddrphy_apb_wr(0x200c7, 0x21); // DWC_DDRPHYA_MASTER0_base0_PllCtrl1_p0
 //// [phyinit_C_initPhyConfig] Pstate=0,  Memclk=1600MHz, Programming PllTestMode to 0x400f based on DfiClk frequency = 800.
-dwc_ddrphy_apb_wr(0x200ca, 0x400f); // DWC_DDRPHYA_MASTER0_base0_PllTestMode_p0
+dwc_ddrphy_apb_wr(0x200ca, 0x402f); // DWC_DDRPHYA_MASTER0_base0_PllTestMode_p0
 //// [phyinit_C_initPhyConfig] Pstate=0,  Memclk=1600MHz, Programming PllCtrl4::PllCpPropGsCtrl to 0x6 based on DfiClk frequency = 800.
 //// [phyinit_C_initPhyConfig] Pstate=0,  Memclk=1600MHz, Programming PllCtrl4::PllCpIntGsCtrl to 0x12 based on DfiClk frequency = 800.
 //// [phyinit_C_initPhyConfig] Pstate=0,  Memclk=1600MHz, Programming PllCtrl4 to 0xd2 based on DfiClk frequency = 800.
-dwc_ddrphy_apb_wr(0x200cc, 0xd2); // DWC_DDRPHYA_MASTER0_base0_PllCtrl4_p0
+dwc_ddrphy_apb_wr(0x200cc, 0x17f); // DWC_DDRPHYA_MASTER0_base0_PllCtrl4_p0
 //// [phyinit_C_initPhyConfig] ### NOTE ### Optimal setting for PllCtrl1 and PllTestMode are technology specific.
 //// [phyinit_C_initPhyConfig] ### NOTE ### Please consult technology specific PHY Databook for recommended settings
 
@@ -4624,7 +4624,7 @@ dwc_ddrphy_apb_wr_32b(0x58008, 0xc8827f);
 // 0x5800b[7:0]=DFIMRLMargin, 0x5800b[15:8]=X16Present
 dwc_ddrphy_apb_wr_32b(0x5800a, 0x01020000);
 // Redmine 1456: Skip_CA13_during_CAtraining during DDR5
-dwc_ddrphy_apb_wr_32b(0x5800c, 0x18000001);
+dwc_ddrphy_apb_wr_32b(0x5800c, 0x10000001);
 // Redmine 1392: To speed up data collection, set the voltage and delay step size in Rx2D_TrainOpt and Tx2D_TrainOpt to its maximum value.
 //   uint8_t  RX2D_TrainOpt;    // Byte offset 0x1d, CSR Addr 0x5800e, Direction=In
 //   uint8_t  TX2D_TrainOpt;    // Byte offset 0x1e, CSR Addr 0x5800f, Direction=In
@@ -4667,12 +4667,12 @@ dwc_ddrphy_apb_wr_32b(0x58026, 0x0);
 dwc_ddrphy_apb_wr_32b(0x58028, 0x0);
 dwc_ddrphy_apb_wr_32b(0x5802a, 0x0);
 dwc_ddrphy_apb_wr_32b(0x5802c, 0x0);
-dwc_ddrphy_apb_wr_32b(0x5802e, 0x4080000);
-dwc_ddrphy_apb_wr_32b(0x58030, 0x200000);
-dwc_ddrphy_apb_wr_32b(0x58032, 0x2d000800);
+dwc_ddrphy_apb_wr_32b(0x5802e, 0x84080000); //MR0 0x5802f=0x8(CL=26), MR2 0x5802f=0x84(OP[2]=1 2N mode, OP[7]=enable internal WL training)
+dwc_ddrphy_apb_wr_32b(0x58030, 0x200000); //MR5 0x58031=0x20(OP[5]=1 DM enable, OP[2:1]=0 pu 34ohm, 1=40ohm, 2=48ohm, OP7:6]=pd)
+dwc_ddrphy_apb_wr_32b(0x58032, 0x2d000800); //MR8 0x58032=0x08(OP[4:3]=1 Write preamble 2 tCK) MR10 0x58033=0x2d(Vref 75%)
 dwc_ddrphy_apb_wr_32b(0x58034, 0xd62d);
-dwc_ddrphy_apb_wr_32b(0x58036, 0x3);
-dwc_ddrphy_apb_wr_32b(0x58038, 0x2c000411);
+dwc_ddrphy_apb_wr_32b(0x58036, 0x04240003); //MR32 0x58037=0x24(OP[2:0]=4 CK ODT 80, OP[5:3]=4 CS ODT 80ohm), MR33 0x58037=0x4(OP[2:0]=4 CA ODTt 80ohm)
+dwc_ddrphy_apb_wr_32b(0x58038, 0x2c000499); //MR34 0x58038(OP[5:3]=3 RTT_WR 80)
 dwc_ddrphy_apb_wr_32b(0x5803a, 0x2c2c);
 dwc_ddrphy_apb_wr_32b(0x5803c, 0x0);
 dwc_ddrphy_apb_wr_32b(0x5803e, 0x0);
@@ -4771,7 +4771,7 @@ dwc_ddrphy_apb_wr_32b(0x580f6, 0x0);
 dwc_ddrphy_apb_wr_32b(0x580f8, 0x0);
 dwc_ddrphy_apb_wr_32b(0x580fa, 0x0);
 dwc_ddrphy_apb_wr_32b(0x580fc, 0x0);
-dwc_ddrphy_apb_wr_32b(0x580fe, 0x0);
+dwc_ddrphy_apb_wr_32b(0x580fe, 0xa00060); // WL_ADJ_START, WL_ADJ_END
 dwc_ddrphy_apb_wr_32b(0x58100, 0x1);
 dwc_ddrphy_apb_wr_32b(0x58102, 0x0);
 dwc_ddrphy_apb_wr_32b(0x58104, 0x0);

@@ -375,6 +375,9 @@ static void sdramc_configure_mrs(struct sdramc *sdramc, struct sdramc_ac_timing 
 	u32 mr0_cas, mr0_rtp, mr2_cwl, mr6_tccd_l;
 	u32 mr0_val, mr1_val, mr2_val, mr3_val, mr4_val, mr5_val, mr6_val;
 
+	if (ac->type == DRAM_TYPE_5)
+		return;
+
 	//-------------------------------------------------------------------
 	// CAS Latency (Table-15)
 	//-------------------------------------------------------------------
@@ -609,63 +612,6 @@ static void sdramc_configure_mrs(struct sdramc *sdramc, struct sdramc_ac_timing 
 	sdramc_mr_send(sdramc, MR_ADDR(0), 0);
 }
 
-struct ddr_command {
-	u8 desc[30];
-	u32 type;
-	u32 data;
-};
-
-struct ddr_command command_sequence_tbl[] = {
-	{"RTT_CK group A",
-	MR_MPC, (MPC_OP_RTT_CK_A + MR32_CK_ODT_80)},
-	{"RTT_CS group A",
-	MR_MPC, (MPC_OP_RTT_CS_A + MR32_CS_ODT_80)},
-	{"RTT_CA group A",
-	MR_MPC, (MPC_OP_RTT_CA_A + MR33_CA_ODT_80)},
-	//{"Set DQS_RTT_PARK",
-	//MR_MPC, (MPC_OP_SET_DQS_RTT_PARK + MR33_DQS_RTT_PARK_34)},
-	//{"Set RTT_PARK",
-	//MR_MPC, (MPC_OP_SET_RTT_PARK + MR34_RTT_PARK_34)},
-	//{"VrefCS",
-	//MR_VREFCS, MR12_VREFCS_RANGE_75},
-	//{"VrefCA",
-	//MR_VREFCA, MR11_VREFCA_RANGE_75},
-	{"Apply VrefCA/VrefCS/RTT",
-	MR_MPC, MPC_OP_APPLY},
-	//{"Set 1N command timing",
-	//MR_MPC, MPC_OP_SET_1N_CMD},
-	//{"MR0",
-	//MR_ADDR(0), 8},//((((CL - 22) >> 1) << 2) + 0),
-	{"MR4/5/6",
-	MR_ADDR(4) | MR_NUM(2), 0x6200},
-	{"MR8",
-	MR_ADDR(8), MR8_WRITE_PREAMBLE_2TCK},
-	////{"MR10",
-	////MR_ADDR(10), MR10_VREFDQ_RANGE_75},
-	////{"MR23",
-	////MR_ADDR(23), 0},
-	{"MR2",
-	MR_ADDR(2), MR2_CS_ASSERTION},
-	{"MR13",
-	//MR_1T_MODE | MR_MPC, MPC_OP_CONFIG_DLLK_CCD},
-	MR_MPC, MPC_OP_CONFIG_DLLK_CCD},
-	//{"DLL Reset",
-	//MR_1T_MODE | MR_DLL_RESET | MR_MPC, MPC_OP_DLL_RESET},
-	//{"ZQ Cali",
-	//MR_1T_MODE | MR_MPC, MPC_OP_ZQCAL_START},
-	//{"ZQ Latch",
-	//MR_1T_MODE | MR_MPC, MPC_OP_ZQCAL_LATCH},
-};
-
-static void sdramc_configure_ddr5_mrs(struct sdramc *sdramc, struct sdramc_ac_timing *ac)
-{
-	struct ddr_command *cmd = command_sequence_tbl;
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(command_sequence_tbl); i++)
-		sdramc_mr_send(sdramc, cmd[i].type, cmd[i].data);
-}
-
 static int sdramc_bist(struct sdramc *sdramc, u32 addr, u32 size, u32 cfg, u32 timeout)
 {
 	struct sdramc_regs *regs = sdramc->regs;
@@ -723,10 +669,7 @@ int dram_init(void)
 
 	sdramc_exit_self_refresh(sdramc);
 
-	if (ac->type == DRAM_TYPE_4)
-		sdramc_configure_mrs(sdramc, ac);
-	else
-		sdramc_configure_ddr5_mrs(sdramc, ac);
+	sdramc_configure_mrs(sdramc, ac);
 
 	sdramc_enable_refresh(sdramc);
 
