@@ -4559,8 +4559,7 @@ dwc_ddrphy_apb_wr(0x20060, 0x2); // DWC_DDRPHYA_MASTER0_base0_MemResetL
 dwc_ddrphy_apb_wr(0xd0000, 0x0); // DWC_DDRPHYA_APBONLY0_MicroContMuxSel
 //// [phyinit_userCustom_wait] Wait 40 DfiClks
 //// [dwc_ddrphy_phyinit_WriteOutMem] STARTING 32bit write. offset 0x50000 size 0x8000
-if (IS_ENABLED(CONFIG_ASPEED_DDR_PHY_TRAINING))
-	dwc_ddrphy_phyinit_userCustom_D_loadIMEM(0);
+dwc_ddrphy_phyinit_userCustom_D_loadIMEM(0);
 
 //// [dwc_ddrphy_phyinit_WriteOutMem] DONE.  Index 0x8000
 //// 2.	Isolate the APB access from the internal CSRs by setting the MicroContMuxSel CSR to 1.
@@ -4608,18 +4607,16 @@ dwc_ddrphy_apb_wr(0xd0000, 0x0); // DWC_DDRPHYA_APBONLY0_MicroContMuxSel
 //// [phyinit_userCustom_wait] Wait 40 DfiClks
 //// [dwc_ddrphy_phyinit_WriteOutMem] STARTING 32bit write. offset 0x58000 size 0x8000
 
-if (IS_ENABLED(CONFIG_ASPEED_DDR_PHY_TRAINING))
-	dwc_ddrphy_phyinit_userCustom_F_loadDMEM(0, 0);
+dwc_ddrphy_phyinit_userCustom_F_loadDMEM(0, 0);
 
 dwc_ddrphy_apb_wr_32b(0x58000, 0x100);
 dwc_ddrphy_apb_wr_32b(0x58002, 0xc800000);
 dwc_ddrphy_apb_wr_32b(0x58004, 0x0);
 dwc_ddrphy_apb_wr_32b(0x58006, 0x40);
-  #ifdef DWC_DEBUG
-dwc_ddrphy_apb_wr_32b(0x58008, 0x058263);
-  #else
-dwc_ddrphy_apb_wr_32b(0x58008, 0xc8827f);
-  #endif
+if (IS_ENABLED(CONFIG_ASPEED_PHY_TRAINING_MESSAGE))
+	dwc_ddrphy_apb_wr_32b(0x58008, 0x04827f);
+else
+	dwc_ddrphy_apb_wr_32b(0x58008, 0xc8827f);
 // Redmine 1392: Set X16Present=1 by Synopsys's comment
 // 0x5800b[7:0]=DFIMRLMargin, 0x5800b[15:8]=X16Present
 dwc_ddrphy_apb_wr_32b(0x5800a, 0x01020000);

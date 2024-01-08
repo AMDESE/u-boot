@@ -1564,8 +1564,7 @@ dwc_ddrphy_apb_wr(0xd0000, 0x0); // DWC_DDRPHYA_APBONLY0_MicroContMuxSel
 //// [phyinit_userCustom_wait] Wait 40 DfiClks
 //// [dwc_ddrphy_phyinit_WriteOutMem] STARTING 32bit write. offset 0x50000 size 0x8000
 //#ifdef TRAIN_LOADBIN
-if (IS_ENABLED(CONFIG_ASPEED_DDR_PHY_TRAINING))
-	dwc_ddrphy_phyinit_userCustom_D_loadIMEM(0);
+dwc_ddrphy_phyinit_userCustom_D_loadIMEM(0);
 //// [dwc_ddrphy_phyinit_WriteOutMem] DONE.  Index 0x8000
 //// 2.	Isolate the APB access from the internal CSRs by setting the MicroContMuxSel CSR to 1.
 ////	  This allows the firmware unrestricted access to the configuration CSRs.
@@ -1612,8 +1611,7 @@ dwc_ddrphy_apb_wr(0xd0000, 0x0); // DWC_DDRPHYA_APBONLY0_MicroContMuxSel
 //// [phyinit_userCustom_wait] Wait 40 DfiClks
 //// [dwc_ddrphy_phyinit_WriteOutMem] STARTING 32bit write. offset 0x58000 size 0x8000
 //#ifdef TRAIN_LOADBIN
-if (IS_ENABLED(CONFIG_ASPEED_DDR_PHY_TRAINING))
-	dwc_ddrphy_phyinit_userCustom_F_loadDMEM(0, 0);
+dwc_ddrphy_phyinit_userCustom_F_loadDMEM(0, 0);
 
 dwc_ddrphy_apb_wr_32b(0x58000, 0x100);
 dwc_ddrphy_apb_wr_32b(0x58002, 0xc800000);
