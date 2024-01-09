@@ -1356,7 +1356,7 @@ dwc_ddrphy_apb_wr(0x42, 0x0); // DWC_DDRPHYA_ANIB0_base0_ATxOdtDrvStren
 dwc_ddrphy_apb_wr(0x42, 0x0); // DWC_DDRPHYA_ANIB0_base0_ATxOdtDrvStren
 //// [phyinit_C_initPhyConfig] Pstate=0, Memclk=1600MHz, Programming TristateModeCA::DisDynAdrTri_p0 to 0x0
 //// [phyinit_C_initPhyConfig] Pstate=0, Memclk=1600MHz, Programming TristateModeCA::DDR2TMode_p0 to 0x0
-dwc_ddrphy_apb_wr(0x20019, 0x4); // DWC_DDRPHYA_MASTER0_base0_TristateModeCA_p0
+dwc_ddrphy_apb_wr(0x20019, 0x5); // DWC_DDRPHYA_MASTER0_base0_TristateModeCA_p0
 //// [phyinit_C_initPhyConfig] Programming DfiFreqXlat*
 dwc_ddrphy_apb_wr(0x200f0, 0x5555); // DWC_DDRPHYA_MASTER0_base0_DfiFreqXlat0
 dwc_ddrphy_apb_wr(0x200f1, 0x5555); // DWC_DDRPHYA_MASTER0_base0_DfiFreqXlat1
