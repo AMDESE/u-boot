@@ -400,6 +400,30 @@ static void ast2700_init_mac(struct udevice *dev)
 	ast2700_configure_mac01_clk(dev);
 }
 
+#define SCU_CLKSRC1_SD_DIV_SEL_MASK	GENMASK(17, 13)
+#define SCU_CLKSRC1_SD_DIV_SHIFT	14
+const int ast2700_sd_div_tbl[] = {
+	2, 2, 3, 4, 5, 6, 7, 8
+};
+
+static void ast2700_init_sdclk(struct udevice *dev)
+{
+	struct ast2700_soc1_clk_priv *priv = dev_get_priv(dev);
+	uint32_t src_clk = ast2700_soc1_get_pll_rate(priv->scu, AST2700_SOC1_CLK_HPLL);
+	uint32_t reg_280;
+	int i;
+
+	for (i = 0; i < 8; i++) {
+		if (src_clk / ast2700_sd_div_tbl[i] <= 200000000)
+			break;
+	}
+
+	reg_280 = readl(&priv->scu->clk_sel1);
+	reg_280 &= ~SCU_CLKSRC1_SD_DIV_SEL_MASK;
+	reg_280 |= i << SCU_CLKSRC1_SD_DIV_SHIFT;
+	writel(reg_280, &priv->scu->clk_sel1);
+}
+
 static ulong ast2700_soc1_clk_get_rate(struct clk *clk)
 {
 	struct ast2700_soc1_clk_priv *priv = dev_get_priv(clk->dev);
@@ -500,6 +524,7 @@ static int ast2700_soc1_clk_probe(struct udevice *dev)
 		return PTR_ERR(priv->scu);
 
 	ast2700_init_mac(dev);
+	ast2700_init_sdclk(dev);
 
 	return 0;
 }
