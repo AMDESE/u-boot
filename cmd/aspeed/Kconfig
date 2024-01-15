@@ -48,3 +48,9 @@ config AST2600_CMD_DPTEST
 config AST2700_CMD_DPTEST
 	bool "ASPEED AST2700 DP CTS utility"
 	default n
+
+config CMD_NETTEST
+	bool "ASPEED Ethernet loopback test"
+	select GETOPT
+	select HEXDUMP
+	default n
