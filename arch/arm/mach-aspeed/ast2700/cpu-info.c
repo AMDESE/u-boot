@@ -81,34 +81,20 @@ void ast2700_print_wdtrst_info(void)
 	}
 }
 
-#define SYS_DRAM_ECCRST	BIT(3)
-#define SYS_ABRRST		BIT(2)
 #define SYS_EXTRST		BIT(1)
 #define SYS_SRST		BIT(0)
 
 void ast2700_print_sysrst_info(void)
 {
-	u32 sys_rst = readl(ASPEED_IO_RESET_LOG1);
+	u32 sys_rst = readl(ASPEED_CPU_RESET_LOG1);
 
 	if (sys_rst & SYS_SRST) {
 		printf("RST: Power On\n");
-		writel(sys_rst, ASPEED_IO_RESET_LOG1);
+		writel(SYS_SRST, ASPEED_CPU_RESET_LOG1);
+	} else if (sys_rst & SYS_EXTRST) {
+		printf("RST: EXTRST\n");
+		writel(SYS_EXTRST, ASPEED_CPU_RESET_LOG1);
 	} else {
-		if (sys_rst & SYS_DRAM_ECCRST) {
-			printf("RST: DRAM_ECC\n");
-			writel(SYS_DRAM_ECCRST, ASPEED_IO_RESET_LOG1);
-		}
-
-		if (sys_rst & SYS_ABRRST) {
-			printf("RST: FLASH_ABR\n");
-			writel(SYS_ABRRST, ASPEED_IO_RESET_LOG1);
-		}
-
-		if (sys_rst & SYS_EXTRST) {
-			printf("RST: EXTERNEL\n");
-			writel(SYS_EXTRST, ASPEED_IO_RESET_LOG1);
-		}
-
 		ast2700_print_wdtrst_info();
 	}
 }
