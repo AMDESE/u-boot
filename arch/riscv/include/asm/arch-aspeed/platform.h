@@ -49,6 +49,8 @@
 #define ASPEED_IO_RESET_LOG4		0x14C02080
 #define ASPEED_LTPI0_BASE		0x14c34000
 #define ASPEED_LTPI1_BASE		0x14c35000
+#define ASPEED_LTPI0_REMOTE_BASE	0x30000000
+#define ASPEED_LTPI1_REMOTE_BASE	0x50000000
 #else
 #err "Unrecognized Aspeed platform."
 #endif
