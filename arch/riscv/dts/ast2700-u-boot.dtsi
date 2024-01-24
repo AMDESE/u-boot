@@ -11,9 +11,11 @@
 
 	soc0: soc@12000000 {
 		bootph-all;
+
 		sdrammc: sdrammc@12c00000 {
 			bootph-all;
 		};
+
 		uart4: serial@12c1a000 {
 			bootph-all;
 		};

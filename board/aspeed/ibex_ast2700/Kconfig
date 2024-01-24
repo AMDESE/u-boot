@@ -17,10 +17,11 @@ config SYS_CPU
 config SYS_CONFIG_NAME
 	default "ibex_ast2700"
 
-config BOARD_SPECIFIC_OPTIONS # dummy
+config BOARD_SPECIFIC_OPTIONS
 	def_bool y
 	select RISCV_IBEX
 	select SUPPORT_SPL
+	select BINMAN
 	imply SPL_DRIVERS_MISC
 
 config SPI_ASPEED_DMA

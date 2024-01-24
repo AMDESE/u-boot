@@ -33,12 +33,6 @@
 		#size-cells = <1>;
 		ranges;
 
-		sdrammc: sdrammc@12c00000 {
-			compatible = "aspeed,ast2700-sdrammc";
-			reg = <0x12c00000 0x1000>, <0x13000000 0xd0000>;
-			status = "disabled";
-		};
-
 		emmc_controller: sdc@12090000 {
 			compatible = "aspeed,ast2700-sd-controller";
 			reg = <0x12090000 0x100>;

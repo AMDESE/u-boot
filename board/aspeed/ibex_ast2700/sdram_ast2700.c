@@ -17,8 +17,6 @@
 
 #define RFC 880
 
-struct sdramc g_sdramc;
-
 struct sdramc_ac_timing ac_table[] = {
 	/* DDR4 1600 */
 	{
@@ -646,16 +644,16 @@ static int sdramc_bist(struct sdramc *sdramc, u32 addr, u32 size, u32 cfg, u32 t
 
 int dram_init(void)
 {
-	struct sdramc *sdramc = &g_sdramc;
+	struct sdramc sdramc[1];
 	struct sdramc_ac_timing *ac;
 	u32 bistcfg;
 	int err = 0;
 
-	sdramc->regs = (struct sdramc_regs *)DRAMC_BASE;
-	sdramc->phy_regs = (u32 *)DRAMC_PHY_BASE;
-
 	if (is_ddr_initialized())
 		goto out;
+
+	sdramc->regs = (struct sdramc_regs *)DRAMC_BASE;
+	sdramc->phy_regs = (u32 *)DRAMC_PHY_BASE;
 
 	mpll_init();
 
@@ -689,6 +687,7 @@ int dram_init(void)
 out:
 	sdramc->info.base = 0x80000000;
 	sdramc->info.size = 0x40000000;
+	gd->ram_size = sdramc->info.size;
 
 	return 0;
 }
