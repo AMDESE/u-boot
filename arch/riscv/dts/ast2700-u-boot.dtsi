@@ -16,6 +16,26 @@
 			bootph-all;
 		};
 
+		syscon0: syscon@12c02000 {
+			bootph-all;
+
+			soc0_rst: reset-controller@12c02200 {
+				bootph-all;
+			};
+
+			soc0_clk: clock-controller@12c02200 {
+				bootph-all;
+			};
+		};
+
+		emmc_controller: sdc@12090000 {
+			bootph-all;
+
+			emmc: sdhci@12090100 {
+				bootph-all;
+			};
+		};
+
 		uart4: serial@12c1a000 {
 			bootph-all;
 		};

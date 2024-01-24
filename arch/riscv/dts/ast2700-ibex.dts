@@ -25,25 +25,14 @@
 };
 
 &syscon0 {
-	bootph-all;
 	status = "okay";
 };
 
-&soc0_rst {
-	bootph-all;
-};
-
-&soc0_clk {
-	bootph-all;
-};
-
 &emmc_controller {
-	bootph-all;
 	status = "okay";
 };
 
 &emmc {
-	bootph-all;
 	status = "okay";
 };
 
