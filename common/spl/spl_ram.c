@@ -9,6 +9,7 @@
  * Michal Simek <michal.simek@amd.com>
  * Stefan Agner <stefan.agner@toradex.com>
  */
+#include <asm/arch-aspeed/spi.h>
 #include <common.h>
 #include <binman_sym.h>
 #include <image.h>
@@ -25,7 +26,7 @@ static ulong spl_ram_load_read(struct spl_load_info *load, ulong sector,
 	debug("%s: sector %lx, count %lx, buf %lx\n",
 	      __func__, sector, count, (ulong)buf);
 
-	addr = (ulong)CONFIG_SPL_LOAD_FIT_ADDRESS + sector;
+	addr = (ulong)CONFIG_SPL_LOAD_FIT_ADDRESS + sector + aspeed_spi_abr_offset();
 	if (CONFIG_IS_ENABLED(IMAGE_PRE_LOAD))
 		addr += image_load_offset;
 

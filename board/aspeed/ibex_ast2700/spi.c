@@ -30,15 +30,98 @@ int spi_init(void)
 	return 0;
 }
 
-#define INTR_CTRL	(ASPEED_FMC_REG_BASE + 0x008)
-#define DRAM_HI_ADDR	(ASPEED_FMC_REG_BASE + 0x07C)
-#define DMA_CTRL	(ASPEED_FMC_REG_BASE + 0x080)
-#define DMA_FLASH_ADDR	(ASPEED_FMC_REG_BASE + 0x084)
-#define DMA_RAM_ADDR	(ASPEED_FMC_REG_BASE + 0x088)
-#define DMA_LEN		(ASPEED_FMC_REG_BASE + 0x08C)
+bool spi_abr_enabled(void)
+{
+	u32 abr_val;
 
-#define SPI_DMA_DONE			BIT(11)
-#define DMA_ENABLE			BIT(0)
+	abr_val = readl((void *)SCU_SPI_ABR_REG) & SPI_ABR_EN;
+
+	return (abr_val != 0) ? true : false;
+}
+
+u32 spi_get_abr_indictor(void)
+{
+	u32 wdt_abr_ctrl;
+
+	wdt_abr_ctrl = readl((void *)WDT_ABR_CTRL);
+
+	return (wdt_abr_ctrl & WDT_ABR_INDICATOR) >> 1;
+}
+
+enum spi_abr_mode get_spi_flash_abr_mode(void)
+{
+	u32 abr_mode;
+
+	abr_mode = readl((void *)SCU_SPI_ABR_REG) & SPI_ABR_MODE;
+
+	return (abr_mode != 0) ? SINGLE_FLASH_ABR : DUAL_FLASH_ABR;
+}
+
+/*
+ * SCU flash size: SCU030[15:13]
+ * 7: 512MB
+ * 6: 256MB
+ * 5: 128MB
+ * 4: 64MB
+ * 3: 32MB
+ * 2: 16MB
+ * 1: 8MB
+ * 0: disabled
+ */
+u32 spi_get_flash_sz_strap(void)
+{
+	u32 scu_flash_sz;
+	u32 flash_sz_phy;
+
+	scu_flash_sz = (readl((void *)SCU_SPI_ABR_REG) >> 13) & 0x7;
+	switch (scu_flash_sz) {
+	case 0x7:
+		flash_sz_phy = SNOR_SZ_512MB;
+		break;
+	case 0x6:
+		flash_sz_phy = SNOR_SZ_256MB;
+		break;
+	case 0x5:
+		flash_sz_phy = SNOR_SZ_128MB;
+		break;
+	case 0x4:
+		flash_sz_phy = SNOR_SZ_64MB;
+		break;
+	case 0x3:
+		flash_sz_phy = SNOR_SZ_32MB;
+		break;
+	case 0x2:
+		flash_sz_phy = SNOR_SZ_16MB;
+		break;
+	case 0x1:
+		flash_sz_phy = SNOR_SZ_8MB;
+		break;
+	case 0x0:
+		flash_sz_phy = SNOR_SZ_UNSET;
+		break;
+	default:
+		flash_sz_phy = SNOR_SZ_UNSET;
+		break;
+	}
+
+	return flash_sz_phy;
+}
+
+u32 aspeed_spi_abr_offset(void)
+{
+	if (!spi_abr_enabled())
+		return 0;
+
+	/* no need for dual flash ABR */
+	if (get_spi_flash_abr_mode() == DUAL_FLASH_ABR)
+		return 0;
+
+	/* no need when ABR is not triggerred */
+	if (spi_get_abr_indictor() == 0)
+		return 0;
+
+	return (spi_get_flash_sz_strap() / 2);
+}
 
 size_t aspeed_memmove_dma_op(void *dest, const void *src, size_t count)
 {
@@ -53,6 +136,8 @@ size_t aspeed_memmove_dma_op(void *dest, const void *src, size_t count)
 	if ((u32)src >= ASPEED_FMC_CS0_BASE &&
 	    (u32)src < (ASPEED_FMC_CS0_BASE + ASPEED_FMC_CS0_SIZE) &&
 	    (u32)dest >= ASPEED_DRAM_BASE) {
+		src += aspeed_spi_abr_offset();
+
 		if ((u32)dest >= ASPEED_DRAM_BASE)
 			writel(0x4, (void *)DRAM_HI_ADDR);
 
@@ -76,9 +161,12 @@ size_t aspeed_memmove_dma_op(void *dest, const void *src, size_t count)
 
 int spi_load_image(u32 *src, u32 *dest, u32 len)
 {
-	const void *base = (const void *)(ASPEED_FMC_CS0_BASE + (u32)src);
+	const void *base;
 
 	debug("spi load image base = %x\n", (u32)base);
+
+	base = (const void *)(ASPEED_FMC_CS0_BASE + (u32)src +
+			      aspeed_spi_abr_offset());
 
 	memcpy((void *)dest, base, len);
 
