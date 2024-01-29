@@ -139,8 +139,8 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu)
 		setbits_le32(&scu->vga0_scratch1[0], BIT(7));
 		setbits_le32(&scu->vga0_scratch1[0], BIT(12));
 
-		// Enable VRAM address offset: cursor, rvas, 2d
-		writel(BIT(10) | BIT(24) | BIT(27), &ram->gfm0ctl);
+		// Enable VRAM address offset: cursor, 2d
+		writel(BIT(10) | BIT(27), &ram->gfm0ctl);
 	}
 
 	if (is_pcie1_enable) {
@@ -160,8 +160,8 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu)
 		setbits_le32(&scu->vga1_scratch1[0], BIT(7));
 		setbits_le32(&scu->vga1_scratch1[0], BIT(12));
 
-		// Enable VRAM address offset: cursor, rvas, 2d
-		writel(BIT(19) | BIT(25) | BIT(28), &ram->gfm1ctl);
+		// Enable VRAM address offset: cursor, 2d
+		writel(BIT(19) | BIT(28), &ram->gfm1ctl);
 	}
 
 	if (is_pcie0_enable || is_pcie1_enable) {
