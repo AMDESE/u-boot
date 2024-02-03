@@ -8,6 +8,7 @@
 #include <asm/arch-aspeed/e2m_ast2700.h>
 #include <asm/arch-aspeed/sdram_ast2700.h>
 #include <asm/arch-aspeed/scu_ast2700.h>
+#include <asm/arch-aspeed/spi.h>
 #include <asm/arch-aspeed/vga_ast2700.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
@@ -168,10 +169,12 @@ int arch_misc_init(void)
 	ofnode node;
 
 	if (IS_ENABLED(CONFIG_ARCH_MISC_INIT)) {
-		if ((readl(ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_EMMC))
+		if ((readl(ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_EMMC)) {
 			env_set("boot_device", "mmc");
-		else
+		} else {
 			env_set("boot_device", "spi");
+			spi_bootarg_config();
+		}
 	}
 
 	/* find the offset of compatible node */

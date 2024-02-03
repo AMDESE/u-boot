@@ -22,6 +22,23 @@
 
 #define SPI_DMA_DONE			BIT(11)
 #define DMA_ENABLE			BIT(0)
+
+#define SNOR_SZ_UNSET			0x0
+#define SNOR_SZ_8MB			0x800000
+#define SNOR_SZ_16MB			0x1000000
+#define SNOR_SZ_32MB			0x2000000
+#define SNOR_SZ_64MB			0x4000000
+#define SNOR_SZ_128MB			0x8000000
+#define SNOR_SZ_256MB			0x10000000
+#define SNOR_SZ_512MB			0x20000000
+
+enum spi_abr_mode {
+	DUAL_FLASH_ABR = 0,
+	SINGLE_FLASH_ABR,
+};
+
 u32 aspeed_spi_abr_offset(void);
+bool spi_abr_enabled(void);
+void spi_bootarg_config(void);
 
 #endif
