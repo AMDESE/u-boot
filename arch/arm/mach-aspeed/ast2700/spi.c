@@ -3,21 +3,10 @@
  * Copyright (c) Aspeed Technology Inc.
  */
 
-#include <asm/arch-aspeed/platform.h>
+#include <asm/arch-aspeed/spi.h>
 #include <asm/io.h>
 #include <common.h>
-
-#define INTR_CTRL	(ASPEED_FMC_REG_BASE + 0x008)
-#define DRAM_HI_ADDR	(ASPEED_FMC_REG_BASE + 0x07C)
-#define DMA_CTRL	(ASPEED_FMC_REG_BASE + 0x080)
-#define DMA_FLASH_ADDR	(ASPEED_FMC_REG_BASE + 0x084)
-#define DMA_RAM_ADDR	(ASPEED_FMC_REG_BASE + 0x088)
-#define DMA_LEN		(ASPEED_FMC_REG_BASE + 0x08C)
-
-#define SPI_DMA_MAX_LEN			(32 * 1024 * 1024)
-
-#define SPI_DMA_DONE			BIT(11)
-#define DMA_ENABLE			BIT(0)
+#include <malloc.h>
 
 size_t aspeed_memmove_dma_op(void *dest, const void *src, size_t count)
 {
@@ -67,3 +56,4 @@ size_t aspeed_memmove_dma_op(void *dest, const void *src, size_t count)
 	}
 	return 0;
 }
+
