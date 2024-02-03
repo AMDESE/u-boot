@@ -4181,7 +4181,8 @@ void spi_nor_set_fixups(struct spi_nor *nor)
 	    JEDEC_MFR(nor->info) == SNOR_MFR_WINBOND) {
 		if (nor->info->id[1] == 0x70 && nor->info->id[2] == 0x22)
 			nor->fixups = &w25q02gjv_fixups;
-		if (nor->info->id[1] == 0x40 && nor->info->id[2] == 0x21)
+		if ((nor->info->id[1] == 0x40 && nor->info->id[2] == 0x21) ||
+		    (nor->info->id[1] == 0x70 && nor->info->id[2] == 0x22))
 			nor->write_sr = write_sr_w25q01gjv;
 	}
 
