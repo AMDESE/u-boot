@@ -18,6 +18,7 @@
 #include <search.h>
 #include <errno.h>
 #include <uuid.h>
+#include <asm/arch-aspeed/spi.h>
 #include <asm/cache.h>
 #include <asm/global_data.h>
 #include <dm/device-internal.h>
@@ -196,6 +197,7 @@ static int env_sf_save(void)
 	char	*saved_buffer = NULL;
 	int	ret = 1;
 	env_t	env_new;
+	u32	env_offset = CONFIG_ENV_OFFSET;
 	struct spi_flash *env_flash;
 
 	ret = setup_flash_device(&env_flash);
@@ -205,10 +207,12 @@ static int env_sf_save(void)
 	if (IS_ENABLED(CONFIG_ENV_SECT_SIZE_AUTO))
 		sect_size = env_flash->mtd.erasesize;
 
+	env_offset += aspeed_spi_abr_offset();
+
 	/* Is the sector larger than the env (i.e. embedded) */
 	if (sect_size > CONFIG_ENV_SIZE) {
 		saved_size = sect_size - CONFIG_ENV_SIZE;
-		saved_offset = CONFIG_ENV_OFFSET + CONFIG_ENV_SIZE;
+		saved_offset = env_offset + CONFIG_ENV_SIZE;
 		saved_buffer = malloc(saved_size);
 		if (!saved_buffer)
 			goto done;
@@ -226,14 +230,14 @@ static int env_sf_save(void)
 	sector = DIV_ROUND_UP(CONFIG_ENV_SIZE, sect_size);
 
 	puts("Erasing SPI flash...");
-	ret = spi_flash_erase(env_flash, CONFIG_ENV_OFFSET,
-		sector * sect_size);
+	ret = spi_flash_erase(env_flash, env_offset,
+			      sector * sect_size);
 	if (ret)
 		goto done;
 
 	puts("Writing to SPI flash...");
-	ret = spi_flash_write(env_flash, CONFIG_ENV_OFFSET,
-		CONFIG_ENV_SIZE, &env_new);
+	ret = spi_flash_write(env_flash, env_offset,
+			      CONFIG_ENV_SIZE, &env_new);
 	if (ret)
 		goto done;
 
@@ -261,6 +265,7 @@ static int env_sf_load(void)
 	int ret;
 	char *buf = NULL;
 	struct spi_flash *env_flash;
+	u32 env_offset = CONFIG_ENV_OFFSET;
 
 	buf = (char *)memalign(ARCH_DMA_MINALIGN, CONFIG_ENV_SIZE);
 	if (!buf) {
@@ -272,8 +277,10 @@ static int env_sf_load(void)
 	if (ret)
 		goto out;
 
+	env_offset += aspeed_spi_abr_offset();
+
 	ret = spi_flash_read(env_flash,
-		CONFIG_ENV_OFFSET, CONFIG_ENV_SIZE, buf);
+			     env_offset, CONFIG_ENV_SIZE, buf);
 	if (ret) {
 		env_set_default("spi_flash_read() failed", 0);
 		goto err_read;
@@ -297,13 +304,16 @@ static int env_sf_erase(void)
 	int ret;
 	env_t env;
 	struct spi_flash *env_flash;
+	u32 env_offset = CONFIG_ENV_OFFSET;
 
 	ret = setup_flash_device(&env_flash);
 	if (ret)
 		return ret;
 
+	env_offset += aspeed_spi_abr_offset();
+
 	memset(&env, 0, sizeof(env_t));
-	ret = spi_flash_write(env_flash, CONFIG_ENV_OFFSET, CONFIG_ENV_SIZE, &env);
+	ret = spi_flash_write(env_flash, env_offset, CONFIG_ENV_SIZE, &env);
 	if (ret)
 		goto done;
 
@@ -319,7 +329,7 @@ done:
 __weak void *env_sf_get_env_addr(void)
 {
 #ifndef CONFIG_SPL_BUILD
-	return (void *)CONFIG_ENV_ADDR;
+	return (void *)(CONFIG_ENV_ADDR + (size_t)aspeed_spi_abr_offset());
 #else
 	return NULL;
 #endif
