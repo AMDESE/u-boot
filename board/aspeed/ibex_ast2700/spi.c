@@ -109,6 +109,8 @@ u32 spi_get_flash_sz_strap(void)
 
 u32 aspeed_spi_abr_offset(void)
 {
+	u32 flash_sz_strap;
+
 	if (!spi_abr_enabled())
 		return 0;
 
@@ -120,7 +122,12 @@ u32 aspeed_spi_abr_offset(void)
 	if (spi_get_abr_indictor() == 0)
 		return 0;
 
-	return (spi_get_flash_sz_strap() / 2);
+	flash_sz_strap = spi_get_flash_sz_strap();
+
+	if (flash_sz_strap == SNOR_SZ_512MB)
+		return 0x40000000;
+
+	return flash_sz_strap / 2;
 }
 
 size_t aspeed_memmove_dma_op(void *dest, const void *src, size_t count)
@@ -136,7 +143,6 @@ size_t aspeed_memmove_dma_op(void *dest, const void *src, size_t count)
 	if ((u32)src >= ASPEED_FMC_CS0_BASE &&
 	    (u32)src < (ASPEED_FMC_CS0_BASE + ASPEED_FMC_CS0_SIZE) &&
 	    (u32)dest >= ASPEED_DRAM_BASE) {
-		src += aspeed_spi_abr_offset();
 
 		if ((u32)dest >= ASPEED_DRAM_BASE)
 			writel(0x4, (void *)DRAM_HI_ADDR);

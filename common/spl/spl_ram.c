@@ -41,7 +41,8 @@ static int spl_ram_load_image(struct spl_image_info *spl_image,
 	struct legacy_img_hdr *header;
 	int ret;
 
-	header = (struct legacy_img_hdr *)CONFIG_SPL_LOAD_FIT_ADDRESS;
+	header = (struct legacy_img_hdr *)(CONFIG_SPL_LOAD_FIT_ADDRESS +
+					   aspeed_spi_abr_offset());
 
 	if (CONFIG_IS_ENABLED(IMAGE_PRE_LOAD)) {
 		unsigned long addr = (unsigned long)header;
