@@ -179,11 +179,14 @@
 };
 
 &sdc {
+	timing-phase = <0x1f0097>;
 	status = "okay";
 };
 
 &sdhci {
 	status = "okay";
+	sdhci,auto-cmd12;
+	sdhci-drive-type = <3>;
 };
 
 &ufs {
