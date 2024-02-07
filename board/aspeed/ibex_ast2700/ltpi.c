@@ -34,5 +34,10 @@ int ltpi_init(void)
 	writel(reg, (void *)ASPEED_LTPI0_BASE + LTPI_ADDR_REMAP_REG0);
 	writel(reg, (void *)ASPEED_LTPI1_BASE + LTPI_ADDR_REMAP_REG0);
 
+	/* Route SIO to LTPI IO frame */
+	reg = readl((void *)ASPEED_IO_MISC);
+	reg |= ASPEED_IO_MISC_SIO_LTPI_EN;
+	writel(reg, (void *)ASPEED_IO_MISC);
+
 	return 0;
 }
