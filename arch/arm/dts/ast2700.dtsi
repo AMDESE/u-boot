@@ -452,6 +452,15 @@
 			};
 		};
 
+		gpio0: gpio@14c0b000 {
+			compatible = "aspeed,ast2700-gpio";
+			reg = <0x0 0x14c0b000 0x0 0x1000>;
+			#gpio-cells = <2>;
+			gpio-controller;
+			gpio-ranges = <&pinctrl1 0 0 216>;
+			ngpios = <244>;
+		};
+
 		uart0: serial@14c33000 {
 			compatible = "ns16550a";
 			reg = <0x0 0x14c33000 0x0 0x20>;
