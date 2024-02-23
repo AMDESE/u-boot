@@ -118,4 +118,5 @@ CONFIG_SPL_TINY_MEMSET=y
 # CONFIG_RSA is not set
 # CONFIG_SPL_SHA1 is not set
 # CONFIG_SPL_SHA256 is not set
+CONFIG_SPL_LZ4=y
 # CONFIG_EFI_LOADER is not set
