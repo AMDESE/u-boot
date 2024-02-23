@@ -160,8 +160,12 @@ void spl_board_prepare_for_boot(void)
 	writel(0x1, (void *)ASPEED_CPU_CA35_REL);
 
 	/* keep going if ibex has further FW to run */
-	if (ibex_boot2fw)
+	if (ibex_boot2fw) {
+		/* A0 workaround: delay for CA35 ATF to fine-tune SLI */
+		mdelay(100);
+
 		return;
+	}
 
 	/* sleep well otherwise */
 	while (1)
