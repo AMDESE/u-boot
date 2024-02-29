@@ -30,7 +30,7 @@ static int aspeed_ufs_link_startup_notify(struct ufs_hba *hba,
 					  enum ufs_notify_change_status status)
 {
 	struct ufs_pa_layer_attr pwr_info;
-	u32 max_gear = UFS_HS_G2;
+	u32 max_gear = UFS_HS_G3;
 	int ret;
 
 	hba->quirks |= UFSHCD_QUIRK_BROKEN_LCC;
@@ -178,10 +178,8 @@ static int aspeed_ufs_probe(struct udevice *dev)
 	base = dev_remap_addr_index(dev, 0);
 
 	/* reduce signal swing */
-	writel(0xe8, base + UFS_MPHY_VCONTROL);
-	writel(0xd0000, base + UFS_MPHY_CALI_IN_1);
-	writel(0xff00, base + UFS_MPHY_CALI_IN_0);
-	writel(0, base + UFS_MPHY_VCONTROL);
+	writel(0xd0707, base + UFS_MPHY_CALI_IN_1);
+	writel(0x5ffff00, base + UFS_MPHY_CALI_IN_0);
 
 	/* Reset MPHY */
 	reg = readl(base + UFS_MPHY_RST_REG);
