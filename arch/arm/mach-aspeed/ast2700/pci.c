@@ -152,5 +152,15 @@ void pci_config(struct ast2700_soc0_scu *scu)
 		return;
 	}
 
+	if (efuse == 0) {
+		// setup preset for plda2
+		writel(0x12600000, (void *)ASPEED_PLDA2_PRESET0);
+		writel(0x00012600, (void *)ASPEED_PLDA2_PRESET1);
+	}
+
+	// setup preset for plda1
+	writel(0x12600000, (void *)ASPEED_PLDA1_PRESET0);
+	writel(0x00012600, (void *)ASPEED_PLDA1_PRESET1);
+
 	pci_vga_init(scu);
 }
