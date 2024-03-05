@@ -1,3 +1,3 @@
-obj-y   += lowlevel_init.o board_common.o mem.o platform.o spi.o
+obj-y   += lowlevel_init.o board_common.o mem.o platform.o spi.o pci.o
 obj-$(CONFIG_SPL_BUILD) += spl.o
 obj-$(CONFIG_DISPLAY_CPUINFO) += cpu-info.o
