@@ -65,7 +65,11 @@ int emmc_load_image(u32 *src, u32 *dest, u32 len)
 	blks = len / MMC_BLK_LEN;
 	ofst_in_blk %= MMC_BLK_LEN;
 
-	blks++;
+	if (len % MMC_BLK_LEN)
+		blks++;
+
+	if ((u32)src % MMC_BLK_LEN)
+		blks++;
 
 	debug("blk read blk=0x%x, blks=0x%x\n", blk, blks);
 	ret = blk_read(dev, blk, blks, (void *)ASPEED_SRAM_BASE);
