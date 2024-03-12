@@ -83,6 +83,7 @@ struct ltpi_priv {
 	uint16_t phy_speed_cap; /* limit the speed with physical line status */
 
 	int bus_topology;	/* for master mode only.  0: unknown 1:normal mode, 2:cdr mode */
+	int cdr_mask;
 
 	int dbg_link_partner;
 	int dbg_speed;
@@ -447,32 +448,48 @@ static void ltpi_master_cdr_mode_training(struct ltpi_priv *ltpi)
 	int target_speed, max_speed[2], ret;
 
 	do {
-		ret = ltpi_poll_link_manage_state(ltpi, 0, LTPI_LINK_MANAGE_ST_WAIT_PLL_SET, -1, 0);
-		ret = ltpi_poll_link_manage_state(ltpi, 1, LTPI_LINK_MANAGE_ST_WAIT_PLL_SET, -1, 0);
+		if (ltpi->cdr_mask & 0x1)
+			ret = ltpi_poll_link_manage_state(ltpi, 0,
+							  LTPI_LINK_MANAGE_ST_WAIT_PLL_SET, -1, 0);
+
+		if (ltpi->cdr_mask & 0x2)
+			ret = ltpi_poll_link_manage_state(ltpi, 1,
+							  LTPI_LINK_MANAGE_ST_WAIT_PLL_SET, -1, 0);
 
 		/* read intersection of the speed capabilities */
 		reg = readl((void *)ltpi->base[0] + LTPI_LINK_MANAGE_ST);
 		speed_cap[0] = FIELD_GET(REG_LTPI_SP_INTERSETION, reg);
 		reg = readl((void *)ltpi->base[1] + LTPI_LINK_MANAGE_ST);
 		speed_cap[1] = FIELD_GET(REG_LTPI_SP_INTERSETION, reg);
-		if ((speed_cap[0] & speed_cap[1]) == 0) {
+
+		if (ltpi->cdr_mask == 0x1)
+			ltpi->phy_speed_cap = speed_cap[0];
+		else if (ltpi->cdr_mask == 0x2)
+			ltpi->phy_speed_cap = speed_cap[1];
+		else
+			ltpi->phy_speed_cap = speed_cap[0] & speed_cap[1];
+
+		if (ltpi->phy_speed_cap == 0) {
 			bootstage_start_mark(BOOTSTAGE_LTPI_SP_CAP);
 			bootstage_end_status(BOOTSTAGE_LTPI_SP_CAP_E_NC |
 					     BOOTSTAGE_LTPI_MODE_CDR);
 			return;
 		}
-		ltpi->phy_speed_cap = speed_cap[0] & speed_cap[1];
 
 		/* find max attainable speed */
 		max_speed[0] = find_max_speed(speed_cap[0]);
 		max_speed[1] = find_max_speed(speed_cap[1]);
-		if (max_speed[0] != max_speed[1]) {
+		if (ltpi->cdr_mask == 0x3 && max_speed[0] != max_speed[1]) {
 			bootstage_start_mark(BOOTSTAGE_LTPI_SP_CAP);
 			bootstage_end_status(BOOTSTAGE_LTPI_SP_CAP_E_NS |
 					     BOOTSTAGE_LTPI_MODE_CDR);
 			goto retrain_cdr;
 		}
-		target_speed = max_speed[0];
+
+		if (ltpi->cdr_mask == 0x2)
+			target_speed = max_speed[1];
+		else
+			target_speed = max_speed[0];
 
 		/* set phy mode "OFF" */
 		ltpi_phy_set_mode(ltpi, LTPI_PHY_MODE_OFF);
@@ -486,12 +503,14 @@ static void ltpi_master_cdr_mode_training(struct ltpi_priv *ltpi)
 			ltpi_phy_set_mode(ltpi, LTPI_PHY_MODE_CDR_LO_SP);
 
 		/* poll link state 0x7 */
-		ret = ltpi_poll_link_manage_state(ltpi, 0, LTPI_LINK_MANAGE_ST_OP,
-						  LTPI_LINK_MANAGE_ST_DETECT_ALIGN,
-						  ADVERTISE_TIMEOUT_US);
-		ret |= ltpi_poll_link_manage_state(ltpi, 1, LTPI_LINK_MANAGE_ST_OP,
-						   LTPI_LINK_MANAGE_ST_DETECT_ALIGN,
-						   ADVERTISE_TIMEOUT_US);
+		if (ltpi->cdr_mask & 0x1)
+			ret = ltpi_poll_link_manage_state(ltpi, 0, LTPI_LINK_MANAGE_ST_OP,
+							  LTPI_LINK_MANAGE_ST_DETECT_ALIGN,
+							  ADVERTISE_TIMEOUT_US);
+		if (ltpi->cdr_mask & 0x2)
+			ret |= ltpi_poll_link_manage_state(ltpi, 1, LTPI_LINK_MANAGE_ST_OP,
+							   LTPI_LINK_MANAGE_ST_DETECT_ALIGN,
+							   ADVERTISE_TIMEOUT_US);
 		if (ret == LTPI_OK)
 			break;
 
@@ -503,11 +522,13 @@ retrain_cdr:
 		bootstage_end_status(ret | BOOTSTAGE_LTPI_MODE_CDR);
 	} while (1);
 
-	printf("Link partner #0 is %s\n",
-	       ltpi_master_get_link_partner(ltpi, 0) ? "ast1700" : "fpga");
+	if (ltpi->cdr_mask & 0x1)
+		printf("Link partner #0 is %s\n",
+		       ltpi_master_get_link_partner(ltpi, 0) ? "ast1700" : "fpga");
 
-	printf("Link partner #1 is %s\n",
-	       ltpi_master_get_link_partner(ltpi, 1) ? "ast1700" : "fpga");
+	if (ltpi->cdr_mask & 0x2)
+		printf("Link partner #1 is %s\n",
+		       ltpi_master_get_link_partner(ltpi, 1) ? "ast1700" : "fpga");
 
 	ltpi->dbg_speed = target_speed;
 	ltpi->dbg_pll = cdr_speed_to_pll_lookup[target_speed][1];
@@ -1254,14 +1275,19 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 	char *endp;
 	uint32_t pin_strap, otp_strap;
 
+	ltpi_data.cdr_mask = 0x3;
+
 	getopt_init_state(&gs);
-	while ((opt = getopt(&gs, argc, argv, "l:m:h")) > 0) {
+	while ((opt = getopt(&gs, argc, argv, "l:m:c:h")) > 0) {
 		switch (opt) {
 		case 'l':
 			speed = simple_strtoul(gs.arg, &endp, 0);
 			break;
 		case 'm':
 			mode = simple_strtoul(gs.arg, &endp, 0);
+			break;
+		case 'c':
+			ltpi_data.cdr_mask = simple_strtoul(gs.arg, &endp, 0);
 			break;
 		case 'h':
 			fallthrough;
@@ -1320,6 +1346,7 @@ static char ltpi_help_text[] = {
 	"-m 2: AST1700 mode, CDR, 1st AST1700\n"
 	"-m 3: AST1700 mode, CDR, 2nd AST1700\n"
 	"-l <speed limit>, 0=1G, 1=800M, 2=400M, 3=250M, 4=200M, 5=100M, 6=50M, 7=25M\n"
+	"-c <cdr mask>, 0x1=ltpi0, 1=ltpi1, 3=ltpi0+ltpi1\n"
 };
 
 U_BOOT_CMD(ltpi, 5, 0, do_ltpi, "ASPEED LTPI commands", ltpi_help_text);
