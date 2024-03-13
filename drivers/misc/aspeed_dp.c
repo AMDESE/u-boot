@@ -122,6 +122,7 @@ static u32 _get_scu_offset(struct udevice *dev)
 static int aspeed_dp_probe(struct udevice *dev)
 {
 	struct aspeed_dp_priv *dp = dev_get_priv(dev);
+	struct astdp_data *data = (struct astdp_data *)dev_get_driver_data(dev);
 	struct reset_ctl dp_reset_ctl, dpmcu_reset_ctrl;
 	struct clk clk;
 	int i, ret = 0;
@@ -213,7 +214,9 @@ static int aspeed_dp_probe(struct udevice *dev)
 	}
 
 	//set vga ASTDP with DPMCU FW handling scratch
-	regmap_update_bits(dp->scu, scu_offset, 0x7 << 9, 0x7 << 9);
+	regmap_update_bits(dp->scu, data->scratch0, 0x7 << 9, 0x7 << 9);
+	if (data->scratch1)
+		regmap_update_bits(dp->scu, data->scratch1, 0x7 << 9, 0x7 << 9);
 
 	return 0;
 }
