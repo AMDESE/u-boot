@@ -20,16 +20,10 @@
 #define VBIOS1_SCU_OFFSET	(0xaac)
 #define SCU_PCI_MISC70		(0xa70)
 #define SCU_PCI_MISCF0		(0xaf0)
-#define SCU_PCI_MISC00		(0xa00)
-#define SCU_PCI_MISC04		(0xa04)
-#define SCU_PCI_MISC80		(0xa80)
-#define SCU_PCI_MISC84		(0xa84)
 #define SCU_REVISION		(0x0)
 #define SCU_REVISION_ID_EFUSE	GENMASK(15, 8)
 #define EFUSE_AST2700		(0x1)
 #define EFUSE_AST2720		(0x2)
-#define DEVID_2700			(0x27001a03)
-
 
 struct aspeed_vbios_priv {
 	struct regmap *scu_ctl_base;
@@ -70,9 +64,6 @@ static int aspeed_vbios_probe(struct udevice *dev)
 
 	/* load vbios for pcie 0 node */
 	if (is_pcie0_enable) {
-		regmap_write(vbios->scu_ctl_base, SCU_PCI_MISC00, DEVID_2700);
-		regmap_write(vbios->scu_ctl_base, SCU_PCI_MISC04, DEVID_2700);
-
 		/* obtain the vbios0 reserved memory */
 		value = fdt_path_offset(gd->fdt_blob, "/reserved-memory/pcie_vbios0");
 		fdt_get_resource(gd->fdt_blob, value, "reg", 0, &res);
@@ -110,9 +101,6 @@ static int aspeed_vbios_probe(struct udevice *dev)
 
 	/* load vbios for pcie 1 node */
 	if (is_pcie1_enable) {
-		regmap_write(vbios->scu_ctl_base, SCU_PCI_MISC80, DEVID_2700);
-		regmap_write(vbios->scu_ctl_base, SCU_PCI_MISC84, DEVID_2700);
-
 		/* obtain the vbios0 reserved memory */
 		value = fdt_path_offset(gd->fdt_blob, "/reserved-memory/pcie_vbios1");
 		fdt_get_resource(gd->fdt_blob, value, "reg", 0, &res);
