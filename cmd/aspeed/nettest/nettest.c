@@ -134,7 +134,7 @@ loop_start:
 
 	/* prepare the first packet */
 	prepare_tx_packet(&tx_pkt_buf[0][0], tx_size);
-	aspeed_mac_txpkt_add(mac_obj, tx_pkt_buf[0], tx_size);
+	aspeed_mac_txpkt_add(mac_obj, tx_pkt_buf[0], tx_size, test_obj);
 
 	for (i = 1; i < test_obj->pkt_per_test; i++) {
 		memcpy(&tx_pkt_buf[i][0], &tx_pkt_buf[0][0], tx_size);
@@ -142,7 +142,7 @@ loop_start:
 		/* every tx packet has its own SA for identification */
 		ptr = &tx_pkt_buf[i][ETH_OFFSET_SA];
 		memset(ptr, i, ETH_SIZE_SA);
-		aspeed_mac_txpkt_add(mac_obj, tx_pkt_buf[i], tx_size);
+		aspeed_mac_txpkt_add(mac_obj, tx_pkt_buf[i], tx_size, test_obj);
 	}
 
 	DSB;
@@ -202,7 +202,7 @@ loop_start:
 	aspeed_mac_set_loopback(mac_obj, parm->control == NETDIAG_CTRL_LOOPBACK_MAC);
 	aspeed_mac_set_sgmii_loopback(mac_obj, parm->control == NETDIAG_CTRL_LOOPBACK_MII);
 	for (i = 0; i < test_obj->pkt_per_test; i++)
-		aspeed_mac_txpkt_add(mac_obj, tx_pkt_buf[i], tx_size);
+		aspeed_mac_txpkt_add(mac_obj, tx_pkt_buf[i], tx_size, test_obj);
 
 	DSB;
 	aspeed_mac_xmit(mac_obj);

@@ -98,6 +98,20 @@ u32 _ethernet_header(u8 *packet, u8 *da, u8 *sa, u16 ethtype)
 	return ETH_SIZE_HEADER;
 }
 
+u32 _ethernet_vlan_header(u8 *packet, u8 *da, u8 *sa, u16 tci)
+{
+	struct vlan_ethhdr *hdr = (struct vlan_ethhdr *)packet;
+	u16 eth_type = ETHTYPE_VLAN;//get_ticks() & 0xFFFF;
+
+	MEMCPY(hdr->da, da, ETH_SIZE_DA);
+	MEMCPY(hdr->sa, sa, ETH_SIZE_SA);
+	hdr->vlan_proto = htons(ETHTYPE_VLAN);
+	hdr->vlan_TCI = htons(tci);
+	hdr->vlan_encapsulated_proto = htons(eth_type);
+
+	return ETH_VLAN_SIZE_HEADER;
+}
+
 u32 _ip_header(u8 *packet, u32 ip_sa, u32 ip_da, u8 protocol, u16 packet_size, u16 header_size)
 {
 	struct ip_hdr *hdr = (struct ip_hdr *)packet;
@@ -195,6 +209,28 @@ void _payload(u8 *packet, u32 payload_size, u8 mode)
 	case PAYLOAD_00:
 		memset(packet, 0, payload_size);
 		break;
+	}
+}
+
+void generate_vlan_pakcet(struct test_s *test_obj, u32 packet_size, bool include_vlan)
+{
+	struct mac_s *mac_obj = test_obj->mac_obj;
+	u32 i;
+
+	for (i = 0; i < mac_obj->n_txdes; i++) {
+		u8 *packet = test_obj->tx_pkt_buf[i];
+		u32 payload_size;
+
+		test_obj->vlan.tci[i] = get_ticks() & 0xFFFF;
+
+		if (include_vlan)
+			packet += _ethernet_vlan_header(packet, broadcast_address,
+							mac_obj->mac_addr, test_obj->vlan.tci[i]);
+		else
+			packet += _ethernet_header(packet, broadcast_address, mac_obj->mac_addr,
+						   get_ticks() & 0xFFFF);
+		payload_size = packet_size - (packet - test_obj->tx_pkt_buf[i]);
+		_payload(packet, payload_size, i);
 	}
 }
 

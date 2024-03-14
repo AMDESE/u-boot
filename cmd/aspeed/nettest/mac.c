@@ -272,6 +272,8 @@ int aspeed_mac_init(struct mac_s *obj)
 	} else if (obj->phy->speed == 100) {
 		reg |= FIELD_PREP(MACCR_SPEED_100, 1);
 	}
+	if (obj->rx_vlan_remove)
+		reg |= FIELD_PREP(MACCR_RM_VLAN, 1);
 	writel(reg, base + MACCR);
 
 	/* TODO: PHY start */
@@ -312,7 +314,7 @@ int aspeed_mac_set_sgmii_loopback(struct mac_s *obj, u8 enable)
 	return 0;
 }
 
-int aspeed_mac_txpkt_add(struct mac_s *obj, void *packet, int length)
+int aspeed_mac_txpkt_add(struct mac_s *obj, void *packet, int length, struct test_s *test_obj)
 {
 	struct mac_txdes_s *curr_txdes = &obj->txdes[obj->txptr];
 	union ftgmac100_dma_addr dma_addr = { .hi = 0, .lo = 0 };
@@ -333,6 +335,8 @@ int aspeed_mac_txpkt_add(struct mac_s *obj, void *packet, int length)
 			      MAC_TXDES0_TXBUF_SIZE(length) |
 			      MAC_TXDES0_TXDMA_OWN;
 	curr_txdes->txdes1 = obj->txdes1;
+	if (obj->txdes1 & TXDESC1_INS_VLAN)
+		curr_txdes->txdes1 = obj->txdes1 | test_obj->vlan.tci[obj->txptr];
 
 	debug("%s: txptr=%d, obj->txdes=%p, curr_txdes->txdes0=%p\n", __func__, obj->txptr,
 	      obj->txdes, curr_txdes);

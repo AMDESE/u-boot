@@ -290,7 +290,8 @@ void checksum_mac_txpkt_add(struct test_s *test_obj, int pakcet_size)
 	int i;
 
 	for (i = 0; i < test_obj->pkt_per_test; i++)
-		aspeed_mac_txpkt_add(test_obj->mac_obj, test_obj->tx_pkt_buf[i], pakcet_size);
+		aspeed_mac_txpkt_add(test_obj->mac_obj, test_obj->tx_pkt_buf[i], pakcet_size,
+				     test_obj);
 }
 
 void checksum_generate_packet(struct test_s *test_obj, u32 packet_size, bool need_cks)

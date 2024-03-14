@@ -8,6 +8,7 @@
 #include "nettest.h"
 #include "ncsi.h"
 #include "checksum.h"
+#include "vlan.h"
 #include "pktgen.h"
 #include "pattern.h"
 
@@ -192,6 +193,7 @@ void netdiag_init_parameter(struct parameter_s *parm)
 	parm->control = NETDIAG_CTRL_LOOPBACK_EXT;
 
 	parm->checksum = NETDIAG_CKS_NONE;
+	parm->vlan = NETDIAG_VLAN_NONE;
 
 	parm->mode = MODE_MARGIN;
 	parm->margin = 2;
@@ -261,6 +263,10 @@ static const char help_string[] = "\nnetdiag: network diagnostic tool.\n"
 "                    |   rx-udp6 = RX UDP IPv6\n"
 "                    |   rx-all  = RX ALL\n"
 "                    |   all     = TX/RX ALL\n"
+"    -v <type>       | type: VLAN test type (optional)\n"
+"                    |   tx      = TX VLAN\n"
+"                    |   rx      = RX VLAN\n"
+"                    |   all     = TX/RX VLAN\n"
 "    -d <tx>,<rx>    | tx: RGMII/RMII TX Delay\n"
 "                    |   0 - 63  = (RGMII) tx step delay\n"
 "                    |   0 - 1   = (RMII)  tx clock edge\n"
@@ -292,15 +298,15 @@ int netdiag_parse_parameter_from_argv(int argc, char *const argv[], struct param
 #else
 	int option_index = 0;
 #endif
-	static const char optstring[] = "o:i:l:s:m:k:u:n:c:d:h";
+	static const char optstring[] = "o:i:l:s:m:k:u:n:c:v:d:h";
 #if !defined(U_BOOT)
 	static const struct option long_options[] = {
 		{ "objects", 1, NULL, 'o' },  { "interface", 1, NULL, 'i' },
 		{ "loopback", 1, NULL, 'l' }, { "speed", 1, NULL, 's' },
 		{ "mode", 1, NULL, 'm' },     { "count", 1, NULL, 'k' },
 		{ "mtu", 1, NULL, 'u' },      { "ncsi", 1, NULL, 'n' },
-		{ "checksum", 1, NULL, 'c' }, { "delay", 1, NULL, 'd' },
-		{ "help", 0, NULL, 'h' },
+		{ "checksum", 1, NULL, 'c' }, { "vlan", 1, NULL, 'v' },
+		{ "delay", 1, NULL, 'd' },    { "help", 0, NULL, 'h' },
 	};
 #endif
 
@@ -418,6 +424,14 @@ int netdiag_parse_parameter_from_argv(int argc, char *const argv[], struct param
 			else if (strncmp(optarg, "all", strlen("all")) == 0)
 				parm->checksum = NETDIAG_CKS_ALL;
 			break;
+		case 'v':
+			if (strncmp(optarg, "tx", strlen("tx")) == 0)
+				parm->vlan = NETDIAG_VLAN_TX;
+			else if (strncmp(optarg, "rx", strlen("rx")) == 0)
+				parm->vlan = NETDIAG_VLAN_RX;
+			else if (strncmp(optarg, "all", strlen("all")) == 0)
+				parm->vlan = NETDIAG_VLAN_ALL;
+			break;
 		case 'd':
 			data_ptrs[0] = strtok(optarg, ",");
 			data_ptrs[1] = strtok(NULL, ",");
@@ -531,6 +545,9 @@ int netdiag_func(int argc, char *const argv[])
 	} else if (parm->checksum != NETDIAG_CKS_NONE) {
 		test_obj.mode = CHECKSUM_MODE;
 		test_obj.checksum.mode = parm->checksum;
+	} else if (parm->vlan != NETDIAG_CKS_NONE) {
+		test_obj.mode = VLAN_MODE;
+		test_obj.vlan.mode = parm->vlan;
 	} else {
 		test_obj.mode = MAC_MODE;
 	}
@@ -539,10 +556,11 @@ int netdiag_func(int argc, char *const argv[])
 	       "speed: %d, control: %d\n"
 	       "interface: %d, mode: %d, count: %d\n"
 	       "mtu-size: %d, checksum: %d, margin: %d\n"
-	       "tx-delay: %d, rx-delay: %d, packets: %d\n",
+	       "tx-delay: %d, rx-delay: %d, packets: %d\n"
+	       "vlan: %d\n",
 	       parm->mac_index, parm->mdio_index, parm->speed, parm->control, parm->interface,
 	       parm->mode, parm->loop, parm->mtu_size, parm->checksum, parm->margin, parm->tx_delay,
-	       parm->rx_delay, parm->packets);
+	       parm->rx_delay, parm->packets, parm->vlan);
 
 	/* configure phy */
 	phy->speed = parm->speed;
@@ -630,6 +648,9 @@ int netdiag_func(int argc, char *const argv[])
 		break;
 	case CHECKSUM_MODE:
 		has_error = checksum_offload_test(&test_obj);
+		break;
+	case VLAN_MODE:
+		has_error = vlan_offload_test(&test_obj);
 		break;
 	case NONE_MODE:
 	default:

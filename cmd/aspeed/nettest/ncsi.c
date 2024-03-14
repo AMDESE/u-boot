@@ -225,7 +225,7 @@ static int ncsi_send_command(struct test_s *test_obj, unsigned int np, unsigned 
 
 	/* Set DESC 0 as the last desc */
 	mac_obj->txdes[0].txdes0 = BIT(30);
-	aspeed_mac_txpkt_add(mac_obj, test_obj->tx_pkt_buf[0], final_len);
+	aspeed_mac_txpkt_add(mac_obj, test_obj->tx_pkt_buf[0], final_len, test_obj);
 
 	DSB;
 	aspeed_mac_xmit(mac_obj);

@@ -33,6 +33,7 @@
 #define ETH_SIZE_FCS		4
 #define ETH_SIZE_VLAN		4
 #define ETH_SIZE_HEADER		(ETH_SIZE_DA + ETH_SIZE_SA + ETH_SIZE_TYPE_LENG)
+#define ETH_VLAN_SIZE_HEADER	(ETH_SIZE_DA + ETH_SIZE_SA + ETH_SIZE_VLAN + ETH_SIZE_TYPE_LENG)
 
 #define ETH_OFFSET_DA		0
 #define ETH_OFFSET_SA		(ETH_OFFSET_DA + ETH_SIZE_DA)
@@ -53,6 +54,7 @@
 #define MAX_DELAY_TAPS_RMII_TX		1
 #define MAX_DELAY_TAPS_RMII_RX		63
 
+#define TXDESC1_INS_VLAN	BIT(16)
 #define RXDESC1_IPCS_FAIL	BIT(27)
 #define RXDESC1_UDPCS_FAIL	BIT(26)
 #define RXDESC1_TCPCS_FAIL	BIT(25)
@@ -112,6 +114,8 @@ enum mac_error_code {
 	FAIL_NCSI,
 	FAIL_NCSI_MULTI_SCAN,
 	FAIL_PARAMETER_INVALID,
+	FAIL_ERR_VLAN_PROTOCOL,
+	FAIL_ERR_VLAN_TCI,
 };
 
 enum test_mode {
@@ -119,6 +123,7 @@ enum test_mode {
 	MAC_MODE,
 	NCSI_MODE,
 	CHECKSUM_MODE,
+	VLAN_MODE,
 };
 
 #define DECLARE_DEV_CLK(_name, _reg_en, _reg_dis, _bits)                       \
@@ -232,6 +237,7 @@ struct parameter_s {
 	u32 loop;
 	u32 mtu_size;
 	u32 checksum;
+	u32 vlan;
 	u32 packets;
 	u32 ncsi_mode;
 	u32 ncsi_package;
@@ -255,6 +261,7 @@ struct mac_s {
 	u8 is_rgmii;		/* 0: RMII, 1: RGMII */
 	u8 is_sgmii;
 	u32 txdes1;		/* For chk & VLAN test */
+	bool rx_vlan_remove;
 };
 
 struct test_s {
@@ -296,10 +303,29 @@ struct test_s {
 	struct {
 		u32 mode;
 	} checksum;
+
+	struct {
+		u32 mode;
+		u16 tci[PKT_PER_TEST];
+	} vlan;
 	bool fail_stop;
 };
 
 struct eth_hdr {
+	__u8 da[ETH_SIZE_DA];
+	__u8 sa[ETH_SIZE_SA];
+	__be16 ethtype;
+} __packed;
+
+struct vlan_ethhdr {
+	__u8 da[ETH_SIZE_DA];
+	__u8 sa[ETH_SIZE_SA];
+	__be16 vlan_proto;
+	__be16 vlan_TCI;
+	__be16 vlan_encapsulated_proto;
+};
+
+struct vlan_hdr {
 	__u8 da[ETH_SIZE_DA];
 	__u8 sa[ETH_SIZE_SA];
 	__be16 ethtype;
@@ -389,7 +415,7 @@ int aspeed_mac_set_loopback(struct mac_s *obj, u8 enable);
 int aspeed_mac_set_sgmii_loopback(struct mac_s *obj, u8 enable);
 int aspeed_mac_init(struct mac_s *obj);
 int aspeed_mac_deinit(struct mac_s *obj);
-int aspeed_mac_txpkt_add(struct mac_s *obj, void *packet, int length);
+int aspeed_mac_txpkt_add(struct mac_s *obj, void *packet, int length, struct test_s *test_obj);
 int aspeed_mac_xmit(struct mac_s *obj);
 int aspeed_mac_recv(struct mac_s *obj, void **packet, u32 *rxlen);
 int aspeed_mac_init_rx_desc(struct mac_s *obj);
