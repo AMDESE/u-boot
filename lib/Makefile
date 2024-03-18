@@ -97,6 +97,13 @@ obj-$(CONFIG_SPL_YMODEM_SUPPORT) += crc16-ccitt.o
 obj-$(CONFIG_$(SPL_TPL_)HASH) += crc16-ccitt.o
 obj-$(CONFIG_MMC_SPI_CRC_ON) += crc16-ccitt.o
 obj-y += net_utils.o
+
+ifndef API_BUILD
+ifneq ($(CONFIG_CHARSET),)
+obj-y += charset.o
+endif
+endif
+
 endif
 obj-$(CONFIG_ADDR_MAP) += addr_map.o
 obj-y += qsort.o
