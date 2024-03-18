@@ -12,6 +12,7 @@
 #include <asm/arch-aspeed/scu_ast2700.h>
 #include <asm/arch-aspeed/spi.h>
 #include <asm/arch-aspeed/mmc_ast2700.h>
+#include <asm/arch-aspeed/ufs_ast2700.h>
 #include <linux/bitfield.h>
 #include <linux/bitops.h>
 #include <linux/delay.h>
@@ -35,7 +36,7 @@ struct stor_info {
 struct stor_info stor_dev[] = {
 	{"SPI", spi_init,	spi_load_image},
 	{"MMC", emmc_init,	emmc_load_image},
-	{"UFS", NULL,		NULL},
+	{"UFS", ufs_init,	ufs_load_image},
 };
 
 int stor_init(void)

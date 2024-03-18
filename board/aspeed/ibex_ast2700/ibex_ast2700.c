@@ -61,8 +61,12 @@ u32 spl_boot_device(void)
 {
 	if (is_recovery())
 		return BOOT_DEVICE_UART;
-	else if ((readl((void *)ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_EMMC))
+	else if ((readl((void *)ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_EMMC)) {
+		if (readl((void *)ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_UFS)
+			return BOOT_DEVICE_SATA;
+
 		return BOOT_DEVICE_MMC1;
+	}
 	else
 		return BOOT_DEVICE_RAM;
 }
@@ -182,4 +186,11 @@ unsigned long timer_read_counter(void)
 	th = csr_read(CSR_MCYCLEH);
 
 	return (((uint64_t)th) << 32 | tl);
+}
+
+int spl_parse_board_header(struct spl_image_info *spl_image,
+			   const struct spl_boot_device *bootdev,
+			   const void *image_header, size_t size)
+{
+	return 0;
 }
