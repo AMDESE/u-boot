@@ -31,8 +31,6 @@ int ufs_init(void)
 			printf("Get SCSI failed.\n");
 			return ret;
 		}
-
-		scsi_scan(0);
 	}
 
 	return ret;
