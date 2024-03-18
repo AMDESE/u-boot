@@ -30,8 +30,13 @@ static int aspeed_ufs_link_startup_notify(struct ufs_hba *hba,
 					  enum ufs_notify_change_status status)
 {
 	struct ufs_pa_layer_attr pwr_info;
-	u32 max_gear = UFS_HS_G3;
+	u32 max_gear;
 	int ret;
+
+	if (IS_ENABLED(CONFIG_ASPEED_FPGA))
+		max_gear = UFS_HS_G1;
+	else
+		max_gear = UFS_HS_G3;
 
 	hba->quirks |= UFSHCD_QUIRK_BROKEN_LCC;
 	switch (status) {
@@ -86,7 +91,10 @@ static int aspeed_ufs_set_hclkdiv(struct ufs_hba *hba)
 		return core_clk_rate;
 	}
 
-	core_clk_div = core_clk_rate / USEC_PER_SEC;
+	if (IS_ENABLED(CONFIG_ASPEED_FPGA))
+		core_clk_div = 24;
+	else
+		core_clk_div = core_clk_rate / USEC_PER_SEC;
 
 	ufshcd_writel(hba, core_clk_div, ASPEED_UFS_REG_HCLKDIV);
 
