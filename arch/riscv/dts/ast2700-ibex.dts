@@ -30,9 +30,18 @@
 
 &emmc_controller {
 	status = "okay";
+	timing-phase = <0xf0097>;
 };
 
 &emmc {
+	status = "okay";
+};
+
+&ufs {
+	status = "okay";
+};
+
+&ufshc {
 	status = "okay";
 };
 

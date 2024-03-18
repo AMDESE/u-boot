@@ -36,6 +36,14 @@
 			};
 		};
 
+		ufs: ufs-wrapper@12c08000 {
+			bootph-all;
+
+			ufshc: ufshc@12c08200 {
+				bootph-all;
+			};
+		};
+
 		uart4: serial@12c1a000 {
 			bootph-all;
 		};
