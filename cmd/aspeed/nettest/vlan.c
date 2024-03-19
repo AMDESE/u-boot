@@ -11,11 +11,10 @@ int __memcmp(const void *s1, const void *s2, size_t n)
 {
 	const u8 *pos1 = s1;
 	const u8 *pos2 = s2;
-	size_t size = n;
 
 	for (; n; --n) {
 		if (*pos1 != *pos2) {
-			printf("Failed at %ld\n", size - n);
+			printf("\nFailed at %ld\n", n);
 			return *pos1 - *pos2;
 		}
 		++pos1;
@@ -122,7 +121,7 @@ int vlan_run_test(struct test_s *test_obj, int packet_size)
 
 	aspeed_mac_init_tx_desc(mac_obj);
 	aspeed_mac_init_rx_desc(mac_obj);
-	generate_vlan_pakcet(test_obj, packet_size, test_obj->vlan.mode == NETDIAG_VLAN_RX);
+	generate_vlan_pakcet(test_obj, packet_size);
 	vlan_mac_txpkt_add(test_obj, packet_size);
 
 	DSB;
@@ -204,6 +203,7 @@ int vlan_tx_test(struct test_s *test_obj)
 
 	tx_vlan_enable(test_obj, true);
 	rx_vlan_enable(test_obj, false);
+	test_obj->vlan.append_vlan = false;
 
 	ret = vlan_run_tests(test_obj, min_packet_size, max_packet_size);
 	if (ret)
@@ -225,6 +225,7 @@ int vlan_rx_test(struct test_s *test_obj)
 
 	tx_vlan_enable(test_obj, false);
 	rx_vlan_enable(test_obj, true);
+	test_obj->vlan.append_vlan = true;
 
 	ret = vlan_run_tests(test_obj, min_packet_size, max_packet_size);
 	if (ret)
@@ -244,7 +245,10 @@ int vlan_offload_test(struct test_s *test_obj)
 
 	if (test_obj->vlan.mode == NETDIAG_VLAN_ALL) {
 		first_mode = NETDIAG_VLAN_TX;
-		last_mode = NETDIAG_VLAN_RX;
+		last_mode = NETDIAG_VLAN_RX_QINQ;
+	} else if (test_obj->vlan.mode == NETDIAG_VLAN_RX_ALL) {
+		first_mode = NETDIAG_VLAN_RX;
+		last_mode = NETDIAG_VLAN_RX_QINQ;
 	} else {
 		first_mode = test_obj->vlan.mode;
 		last_mode = test_obj->vlan.mode;

@@ -6,6 +6,7 @@
 #include "internal.h"
 #include "pktgen.h"
 #include "checksum.h"
+#include "vlan.h"
 
 u8 pkt_bufs[PKT_PER_TEST * 2][ROUNDUP_DMA_SIZE(MAX_PACKET_SIZE)] DMA_ALIGNED;
 u8 broadcast_address[ETH_SIZE_DA] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
@@ -98,16 +99,15 @@ u32 _ethernet_header(u8 *packet, u8 *da, u8 *sa, u16 ethtype)
 	return ETH_SIZE_HEADER;
 }
 
-u32 _ethernet_vlan_header(u8 *packet, u8 *da, u8 *sa, u16 tci)
+u32 _ethernet_vlan_header(u8 *packet, u8 *da, u8 *sa, u16 tci, u16 ethtype)
 {
 	struct vlan_ethhdr *hdr = (struct vlan_ethhdr *)packet;
-	u16 eth_type = ETHTYPE_VLAN;//get_ticks() & 0xFFFF;
 
 	MEMCPY(hdr->da, da, ETH_SIZE_DA);
 	MEMCPY(hdr->sa, sa, ETH_SIZE_SA);
 	hdr->vlan_proto = htons(ETHTYPE_VLAN);
 	hdr->vlan_TCI = htons(tci);
-	hdr->vlan_encapsulated_proto = htons(eth_type);
+	hdr->vlan_encapsulated_proto = htons(ethtype);
 
 	return ETH_VLAN_SIZE_HEADER;
 }
@@ -212,23 +212,35 @@ void _payload(u8 *packet, u32 payload_size, u8 mode)
 	}
 }
 
-void generate_vlan_pakcet(struct test_s *test_obj, u32 packet_size, bool include_vlan)
+void generate_vlan_pakcet(struct test_s *test_obj, u32 packet_size)
 {
 	struct mac_s *mac_obj = test_obj->mac_obj;
 	u32 i;
+	u16 ethertype;
+
+	if (test_obj->vlan.mode == NETDIAG_VLAN_RX_QINQ) {
+		ethertype = ETHTYPE_VLAN;
+	} else {
+		ethertype = get_ticks() & 0xFFFF;
+		if (ethertype == ETHTYPE_VLAN)
+			ethertype++;
+	}
 
 	for (i = 0; i < mac_obj->n_txdes; i++) {
 		u8 *packet = test_obj->tx_pkt_buf[i];
 		u32 payload_size;
 
 		test_obj->vlan.tci[i] = get_ticks() & 0xFFFF;
+		if (test_obj->vlan.tci[i] == ETHTYPE_VLAN)
+			test_obj->vlan.tci[i]++;
 
-		if (include_vlan)
-			packet += _ethernet_vlan_header(packet, broadcast_address,
-							mac_obj->mac_addr, test_obj->vlan.tci[i]);
+		if (test_obj->vlan.append_vlan)
+			packet +=
+				_ethernet_vlan_header(packet, broadcast_address, mac_obj->mac_addr,
+						      test_obj->vlan.tci[i], ethertype);
 		else
 			packet += _ethernet_header(packet, broadcast_address, mac_obj->mac_addr,
-						   get_ticks() & 0xFFFF);
+						   ethertype);
 		payload_size = packet_size - (packet - test_obj->tx_pkt_buf[i]);
 		_payload(packet, payload_size, i);
 	}

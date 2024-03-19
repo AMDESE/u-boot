@@ -9,7 +9,7 @@
 #define PAYLOAD_00		4
 
 void generate_ip_pakcet(struct test_s *test_obj, u32 packet_size, bool need_cks);
-void generate_vlan_pakcet(struct test_s *test_obj, u32 packet_size, bool include_vlan);
+void generate_vlan_pakcet(struct test_s *test_obj, u32 packet_size);
 void generate_tcp_ipv4_pakcet(struct test_s *test_obj, u32 packet_size, bool need_cks);
 void generate_tcp_ipv6_pakcet(struct test_s *test_obj, u32 packet_size, bool need_cks);
 void generate_udp_ipv4_pakcet(struct test_s *test_obj, u32 packet_size, bool need_cks);

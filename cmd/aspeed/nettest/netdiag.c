@@ -266,6 +266,8 @@ static const char help_string[] = "\nnetdiag: network diagnostic tool.\n"
 "    -v <type>       | type: VLAN test type (optional)\n"
 "                    |   tx      = TX VLAN\n"
 "                    |   rx      = RX VLAN\n"
+"                    |   rx-qinq = RX VLAN QinQ (0x8100 in 0x8100)\n"
+"                    |   rx-all  = RX ALL\n"
 "                    |   all     = TX/RX VLAN\n"
 "    -d <tx>,<rx>    | tx: RGMII/RMII TX Delay\n"
 "                    |   0 - 63  = (RGMII) tx step delay\n"
@@ -427,8 +429,12 @@ int netdiag_parse_parameter_from_argv(int argc, char *const argv[], struct param
 		case 'v':
 			if (strncmp(optarg, "tx", strlen("tx")) == 0)
 				parm->vlan = NETDIAG_VLAN_TX;
+			else if (strncmp(optarg, "rx-qinq", strlen("rx-qinq")) == 0)
+				parm->vlan = NETDIAG_VLAN_RX_QINQ;
 			else if (strncmp(optarg, "rx", strlen("rx")) == 0)
 				parm->vlan = NETDIAG_VLAN_RX;
+			else if (strncmp(optarg, "rx-all", strlen("rx-all")) == 0)
+				parm->vlan = NETDIAG_VLAN_RX_ALL;
 			else if (strncmp(optarg, "all", strlen("all")) == 0)
 				parm->vlan = NETDIAG_VLAN_ALL;
 			break;

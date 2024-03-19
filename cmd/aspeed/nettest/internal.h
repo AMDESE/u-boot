@@ -41,6 +41,7 @@
 #define ETHTYPE_IPV4		0x0800
 #define ETHTYPE_IPV6		0x86DD
 #define ETHTYPE_VLAN		0x8100
+#define ETHTYPE_QINQ		0x88a8
 #define ETHTYPE_NCSI		0x88f8
 
 #define IP_IPV4_VERSION		4
@@ -307,6 +308,7 @@ struct test_s {
 	struct {
 		u32 mode;
 		u16 tci[PKT_PER_TEST];
+		bool append_vlan;
 	} vlan;
 	bool fail_stop;
 };
