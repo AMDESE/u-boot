@@ -98,6 +98,9 @@ enum otp_status {
 #define OTP_USER_REGION_SIZE		(USER_REGION_END_ADDR - USER_REGION_START_ADDR)
 #define OTP_SEC_REGION_SIZE		(SEC_REGION_END_ADDR - SEC_REGION_START_ADDR)
 
+#define OTP_DEVICE_NAME_0		"otp@14c07000"
+#define OTP_DEVICE_NAME_1		"otp@30c07000"
+
 struct otpstrap_status {
 	int value;
 	int option_value[6];
@@ -975,16 +978,31 @@ static struct cmd_tbl cmd_otp[] = {
 	U_BOOT_CMD_MKENT(info, 3, 0, do_otpinfo, "", ""),
 };
 
-static void do_driver_init(void)
+static int do_driver_init(int argc, char *const argv[])
 {
+	int index;
 	int ret;
+	char *name;
 
-	ret = uclass_get_device_by_driver(UCLASS_MISC,
-					  DM_DRIVER_GET(aspeed_otp), &otp_dev);
-	if (ret) {
-		printf("%s: get Aspeed otp driver failed\n", __func__);
-		return;
+	index = simple_strtoul(argv[1], NULL, 10);
+
+	switch (index) {
+	case 0:
+		name = OTP_DEVICE_NAME_0;
+		break;
+	case 1:
+		name = OTP_DEVICE_NAME_1;
+		break;
+	default:
+		printf("Unknown OTP device index %d\n", index);
+		return CMD_RET_USAGE;
 	}
+
+	ret = uclass_get_device_by_name(UCLASS_MISC, name, &otp_dev);
+	if (ret)
+		printf("%s: get Aspeed otp driver failed\n", __func__);
+
+	return ret;
 }
 
 static int do_ast_otp(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
@@ -992,6 +1010,14 @@ static int do_ast_otp(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 	struct cmd_tbl *cp;
 	u32 ver;
 	int ret;
+
+	ret = do_driver_init(argc, argv);
+	if (ret)
+		return ret;
+
+	/* Drop the otp command */
+	argc--;
+	argv++;
 
 	cp = find_cmd_tbl(argv[1], cmd_otp, ARRAY_SIZE(cmd_otp));
 
@@ -1003,8 +1029,6 @@ static int do_ast_otp(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 		return CMD_RET_USAGE;
 	if (flag == CMD_FLAG_REPEAT && !cmd_is_repeatable(cp))
 		return CMD_RET_SUCCESS;
-
-	do_driver_init();
 
 	ver = chip_version();
 	switch (ver) {
@@ -1028,13 +1052,13 @@ static int do_ast_otp(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 
 U_BOOT_CMD(otp, 7, 0,  do_ast_otp,
 	   "ASPEED One-Time-Programmable sub-system",
-	   "version\n"
-	   "otp read rom|conf|strap|f-strap|f-strap-vld|u-data|s-data|puf <otp_w_offset> <w_count>\n"
-	   "otp pb conf|data [o] <otp_w_offset> <bit_offset> <value>\n"
-	   "otp pb strap|f-strap|f-strap-vld [o] <bit_offset> <value>\n"
-	   "otp pb f-strap-vld all\n"
-	   "otp info strap|f-strap\n"
-	   "otp patch prog <dram_addr> <otp_w_offset> <w_count>\n"
-	   "otp patch enable pre|post <otp_start_w_offset> <w_count>\n"
-	   "otp ecc status|enable\n"
+	   "<dev> version\n"
+	   "otp <dev> read rom|conf|strap|f-strap|f-strap-vld|u-data|s-data|puf <otp_w_offset> <w_count>\n"
+	   "otp <dev> pb conf|data [o] <otp_w_offset> <bit_offset> <value>\n"
+	   "otp <dev> pb strap|f-strap|f-strap-vld [o] <bit_offset> <value>\n"
+	   "otp <dev> pb f-strap-vld all\n"
+	   "otp <dev> info strap|f-strap\n"
+	   "otp <dev> patch prog <dram_addr> <otp_w_offset> <w_count>\n"
+	   "otp <dev> patch enable pre|post <otp_start_w_offset> <w_count>\n"
+	   "otp <dev> ecc status|enable\n"
 	  );

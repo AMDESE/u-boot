@@ -512,6 +512,7 @@ static const struct misc_ops aspeed_otp_ops = {
 
 static const struct udevice_id aspeed_otp_ids[] = {
 	{ .compatible = "aspeed,ast2700-otp" },
+	{ .compatible = "aspeed,ast1700-otp" },
 	{ }
 };
 
