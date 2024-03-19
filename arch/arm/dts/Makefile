@@ -691,6 +691,7 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
 	ast2600-greatlakes.dtb \
 	ast2600-intel.dtb \
 	ast2600-ncsi.dtb \
+	ast2600-ampere.dtb \
 	ast2600-p10bmc.dtb \
 	ast2600-pfr.dtb \
 	ast2600-qcom-dc-scm-v1.dtb \
