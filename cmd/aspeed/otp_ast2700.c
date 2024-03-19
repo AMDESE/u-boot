@@ -47,9 +47,12 @@ enum otp_status {
 #define OTP_VER				"1.0.0"
 
 #define OTP_AST2700_A0			0
+#define OTP_AST2700_A1			1
 
 #define ID0_AST2700A0			0x06000003
 #define ID1_AST2700A0			0x06000003
+#define ID0_AST2700A1			0x06010003
+#define ID1_AST2700A1			0x06010003
 
 /* OTP memory address from 0x0~0x2000. (unit: Single Word 16-bits) */
 /* ----  0x0  -----
@@ -125,6 +128,9 @@ static u32 chip_version(void)
 	if (revid0 == ID0_AST2700A0 && revid1 == ID1_AST2700A0) {
 		/* AST2700-A0 */
 		return OTP_AST2700_A0;
+	} else if (revid0 == ID0_AST2700A1 && revid1 == ID1_AST2700A1) {
+		/* AST2700-A1 */
+		return OTP_AST2700_A1;
 	}
 
 	return OTP_FAILURE;
@@ -1003,6 +1009,7 @@ static int do_ast_otp(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 	ver = chip_version();
 	switch (ver) {
 	case OTP_AST2700_A0:
+	case OTP_AST2700_A1:
 		info_cb.version = OTP_AST2700_A0;
 		info_cb.strap_info = a0_strap_info;
 		info_cb.strap_info_len = ARRAY_SIZE(a0_strap_info);
