@@ -24,6 +24,10 @@
 #define SCU_REVISION_ID_EFUSE	GENMASK(15, 8)
 #define EFUSE_AST2700		(0x1)
 #define EFUSE_AST2720		(0x2)
+#define AST2700_PCI_ID		(0x27001a03)
+#define UEFI_ID_OFFSET		(0x20)
+#define UEFI_NEXT_OFFSET	(0x30)
+#define UEFI_NEXT_VALUE	(0x3)
 
 struct aspeed_vbios_priv {
 	struct regmap *scu_ctl_base;
@@ -40,7 +44,9 @@ static int aspeed_vbios_probe(struct udevice *dev)
 	bool is_pcie0_enable, is_pcie1_enable;
 	u32 vbios_e2m_value;
 	u64 vbios_mem_base;
-	u32 vbios_mem_length;
+	u32 vbios_mem_base_add = 0;
+	u32 vbios_x64_size;
+	u32 vbios_arm_size;
 	struct fdt_resource res;
 
 	/* Get chip version */
@@ -62,6 +68,12 @@ static int aspeed_vbios_probe(struct udevice *dev)
 		return -1;
 	}
 
+	/* get x64 and arm bios length */
+	vbios_x64_size = sizeof(uefi2000);
+	dev_dbg(dev, "len0: 0x%08x\n", vbios_x64_size);
+	vbios_arm_size = sizeof(uefi2000_arm);
+	dev_dbg(dev, "len1: 0x%08x\n", vbios_arm_size);
+
 	/* load vbios for pcie 0 node */
 	if (is_pcie0_enable) {
 		/* obtain the vbios0 reserved memory */
@@ -73,13 +85,39 @@ static int aspeed_vbios_probe(struct udevice *dev)
 			return PTR_ERR(vbios->vbios0_base);
 		}
 
+		dev_dbg(dev, "vbios0\n");
+
 		/* Get the controller base address */
 		vbios_mem_base = (uintptr_t)(vbios->vbios0_base);
-		vbios_mem_length = sizeof(uefi);
 
 		/* Initial memory region and copy vbios into it */
 		memset((u32 *)vbios->vbios0_base, 0x0, 0x10000);
-		memcpy((u32 *)vbios->vbios0_base, uefi, vbios_mem_length);
+
+		dev_dbg(dev, "base0: 0x%p\n", vbios->vbios0_base);
+		memcpy((u32 *)vbios->vbios0_base, uefi2000, vbios_x64_size);
+		*(u32 *)(vbios->vbios0_base + vbios_mem_base_add + UEFI_NEXT_OFFSET) = UEFI_NEXT_VALUE;
+		dev_dbg(dev, "next0: 0x%x\n", *(u32 *)(vbios->vbios0_base + vbios_mem_base_add + UEFI_NEXT_OFFSET));
+		vbios_mem_base_add += vbios_x64_size;
+
+		dev_dbg(dev, "base1: 0x%p\n", (vbios->vbios0_base + vbios_mem_base_add));
+		memcpy((u32 *)(vbios->vbios0_base + vbios_mem_base_add), uefi2000, vbios_x64_size);
+		*(u32 *)(vbios->vbios0_base + vbios_mem_base_add + UEFI_ID_OFFSET) = AST2700_PCI_ID;
+		dev_dbg(dev, "id1_c: 0x%x\n", *(u32 *)(vbios->vbios0_base + vbios_mem_base_add + UEFI_ID_OFFSET));
+		*(u32 *)(vbios->vbios0_base + vbios_mem_base_add + UEFI_NEXT_OFFSET) = UEFI_NEXT_VALUE;
+		dev_dbg(dev, "next1: 0x%x\n", *(u32 *)(vbios->vbios0_base + vbios_mem_base_add + UEFI_NEXT_OFFSET));
+		vbios_mem_base_add += vbios_x64_size;
+
+		dev_dbg(dev, "base2: 0x%p\n", (vbios->vbios0_base + vbios_mem_base_add));
+		memcpy((u32 *)(vbios->vbios0_base + vbios_mem_base_add), uefi2000_arm, vbios_arm_size);
+		*(u32 *)(vbios->vbios0_base + vbios_mem_base_add + UEFI_NEXT_OFFSET) = UEFI_NEXT_VALUE;
+		dev_dbg(dev, "next2_c: 0x%x\n", *(u32 *)(vbios->vbios0_base + vbios_mem_base_add + UEFI_NEXT_OFFSET));
+		vbios_mem_base_add += vbios_arm_size;
+
+		dev_dbg(dev, "base3: 0x%p\n", (vbios->vbios0_base + vbios_mem_base_add));
+		memcpy((u32 *)(vbios->vbios0_base + vbios_mem_base_add), uefi2000_arm, vbios_arm_size);
+		*(u32 *)(vbios->vbios0_base + vbios_mem_base_add + UEFI_ID_OFFSET) = AST2700_PCI_ID;
+		dev_dbg(dev, "id3_c: 0x%x\n", *(u32 *)(vbios->vbios0_base + vbios_mem_base_add + UEFI_ID_OFFSET));
+
 		invalidate_dcache_range(vbios_mem_base, vbios_mem_base
 		+ 0x10000);
 
@@ -110,12 +148,41 @@ static int aspeed_vbios_probe(struct udevice *dev)
 			return PTR_ERR(vbios->vbios1_base);
 		}
 
+		dev_dbg(dev, "vbios1\n");
+		vbios_mem_base_add = 0;
+
 		/* Get the controller base address */
 		vbios_mem_base = (uintptr_t)(vbios->vbios1_base);
-		vbios_mem_length = sizeof(uefi);
 
+		/* Initial memory region and copy vbios into it */
 		memset((u32 *)vbios->vbios1_base, 0x0, 0x10000);
-		memcpy((u32 *)vbios->vbios1_base, uefi, vbios_mem_length);
+
+		/* Initial memory region and copy vbios into it */
+		dev_dbg(dev, "base0: 0x%p\n", vbios->vbios1_base);
+		memcpy((u32 *)vbios->vbios1_base, uefi2000, vbios_x64_size);
+		*(u32 *)(vbios->vbios1_base + vbios_mem_base_add + UEFI_NEXT_OFFSET) = UEFI_NEXT_VALUE;
+		dev_dbg(dev, "next0_c: 0x%x\n", *(u32 *)(vbios->vbios1_base + vbios_mem_base_add + UEFI_NEXT_OFFSET));
+		vbios_mem_base_add += vbios_x64_size;
+
+		dev_dbg(dev, "base1: 0x%p\n", (vbios->vbios1_base + vbios_mem_base_add));
+		memcpy((u32 *)(vbios->vbios1_base + vbios_mem_base_add), uefi2000, vbios_x64_size);
+		*(u32 *)(vbios->vbios1_base + vbios_mem_base_add + UEFI_ID_OFFSET) = AST2700_PCI_ID;
+		dev_dbg(dev, "id1_c: 0x%x\n", *(u32 *)(vbios->vbios1_base + vbios_mem_base_add + UEFI_ID_OFFSET));
+		*(u32 *)(vbios->vbios1_base + vbios_mem_base_add + UEFI_NEXT_OFFSET) = UEFI_NEXT_VALUE;
+		dev_dbg(dev, "next1: 0x%x\n", *(u32 *)(vbios->vbios1_base + vbios_mem_base_add + UEFI_NEXT_OFFSET));
+		vbios_mem_base_add += vbios_x64_size;
+
+		dev_dbg(dev, "base2: 0x%p\n", (vbios->vbios1_base + vbios_mem_base_add));
+		memcpy((u32 *)(vbios->vbios1_base + vbios_mem_base_add), uefi2000_arm, vbios_arm_size);
+		*(u32 *)(vbios->vbios1_base + vbios_mem_base_add + UEFI_NEXT_OFFSET) = UEFI_NEXT_VALUE;
+		dev_dbg(dev, "next2_c: 0x%x\n", *(u32 *)(vbios->vbios1_base + vbios_mem_base_add + UEFI_NEXT_OFFSET));
+		vbios_mem_base_add += vbios_arm_size;
+
+		dev_dbg(dev, "base3: 0x%p\n", (vbios->vbios1_base + vbios_mem_base_add));
+		memcpy((u32 *)(vbios->vbios1_base + vbios_mem_base_add), uefi2000_arm, vbios_arm_size);
+		*(u32 *)(vbios->vbios1_base + vbios_mem_base_add + UEFI_ID_OFFSET) = AST2700_PCI_ID;
+		dev_dbg(dev, "id3_c: 0x%x\n", *(u32 *)(vbios->vbios1_base + vbios_mem_base_add + UEFI_ID_OFFSET));
+
 		invalidate_dcache_range(vbios_mem_base, vbios_mem_base
 		+ 0x10000);
 
