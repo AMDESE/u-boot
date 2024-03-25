@@ -675,32 +675,32 @@ dtb-$(CONFIG_ARCH_BCM6858) += \
 	bcm968580xref.dtb
 
 dtb-$(CONFIG_ARCH_ASPEED) += \
-	ast2400-evb.dtb \
 	ast2400-ahe-50dc.dtb \
+	ast2400-evb.dtb \
 	ast2400-palmetto.dtb \
 	ast2500-evb.dtb \
 	ast2500-genesis3.dtb \
 	ast2500-romulus.dtb \
-	ast2600a0-evb.dtb \
-	ast2600a1-evb.dtb \
+	ast2600-ampere.dtb \
 	ast2600-bletchley.dtb \
-	ast2600-evb.dtb \
-	ast2600-evb-ecc.dtb \
 	ast2600-dcscm.dtb \
+	ast2600-evb-ecc.dtb \
+	ast2600-evb.dtb \
 	ast2600-fpga.dtb \
 	ast2600-greatlakes.dtb \
 	ast2600-intel.dtb \
+	ast2600-intel.dtb \
 	ast2600-ncsi.dtb \
-	ast2600-ampere.dtb \
 	ast2600-p10bmc.dtb \
 	ast2600-pfr.dtb \
 	ast2600-qcom-dc-scm-v1.dtb \
 	ast2600-s6q.dtb \
 	ast2600-slt.dtb \
 	ast2600-tacoma.dtb \
-	ast2600-intel.dtb \
 	ast2600-tacoma.dtb \
-	ast2600-x4tf.dtb
+	ast2600-x4tf.dtb \
+	ast2600a0-evb.dtb \
+	ast2600a1-evb.dtb
 
 dtb-$(CONFIG_ARCH_STI) += stih410-b2260.dtb
 
