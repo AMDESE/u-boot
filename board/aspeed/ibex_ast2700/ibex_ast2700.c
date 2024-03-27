@@ -11,9 +11,8 @@
 #include <common.h>
 #include <asm/csr.h>
 #include <asm/arch-aspeed/platform.h>
-#include <asm/arch-aspeed/dp_ast2700.h>
-#include <asm/arch-aspeed/e2m_ast2700.h>
 #include <asm/arch-aspeed/recovery.h>
+#include <asm/arch-aspeed/pci_ast2700.h>
 #include <asm/arch-aspeed/scu_ast2700.h>
 #include <asm/arch-aspeed/sli_ast2700.h>
 #include <asm/arch-aspeed/ltpi_ast2700.h>
@@ -81,7 +80,7 @@ struct init_callback board_init_seq[] = {
 	{"LTPI",	ltpi_init},
 	{"STOR",	stor_init},
 	{"DRAM",	dram_init},
-	{"VGA",		pci_vga_init},
+	{"PCI",		pci_init},
 };
 
 int spl_board_init_f(void)

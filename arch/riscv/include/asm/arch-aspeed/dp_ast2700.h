@@ -34,6 +34,4 @@
 #define  DP_HANDSHAKE_HOST_READ_EDID	BIT(28)
 #define  DP_HANDSHAKE_VIDEO_FMT_SRC	BIT(24)
 
-int pci_vga_init(void);
-
 #endif

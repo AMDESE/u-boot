@@ -13,6 +13,7 @@
 #include <asm/arch-aspeed/platform.h>
 #include <asm/arch-aspeed/dp_ast2700.h>
 #include <asm/arch-aspeed/e2m_ast2700.h>
+#include <asm/arch-aspeed/pci_ast2700.h>
 #include <asm/arch-aspeed/sdram_ast2700.h>
 #include <asm/arch-aspeed/scu_ast2700.h>
 #include <asm/arch-aspeed/vga_ast2700.h>
@@ -117,48 +118,23 @@ static int dp_init(struct ast2700_soc0_scu *scu)
 	val = readl(scu_offset);
 	val &= ~(0x7 << 9);
 	val |= 0x7 << 9;
-	writel(val, scu_offset);
+	writel(val, &scu->vga0_scratch1[0]);
+	writel(val, &scu->vga1_scratch1[0]);
 
 	return 0;
 }
 
-int pci_vga_init(void)
+static int pci_vga_init(struct ast2700_soc0_scu *scu)
 {
-	struct ast2700_soc0_scu *scu;
 	struct sdramc_regs *ram = (struct sdramc_regs *)DRAMC_BASE;
 	u32 val, vram_size, vram_addr;
 	u8 vram_size_cfg;
 	bool is_pcie0_enable;
 	bool is_pcie1_enable;
 	bool is_64vram;
-	int nodeoffset;
-	ofnode node;
 	u8 dac_src;
 	u8 dp_src;
 	u8 efuse;
-
-	/* find the offset of compatible node */
-	nodeoffset = fdt_node_offset_by_compatible(gd->fdt_blob, -1,
-						   "aspeed,ast2700-scu0");
-	if (nodeoffset < 0) {
-		printf("%s: failed to get aspeed,ast2700-scu0\n", __func__);
-		return -ENODEV;
-	}
-
-	/* get ast2700-scu0 node */
-	node = offset_to_ofnode(nodeoffset);
-
-	scu = (struct ast2700_soc0_scu *)ofnode_get_addr(node);
-	if (IS_ERR_OR_NULL(scu)) {
-		printf("%s: cannot get SYSCON address pointer\n", __func__);
-		return PTR_ERR(scu);
-	}
-
-	// leave works to u-boot
-	if (FIELD_GET(SCU_CPU_REVISION_ID_HW, scu->chip_id1) == 0) {
-		debug("%s: Do nothing in A0\n", __func__);
-		return 0;
-	}
 
 	is_pcie0_enable = scu->pci0_misc[28] & BIT(0);
 	is_pcie1_enable = scu->pci1_misc[28] & BIT(0);
@@ -270,6 +246,57 @@ int pci_vga_init(void)
 
 		dp_init(scu);
 	}
+
+	return 0;
+}
+
+int pci_init(void)
+{
+	int nodeoffset;
+	ofnode node;
+	struct ast2700_soc0_scu *scu;
+	u8 efuse;
+
+	/* find the offset of compatible node */
+	nodeoffset = fdt_node_offset_by_compatible(gd->fdt_blob, -1,
+						   "aspeed,ast2700-scu0");
+	if (nodeoffset < 0) {
+		printf("%s: failed to get aspeed,ast2700-scu0\n", __func__);
+		return -ENODEV;
+	}
+
+	/* get ast2700-scu0 node */
+	node = offset_to_ofnode(nodeoffset);
+
+	scu = (struct ast2700_soc0_scu *)ofnode_get_addr(node);
+	if (IS_ERR_OR_NULL(scu)) {
+		printf("%s: cannot get SYSCON address pointer\n", __func__);
+		return PTR_ERR(scu);
+	}
+
+	// leave works to u-boot
+	if (FIELD_GET(SCU_CPU_REVISION_ID_HW, scu->chip_id1) == 0) {
+		debug("%s: Do nothing in A0\n", __func__);
+		return 0;
+	}
+
+	efuse = FIELD_GET(SCU_CPU_REVISION_ID_EFUSE, scu->chip_id1);
+	if (efuse == 2) {
+		debug("%s: 2720 has no PCIE\n", __func__);
+		return 0;
+	}
+
+	if (efuse == 0) {
+		// setup preset for plda2
+		writel(0x12600000, (void *)ASPEED_PLDA2_PRESET0);
+		writel(0x00012600, (void *)ASPEED_PLDA2_PRESET1);
+	}
+
+	// setup preset for plda1
+	writel(0x12600000, (void *)ASPEED_PLDA1_PRESET0);
+	writel(0x00012600, (void *)ASPEED_PLDA1_PRESET1);
+
+	pci_vga_init(scu);
 
 	return 0;
 }
