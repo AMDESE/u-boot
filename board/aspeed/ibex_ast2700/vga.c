@@ -290,11 +290,21 @@ int pci_init(void)
 		// setup preset for plda2
 		writel(0x12600000, (void *)ASPEED_PLDA2_PRESET0);
 		writel(0x00012600, (void *)ASPEED_PLDA2_PRESET1);
+
+		// clk/reset for e2m
+		setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_E2M1);
+		mdelay(10);
+		setbits_le32(&scu->modrst2_clr, SCU_CPU_RST2_E2M1);
 	}
 
 	// setup preset for plda1
 	writel(0x12600000, (void *)ASPEED_PLDA1_PRESET0);
 	writel(0x00012600, (void *)ASPEED_PLDA1_PRESET1);
+
+	// clk/reset for e2m
+	setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_E2M0);
+	mdelay(10);
+	setbits_le32(&scu->modrst2_clr, SCU_CPU_RST2_E2M0);
 
 	pci_vga_init(scu);
 
