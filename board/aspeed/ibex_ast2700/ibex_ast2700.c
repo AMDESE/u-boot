@@ -18,6 +18,7 @@
 #include <asm/arch-aspeed/ltpi_ast2700.h>
 #include <asm/arch-aspeed/sdram_ast2700.h>
 #include <asm/arch-aspeed/stor_ast2700.h>
+#include <asm/arch-aspeed/wdt.h>
 #include <linux/bitfield.h>
 #include <linux/bitops.h>
 #include <linux/delay.h>
@@ -77,6 +78,7 @@ struct init_callback {
 
 struct init_callback board_init_seq[] = {
 	{"SLI",		sli_init},
+	{"WDT",		wdt_init},
 	{"LTPI",	ltpi_init},
 	{"STOR",	stor_init},
 	{"DRAM",	dram_init},

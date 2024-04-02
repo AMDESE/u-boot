@@ -51,6 +51,7 @@
 #define   ASPEED_IO_MISC_SIO_LTPI_EN	BIT(3)
 #define ASPEED_LTPI0_BASE		0x14c34000
 #define ASPEED_LTPI1_BASE		0x14c35000
+#define ASPEED_WDT_BASE			0x14c37000
 #else
 #err "Unrecognized Aspeed platform."
 #endif
