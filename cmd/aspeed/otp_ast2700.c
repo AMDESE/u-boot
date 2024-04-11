@@ -288,6 +288,11 @@ static int otp_read_secure(u32 offset, u16 *data)
 	return otp_read(offset + SEC_REGION_START_ADDR, data);
 }
 
+static int otp_read_secure_multi(u32 offset, u16 *data, int num)
+{
+	return misc_read(otp_dev, offset + SEC_REGION_START_ADDR, data, num);
+}
+
 static int otp_read_caliptra(u32 offset, u16 *data)
 {
 	return otp_read(offset + CAL_REGION_START_ADDR, data);
@@ -963,12 +968,14 @@ static int _otp_print_key(u32 header, u32 offset, u8 *data)
 	const struct otpkey_type *key_info_array = info_cb.key_info;
 	struct otpkey_type key_info = { .value = -1 };
 	int key_id, key_w_offset, key_offset, key_type;
+	int last;
 	int i;
 
 	key_id = OTP_KH_KEY_ID(header);
 	key_w_offset = OTP_KH_OFFSET(header);
 	key_offset = key_w_offset * 2;
 	key_type = OTP_KH_KEY_TYPE(header);
+	last = OTP_KH_LAST(header);
 
 	printf("\nKey[%d]:\n", offset);
 	printf("Header: %x\n", header);
@@ -989,6 +996,8 @@ static int _otp_print_key(u32 header, u32 offset, u8 *data)
 	printf("%s\n", key_info.information);
 	printf("Key Number ID: %d\n", key_id);
 	printf("Key Word Offset: 0x%x\n", key_w_offset);
+	if (last)
+		printf("This is the last key\n");
 
 	if (!data)
 		return -1;
@@ -1021,7 +1030,6 @@ static int _otp_print_key(u32 header, u32 offset, u8 *data)
 static void otp_print_key(u32 *data)
 {
 	u8 *byte_buf;
-	int last;
 	int empty;
 	int ret;
 
@@ -1039,16 +1047,18 @@ static void otp_print_key(u32 *data)
 	}
 
 	for (int i = 0; i < OTP_KH_NUM; i++) {
-		last = OTP_KH_LAST(data[i]);
 		ret = _otp_print_key(data[i], i, byte_buf);
-		if (last) {
-			printf("This is the last key\n");
-			break;
-		}
-
 		if (ret)
 			break;
 	}
+}
+
+static void otp_print_key_info(void)
+{
+	u16 buf[OTP_SEC_REGION_SIZE];
+
+	otp_read_secure_multi(0, buf, OTP_SEC_REGION_SIZE);
+	otp_print_key((u32 *)buf);
 }
 
 static int otp_print_secure_image(struct otp_image_layout *image_layout)
@@ -1667,7 +1677,7 @@ static int do_otpinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 	else if (!strcmp(argv[1], "strap-ext"))
 		otp_print_strap_ext_info();
 	else if (!strcmp(argv[1], "key"))
-		printf("TODO\n");
+		otp_print_key_info();
 	else
 		return CMD_RET_USAGE;
 
