@@ -70,6 +70,8 @@ struct aspeed_spi_regs {
 	u32 dma_len;                    /* 0x8c DMA Length Register */
 	u32 dma_checksum;               /* 0x90 Checksum Calculation Result */
 	u32 timings[ASPEED_SPI_MAX_CS]; /* 0x94 Read Timing Compensation */
+	u32 _reserved3[83];             /* 0xA8 - 0x1F0 */
+	u32 val_kept_wdt;               /* 0x1F4 Value Kept WDT */
 };
 
 struct aspeed_spi_plat {
@@ -461,6 +463,10 @@ static void ast2700_spi_chip_set_4byte(struct udevice *bus, u32 cs)
 	reg_val = readl(&priv->regs->ctrl);
 	reg_val |= 0x11 << cs;
 	writel(reg_val, &priv->regs->ctrl);
+
+	reg_val = readl(&priv->regs->val_kept_wdt);
+	reg_val |= (0x11 << 4) << cs;
+	writel(reg_val, &priv->regs->val_kept_wdt);
 }
 
 static int ast2600_adjust_decoded_size(struct udevice *bus)
