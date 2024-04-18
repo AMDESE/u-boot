@@ -15,20 +15,21 @@
 #include <linux/bitops.h>
 #include <linux/err.h>
 
-static u32 _ast_get_e2m_addr(struct sdramc_regs *ram, u32 addr)
+static u32 _ast_get_e2m_addr(struct sdramc_regs *ram, u8 node)
 {
 	u32 val;
 
-	val = ram->mcfg >> 2 & 0x07;
+	// get GM's base address
+	val = (ram->reserved3[0] >> (node * 16)) & 0xffff;
 
 	debug("%s: DRAMC val(%x)\n", __func__, val);
-	return (((1 << val) - 1) << 24) | (addr >> 4);
+	return (val << 20);
 }
 
 static int pci_vga_init(struct ast2700_soc0_scu *scu)
 {
 	struct sdramc_regs *ram = (struct sdramc_regs *)DRAMC_BASE;
-	u32 val, vram_size, vram_addr;
+	u32 val, vram_size;
 	u8 vram_size_cfg;
 	bool is_pcie0_enable = scu->pci0_misc[28] & BIT(0);
 	bool is_pcie1_enable = scu->pci1_misc[28] & BIT(0);
@@ -36,6 +37,11 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu)
 	u8 dac_src = scu->hwstrap1 & BIT(28);
 	u8 dp_src = scu->hwstrap1 & BIT(29);
 	u8 efuse = FIELD_GET(SCU_CPU_REVISION_ID_EFUSE, scu->chip_id1);
+
+	if (FIELD_GET(SCU_CPU_REVISION_ID_HW, scu->chip_id1) != 0) {
+		debug("%s: only works in A0\n", __func__);
+		return 0;
+	}
 
 	/* Decide feature by efuse
 	 *  0: 2750 has full function
@@ -60,8 +66,6 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu)
 	else
 		setbits_le32(&scu->hwstrap1_clr, BIT(10));
 
-	vram_addr = 0x10000000;
-
 	vram_size_cfg = is_64vram ? 0xf : 0xe;
 	vram_size = 2 << (vram_size_cfg + 10);
 	debug("%s: VRAM size(%x) cfg(%x)\n", __func__, vram_size, vram_size_cfg);
@@ -70,9 +74,8 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu)
 		// enable clk
 		setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_VGA0);
 
-		vram_addr -= vram_size;
-		debug("pcie0 e2m addr(%x)\n", _ast_get_e2m_addr(ram, vram_addr));
-		val = _ast_get_e2m_addr(ram, vram_addr)
+		debug("pcie0 e2m addr(%x)\n", _ast_get_e2m_addr(ram, 0));
+		val = _ast_get_e2m_addr(ram, 0)
 		    | FIELD_PREP(SCU_CPU_PCI_MISC0C_FB_SIZE, vram_size_cfg)
 		    | (ASPEED_DRAM_BASE >> 4);
 		debug("pcie0 debug reg(%x)\n", val);
@@ -91,9 +94,8 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu)
 		// enable clk
 		setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_VGA1);
 
-		vram_addr -= vram_size;
-		debug("pcie1 e2m addr(%x)\n", _ast_get_e2m_addr(ram, vram_addr));
-		val = _ast_get_e2m_addr(ram, vram_addr)
+		debug("pcie1 e2m addr(%x)\n", _ast_get_e2m_addr(ram, 1));
+		val = _ast_get_e2m_addr(ram, 1)
 		    | FIELD_PREP(SCU_CPU_PCI_MISC0C_FB_SIZE, vram_size_cfg)
 		    | (ASPEED_DRAM_BASE >> 4);
 		debug("pcie1 debug reg(%x)\n", val);
