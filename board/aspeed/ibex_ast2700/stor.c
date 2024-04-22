@@ -41,7 +41,7 @@ struct stor_info stor_dev[] = {
 
 int stor_init(void)
 {
-	int ret;
+	int ret, i;
 
 	if ((readl((void *)ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_EMMC)) {
 		if (readl((void *)ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_UFS)
@@ -52,9 +52,14 @@ int stor_init(void)
 		boot_dev = BOOT_DEV_SPI;
 	}
 
-	ret = stor_dev[boot_dev].init_cb();
-	if (ret)
-		printf("%s init failed\n", stor_dev[boot_dev].name);
+	for (i = 0; i < ARRAY_SIZE(stor_dev); i++) {
+		if (stor_dev[i].init_cb) {
+			ret = stor_dev[i].init_cb();
+
+			if (ret)
+				printf("%s init failed\n", stor_dev[i].name);
+		}
+	}
 
 	return 0;
 }
