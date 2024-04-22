@@ -16,12 +16,20 @@
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/delay.h>
+#include <linux/iopoll.h>
+
+#define SLI_POLL_TIMEOUT_US	100
+
+static void sli_clear_interrupt_status(uint32_t base)
+{
+	writel(-1, (void *)base + SLI_INTR_STATUS);
+}
 
 static int sli_wait(uint32_t base, uint32_t mask)
 {
 	uint32_t value;
 
-	writel(0xffffffff, (void *)base + SLI_INTR_STATUS);
+	sli_clear_interrupt_status(base);
 
 	do {
 		value = readl((void *)base + SLI_INTR_STATUS);
@@ -49,6 +57,14 @@ static int is_sli_suspend(uint32_t base)
 		return 1;
 	else
 		return 0;
+}
+
+static int sli_wait_clear_done(uint32_t base, uint32_t mask)
+{
+	uint32_t value;
+
+	return readl_poll_timeout((void *)base + SLI_CTRL_I, value, (value & mask) == 0,
+				  SLI_POLL_TIMEOUT_US);
 }
 
 static void sli_calibrate_ahb_delay(int config)
@@ -86,11 +102,10 @@ static void sli_calibrate_ahb_delay(int config)
 			writel(latch_sel | SLI_TRANS_EN | SLI_CLEAR_RX |
 				       SLI_CLEAR_BUS,
 			       (void *)SLIH_IOD_BASE + SLI_CTRL_I);
-			udelay(100);
+			sli_wait_clear_done(SLIH_IOD_BASE, SLI_CLEAR_RX | SLI_CLEAR_BUS);
 
-			/* check interrupt status */
-			writel(0xffffffff,
-			       (void *)SLIH_IOD_BASE + SLI_INTR_STATUS);
+			/* Check result */
+			sli_clear_interrupt_status(SLIH_IOD_BASE);
 			udelay(10);
 			if (is_sli_suspend(SLIH_IOD_BASE) > 0) {
 				if (win_s[d0] == -1)
@@ -166,15 +181,15 @@ static int sli_calibrate_mbus_pad_delay(int config, int index, int begin,
 		/* Reset CPU TX */
 		writel(SLI_TRANS_EN | SLI_CLEAR_TX | SLI_CLEAR_BUS,
 		       (void *)SLIM_CPU_BASE + SLI_CTRL_I);
-		udelay(1);
+		sli_wait_clear_done(SLIM_CPU_BASE, SLI_CLEAR_TX | SLI_CLEAR_BUS);
 
 		/* Reset IOD RX */
 		writel(latch_sel | SLI_TRANS_EN | SLI_CLEAR_RX | SLI_CLEAR_BUS,
 		       (void *)SLIM_IOD_BASE + SLI_CTRL_I);
-		udelay(1);
+		sli_wait_clear_done(SLIM_IOD_BASE, SLI_CLEAR_RX | SLI_CLEAR_BUS);
 
-		/* Check interrupt status */
-		writel(0xffffffff, (void *)SLIM_IOD_BASE + SLI_INTR_STATUS);
+		/* Check result */
+		sli_clear_interrupt_status(SLIM_IOD_BASE);
 		udelay(10);
 		if (is_sli_suspend(SLIM_IOD_BASE) > 0) {
 			if (win[0] == -1)
@@ -223,15 +238,15 @@ static void sli_calibrate_mbus_delay(int config)
 		/* Reset CPU TX */
 		writel(SLI_TRANS_EN | SLI_CLEAR_TX | SLI_CLEAR_BUS,
 		       (void *)SLIM_CPU_BASE + SLI_CTRL_I);
-		udelay(1);
+		sli_wait_clear_done(SLIM_CPU_BASE, SLI_CLEAR_TX | SLI_CLEAR_BUS);
 
 		/* Reset IOD RX */
 		writel(latch_sel | SLI_TRANS_EN | SLI_CLEAR_RX | SLI_CLEAR_BUS,
 		       (void *)SLIM_IOD_BASE + SLI_CTRL_I);
-		udelay(1);
+		sli_wait_clear_done(SLIM_IOD_BASE, SLI_CLEAR_RX | SLI_CLEAR_BUS);
 
-		/* Check interrupt status */
-		writel(0xffffffff, (void *)SLIM_IOD_BASE + SLI_INTR_STATUS);
+		/* Check result */
+		sli_clear_interrupt_status(SLIM_IOD_BASE);
 		udelay(10);
 		if (is_sli_suspend(SLIM_IOD_BASE) > 0) {
 			if (win[0] == -1)
@@ -301,7 +316,7 @@ static void sli_calibrate_mbus_delay(int config)
 	/* Reset CPU SLIM TX */
 	writel(SLI_TRANS_EN | SLI_CLEAR_TX | SLI_CLEAR_BUS,
 	       (void *)SLIM_CPU_BASE + SLI_CTRL_I);
-	udelay(1);
+	sli_wait_clear_done(SLIM_CPU_BASE, SLI_CLEAR_TX | SLI_CLEAR_BUS);
 
 	/* Reset IOD SLIM Bus (to reset the counters) and RX */
 	writel(latch_sel | SLI_CLEAR_BUS | SLI_TRANS_EN | SLI_CLEAR_RX,
