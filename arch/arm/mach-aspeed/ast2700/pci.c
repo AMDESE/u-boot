@@ -21,9 +21,11 @@ static u32 _ast_get_e2m_addr(struct sdramc_regs *ram, u8 node)
 
 	// get GM's base address
 	val = (ram->reserved3[0] >> (node * 16)) & 0xffff;
+	// e2m memory accessing address[36:24] will be replaced as
+	// map_addr[31:20]
+	val = (val << 20) | (ASPEED_DRAM_BASE >> 4);
 
-	debug("%s: DRAMC val(%x)\n", __func__, val);
-	return (val << 20);
+	return val;
 }
 
 static int pci_vga_init(struct ast2700_soc0_scu *scu)
@@ -37,11 +39,6 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu)
 	u8 dac_src = scu->hwstrap1 & BIT(28);
 	u8 dp_src = scu->hwstrap1 & BIT(29);
 	u8 efuse = FIELD_GET(SCU_CPU_REVISION_ID_EFUSE, scu->chip_id1);
-
-	if (FIELD_GET(SCU_CPU_REVISION_ID_HW, scu->chip_id1) != 0) {
-		debug("%s: only works in A0\n", __func__);
-		return 0;
-	}
 
 	/* Decide feature by efuse
 	 *  0: 2750 has full function
@@ -76,8 +73,7 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu)
 
 		debug("pcie0 e2m addr(%x)\n", _ast_get_e2m_addr(ram, 0));
 		val = _ast_get_e2m_addr(ram, 0)
-		    | FIELD_PREP(SCU_CPU_PCI_MISC0C_FB_SIZE, vram_size_cfg)
-		    | (ASPEED_DRAM_BASE >> 4);
+		    | FIELD_PREP(SCU_CPU_PCI_MISC0C_FB_SIZE, vram_size_cfg);
 		debug("pcie0 debug reg(%x)\n", val);
 		writel(val, (void *)E2M0_VGA_RAM);
 		writel(val, &scu->pci0_misc[3]);
@@ -96,8 +92,7 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu)
 
 		debug("pcie1 e2m addr(%x)\n", _ast_get_e2m_addr(ram, 1));
 		val = _ast_get_e2m_addr(ram, 1)
-		    | FIELD_PREP(SCU_CPU_PCI_MISC0C_FB_SIZE, vram_size_cfg)
-		    | (ASPEED_DRAM_BASE >> 4);
+		    | FIELD_PREP(SCU_CPU_PCI_MISC0C_FB_SIZE, vram_size_cfg);
 		debug("pcie1 debug reg(%x)\n", val);
 		writel(val, (void *)E2M1_VGA_RAM);
 		writel(val, &scu->pci1_misc[3]);
