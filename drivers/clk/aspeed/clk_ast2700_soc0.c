@@ -80,26 +80,40 @@ static uint32_t ast2700_soc0_get_axi0clk_rate(struct ast2700_soc0_scu *scu)
 	return ast2700_soc0_get_pspclk_rate(scu) / 2;
 }
 
+#define SCU_HW_REVISION_ID		GENMASK(23, 16)
 #define SCU_AHB_DIV_MASK		GENMASK(6, 5)
 #define SCU_AHB_DIV_SHIFT		5
+static uint32_t hclk_ast2700a1_div_table[] = {
+	6, 5, 4, 7,
+};
+
 static uint32_t ast2700_soc0_get_hclk_rate(struct ast2700_soc0_scu *scu)
 {
 	u32 hwstrap1 = readl(&scu->hwstrap1);
 	u32 src_clk;
 	int div;
 
-	if (hwstrap1 & BIT(7))
-		src_clk = ast2700_soc0_get_pll_rate(scu, AST2700_SOC0_CLK_HPLL) / 2;
-	else
-		src_clk = ast2700_soc0_get_pll_rate(scu, AST2700_SOC0_CLK_MPLL) / 2;
+	if (scu->chip_id1 & SCU_HW_REVISION_ID) {
+		if (hwstrap1 & BIT(7))
+			src_clk = ast2700_soc0_get_pll_rate(scu, AST2700_SOC0_CLK_HPLL);
+		else
+			src_clk = ast2700_soc0_get_pll_rate(scu, AST2700_SOC0_CLK_MPLL);
 
-	div = (hwstrap1 & SCU_AHB_DIV_MASK) >> SCU_AHB_DIV_SHIFT;
+		div = (hwstrap1 & SCU_AHB_DIV_MASK) >> SCU_AHB_DIV_SHIFT;
+		div = hclk_ast2700a1_div_table[div];
+	} else {
+		if (hwstrap1 & BIT(7))
+			src_clk = ast2700_soc0_get_pll_rate(scu, AST2700_SOC0_CLK_HPLL) / 2;
+		else
+			src_clk = ast2700_soc0_get_pll_rate(scu, AST2700_SOC0_CLK_MPLL) / 2;
 
-	if (!div)
-		div = 2;
-	else
-		div++;
+		div = (hwstrap1 & SCU_AHB_DIV_MASK) >> SCU_AHB_DIV_SHIFT;
 
+		if (!div)
+			div = 2;
+		else
+			div++;
+	}
 	return (src_clk / div);
 }
 
