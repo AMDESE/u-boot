@@ -25,6 +25,9 @@ int ufs_init(void)
 	int ret = 0;
 	struct udevice *dev;
 
+	if (spl_boot_device() != BOOT_DEVICE_SATA)
+		return 0;
+
 	if (IS_ENABLED(CONFIG_DM_SCSI)) {
 		ret = uclass_get_device(UCLASS_SCSI, 0, &dev);
 		if (ret) {
