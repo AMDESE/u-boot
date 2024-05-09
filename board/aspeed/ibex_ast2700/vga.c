@@ -77,6 +77,12 @@ static int dp_init(struct ast2700_soc0_scu *scu)
 		udelay(1);
 	}
 
+	val = readl((void *)DP_VERSION);
+	if (val == 0) {
+		printf("%s: Can't access DP, version(%x)\n", __func__, val);
+		return -1;
+	}
+
 	/* select HOST or BMC as display control master
 	 * enable or disable sending EDID to Host
 	 */
