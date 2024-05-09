@@ -175,6 +175,12 @@ static int aspeed_dp_probe(struct udevice *dev)
 		reset_deassert(&dpmcu_reset_ctrl);
 	}
 
+	val = readl(dp->ctrl_base + 0x1C);
+	if (val == 0) {
+		dev_err(dev, "%s(): Failed to access dp. version(%x)\n", __func__, val);
+		return -EIO;
+	}
+
 	/* select HOST or BMC as display control master
 	 * enable or disable sending EDID to Host
 	 */
