@@ -84,6 +84,9 @@ struct ltpi_priv {
 
 	int bus_topology;	/* for master mode only.  0: unknown 1:normal mode, 2:cdr mode */
 	int cdr_mask;
+#define RX_CLK_INVERSE		BIT(1)
+#define TX_CLK_INVERSE		BIT(0)
+	int clk_inverse;
 
 	int dbg_link_partner;
 	int dbg_speed;
@@ -213,11 +216,18 @@ static int ltpi_phy_set_pll(struct ltpi_priv *ltpi, int freq, int set)
 	}
 
 	reg = readl((void *)ltpi->top_base + LTPI_PLL_CTRL);
-	reg &= ~(REG_LTPI_PLL_SELECT | REG_LTPI_PLL_SET);
+	reg &= ~(REG_LTPI_PLL_SELECT | REG_LTPI_PLL_SET |
+		 REG_LTPI_RX_PHY_CLK_INV | REG_LTPI_TX_PHY_CLK_INV);
 	reg |= FIELD_PREP(REG_LTPI_PLL_SELECT, freq);
 
 	if (set)
 		reg |= REG_LTPI_PLL_SET;
+
+	if (ltpi->clk_inverse & TX_CLK_INVERSE)
+		reg |= REG_LTPI_TX_PHY_CLK_INV;
+
+	if (ltpi->clk_inverse & RX_CLK_INVERSE)
+		reg |= REG_LTPI_RX_PHY_CLK_INV;
 
 	writel(reg, ltpi->top_base + LTPI_PLL_CTRL);
 
@@ -1276,9 +1286,10 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 	uint32_t pin_strap, otp_strap;
 
 	ltpi_data.cdr_mask = 0x3;
+	ltpi_data.clk_inverse = 0x0;
 
 	getopt_init_state(&gs);
-	while ((opt = getopt(&gs, argc, argv, "l:m:c:h")) > 0) {
+	while ((opt = getopt(&gs, argc, argv, "l:m:c:i:h")) > 0) {
 		switch (opt) {
 		case 'l':
 			speed = simple_strtoul(gs.arg, &endp, 0);
@@ -1288,6 +1299,13 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 			break;
 		case 'c':
 			ltpi_data.cdr_mask = simple_strtoul(gs.arg, &endp, 0);
+			break;
+		case 'i':
+			ltpi_data.clk_inverse = simple_strtoul(gs.arg, &endp, 0);
+			if (ltpi_data.clk_inverse & TX_CLK_INVERSE)
+				printf("TX clock inverse\n");
+			if (ltpi_data.clk_inverse & RX_CLK_INVERSE)
+				printf("RX clock inverse\n");
 			break;
 		case 'h':
 			fallthrough;
@@ -1347,6 +1365,7 @@ static char ltpi_help_text[] = {
 	"-m 3: AST1700 mode, CDR, 2nd AST1700\n"
 	"-l <speed limit>, 0=1G, 1=800M, 2=400M, 3=250M, 4=200M, 5=100M, 6=50M, 7=25M\n"
 	"-c <cdr mask>, 0x1=ltpi0, 0x2=ltpi1, 0x3=ltpi0+ltpi1\n"
+	"-i <clk inverse>, 0x0=no inverse, 0x1=inverse tx, 0x2=inverse rx, 0x3=inverse both\n"
 };
 
 U_BOOT_CMD(ltpi, 5, 0, do_ltpi, "ASPEED LTPI commands", ltpi_help_text);

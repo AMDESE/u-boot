@@ -15,6 +15,8 @@
 #define     LTPI_PHY_MODE_SDR			0b0001
 #define     LTPI_PHY_MODE_OFF			0b0000
 #define LTPI_PLL_CTRL				0x004
+#define   REG_LTPI_RX_PHY_CLK_INV		BIT(9)
+#define   REG_LTPI_TX_PHY_CLK_INV		BIT(8)
 #define   REG_LTPI_PLL_SET			BIT(4)
 #define   REG_LTPI_PLL_SELECT			GENMASK(2, 0)
 #define     REG_LTPI_PLL_25M			0
