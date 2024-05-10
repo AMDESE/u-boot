@@ -377,7 +377,9 @@ static int ltpi_master_set_sdr_mode(struct ltpi_priv *ltpi)
 	ltpi_reset(ltpi);
 	ltpi_master_set_local_speed_cap(ltpi, 0, ltpi->phy_speed_cap);
 	ltpi_phy_set_pll(ltpi, REG_LTPI_PLL_25M, 0);
-	udelay(1600);
+
+	/* To ensure the remote side is timed out */
+	udelay(ADVERTISE_TIMEOUT_US);
 	ltpi_phy_set_mode(ltpi, LTPI_PHY_MODE_SDR);
 
 	return ltpi_poll_link_manage_state(ltpi, 0, LTPI_LINK_MANAGE_ST_SPEED,
@@ -395,7 +397,9 @@ static int ltpi_master_set_cdr_mode(struct ltpi_priv *ltpi)
 	writel(0x0, ltpi->base[1] + LTPI_AD_CAP_HIGH_LOCAL);
 
 	ltpi_phy_set_pll(ltpi, REG_LTPI_PLL_100M, 0);
-	udelay(1600);
+
+	/* To ensure the remote side is timed out */
+	udelay(ADVERTISE_TIMEOUT_US);
 	ltpi_phy_set_mode(ltpi, LTPI_PHY_MODE_CDR_LO_SP);
 
 	return ltpi_poll_link_manage_state(ltpi, 1, LTPI_LINK_MANAGE_ST_SPEED,
@@ -438,11 +442,22 @@ static void ltpi_master_normal_mode_training(struct ltpi_priv *ltpi)
 		if (ret == 0)
 			break;
 
-		/* clear the bit to specify the current speed doesn't work */
-		ltpi->phy_speed_cap &= ~BIT(target_speed);
-		ltpi_master_set_sdr_mode(ltpi);
 		bootstage_start_mark(BOOTSTAGE_LTPI_WAIT_OP);
 		bootstage_end_status(ret | BOOTSTAGE_LTPI_MODE_SDR);
+
+		/* clear the bit to specify the current speed doesn't work */
+		ltpi->phy_speed_cap &= ~BIT(target_speed);
+
+		/* the lowest speed 25M should always be supported */
+		if (ltpi->phy_speed_cap == 0)
+			ltpi->phy_speed_cap |= BIT(0);
+
+		/* Restart the link speed detection */
+		ret = ltpi_master_set_sdr_mode(ltpi);
+		if (ret) {
+			printf("Timeout for the link-speed detection\n");
+			return;
+		}
 	} while (1);
 
 	ltpi->dbg_link_partner = ltpi_master_get_link_partner(ltpi, 0);
@@ -524,12 +539,21 @@ static void ltpi_master_cdr_mode_training(struct ltpi_priv *ltpi)
 		if (ret == LTPI_OK)
 			break;
 
-		/* clear the bit to specify the current speed doesn't work */
-		ltpi->phy_speed_cap &= ~BIT(target_speed);
-retrain_cdr:
-		ltpi_master_set_cdr_mode(ltpi);
 		bootstage_start_mark(BOOTSTAGE_LTPI_WAIT_OP);
 		bootstage_end_status(ret | BOOTSTAGE_LTPI_MODE_CDR);
+
+		/* clear the bit to specify the current speed doesn't work */
+		ltpi->phy_speed_cap &= ~BIT(target_speed);
+
+		/* the lowest speed 25M should always be supported */
+		if (ltpi->phy_speed_cap == 0)
+			ltpi->phy_speed_cap |= BIT(0);
+retrain_cdr:
+		ret = ltpi_master_set_cdr_mode(ltpi);
+		if (ret) {
+			printf("Timeout for the link-speed detection\n");
+			return;
+		}
 	} while (1);
 
 	if (ltpi->cdr_mask & 0x1)
@@ -1346,6 +1370,12 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 	if (pin_strap & SCU_I_SCM_MODE) {
 		struct ltpi_priv *ltpi = &ltpi_data;
 		uint32_t reg;
+
+		reg = ltpi_get_link_manage_state(ltpi, 0);
+		if (reg != LTPI_LINK_MANAGE_ST_OP) {
+			printf("LTPI not in the operational state\n");
+			return CMD_RET_SUCCESS;
+		}
 
 		reg = readl((void *)ltpi->base[0] + LTPI_LINK_MANAGE_ST);
 		if (reg & REG_LTPI_LINK_PARTNER_FLAG)
