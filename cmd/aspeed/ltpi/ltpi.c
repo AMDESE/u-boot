@@ -595,6 +595,9 @@ static void ltpi_init_master_mode(struct ltpi_priv *ltpi)
 			break;
 		}
 
+		if (ltpi->cdr_mask == 0)
+			continue;
+
 		ret = ltpi_master_set_cdr_mode(ltpi);
 		if (ret == LTPI_OK) {
 			ltpi->bus_topology = 2;
@@ -1364,7 +1367,7 @@ static char ltpi_help_text[] = {
 	"-m 2: AST1700 mode, CDR, 1st AST1700\n"
 	"-m 3: AST1700 mode, CDR, 2nd AST1700\n"
 	"-l <speed limit>, 0=1G, 1=800M, 2=400M, 3=250M, 4=200M, 5=100M, 6=50M, 7=25M\n"
-	"-c <cdr mask>, 0x1=ltpi0, 0x2=ltpi1, 0x3=ltpi0+ltpi1\n"
+	"-c <cdr mask>, 0x0=disable CDR, 0x1=ltpi0, 0x2=ltpi1, 0x3=ltpi0+ltpi1\n"
 	"-i <clk inverse>, 0x0=no inverse, 0x1=inverse tx, 0x2=inverse rx, 0x3=inverse both\n"
 };
 
