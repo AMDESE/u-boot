@@ -33,6 +33,7 @@
 #define SCU_CPU_RST_SOC				BIT(5)
 #define SCU_CPU_RST_DDRPHY			BIT(1)
 
+#define SCU_CPU_RST2_VGA			BIT(12)
 #define SCU_CPU_RST2_E2M1			BIT(11)
 #define SCU_CPU_RST2_E2M0			BIT(10)
 

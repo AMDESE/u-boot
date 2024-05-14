@@ -221,6 +221,8 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu)
 
 		// enable dac clk
 		setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_DAC);
+		// release vga reset
+		setbits_le32(&scu->modrst2_clr, SCU_CPU_RST2_VGA);
 
 		val = scu->vga_func_ctrl;
 		val &= ~(SCU_CPU_VGA_FUNC_DAC_OUTPUT
