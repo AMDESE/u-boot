@@ -160,6 +160,7 @@ size_t aspeed_memmove_dma_op(void *dest, const void *src, size_t count)
 	u64 dma_src = (u64)src;
 	u32 remaining = (u32)count;
 	u32 dma_len = (u32)count;
+	u32 dma_addr_hi;
 
 	if (dma_dest == dma_src)
 		return 0;
@@ -176,8 +177,11 @@ size_t aspeed_memmove_dma_op(void *dest, const void *src, size_t count)
 			else
 				dma_len = remaining;
 
+			dma_addr_hi = 0;
 			if (dma_dest >= ASPEED_DRAM_BASE)
-				writel(0x4, (void *)DRAM_HI_ADDR);
+				dma_addr_hi = (u32)((dma_dest) >> 32) & 0xff;
+
+			writel(dma_addr_hi, (void *)DRAM_HI_ADDR);
 
 			writel((u32)(dma_dest - ASPEED_DRAM_BASE),
 			       (void *)DMA_RAM_ADDR);
