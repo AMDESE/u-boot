@@ -18,8 +18,9 @@
 #define UFS_MPHY_RST_REG		0x0
 #define UFS_MPHY_RST_N			BIT(0)
 #define UFS_MPHY_RST_N_PCS		BIT(4)
-#define UFS_AXI_PATH			BIT(8)
+#define UFS_AXI_PATH			BIT(0)
 
+#define UFS_PATH			0xe4
 #define UFS_MPHY_VCONTROL		0x98
 #define UFS_MPHY_CALI_IN_1		0x90
 #define UFS_MPHY_CALI_IN_0		0x8c
@@ -196,13 +197,11 @@ static int aspeed_ufs_probe(struct udevice *dev)
 
 	writel(reg, base + UFS_MPHY_RST_REG);
 	udelay(1);
-	writel(reg | UFS_MPHY_RST_N, base + UFS_MPHY_RST_REG);
+	writel(reg | UFS_MPHY_RST_N | UFS_MPHY_RST_N_PCS, base + UFS_MPHY_RST_REG);
 	udelay(1);
 
-	if (IS_ENABLED(CONFIG_ASPEED_AST2700))
-		reg |= UFS_AXI_PATH;
-
-	writel(reg | UFS_MPHY_RST_N | UFS_MPHY_RST_N_PCS, base + UFS_MPHY_RST_REG);
+	if (IS_ENABLED(CONFIG_RISCV))
+		writel(0, base + UFS_PATH);
 
 	return 0;
 }
