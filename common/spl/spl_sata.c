@@ -16,6 +16,7 @@
 #include <errno.h>
 #include <fat.h>
 #include <image.h>
+#include <asm/arch-aspeed/abr.h>
 
 static int sata_load_legacy(struct spl_image_info *spl_image,
 			    struct spl_boot_device *bootdev,
@@ -65,6 +66,11 @@ static int spl_sata_load_image_raw(struct spl_image_info *spl_image,
 	struct legacy_img_hdr *header;
 	unsigned long count;
 	int ret;
+
+	if (abr_enabled())
+		stor_dev->lun = (1 << abr_get_indicator());
+	else
+		stor_dev->lun = 1;
 
 	header = spl_get_load_buffer(-sizeof(*header), stor_dev->blksz);
 	count = blk_dread(stor_dev, sector, 1, header);
