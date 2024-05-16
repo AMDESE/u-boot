@@ -4,6 +4,7 @@
  */
 
 #include <asm/arch-aspeed/spi.h>
+#include <asm/arch-aspeed/abr.h>
 #include <asm/io.h>
 #include <common.h>
 
@@ -30,29 +31,11 @@ int spi_init(void)
 	return 0;
 }
 
-bool spi_abr_enabled(void)
-{
-	u32 abr_val;
-
-	abr_val = readl((void *)SCU_SPI_ABR_REG) & SPI_ABR_EN;
-
-	return (abr_val != 0) ? true : false;
-}
-
-u32 spi_get_abr_indictor(void)
-{
-	u32 wdt_abr_ctrl;
-
-	wdt_abr_ctrl = readl((void *)WDT_ABR_CTRL);
-
-	return (wdt_abr_ctrl & WDT_ABR_INDICATOR) >> 1;
-}
-
 enum spi_abr_mode get_spi_flash_abr_mode(void)
 {
 	u32 abr_mode;
 
-	abr_mode = readl((void *)SCU_SPI_ABR_REG) & SPI_ABR_MODE;
+	abr_mode = readl((void *)ABR_REG) & ABR_MODE;
 
 	return (abr_mode != 0) ? SINGLE_FLASH_ABR : DUAL_FLASH_ABR;
 }
@@ -73,7 +56,7 @@ u32 spi_get_flash_sz_strap(void)
 	u32 scu_flash_sz;
 	u32 flash_sz_phy;
 
-	scu_flash_sz = (readl((void *)SCU_SPI_ABR_REG) >> 13) & 0x7;
+	scu_flash_sz = (readl((void *)ABR_REG) >> 13) & 0x7;
 	switch (scu_flash_sz) {
 	case 0x7:
 		flash_sz_phy = SNOR_SZ_512MB;
@@ -111,7 +94,7 @@ u32 aspeed_spi_abr_offset(void)
 {
 	u32 flash_sz_strap;
 
-	if (!spi_abr_enabled())
+	if (!abr_enabled())
 		return 0;
 
 	/* no need for dual flash ABR */
@@ -119,7 +102,7 @@ u32 aspeed_spi_abr_offset(void)
 		return 0;
 
 	/* no need when ABR is not triggerred */
-	if (spi_get_abr_indictor() == 0)
+	if (abr_get_indicator() == 0)
 		return 0;
 
 	flash_sz_strap = spi_get_flash_sz_strap();

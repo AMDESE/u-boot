@@ -52,6 +52,7 @@
 #define ASPEED_LTPI0_BASE		0x14c34000
 #define ASPEED_LTPI1_BASE		0x14c35000
 #define ASPEED_WDT_BASE			0x14c37000
+#define ASPEED_WDTA_BASE		0x14c37400
 #else
 #err "Unrecognized Aspeed platform."
 #endif
