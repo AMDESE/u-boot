@@ -14,6 +14,24 @@
 		reg = <0x80000000 0x40000000>;
 	};
 
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		bootph-all;
+
+		pcie_vbios0: pcie_vbios0@b10a0000 {
+			reg = <0xb10a0000 0x10000>;
+			no-map;
+			bootph-all;
+		};
+
+		pcie_vbios1: pcie_vbios1@b10b0000 {
+			reg = <0xb10b0000 0x10000>;
+			no-map;
+			bootph-all;
+		};
+	};
+
 	binman: binman {
 		multiple-images;
 	};
