@@ -25,6 +25,8 @@
 
 binman_sym_declare(u32, dp_fw, image_pos);
 binman_sym_declare(u32, dp_fw, size);
+binman_sym_declare(u32, VBIOS, image_pos);
+binman_sym_declare(u32, VBIOS, size);
 
 static u32 _ast_get_e2m_addr(struct sdramc_regs *ram, u8 node)
 {
@@ -132,6 +134,60 @@ static int dp_init(struct ast2700_soc0_scu *scu)
 	return 0;
 }
 
+static int vbios_init(struct ast2700_soc0_scu *scu, u8 node)
+{
+	u32 *vbios_addr;
+	u32 vbios_size;
+	u64 value;
+	u32 vbios_mem_base;
+	struct fdt_resource res;
+	void *vbios_base;
+	u32 vbios_e2m_value;
+	u32 arm_dram_base = ASPEED_DRAM_BASE >> 1;
+
+	vbios_size = binman_sym(u32, VBIOS, size);
+	debug("vbios size : 0x%x\n", vbios_size);
+
+	vbios_addr = (u32 *)(binman_sym(u32, VBIOS, image_pos) - CONFIG_SPL_TEXT_BASE + 0x20000000);
+	debug("vbios addr : 0x%p\n", vbios_addr);
+
+	if (node == 0)
+		value = fdt_path_offset(gd->fdt_blob, "/reserved-memory/pcie_vbios0");
+	else
+		value = fdt_path_offset(gd->fdt_blob, "/reserved-memory/pcie_vbios1");
+
+	fdt_get_resource(gd->fdt_blob, value, "reg", 0, &res);
+	vbios_base = (void *)res.start;
+	debug("vbios%d mem : 0x%p\n", node, vbios_base);
+
+	/* Get the controller base address */
+	vbios_mem_base = (uintptr_t)(vbios_base);
+	debug("vbios_mem_base : 0x%x\n", vbios_mem_base);
+
+	/* Initial memory region and copy vbios into it */
+	memset((u32 *)vbios_base, 0x0, 0x10000);
+	memcpy((u32 *)vbios_base, vbios_addr, vbios_size);
+
+	/* Remove riscv Dram base */
+	vbios_mem_base &= ~(ASPEED_DRAM_BASE);
+
+	/* Set VBIOS 64KB into reserved buffer */
+	vbios_e2m_value = (vbios_mem_base >> 4) | 0x05 | arm_dram_base;
+
+	debug("vbios_e2m_value : 0x%x\n", vbios_e2m_value);
+
+	/* Set VBIOS setting into e2m */
+	if (node == 0) {
+		writel(vbios_e2m_value, (void *)E2M0_VBIOS_RAM);
+		writel(vbios_e2m_value, &scu->pci0_misc[11]);
+	} else {
+		writel(vbios_e2m_value, (void *)E2M1_VBIOS_RAM);
+		writel(vbios_e2m_value, &scu->pci1_misc[11]);
+	}
+
+	return 0;
+}
+
 static int pci_vga_init(struct ast2700_soc0_scu *scu)
 {
 	struct sdramc_regs *ram = (struct sdramc_regs *)DRAMC_BASE;
@@ -188,6 +244,9 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu)
 		writel(val, (void *)E2M0_VGA_RAM);
 		writel(val, &scu->pci0_misc[3]);
 
+		/* load node0 vbios */
+		vbios_init(scu, 0);
+
 		// scratch for VGA CRD0[12]: Disable P2A
 		setbits_le32(&scu->vga0_scratch1[0], BIT(7));
 		setbits_le32(&scu->vga0_scratch1[0], BIT(12));
@@ -206,6 +265,9 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu)
 		debug("pcie1 debug reg(%x)\n", val);
 		writel(val, (void *)E2M1_VGA_RAM);
 		writel(val, &scu->pci1_misc[3]);
+
+		/* load node1 vbios */
+		vbios_init(scu, 1);
 
 		// scratch for VGA CRD0[12]: Disable P2A
 		setbits_le32(&scu->vga1_scratch1[0], BIT(7));
