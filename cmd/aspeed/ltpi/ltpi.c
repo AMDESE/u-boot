@@ -245,8 +245,10 @@ static int ltpi_reset(struct ltpi_priv *ltpi)
 	readl((unsigned int)SCU_IO_REG + 0x224);
 
 	if (IS_ENABLED(CONFIG_AST1700)) {
-		writel(0x1, 0x14c34224);
-		writel(0x1, 0x14c34228);
+		writel(REG_LTPI_SW_FORCE_1700_EN,
+		       ltpi->top_base + LTPI_SW_FORCE_EN);
+		writel(REG_LTPI_SW_FORCE_1700_EN,
+		       ltpi->top_base + LTPI_SW_FORCE_VAL);
 	}
 
 	return 0;
@@ -579,8 +581,8 @@ static void ltpi_init_master_mode(struct ltpi_priv *ltpi)
 	reg = readl((void *)ltpi->top_base + LTPI_PHY_CTRL);
 	phy_mode = FIELD_GET(REG_LTPI_PHY_MODE, reg);
 
-	/* if the phy mode is in SDR mode, check the state of ltpi0 */
-	if (phy_mode == LTPI_PHY_MODE_SDR) {
+	/* if the phy mode is in SDR/DDR mode, check the state of ltpi0 */
+	if (phy_mode == LTPI_PHY_MODE_SDR || phy_mode == LTPI_PHY_MODE_DDR) {
 		state0 = ltpi_get_link_manage_state(ltpi, 0);
 		if (state0 == LTPI_LINK_MANAGE_ST_OP) {
 			ltpi->bus_topology = 1;

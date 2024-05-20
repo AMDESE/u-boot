@@ -11,7 +11,7 @@
 #define   REG_LTPI_PHY_MODE			GENMASK(3, 0)
 #define     LTPI_PHY_MODE_CDR_HI_SP		0b1000
 #define     LTPI_PHY_MODE_CDR_LO_SP		0b0100
-#define     LTPI_PHY_NODE_DDR			0b0010
+#define     LTPI_PHY_MODE_DDR			0b0010
 #define     LTPI_PHY_MODE_SDR			0b0001
 #define     LTPI_PHY_MODE_OFF			0b0000
 #define LTPI_PLL_CTRL				0x004
@@ -77,9 +77,7 @@
 #define   REG_LTPI_STRAP_2LTPI_EN		BIT(1)
 #define   REG_LTPI_STRAP_1700_EN		BIT(0)
 #define LTPI_SW_FORCE_EN			0x024
-#define   REG_ltpi_sw_force_2ltpi_en		BIT(1)
-#define   REG_ltpi_sw_force_1700_en		BIT(0)
 #define LTPI_SW_FORCE_VAL			0x028
-#define   REG_ltpi_sw_2ltpi_en			BIT(1)
-#define   REG_ltpi_sw_1700_en			BIT(0)
+#define   REG_LTPI_SW_FORCE_2LTPI_EN		BIT(1)
+#define   REG_LTPI_SW_FORCE_1700_EN		BIT(0)
 #endif	/* _LPTI_TOP_H_ */
