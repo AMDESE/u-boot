@@ -24,14 +24,14 @@ struct sdramc_ac_timing ac_table[] = {
 		"DDR4 1600",
 		10, 9, 8,
 	/*     rcd, rp, ras, rrd, rrd_l, faw, rtp */
-		10, 10, 28,  5,   6,     28,  6,
+		10, 10, 28,  5,   6,	 28,  6,
 		2,	/* t_wtr */
 		6,	/* t_wtr_l */
 		0,	/* t_wtr_a */
 		12,	/* t_wtp */
 		0,	/* t_rtw */
-	/*      ccd_l, dllk, cksre, pd, xp, rfc */
-		5, 597,  8,     4,  5,  RFC,
+	/*	ccd_l, dllk, cksre, pd, xp, rfc */
+		5, 597,  8,	4,  5,	RFC,
 		24,	/* t_mrd */
 		0,	/* t_refsbrd */
 		0,	/* t_rfcsb */
@@ -50,8 +50,8 @@ struct sdramc_ac_timing ac_table[] = {
 		0,	/* t_wtr_a */
 		19,	/* t_wtp */
 		0,
-	/*      ccd_l, dllk, cksre, pd, xp, rfc */
-		7, 768,  13,    7,  8,  RFC,
+	/*	ccd_l, dllk, cksre, pd, xp, rfc */
+		7, 768,  13,	7,  8,	RFC,
 		24,	/* t_mrd */
 		0,	/* t_refsbrd */
 		0,	/* t_rfcsb */
@@ -70,8 +70,8 @@ struct sdramc_ac_timing ac_table[] = {
 		0,	/* t_wtr_a */
 		24,	/* t_wtp */
 		0,	/* t_rtw */
-	/*      ccd_l, dllk, cksre, pd, xp, rfc */
-		8, 1023, 16,    8,  10, RFC,
+	/*	ccd_l, dllk, cksre, pd, xp, rfc */
+		8, 1023, 16,	8,  10, RFC,
 		24,	/* t_mrd */
 		0,	/* t_refsbrd */
 		0,	/* t_rfcsb */
@@ -84,14 +84,14 @@ struct sdramc_ac_timing ac_table[] = {
 		"DDR5 3200",
 		26, 24, 16,
 	/*     rcd, rp, ras, rrd, rrd_l, faw, rtp */
-		26, 26, 52,  8,   8,     40,  12,
+		26, 26, 52,  8,   8,	 40,  12,
 		4,	/* t_wtr */
 		16,	/* t_wtr_l */
 		36,	/* t_wtr_a */
 		48,	/* t_wtp */
 		0,
-	/*      ccd_l, dllk, cksre, pd, xp, rfc */
-		8, 1024, 9,     13, 13, RFC,
+	/*	ccd_l, dllk, cksre, pd, xp, rfc */
+		8, 1024, 9,	13, 13, RFC,
 		23,	/* t_mrd */
 		48,	/* t_refsbrd */
 		208,	/* t_rfcsb */
@@ -642,6 +642,54 @@ static int sdramc_bist(struct sdramc *sdramc, u32 addr, u32 size, u32 cfg, u32 t
 	return err;
 }
 
+static void sdramc_aes_enable(struct sdramc *sdramc, uint32_t addr_min, uint32_t addr_max)
+{
+	struct sdramc_regs *regs = sdramc->regs;
+
+	writel(addr_min >> 4, &regs->enc_min_addr);
+	writel(addr_max >> 4, &regs->enc_max_addr);
+	writel(1, &regs->enccfg);
+}
+
+/* offset 0x10 */
+#define DRAMC_MCFG_ECC_EN			BIT(6)
+#define DRAMC_MCFG_PGM_EN			BIT(5)
+#define DRAM_SIZE_DEF	3
+static int sdramc_ecc_enable(struct sdramc *sdramc)
+{
+	size_t ram_size_ary[] = {
+		0x10000000, // 256MB
+		0x20000000, // 512MB
+		0x40000000, // 1GB
+		0x80000000, // 2GB
+		};
+	size_t ecc_sz, ram_size = ram_size_ary[DRAM_SIZE_DEF];
+	struct sdramc_regs *regs = sdramc->regs;
+	u32 bistcfg;
+	u32 val;
+	int err;
+
+	bistcfg = 0x82;
+	err = sdramc_bist(sdramc, 0, ram_size, bistcfg, 0x200000);
+	if (err) {
+		printf("bist is failed\n");
+		return err;
+	}
+
+	/* config ecc range */
+	//ecc_sz = (((ram_size / 9) * 8) >> 4);
+	ecc_sz = ((0x30000000) >> 4);
+	writel(ecc_sz, &regs->ecc_addr_range);
+
+	/* enable ecc, page matching should be disabled */
+	val = readl(&regs->mcfg);
+	val &= ~(DRAMC_MCFG_PGM_EN | 0x1c);
+	val |= (DRAMC_MCFG_ECC_EN | (DRAM_SIZE_DEF << 2));
+	writel(val, &regs->mcfg);
+
+	return err;
+}
+
 int dram_init(void)
 {
 	struct sdramc sdramc[1];
@@ -670,6 +718,12 @@ int dram_init(void)
 	sdramc_configure_mrs(sdramc, ac);
 
 	sdramc_enable_refresh(sdramc);
+
+	if (IS_ENABLED(CONFIG_ASPEED_DRAM_ECC))
+		sdramc_ecc_enable(sdramc);
+
+	if (IS_ENABLED(CONFIG_ASPEED_DRAM_AES))
+		sdramc_aes_enable(sdramc, 0, 0x30000000);
 
 	bistcfg = FIELD_PREP(DRAMC_BISTCFG_PMODE, BIST_PMODE_CRC)
 		| FIELD_PREP(DRAMC_BISTCFG_BMODE, BIST_BMODE_RW_SWITCH)

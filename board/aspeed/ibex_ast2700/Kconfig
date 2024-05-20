@@ -32,6 +32,14 @@ config ASPEED_PHY_TRAINING_MESSAGE
 	bool "Enable DDR PHY TRAINING MESSAGE"
 	default n
 
+config ASPEED_DRAM_ECC
+	bool "Enable dramc ECC"
+	default n
+
+config ASPEED_DRAM_AES
+	bool "Enable dramc AES"
+	default n
+
 choice
 	prompt "AST2700 DDR target date rate"
 	default ASPEED_DDR_3200

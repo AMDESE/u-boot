@@ -46,6 +46,10 @@
 #define DRAMC_IRQSTA_MR_DONE			BIT(1)
 #define DRAMC_IRQSTA_PHY_INIT_DONE		BIT(0)
 
+/* offset 0x10 */
+#define DRAMC_MCFG_ECC_EN			BIT(6)
+#define DRAMC_MCFG_PGM_EN			BIT(5)
+
 /* offset 0x14 */
 #define DRAMC_MCTL_WB_SOFT_RESET		BIT(24)
 #define DRAMC_MCTL_PHY_CLK_DIS			BIT(18)
@@ -287,12 +291,12 @@ struct sdramc_regs {
 	u32 ecc_test_control;		/* offset 0x80 */
 	u32 ecc_test_status;		/* offset 0x84 */
 	u32 arbctl;			/* offset 0x88 */
-	u32 enc_configuration;		/* offset 0x8c */
+	u32 enccfg;			/* offset 0x8c */
 	u32 protect_lock_set;		/* offset 0x90 */
 	u32 protect_lock_status;	/* offset 0x94 */
 	u32 protect_lock_reset;		/* offset 0x98 */
-	u32 enc_min_address;		/* offset 0x9c */
-	u32 enc_max_address;		/* offset 0xa0 */
+	u32 enc_min_addr;		/* offset 0x9c */
+	u32 enc_max_addr;		/* offset 0xa0 */
 	u32 enc_key[4];			/* offset 0xa4~0xb0 */
 	u32 enc_iv[3];			/* offset 0xb4~0xbc */
 	u32 bistcfg;			/* offset 0xc0 */
