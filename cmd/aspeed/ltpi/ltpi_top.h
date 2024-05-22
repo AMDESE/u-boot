@@ -19,8 +19,10 @@
 #define   REG_LTPI_RX_PHY_CLK_INV		BIT(9)
 #define   REG_LTPI_TX_PHY_CLK_INV		BIT(8)
 #define   REG_LTPI_PLL_SET			BIT(4)
+#define   REG_LTPI_RX_PLL_DIV2			BIT(3)
 #define   REG_LTPI_PLL_SELECT			GENMASK(2, 0)
 #define     REG_LTPI_PLL_25M			0
+/* AST2700A0 */
 #define     REG_LTPI_PLL_50M			1
 #define     REG_LTPI_PLL_100M			2
 #define     REG_LTPI_PLL_200M			3
@@ -28,18 +30,32 @@
 #define     REG_LTPI_PLL_400M			5
 #define     REG_LTPI_PLL_800M			6
 #define     REG_LTPI_PLL_1G			7
+/* AST2700A1 */
+#define     REG_LTPI_PLL_HPLL_DIV_10		1	/* 100M */
+#define     REG_LTPI_PLL_HCLK			2	/* 200M */
+#define     REG_LTPI_PLL_HPLL_DIV_4		3	/* 250M */
+#define     REG_LTPI_PLL_LPLL_DIV_4		4	/* 300M */
+#define     REG_LTPI_PLL_HPLL_DIV_2		5	/* 500M */
+#define     REG_LTPI_PLL_LPLL_DIV_2		6	/* 600M */
+#define     REG_LTPI_PLL_LPLL			7	/* 1200M, 50M, 75M, 150M, 400M, 800M, 1000M, */
+
 #define LTPI_PHY_ALIGN_CTRL			0x008
 #define LTPI_DLL_CTRL				0x00C
 #define   REG_LTPI_SW_DLL_RST			BIT(26)
 #define   REG_LTPI_FORCE_DLL_RST		BIT(25)
 #define   REG_LTPI_DLL_PD			BIT(24)
 #define   REG_LTPI_DLL_TSTCTRL			GENMASK(23, 16)
-#define   REG_LTPI_DLL_RST_TIMEOUT		GENMASK(15, 0)
+#define   REG_LTPI_DLL_RST_TIMEOUT_A0		GENMASK(15, 0)
+#define   REG_LTPI_DLL_CLK_2X			BIT(8)
+#define   REG_LTPI_DLL_RST_TIMEOUT		GENMASK(7, 0)
 #define LTPI_PHY_HI_SP_CDR_CTRL			0x010
 #define   REG_LTPI_SW_HI_SP_CDR_EN		BIT(10)
 #define   REG_LTPI_FORCE_HI_SP_CDR_EN		BIT(9)
 #define   REG_LTPI_HI_SP_CDR_EN_TIMEOUT_EN	BIT(8)
 #define	  LTPI_HI_SP_CDR_EN_TIMEOUT		GENMASK(7, 0)
+
+#define LTPI_PROT_KEY				0x34
+#define   LTPI_PROT_KEY_UNLOCK			0x1728aacc
 
 /* LVDS TOP registers */
 #define LTPI_LVDS_TX_CTRL			0x000
