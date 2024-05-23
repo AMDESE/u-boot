@@ -275,7 +275,8 @@ static const char help_string[] = "\nnetdiag: network diagnostic tool.\n"
 "                    |   0 - 1   = (RMII)  tx clock edge\n"
 "                    | rx: RGMII/RMII RX Delay\n"
 "                    |   0 - 63  = (RGMII) rx step delay\n"
-"                    |   0 - 63  = (RMII)  rx step delay\n";
+"                    |   0 - 63  = (RMII)  rx step delay\n"
+"    -z              | show the MAC information\n";
 
 static void netdiag_cli_usage(void)
 {
@@ -291,6 +292,41 @@ static void netdiag_cli_usage(void)
 		printf("   %2d: %s\n", i, patterns[i]);
 }
 
+void netdiag_print_mac_infomation(void)
+{
+#if defined(ASPEED_AST2700)
+	void __iomem *scu = (void __iomem *)AST_IO_SCU_BASE;
+
+	printf("=== MAC0 register:\n");
+
+	printf("Multi-function:\n");
+	printf("    0x14c0_2444       : 0x%08X\n", readl(scu + 0x444));
+	printf("    0x14c0_2448[14:0] : 0x%08X(0x%lx)\n", readl(scu + 0x448),
+	       readl(scu + 0x448) & GENMASK(14, 0));
+
+	printf("MDC/MDIO:\n");
+	printf("    0x14c0_2448[22:16]: 0x%08X(0x%lx)\n", readl(scu + 0x448),
+	       (readl(scu + 0x448) & GENMASK(22, 16)) >> 16);
+	printf("    0x14c0_2200[2]    : 0x%08X(0x%lx)\n", readl(scu + 0x200),
+	       readl(scu + 0x200) & BIT(2));
+
+	printf("Clock:\n");
+	printf("    0x14c0_2280[27:25]: 0x%08X(0x%lx)\n", readl(scu + 0x280),
+	       (readl(scu + 0x280) & GENMASK(27, 25)) >> 25);
+	printf("    0x14c0_2284[18]   : 0x%08X(0x%lx)\n", readl(scu + 0x280),
+	       readl(scu + 0x280) & BIT(18));
+	printf("    0x14c0_2390       : 0x%08X\n", readl(scu + 0x390));
+	printf("    0x14c0_2394       : 0x%08X\n", readl(scu + 0x394));
+	printf("    0x14c0_2398       : 0x%08X\n", readl(scu + 0x398));
+
+	printf("Reset/Clock gating:\n");
+	printf("    0x14c0_2200[5]    : 0x%08X(0x%lx)\n", readl(scu + 0x200),
+	       readl(scu + 0x200) & BIT(5));
+	printf("    0x14c0_2398[8]    : 0x%08X(0x%lx)\n", readl(scu + 0x240),
+	       readl(scu + 0x240) & BIT(8));
+#endif
+}
+
 int netdiag_parse_parameter_from_argv(int argc, char *const argv[], struct parameter_s *parm)
 {
 	char *data_ptrs[3];
@@ -301,7 +337,7 @@ int netdiag_parse_parameter_from_argv(int argc, char *const argv[], struct param
 #else
 	int option_index = 0;
 #endif
-	static const char optstring[] = "o:i:l:s:m:k:u:n:c:v:d:h";
+	static const char optstring[] = "o:i:l:s:m:k:u:n:c:v:d:zh";
 #if !defined(U_BOOT)
 	static const struct option long_options[] = {
 		{ "objects", 1, NULL, 'o' },  { "interface", 1, NULL, 'i' },
@@ -447,6 +483,9 @@ int netdiag_parse_parameter_from_argv(int argc, char *const argv[], struct param
 			if (data_ptrs[1])
 				parm->rx_delay = simple_strtoul(data_ptrs[1], NULL, 10);
 			break;
+		case 'z':
+			netdiag_print_mac_infomation();
+			return SUCCESS_HELP;
 		case 'h':
 		default:
 			netdiag_cli_usage();
@@ -493,7 +532,7 @@ int netdiag_func(int argc, char *const argv[])
 	if (argc <= 1) {
 		netdiag_cli_usage();
 		return 0;
-	} else if (argc == 2 && strcmp(argv[1], "-h")) {
+	} else if (argc == 2 && strcmp(argv[1], "-h") && strcmp(argv[1], "-z")) {
 		has_error = netdiag_parse_parameter_from_pattern(simple_strtoul(argv[1], NULL, 10),
 								 parm);
 	} else {
