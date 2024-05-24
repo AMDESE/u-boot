@@ -91,6 +91,12 @@ struct ltpi_reset {
 	uint32_t bit_mask;
 };
 
+struct ltpi_clk_ctrl {
+	uintptr_t regs_gate;
+	uintptr_t regs_ungate;
+	uint32_t bit_mask;
+};
+
 struct ltpi_clk_info {
 	int16_t freq;		/* clock frequency in MHz*/
 	int16_t clk_sel;	/* clock selection */
@@ -127,6 +133,7 @@ struct ltpi_priv {
 	uintptr_t phy_base;
 
 	struct ltpi_reset reset;
+	struct ltpi_clk_ctrl clk_ctrl;
 	struct ltpi_common *common;
 
 	uint16_t phy_speed_cap; /* limit the speed with physical line status */
@@ -458,7 +465,13 @@ static int ltpi_reset(struct ltpi_priv *ltpi)
 	writel(ltpi->reset.bit_mask, ltpi->reset.regs_assert);
 	readl(ltpi->reset.regs_assert);
 
+	writel(ltpi->clk_ctrl.bit_mask, ltpi->clk_ctrl.regs_gate);
+	readl(ltpi->clk_ctrl.regs_gate);
+
 	udelay(1);
+
+	writel(ltpi->clk_ctrl.bit_mask, ltpi->clk_ctrl.regs_ungate);
+	readl(ltpi->clk_ctrl.regs_ungate);
 
 	writel(ltpi->reset.bit_mask, ltpi->reset.regs_deassert);
 	readl(ltpi->reset.regs_deassert);
@@ -1525,9 +1538,17 @@ void ltpi_init(void)
 		ltpi0->reset.regs_deassert = SCU_IO_REG + 0x224;
 		ltpi0->reset.bit_mask = BIT(20);
 
+		ltpi0->clk_ctrl.regs_gate = SCU_IO_REG + 0x260;
+		ltpi0->clk_ctrl.regs_ungate = SCU_IO_REG + 0x264;
+		ltpi0->clk_ctrl.bit_mask = BIT(9);
+
 		ltpi1->reset.regs_assert = SCU_IO_REG + 0x220;
 		ltpi1->reset.regs_deassert = SCU_IO_REG + 0x224;
 		ltpi1->reset.bit_mask = BIT(20);
+
+		ltpi1->clk_ctrl.regs_gate = SCU_IO_REG + 0x260;
+		ltpi1->clk_ctrl.regs_ungate = SCU_IO_REG + 0x264;
+		ltpi1->clk_ctrl.bit_mask = BIT(9);
 
 		common->top_base = LTPI_REG + 0x214;
 		common->otp_speed_cap =
@@ -1551,9 +1572,17 @@ void ltpi_init(void)
 		ltpi0->reset.regs_deassert = SCU_IO_REG + 0x224;
 		ltpi0->reset.bit_mask = BIT(20);
 
+		ltpi0->clk_ctrl.regs_gate = SCU_IO_REG + 0x260;
+		ltpi0->clk_ctrl.regs_ungate = SCU_IO_REG + 0x264;
+		ltpi0->clk_ctrl.bit_mask = BIT(9);
+
 		ltpi1->reset.regs_assert = SCU_IO_REG + 0x220;
 		ltpi1->reset.regs_deassert = SCU_IO_REG + 0x224;
 		ltpi1->reset.bit_mask = BIT(22);
+
+		ltpi1->clk_ctrl.regs_gate = SCU_IO_REG + 0x260;
+		ltpi1->clk_ctrl.regs_ungate = SCU_IO_REG + 0x264;
+		ltpi1->clk_ctrl.bit_mask = BIT(19);
 
 		common->top_base = LTPI_REG + 0x800;
 
