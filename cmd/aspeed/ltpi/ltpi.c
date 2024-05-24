@@ -730,6 +730,10 @@ static void ltpi_scm_normal_mode_training(struct ltpi_priv *ltpi)
 			return;
 		}
 	} while (1);
+
+	reg = readl(ltpi->phy_base + LTPI_PLL_CTRL);
+	reg &= ~REG_LTPI_PLL_SET;
+	writel(reg, ltpi->phy_base + LTPI_PLL_CTRL);
 }
 
 static int ltpi_set_cdr_operation_clk(struct ltpi_priv *ltpi)
@@ -821,6 +825,10 @@ static void ltpi_scm_cdr_mode_training(struct ltpi_priv *ltpi)
 			return;
 		}
 	} while (1);
+
+	reg = readl(ltpi->phy_base + LTPI_PLL_CTRL);
+	reg &= ~REG_LTPI_PLL_SET;
+	writel(reg, ltpi->phy_base + LTPI_PLL_CTRL);
 }
 
 static void ltpi_scm_init(struct ltpi_priv *ltpi0, struct ltpi_priv *ltpi1)
