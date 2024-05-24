@@ -17,7 +17,7 @@
 #include "ltpi_ctrl.h"
 #include "internal.h"
 
-#define ADVERTISE_TIMEOUT_US			3000 /* 2.696ms */
+#define ADVERTISE_TIMEOUT_US			100000 /* LTPI v1.1: 100ms */
 //#define CONFIG_AST1700	1
 
 /* Use AST2700-EVB to emulate AST1700-EVB */
