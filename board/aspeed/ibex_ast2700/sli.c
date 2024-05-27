@@ -344,7 +344,10 @@ int sli_init(void)
 		25, 800, 400, 200, 2000, 788, 500, 250,
 	};
 
-	if (IS_ENABLED(CONFIG_ASPEED_FPGA))
+	/* The following training sequence is designed for AST2700A0 */
+	value = FIELD_GET(SCU_CPU_REVISION_ID_HW,
+			  readl((void *)ASPEED_IO_REVISION_ID));
+	if (value)
 		return 0;
 
 	/* Return if SLI had been calibrated */
