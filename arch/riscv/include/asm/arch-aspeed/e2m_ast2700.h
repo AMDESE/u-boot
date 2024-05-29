@@ -11,6 +11,6 @@
 
 #define E2M1_BASE		(0x12c22000)
 #define E2M1_VGA_RAM		(E2M1_BASE + 0x120)
-#define E2M1_VBIOS_RAM		(E2M0_BASE + 0x124)
+#define E2M1_VBIOS_RAM		(E2M1_BASE + 0x124)
 
 #endif
