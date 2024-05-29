@@ -305,6 +305,7 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu)
 		val = 0x10000000 | dac_src;
 		packer_cpu->REG50.value  = val;
 		packer_cpu->REG44.value  = 0x00100010;
+		packer_cpu->REG1C.value  = 0x80f0f002;
 		retimer_cpu->REG10.value = 0x00030009;
 		packer_io->REG10.value   = 0x00030009;
 		retimer_io->REG10.value  = 0x00230009;
