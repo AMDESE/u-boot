@@ -172,7 +172,7 @@ size_t aspeed_memmove_dma_op(void *dest, const void *src, size_t count)
 	    dma_src + dma_len < (ASPEED_FMC_CS0_BASE + ASPEED_FMC_CS0_SIZE) &&
 	    dma_dest >= ASPEED_DRAM_BASE) {
 		while (remaining > 0) {
-			if (dma_len > SPI_DMA_MAX_LEN)
+			if (remaining > SPI_DMA_MAX_LEN)
 				dma_len = SPI_DMA_MAX_LEN;
 			else
 				dma_len = remaining;
