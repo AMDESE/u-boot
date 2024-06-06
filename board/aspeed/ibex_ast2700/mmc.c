@@ -38,6 +38,9 @@ int emmc_init(void)
 	/* release emmc pin from emmc boot */
 	writel(0, (void *)0x12c0b00c);
 
+	/* config gpio18 a0 to A5 to emmc mode */
+	writel(0xff, (void *)0x12c02400);
+
 	ret = uclass_get_device(UCLASS_BLK, 0, &dev);
 	if (ret) {
 		printf("cannot get BLK driver\n");
