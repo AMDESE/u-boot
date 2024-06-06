@@ -120,13 +120,6 @@ static int aspeed_sdc_probe(struct udevice *dev)
 	u32 reg_val;
 	int ret;
 
-	ret = reset_get_by_index(dev, 0, &rst_ctl);
-	if (!ret) {
-		reset_assert(&rst_ctl);
-		udelay(2);
-		reset_deassert(&rst_ctl);
-	}
-
 	ret = clk_get_by_index(dev, 0, &clk);
 	if (ret) {
 		dev_err(dev, "clock get failed\n");
@@ -137,6 +130,13 @@ static int aspeed_sdc_probe(struct udevice *dev)
 	if (ret) {
 		dev_err(dev, "clock enable failed");
 		goto free;
+	}
+
+	ret = reset_get_by_index(dev, 0, &rst_ctl);
+	if (!ret) {
+		reset_assert(&rst_ctl);
+		udelay(2);
+		reset_deassert(&rst_ctl);
 	}
 
 	sdhci_ctrl_base = dev_read_addr_ptr(dev);
