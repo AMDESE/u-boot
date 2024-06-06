@@ -39,13 +39,13 @@ static uint32_t ast2700_soc0_get_pll_rate(struct ast2700_soc0_scu *scu, int pll_
 	if (pll_idx == AST2700_SOC0_CLK_HPLL && ((scu->hwstrap1 & GENMASK(3, 2)) != 0)) {
 		switch ((scu->hwstrap1 & GENMASK(3, 2)) >> 2) {
 		case 1:
-			rate = 1900000;
+			rate = 1900000000;
 			break;
 		case 2:
-			rate = 1800000;
+			rate = 1800000000;
 			break;
 		case 3:
-			rate = 1700000;
+			rate = 1700000000;
 			break;
 		}
 	} else {
