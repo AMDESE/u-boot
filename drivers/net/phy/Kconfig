@@ -363,6 +363,15 @@ config PHY_FIXED
 config PHY_NCSI
 	bool "NC-SI based PHY"
 
+menuconfig PHY_AIROHA
+	bool "Airoha Ethernet PHYs support"
+
+config PHY_AIROHA_AN8801
+	bool "Airoha Ethernet AN8801 PHY support"
+	depends on PHY_AIROHA
+	help
+	  Airoha AN8801 supported.
+
 endif #PHYLIB
 
 config FSL_MEMAC
