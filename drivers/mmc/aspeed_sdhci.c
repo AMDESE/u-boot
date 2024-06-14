@@ -62,7 +62,7 @@ static int aspeed_sdhci_probe(struct udevice *dev)
 	if (host->bus_width == 8)
 		host->host_caps |= MMC_MODE_8BIT;
 
-	ret = sdhci_setup_cfg(&plat->cfg, host, 0, 0);
+	ret = sdhci_setup_cfg(&plat->cfg, host, 0, 400000);
 	if (ret)
 		goto err;
 
