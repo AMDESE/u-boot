@@ -7,6 +7,8 @@
 
 #define DWC_PHY_IMEM_OFFSET	(0x50000)
 #define DWC_PHY_DMEM_OFFSET	(0x58000)
+#define SCU0_DDR_PHY_CLOCK	BIT(11)
+#define SCU0_CLOCK_STOP_CLR_REG	(ASPEED_CPU_SCU_BASE + 0x244)
 
 binman_sym_declare(u32, u_boot_spl_ddr, image_pos);
 
@@ -1005,6 +1007,9 @@ void dwc_phy_init(struct sdramc *sdramc)
 	dwc_train[1][1].imem_len = imem_2d_len;
 	dwc_train[1][1].dmem_base = dmem_2d_start - base;
 	dwc_train[1][1].dmem_len = dmem_2d_len;
+
+	// enable ddrphy free-run clock
+	writel(SCU0_DDR_PHY_CLOCK, (void *)SCU0_CLOCK_STOP_CLR_REG);
 
 	if (is_ddr4()) {
 		debug("%s: Starting ddr4 training\n", __func__);
