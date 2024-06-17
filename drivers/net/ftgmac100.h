@@ -210,7 +210,7 @@ struct ftgmac100_txdes {
 #define FTGMAC100_TXDES1_TX2FIC		BIT(30)
 #define FTGMAC100_TXDES1_TXIC		BIT(31)
 
-#define FTGMAC100_TXDES2_TXBUF_BADR_HI	GENMASK(17, 16)
+#define FTGMAC100_TXDES2_TXBUF_BADR_HI	GENMASK(18, 16)
 
 /*
  * Receive descriptor, aligned to 16 bytes
