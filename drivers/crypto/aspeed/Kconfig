@@ -18,3 +18,14 @@ config ASPEED_ACRY
 
 	 Enabling this allows the use of RSA/ECC operations in hardware without requiring the
 	 software implementations. It also improves performance and saves code size.
+
+config ASPEED_CPTRA_SHA
+	bool "Caliptra SHA ACC for Aspeed SoCs"
+	depends on DM_HASH
+	depends on TARGET_ASPEED_AST2700
+	help
+	  Select this option to enable a driver for using the SHA accelerator provided
+	  by Caliptra, which is integrated in AST27xx BMC SoCs.
+
+	  Enabling this allows the use of SHA operations in hardware. Note that only
+	  SHA384 and SHA512 are supported by Caliptra.
