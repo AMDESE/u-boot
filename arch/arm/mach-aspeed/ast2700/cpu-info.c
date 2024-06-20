@@ -47,9 +47,9 @@ void ast2700_print_soc_id(void)
 #define SYS_SRST		BIT(0)
 
 #define WDT_RST_BIT_MASK(s)	(GENMASK(3, 0) << (s))
-#define BIT_WDT_SOC(s)		(BIT(0) << (s))
+#define BIT_WDT_SOC(s)		(BIT(2) << (s))
 #define BIT_WDT_FULL(s)		(BIT(1) << (s))
-#define BIT_WDT_ARM(s)		(BIT(2) << (s))
+#define BIT_WDT_ARM(s)		(BIT(0) << (s))
 #define BIT_WDT_SW(s)		(BIT(3) << (s))
 
 void ast2700_print_wdtrst_info(void)
