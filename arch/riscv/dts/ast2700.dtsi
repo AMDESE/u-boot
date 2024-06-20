@@ -160,6 +160,13 @@
 			status = "disabled";
 		};
 
+		cptra_ecdsa: cptra-ecdsa@14c60000 {
+			compatible = "aspeed,ast2700-cptra-ecdsa";
+			reg = <0x14c60000 0x1000>;
+			aspeed,scu1 = <&syscon1>;
+			status = "disabled";
+		};
+
 		cptra_sha: cptra-sha@14c61000 {
 			compatible = "aspeed,ast2700-cptra-sha";
 			reg = <0x14c61000 0x1000>;

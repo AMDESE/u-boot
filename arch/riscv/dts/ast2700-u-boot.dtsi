@@ -68,6 +68,10 @@
 			bootph-all;
 		};
 
+		cptra_ecdsa: cptra-ecdsa@14c60000 {
+			bootph-all;
+		};
+
 		cptra_sha: cptra-sha@14c61000 {
 			bootph-all;
 		};
