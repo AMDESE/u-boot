@@ -66,5 +66,6 @@ int ecdsa_verify(struct image_sign_info *info,
 /** @} */
 
 #define ECDSA256_BYTES	(256 / 8)
+#define ECDSA384_BYTES	(384 / 8)
 
 #endif
