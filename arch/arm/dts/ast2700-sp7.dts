@@ -1,0 +1,194 @@
+// SPDX-License-Identifier: GPL-2.0+
+
+/dts-v1/;
+
+#include "ast2700.dtsi"
+#include "ast2700-u-boot.dtsi"
+
+/ {
+	model = "AST2700 SP7 DC-SCM 2.0";
+	compatible = "aspeed,ast2700-sp7", "aspeed,ast2700";
+
+	memory {
+		device_type = "memory";
+		reg = <0x4 0x00000000 0x0 0x80000000>;
+	};
+
+	chosen {
+		stdout-path = &uart12;
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+
+		mcu_fw: mcu-firmware@42fe00000 {
+			reg = <0x4 0x2fe00000 0x0 0x200000>;
+			no-map;
+		};
+
+		atf: trusted-firmware-a@430000000 {
+			reg = <0x4 0x30000000 0x0 0x80000>;
+			no-map;
+		};
+
+		optee_core: optee_core@430080000 {
+			reg = <0x4 0x30080000 0x0 0x1000000>;
+			no-map;
+		};
+
+		mctp0_reserved: mctp0_reserved@431080000 {
+			reg = <0x4 0x31080000 0x0 0x10000>;
+			compatible = "shared-dma-pool";
+			no-map;
+		};
+
+		pcie_vbios0: pcie_vbios0@4310a0000 {
+			reg = <0x4 0x310a0000 0x0 0x10000>;
+			no-map;
+		};
+
+	};
+};
+
+&uart12 {
+	status = "okay";
+};
+
+&mdio0 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	ethphy0: ethernet-phy@0 {
+		reg = <0>;
+	};
+};
+
+&mac0 {
+	status = "okay";
+	phy-mode = "rgmii";
+	phy-handle = <&ethphy0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_rgmii0_default>;
+};
+
+&mac1 {
+	status = "okay";
+	phy-mode = "NC-SI";
+	use-ncsi;
+	pinctrl-name = "default";
+	pinctrl-0 = <&pinctrl_rmii1_default>;
+	/delete-property/phy-handle;
+
+};
+
+&fmc {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_fwspi_quad_default>;
+
+	/* BMC Flash */
+	flash@0 {
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <4>;
+		spi-rx-bus-width = <4>;
+	};
+
+	/* MP Flash */
+	flash@1 {
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <4>;
+		spi-rx-bus-width = <4>;
+	};
+};
+
+&spi0 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_spi0_default &pinctrl_spi0_cs1_default>;
+
+	/* SCM Flashes: P0, P1, RoT Flash */
+	flash@0 {
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <1>;
+		spi-rx-bus-width = <1>;
+	};
+};
+
+&spi1 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_spi1_default &pinctrl_spi1_cs1_default>;
+
+	/* HPM Flashes */
+	flash@0 {
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <1>;
+		spi-rx-bus-width = <1>;
+	};
+};
+
+&emmc_controller {
+	status = "okay";
+	timing-phase = <0xf0097>;
+};
+
+&emmc {
+	status = "okay";
+};
+
+&sdc {
+	timing-phase = <0x1f0097>;
+	status = "okay";
+};
+
+&sdhci {
+	status = "okay";
+	sdhci,auto-cmd12;
+	sdhci-drive-type = <3>;
+};
+
+&i2c0 {
+	status = "okay";
+};
+
+&i2c1 {
+	status = "okay";
+};
+
+&i2c2 {
+	status = "okay";
+};
+
+&i2c3 {
+	status = "okay";
+};
+
+&wdt0 {
+	status = "okay";
+};
+
+&hace {
+	status = "okay";
+};
+
+&display_port {
+	status = "okay";
+};
+
+&vbios {
+	status = "okay";
+};
+
+&soc1_clk {
+	mac0-clk-delay = <0x35 0x34
+			  0x10 0x10
+			  0x10 0x10>;
+	mac1-clk-delay = <0x35 0x33
+			  0x10 0x10
+			  0x10 0x10>;
+};

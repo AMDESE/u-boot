@@ -1286,7 +1286,8 @@ dtb-$(CONFIG_ASPEED_AST2600) += \
 dtb-$(CONFIG_ASPEED_AST2700) += \
 	ast2700-evb.dtb \
 	ast2700-slt.dtb \
-	ast2700-ncsi.dtb
+	ast2700-ncsi.dtb \
+	ast2700-sp7.dtb
 
 dtb-$(CONFIG_ARCH_STI) += stih410-b2260.dtb
 
