@@ -52,6 +52,10 @@
 	soc1: soc@14000000 {
 		bootph-all;
 
+		syscon1: syscon@14c02000 {
+			bootph-all;
+		};
+
 		uart12: serial@14c33b00 {
 			bootph-all;
 		};
@@ -61,6 +65,10 @@
 		};
 
 		edaf_bridge1: edaf-bridge@14c38200 {
+			bootph-all;
+		};
+
+		cptra_sha: cptra-sha@14c61000 {
 			bootph-all;
 		};
 	};
