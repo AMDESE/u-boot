@@ -281,15 +281,26 @@ static int do_add(struct signer *ctx, void *fdt, const char *key_node_name)
 	BIGNUM *x, *y;
 
 	signature_node = fdt_subnode_offset(fdt, 0, FIT_SIG_NODENAME);
-	if (signature_node < 0) {
-		fprintf(stderr, "Could not find 'signature node: %s\n",
-			fdt_strerror(signature_node));
-		return signature_node;
+	if (signature_node == -FDT_ERR_NOTFOUND) {
+		signature_node = fdt_add_subnode(fdt, 0, FIT_SIG_NODENAME);
+		if (signature_node < 0) {
+			fprintf(stderr, "Could not find 'signature node: %s\n",
+				fdt_strerror(signature_node));
+			return signature_node;
+		}
 	}
 
-	key_node = fdt_add_subnode(fdt, signature_node, key_node_name);
-	if (key_node < 0) {
-		fprintf(stderr, "Could not create '%s' node: %s\n",
+	/* Either create or overwrite the named key node */
+	key_node = fdt_subnode_offset(fdt, signature_node, key_node_name);
+	if (key_node == -FDT_ERR_NOTFOUND) {
+		key_node = fdt_add_subnode(fdt, signature_node, key_node_name);
+		if (key_node < 0) {
+			fprintf(stderr, "Could not create '%s' node: %s\n",
+				key_node_name, fdt_strerror(key_node));
+			return key_node;
+		}
+	} else if (key_node < 0) {
+		fprintf(stderr, "cannot select '%s' node: %s\n",
 			key_node_name, fdt_strerror(key_node));
 		return key_node;
 	}
