@@ -146,7 +146,8 @@ dumpimage-mkimage-objs := aisimage.o \
 			mtk_nand_headers.o \
 			$(ECDSA_OBJS-y) \
 			$(RSA_OBJS-y) \
-			$(AES_OBJS-y)
+			$(AES_OBJS-y) \
+			astimage.o
 
 dumpimage-objs := $(dumpimage-mkimage-objs) dumpimage.o
 mkimage-objs   := $(dumpimage-mkimage-objs) mkimage.o

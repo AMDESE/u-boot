@@ -717,6 +717,12 @@ int main(int argc, char **argv)
 			ret = rockchip_copy_image(ifd, &params);
 			if (ret)
 				return ret;
+		} else if (params.type == IH_TYPE_ASTIMAGE) {
+			int ret;
+
+			ret = ast_copy_image(ifd, &params);
+			if (ret)
+				return ret;
 		} else {
 			copy_file(ifd, params.datafile, pad_len);
 		}
