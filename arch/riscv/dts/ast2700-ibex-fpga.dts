@@ -1,0 +1,191 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+
+/dts-v1/;
+
+#include "ast2700.dtsi"
+
+/ {
+	chosen {
+		stdout-path = &uart12;
+	};
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0x80000000 0x40000000>;
+	};
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		bootph-all;
+
+		pcie_vbios0: pcie_vbios0@b10a0000 {
+			reg = <0xb10a0000 0x10000>;
+			no-map;
+			bootph-all;
+		};
+
+		pcie_vbios1: pcie_vbios1@b10b0000 {
+			reg = <0xb10b0000 0x10000>;
+			no-map;
+			bootph-all;
+		};
+	};
+
+	binman: binman {
+		multiple-images;
+	};
+};
+
+&uart12 {
+	status = "okay";
+	clock-frequency = <1846153>;
+};
+
+&syscon0 {
+	status = "okay";
+};
+
+&emmc_controller {
+	status = "okay";
+	timing-phase = <0xf0097>;
+};
+
+&emmc {
+	status = "okay";
+};
+
+&ufs {
+	status = "okay";
+};
+
+&ufshc {
+	status = "okay";
+};
+
+&pinctrl0 {
+	pinctrl_emmc_default: emmc_default {
+		function = "EMMC";
+		groups = "EMMC";
+	};
+
+	pinctrl_emmc8bit_default: emmc8bit_default {
+		function = "EMMC8BIT";
+		groups = "EMMC8BIT";
+	};
+};
+
+&edaf_bridge0 {
+	status = "okay";
+	ctl-base = <0x0 0x14010000>;
+	mem-base = <0x1 0x80000000>;
+	cmd-read = <0x130401>;
+	cmd-write-enable = <0x6041e>;
+	cmd-write = <0x120402>;
+	cmd-read-status = <0x50415>;
+	cmd-erase-4k = <0x21040e>;
+	cmd-erase-32k = <0x5c040e>;
+	cmd-erase-64k = <0xdc040e>;
+};
+
+&edaf_bridge1 {
+	status = "okay";
+	ctl-base = <0x0 0x14020000>;
+	mem-base = <0x2 0x00000000>;
+	cmd-read = <0x130401>;
+	cmd-write-enable = <0x6041e>;
+	cmd-write = <0x120402>;
+	cmd-read-status = <0x50415>;
+	cmd-erase-4k = <0x21040e>;
+	cmd-erase-32k = <0x5c040e>;
+	cmd-erase-64k = <0xdc040e>;
+};
+
+&binman {
+	bootph-all;
+
+	u-boot-spl-ddr {
+		bootph-all;
+		filename = "u-boot-spl-ddr.bin";
+		pad-byte = <0x00>;
+		offset = <0xa00>;
+		align-size = <4>;
+		align = <4>;
+
+		mkimage {
+			bootph-all;
+			filename = "u-boot-spl-ddr.bin";
+			args = "-T", "astimage",
+				"-g", "test_oem_dss_private_key_ecdsa384_1",
+				"-k", "./board/aspeed/ibex_ast2700/keys/",
+				"-o", "sha384,ecdsa384";
+			multiple-data-files;
+
+			u-boot-spl {
+				bootph-all;
+				align-end = <4>;
+				filename = "u-boot-spl.bin";
+			};
+
+			ddr4-1d-imem-fw {
+				bootph-all;
+				filename = "board/aspeed/ibex_ast2700/prebuilt/ddr4_pmu_train_imem.bin";
+				type = "blob-ext";
+				align-end = <4>;
+			};
+			ddr4-1d-dmem-fw {
+				bootph-all;
+				filename = "board/aspeed/ibex_ast2700/prebuilt/ddr4_pmu_train_dmem.bin";
+				type = "blob-ext";
+				align-end = <4>;
+			};
+			ddr4-2d-imem-fw {
+				bootph-all;
+				filename = "board/aspeed/ibex_ast2700/prebuilt/ddr4_2d_pmu_train_imem.bin";
+				type = "blob-ext";
+				align-end = <4>;
+			};
+			ddr4-2d-dmem-fw {
+				bootph-all;
+				filename = "board/aspeed/ibex_ast2700/prebuilt/ddr4_2d_pmu_train_dmem.bin";
+				type = "blob-ext";
+				align-end = <4>;
+			};
+			ddr5-imem-fw {
+				bootph-all;
+				filename = "board/aspeed/ibex_ast2700/prebuilt/ddr5_pmu_train_imem.bin";
+				type = "blob-ext";
+				align-end = <4>;
+			};
+			ddr5-dmem-fw {
+				bootph-all;
+				filename = "board/aspeed/ibex_ast2700/prebuilt/ddr5_pmu_train_dmem.bin";
+				type = "blob-ext";
+				align-end = <4>;
+			};
+			dp-fw {
+				bootph-all;
+				filename = "board/aspeed/ibex_ast2700/prebuilt/dp_fw.bin";
+				type = "blob-ext";
+				align-end = <4>;
+			};
+			VBIOS {
+				bootph-all;
+				filename = "board/aspeed/ibex_ast2700/prebuilt/uefi_x64_2700.bin";
+				type = "blob-ext";
+				align-end = <4>;
+			};
+		};
+	};
+
+	ast2700-u-boot-spl {
+		bootph-all;
+		filename = "ast2700-ibex-spl.bin";
+
+		u_boot_spl: u-boot-spl-ddr {
+			bootph-all;
+			filename = "u-boot-spl-ddr.bin";
+			type = "blob-ext";
+		};
+	};
+};
