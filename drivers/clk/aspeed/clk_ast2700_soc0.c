@@ -67,12 +67,51 @@ static uint32_t ast2700_soc0_get_pll_rate(struct ast2700_soc0_scu *scu, int pll_
 	return rate;
 }
 
+/*
+ * AST2700A1
+ * SCU010[4:2]:
+ * 000: CPUCLK=MPLL=1.6GHz (MPLL default setting with SCU310, SCU314)
+ * 001: CPUCLK=HPLL=2.0GHz (HPLL default setting with SCU300, SCU304)
+ * 010: CPUCLK=HPLL=1.8GHz (HPLL frequency is constance and is not controlled by SCU300, SCU304)
+ * 011: CPUCLK=HPLL=1.7GHz (HPLL frequency is constance and is not controlled by SCU300, SCU304)
+ * 100: CPUCLK=MPLL/2=800MHz (MPLL default setting with SCU310, SCU314)
+ * 101: CPUCLK=HPLL/2=1.0GHz (HPLL default setting with SCU300, SCU304)
+ * 110: CPUCLK=HPLL=1.2GHz (HPLL frequency is constance and is not controlled by SCU300, SCU304)
+ * 111: CPUCLK=HPLL=800MHz (HPLL frequency is constance and is not controlled by SCU300, SCU304)
+ */
+
+#define SCU_HW_REVISION_ID		GENMASK(23, 16)
+#define SCU_CPUCLK_MASK		GENMASK(4, 2)
+#define SCU_CPUCLK_SHIFT	2
+
 static uint32_t ast2700_soc0_get_pspclk_rate(struct ast2700_soc0_scu *scu)
 {
-	if (readl(&scu->hwstrap1) & BIT(4))
-		return ast2700_soc0_get_pll_rate(scu, AST2700_SOC0_CLK_HPLL);
-	else
-		return ast2700_soc0_get_pll_rate(scu, AST2700_SOC0_CLK_MPLL);
+	uint32_t rate;
+	int cpuclk_set;
+
+	if (scu->chip_id1 & SCU_HW_REVISION_ID) {
+		cpuclk_set = (scu->hwstrap1 & SCU_CPUCLK_MASK) >> SCU_CPUCLK_SHIFT;
+		switch (cpuclk_set) {
+		case 0:
+			rate = ast2700_soc0_get_pll_rate(scu, AST2700_SOC0_CLK_MPLL);
+			break;
+		case 4:
+			rate = ast2700_soc0_get_pll_rate(scu, AST2700_SOC0_CLK_MPLL) / 2;
+			break;
+		case 5:
+			rate = ast2700_soc0_get_pll_rate(scu, AST2700_SOC0_CLK_HPLL) / 2;
+			break;
+		default:
+			rate = ast2700_soc0_get_pll_rate(scu, AST2700_SOC0_CLK_HPLL);
+			break;
+		}
+	} else {
+		if (readl(&scu->hwstrap1) & BIT(4))
+			rate = ast2700_soc0_get_pll_rate(scu, AST2700_SOC0_CLK_HPLL);
+		else
+			rate = ast2700_soc0_get_pll_rate(scu, AST2700_SOC0_CLK_MPLL);
+	}
+	return rate;
 }
 
 static uint32_t ast2700_soc0_get_axi0clk_rate(struct ast2700_soc0_scu *scu)
@@ -80,7 +119,6 @@ static uint32_t ast2700_soc0_get_axi0clk_rate(struct ast2700_soc0_scu *scu)
 	return ast2700_soc0_get_pspclk_rate(scu) / 2;
 }
 
-#define SCU_HW_REVISION_ID		GENMASK(23, 16)
 #define SCU_AHB_DIV_MASK		GENMASK(6, 5)
 #define SCU_AHB_DIV_SHIFT		5
 static uint32_t hclk_ast2700a1_div_table[] = {
@@ -119,7 +157,10 @@ static uint32_t ast2700_soc0_get_hclk_rate(struct ast2700_soc0_scu *scu)
 
 static uint32_t ast2700_soc0_get_axi1clk_rate(struct ast2700_soc0_scu *scu)
 {
-	return ast2700_soc0_get_hclk_rate(scu);
+	if (scu->chip_id1 & SCU_HW_REVISION_ID)
+		return ast2700_soc0_get_pll_rate(scu, AST2700_SOC0_CLK_MPLL) / 4;
+	else
+		return ast2700_soc0_get_hclk_rate(scu);
 }
 
 #define SCU_CLKSEL1_PCLK_DIV_MASK		GENMASK(25, 23)
