@@ -192,14 +192,34 @@ static uint32_t ast2700_soc0_get_bclk_rate(struct ast2700_soc0_scu *scu)
 	return (rate / ((div + 1) * 4));
 }
 
+#define SCU_CLKSEL1_MPHYCLK_SEL_MASK		GENMASK(19, 18)
+#define SCU_CLKSEL1_MPHYCLK_SEL_SHIFT		18
 #define SCU_CLKSEL1_MPHYCLK_DIV_MASK		GENMASK(7, 0)
 static uint32_t ast2700_soc0_get_mphyclk_rate(struct ast2700_soc0_scu *scu)
 {
-	u32 rate = ast2700_soc0_get_pll_rate(scu, AST2700_SOC0_CLK_HPLL);
-	u32 mphy_para = readl(&scu->mphyclk_para);
-	int div;
+	int div = readl(&scu->mphyclk_para) & SCU_CLKSEL1_BCLK_DIV_MASK;
+	int clk_sel;
+	u32 rate;
 
-	div = (mphy_para & SCU_CLKSEL1_BCLK_DIV_MASK);
+	if (scu->chip_id1 & SCU_HW_REVISION_ID) {
+		clk_sel = (scu->clk_sel2 & SCU_CLKSEL1_MPHYCLK_SEL_MASK) >> SCU_CLKSEL1_MPHYCLK_SEL_SHIFT;
+		switch (clk_sel) {
+		case 0:
+			rate = ast2700_soc0_get_pll_rate(scu, AST2700_SOC0_CLK_MPLL);
+			break;
+		case 1:
+			rate = ast2700_soc0_get_pll_rate(scu, AST2700_SOC0_CLK_HPLL);
+			break;
+		case 2:
+			rate = ast2700_soc0_get_pll_rate(scu, AST2700_SOC0_CLK_DPLL);
+			break;
+		case 3:
+			rate = 26000000;
+			break;
+		}
+	} else {
+		rate = ast2700_soc0_get_pll_rate(scu, AST2700_SOC0_CLK_HPLL);
+	}
 
 	return (rate / (div + 1));
 }
@@ -305,7 +325,6 @@ static int ast2700_soc0_clk_probe(struct udevice *dev)
 	u32 rate = 0;
 	u32 div = 0;
 	int i = 0;
-
 	u32 clksrc1;
 
 	priv->scu = dev_read_addr_ptr(dev->parent);
@@ -326,8 +345,27 @@ static int ast2700_soc0_clk_probe(struct udevice *dev)
 	clksrc1 |= (i << SCU_CLKSRC1_EMMC_DIV_SHIFT);
 	writel(clksrc1, &scu->clk_sel1);
 
-	/* set mphy clk from hpll */
-	rate = ast2700_soc0_get_pll_rate(priv->scu, AST2700_SOC0_CLK_HPLL);
+	/* set mphy clk */
+	if (scu->chip_id1 & SCU_HW_REVISION_ID) {
+		clksrc1 = (scu->clk_sel2 & SCU_CLKSEL1_MPHYCLK_SEL_MASK) >> SCU_CLKSEL1_MPHYCLK_SEL_SHIFT;
+		switch (clksrc1) {
+		case 0:
+			rate = ast2700_soc0_get_pll_rate(scu, AST2700_SOC0_CLK_MPLL);
+			break;
+		case 1:
+			rate = ast2700_soc0_get_pll_rate(scu, AST2700_SOC0_CLK_HPLL);
+			break;
+		case 2:
+			rate = ast2700_soc0_get_pll_rate(scu, AST2700_SOC0_CLK_DPLL);
+			break;
+		case 3:
+			rate = 26000000;
+			break;
+		}
+	} else {
+		rate = ast2700_soc0_get_pll_rate(scu, AST2700_SOC0_CLK_HPLL);
+	}
+
 	for (i = 1; i < 256; i++) {
 		if ((rate / i) <= 26000000)
 			break;
