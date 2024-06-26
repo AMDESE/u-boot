@@ -349,3 +349,67 @@ void phy_bcm5221_config(struct phy_s *obj)
 		} while (reg != mask);
 	}
 }
+
+static void air_buckpbus_reg_write(struct mdio_s *mdio, uint32_t addr, uint32_t data)
+{
+	aspeed_mdio_write(mdio, mdio->phy_addr, 0x1F, 4);
+	aspeed_mdio_write(mdio, mdio->phy_addr, 0x10, 0);
+	aspeed_mdio_write(mdio, mdio->phy_addr, 0x11, (uint16_t)(addr >> 16));
+	aspeed_mdio_write(mdio, mdio->phy_addr, 0x12, (uint16_t)(addr & 0xffff));
+	aspeed_mdio_write(mdio, mdio->phy_addr, 0x13, (uint16_t)(data >> 16));
+	aspeed_mdio_write(mdio, mdio->phy_addr, 0x14, (uint16_t)(data & 0xffff));
+	aspeed_mdio_write(mdio, mdio->phy_addr, 0x1F, 0);
+}
+
+#define RGMII_RXDELAY_ALIGN         BIT(4)
+#define RGMII_RXDELAY_FORCE_MODE    BIT(24)
+#define RGMII_TXDELAY_FORCE_MODE    BIT(24)
+
+void phy_an8801_config(struct phy_s *obj)
+{
+	struct mdio_s *mdio = obj->mdio;
+	uint32_t reg;
+
+	phy_reset(obj);
+	phy_default_config(obj);
+
+	reg = RGMII_TXDELAY_FORCE_MODE;
+	if (obj->phy_mode == PHY_INTERFACE_MODE_RGMII_ID ||
+	    obj->phy_mode == PHY_INTERFACE_MODE_RGMII_TXID)
+		reg |= 0x4;
+	air_buckpbus_reg_write(mdio, 0x1021C024, reg);
+
+	reg = RGMII_RXDELAY_FORCE_MODE;
+	if (obj->phy_mode == PHY_INTERFACE_MODE_RGMII_ID ||
+	    obj->phy_mode == PHY_INTERFACE_MODE_RGMII_RXID)
+		reg |= RGMII_RXDELAY_ALIGN;
+	air_buckpbus_reg_write(mdio, 0x1021C02C, reg);
+
+	if (obj->loopback == PHY_LOOPBACK_INT) {
+		switch (obj->speed) {
+		case 1000:
+			aspeed_mdio_write(mdio, mdio->phy_addr, 0, 0x4140);
+			break;
+		case 100:
+			aspeed_mdio_write(mdio, mdio->phy_addr, 0, 0x6100);
+			break;
+		case 10:
+			aspeed_mdio_write(mdio, mdio->phy_addr, 0, 0x4100);
+			break;
+		}
+	} else if (obj->loopback == PHY_LOOPBACK_EXT) {
+		switch (obj->speed) {
+		case 1000:
+			aspeed_mdio_write(mdio, mdio->phy_addr, 0x9, 0x1a00);
+			aspeed_mdio_write(mdio, mdio->phy_addr, 0x18, 0x1);
+			aspeed_mdio_write(mdio, mdio->phy_addr, 0, 0x1200);
+			break;
+		case 100:
+			aspeed_mdio_write(mdio, mdio->phy_addr, 0, 0x2100);
+			break;
+		case 10:
+			aspeed_mdio_write(mdio, mdio->phy_addr, 0, 0x0100);
+			break;
+		}
+	}
+}

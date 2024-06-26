@@ -6,6 +6,7 @@ void phy_rtl8211f_config(struct phy_s *obj);
 void phy_bcm54616_config(struct phy_s *obj);
 void phy_bcm54616_clear(struct phy_s *obj);
 void phy_bcm5221_config(struct phy_s *obj);
+void phy_an8801_config(struct phy_s *obj);
 
 struct phy_desc {
 	u16 id1;
@@ -52,5 +53,11 @@ static struct phy_desc phy_lookup_tbl[] = {
 	  .id2_mask = 0xfc00,
 	  .name = "BCM5221",
 	  .config = phy_bcm5221_config,
+	  .clear = NULL },
+	{ .id1 = 0xC0ff,
+	  .id2 = 0x0421,
+	  .id2_mask = 0xFFF0,
+	  .name = "Airoha AN8801R",
+	  .config = phy_an8801_config,
 	  .clear = NULL },
 };
