@@ -17,8 +17,8 @@
 struct hdr_preamble {
 	char magic[4];
 	uint8_t sig_ecc[96];
-	uint8_t sig_lms[1668];
-	uint32_t reserved[6];
+	uint8_t sig_lms[1620];
+	uint32_t reserved[18];
 };
 
 struct hdr_body {
