@@ -77,14 +77,13 @@
 union ast2700_pll_reg {
 	uint32_t w;
 	struct {
-		unsigned int m : 13;			/* bit[12:0]	*/
-		unsigned int n : 6;			/* bit[18:13]	*/
-		unsigned int p : 4;			/* bit[22:19]	*/
-		unsigned int off : 1;			/* bit[23]	*/
-		unsigned int bypass : 1;		/* bit[24]	*/
-		unsigned int reset : 1;			/* bit[25]	*/
-		unsigned int reserved : 6;		/* bit[31:26]	*/
-
+		uint16_t m : 13;		/* bit[12:0]	*/
+		uint8_t n : 6;			/* bit[18:13]	*/
+		uint8_t p : 4;			/* bit[22:19]	*/
+		uint8_t off : 1;		/* bit[23]	*/
+		uint8_t bypass : 1;		/* bit[24]	*/
+		uint8_t reset : 1;		/* bit[25]	*/
+		uint8_t reserved : 6;		/* bit[31:26]	*/
 	} b;
 };
 

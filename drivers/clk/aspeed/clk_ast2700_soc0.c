@@ -34,22 +34,28 @@ static uint32_t ast2700_soc0_get_pll_rate(struct ast2700_soc0_scu *scu, int pll_
 	case AST2700_SOC0_CLK_MPLL:
 		pll_reg.w = readl(&scu->mpll);
 		break;
+	default:
+		pr_err("Error:%s: invalid PSP clock source (%d)\n", __func__, pll_idx);
+		return -EINVAL;
 	}
 
-	if (pll_idx == AST2700_SOC0_CLK_HPLL && ((scu->hwstrap1 & GENMASK(3, 2)) != 0)) {
+	if (pll_idx == AST2700_SOC0_CLK_HPLL && ((scu->hwstrap1 & GENMASK(3, 2)) != 0U)) {
 		switch ((scu->hwstrap1 & GENMASK(3, 2)) >> 2) {
-		case 1:
+		case 1U:
 			rate = 1900000000;
 			break;
-		case 2:
+		case 2U:
 			rate = 1800000000;
 			break;
-		case 3:
+		case 3U:
 			rate = 1700000000;
+			break;
+		default:
+			rate = 2000000000;
 			break;
 		}
 	} else {
-		if (!pll_reg.b.bypass) {
+		if (pll_reg.b.bypass != 0U) {
 			if (pll_idx == AST2700_SOC0_CLK_MPLL) {
 				/* F = 25Mhz * [M / (n + 1)] / (p + 1) */
 				mul = (pll_reg.b.m) / ((pll_reg.b.n + 1));
