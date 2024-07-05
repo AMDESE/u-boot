@@ -22,11 +22,10 @@ struct hdr_preamble {
 };
 
 struct hdr_body {
-	uint32_t svn0;
-	uint32_t svn1;
+	uint32_t svn;
 	uint32_t fmc_size;
 	uint8_t digest_arr[INTPUT_FILE_MAX][48];
-	uint32_t reserved[69];
+	uint32_t reserved[70];
 };
 
 struct ast_image_header {
@@ -87,7 +86,7 @@ static void ast_image_print_header(const void *ptr, struct image_tool_params *pa
 	struct ast_image_header *hdr = (struct ast_image_header *)ptr;
 
 	printf("Image Type: Aspeed Boot Image\n");
-	fprintf(stdout, "Image SVN: 0x%x-0x%x\n", hdr->body.svn1, hdr->body.svn0);
+	fprintf(stdout, "Image SVN: 0x%x\n", hdr->body.svn);
 	fprintf(stdout, "Image Size: 0x%x\n", hdr->body.fmc_size);
 }
 
@@ -115,8 +114,7 @@ static void ast_image_set_header(void *ptr, struct stat *sbuf, int ifd,
 	// fprintf(stdout, "ast mkimage file sz = 0x%lx\n", sbuf->st_size);
 	// printf("%s..., hdr size:0x%x\n", __func__, hdr_size);
 
-	hdr->body.svn0 = 0;
-	hdr->body.svn1 = 0;
+	hdr->body.svn = 0;
 	hdr->body.fmc_size = input_images[0].size;
 
 	for (int i = 0; i < INTPUT_FILE_MAX; i++) {
