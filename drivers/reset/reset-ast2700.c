@@ -5,7 +5,6 @@
 
 #include <dm.h>
 #include <reset.h>
-#include <common.h>
 #include <asm/io.h>
 #include <linux/err.h>
 #include <reset-uclass.h>

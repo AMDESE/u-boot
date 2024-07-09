@@ -2,7 +2,7 @@
 /*
  * Copyright (C) ASPEED Technology Inc.
  */
-#include <common.h>
+
 #include <dm.h>
 #include <ram.h>
 #include <init.h>

@@ -4,11 +4,9 @@
  * Ryan Chen <ryan_chen@aspeedtech.com>
  */
 
-#include <common.h>
 #include <errno.h>
 #include <asm/io.h>
 #include <asm/arch/aspeed_scu_info.h>
-
 
 int aspeed_get_mac_phy_interface(u8 num)
 {
@@ -18,7 +16,6 @@ int aspeed_get_mac_phy_interface(u8 num)
 void aspeed_print_security_info(void)
 {
 }
-
 
 void aspeed_print_dram_initializer(void)
 {

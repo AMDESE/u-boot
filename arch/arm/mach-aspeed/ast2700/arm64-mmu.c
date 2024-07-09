@@ -3,7 +3,6 @@
  * Copyright (C) ASPEED Technology Inc.
  */
 
-#include <common.h>
 #include <dm.h>
 #include <asm/armv8/mmu.h>
 

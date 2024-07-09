@@ -4,7 +4,6 @@
  * Ryan Chen <ryan_chen@aspeedtech.com>
  */
 
-#include <common.h>
 #include <command.h>
 #include <asm/io.h>
 #include <asm/arch/platform.h>

@@ -2,4 +2,4 @@
 /*
  * Copyright (C) ASPEED Technology Inc.
  */
-#include <common.h>
+

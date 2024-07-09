@@ -3,7 +3,6 @@
  * Copyright (C) ASPEED Technology Inc.
  */
 
-#include <common.h>
 #include <dm.h>
 #include <asm/arch-aspeed/e2m_ast2700.h>
 #include <asm/arch-aspeed/pci_ast2700.h>

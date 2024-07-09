@@ -5,7 +5,6 @@
 
 #include <asm/arch-aspeed/spi.h>
 #include <asm/io.h>
-#include <common.h>
 #include <env.h>
 #include <env_internal.h>
 #include <malloc.h>
