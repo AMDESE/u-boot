@@ -55,7 +55,7 @@ static uint32_t ast2700_soc0_get_pll_rate(struct ast2700_soc0_scu *scu, int pll_
 			break;
 		}
 	} else {
-		if (pll_reg.b.bypass != 0U) {
+		if (pll_reg.b.bypass == 0U) {
 			if (pll_idx == AST2700_SOC0_CLK_MPLL) {
 				/* F = 25Mhz * [M / (n + 1)] / (p + 1) */
 				mul = (pll_reg.b.m) / ((pll_reg.b.n + 1));
