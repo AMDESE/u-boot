@@ -12,7 +12,7 @@
 #define STR_HELPER(n)	#n
 #define STR(n)		STR_HELPER(n)
 
-#define CONFIG_SYS_UBOOT_BASE		CONFIG_TEXT_BASE
+#define CFG_SYS_UBOOT_BASE		CONFIG_TEXT_BASE
 
 #define CFG_EXTRA_ENV_SETTINGS \
 	"bootspi=fdt addr ${fdtspiaddr} && fdt header get fitsize totalsize && " \
