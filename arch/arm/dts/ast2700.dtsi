@@ -99,7 +99,7 @@
 			compatible = "aspeed,ast2700-hace";
 			reg = <0 0x12070000 0 0x200>;
 			clocks = <&soc0_clk AST2700_SOC0_CLK_GATE_YCLK>;
-			resets = <&soc0_rst SCU_CPU_RESET_HACE>;
+			resets = <&soc0_rst SCU0_RESET_HACE>;
 			status = "disabled";
 		};
 
@@ -109,7 +109,7 @@
 			#address-cells = <2>;
 			#size-cells = <2>;
 			clocks = <&soc0_clk AST2700_SOC0_CLK_GATE_EMMCCLK>;
-			resets = <&soc0_rst SCU_CPU_RESET_EMMC>;
+			resets = <&soc0_rst SCU0_RESET_EMMC>;
 			ranges = <0 0 0 0x12090000 0 0x10000>;
 			status = "disable";
 
@@ -128,7 +128,7 @@
 			compatible = "aspeed,ast2700-sdrammc";
 			reg = <0 0x12c00000 0 0x3000 0 0x13000000 0 0x300 >;
 			clocks = <&soc0_clk AST2700_SOC0_CLK_MPLL>;
-			resets = <&soc0_rst SCU_CPU_RESET_SDRAM>;
+			resets = <&soc0_rst SCU0_RESET_SDRAM>;
 		};
 
 		syscon0: syscon@12c02000 {
@@ -163,7 +163,7 @@
 			#size-cells = <2>;
 			ranges = <0 0 0 0x12c08000 0 0x400>;
 			clocks = <&soc0_clk AST2700_SOC0_CLK_GATE_UFSCLK>;
-			resets = <&soc0_rst SCU_CPU_RESET_UFS>;
+			resets = <&soc0_rst SCU0_RESET_UFS>;
 			status = "disable";
 
 			ufshc: ufshc@12c08200 {
@@ -195,7 +195,7 @@
 			      <0x0 0x11020000 0x0 0x4000>;
 			interrupts = <GIC_SPI 28 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&soc0_clk AST2700_SOC0_CLK_GATE_DP>;
-			resets = <&soc0_rst SCU_CPU_RESET_DP>, <&soc0_rst SCU_CPU_RESET_DP_MCU>;
+			resets = <&soc0_rst SCU0_RESET_DP>, <&soc0_rst SCU0_RESET_DP_MCU>;
 			aspeed,scu = <&syscon0>;
 			status = "disabled";
 		};
@@ -311,7 +311,7 @@
 			compatible = "aspeed,ast2700-spi";
 			status = "disabled";
 			clocks = <&soc1_clk AST2700_SOC1_CLK_AHB>;
-			resets = <&soc1_rst SCU_IO_RESET_SPI3>;
+			resets = <&soc1_rst SCU1_RESET_SPI3>;
 			num-cs = <2>;
 
 			flash@0 {
@@ -336,7 +336,7 @@
 			mdio0: mdio@0 {
 				compatible = "aspeed,ast2700-mdio";
 				reg = <0 0 0 0x8>;
-				resets = <&soc1_rst SCU_IO_RESET_MII>;
+				resets = <&soc1_rst SCU1_RESET_MII>;
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_mdio0_default>;
 				status = "disabled";
@@ -345,7 +345,7 @@
 			mdio1: mdio@8 {
 				compatible = "aspeed,ast2700-mdio";
 				reg = <0 0x8 0 0x8>;
-				resets = <&soc1_rst SCU_IO_RESET_MII>;
+				resets = <&soc1_rst SCU1_RESET_MII>;
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_mdio1_default>;
 				status = "disabled";
@@ -354,7 +354,7 @@
 			mdio2: mdio@10 {
 				compatible = "aspeed,ast2700-mdio";
 				reg = <0 0x10 0 0x8>;
-				resets = <&soc1_rst SCU_IO_RESET_MII>;
+				resets = <&soc1_rst SCU1_RESET_MII>;
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_mdio2_default>;
 				status = "disabled";
@@ -381,7 +381,7 @@
 			compatible = "aspeed,ast2700-mac", "faraday,ftgmac100";
 			reg = <0x0 0x14050000 0x0 0x200>;
 			clocks = <&soc1_clk AST2700_SOC1_CLK_GATE_MAC0CLK>;
-			resets = <&soc1_rst SCU_IO_RESET_MAC0>;
+			resets = <&soc1_rst SCU1_RESET_MAC0>;
 			status = "disabled";
 		};
 
@@ -389,7 +389,7 @@
 			compatible = "aspeed,ast2700-mac", "faraday,ftgmac100";
 			reg = <0x0 0x14060000 0x0 0x200>;
 			clocks = <&soc1_clk AST2700_SOC1_CLK_GATE_MAC1CLK>;
-			resets = <&soc1_rst SCU_IO_RESET_MAC1>;
+			resets = <&soc1_rst SCU1_RESET_MAC1>;
 			status = "disabled";
 		};
 
@@ -401,7 +401,7 @@
 			phy-names = "sgmii";
 
 			clocks = <&soc1_clk AST2700_SOC1_CLK_GATE_MAC2CLK>;
-			resets = <&soc1_rst SCU_IO_RESET_MAC2>;
+			resets = <&soc1_rst SCU1_RESET_MAC2>;
 			status = "disabled";
 		};
 
@@ -422,7 +422,7 @@
 			#address-cells = <2>;
 			#size-cells = <2>;
 			clocks = <&soc1_clk AST2700_SOC1_CLK_GATE_SDCLK>;
-			resets = <&soc1_rst SCU_IO_RESET_SDC>;
+			resets = <&soc1_rst SCU1_RESET_SDC>;
 			ranges = <0 0 0 0x14080000 0 0x10000>;
 			status = "disable";
 
@@ -634,7 +634,7 @@
 			reg = <0 0x14c0f100 0 0x40>;
 			compatible = "aspeed,ast2700-i2cv2";
 			bus-frequency = <100000>;
-			resets = <&soc1_rst SCU_IO_RESET_I2C>;
+			resets = <&soc1_rst SCU1_RESET_I2C>;
 			clocks = <&soc1_clk AST2700_SOC1_CLK_APB>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_i2c0_default>;
@@ -645,7 +645,7 @@
 			reg = <0 0x14c0f200 0 0x40>;
 			compatible = "aspeed,ast2700-i2cv2";
 			bus-frequency = <100000>;
-			resets = <&soc1_rst SCU_IO_RESET_I2C>;
+			resets = <&soc1_rst SCU1_RESET_I2C>;
 			clocks = <&soc1_clk AST2700_SOC1_CLK_APB>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_i2c1_default>;
@@ -656,7 +656,7 @@
 			reg = <0 0x14c0f300 0 0x40>;
 			compatible = "aspeed,ast2700-i2cv2";
 			bus-frequency = <100000>;
-			resets = <&soc1_rst SCU_IO_RESET_I2C>;
+			resets = <&soc1_rst SCU1_RESET_I2C>;
 			clocks = <&soc1_clk AST2700_SOC1_CLK_APB>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_i2c2_default>;
@@ -667,7 +667,7 @@
 			reg = <0 0x14c0f400 0 0x40>;
 			compatible = "aspeed,ast2700-i2cv2";
 			bus-frequency = <100000>;
-			resets = <&soc1_rst SCU_IO_RESET_I2C>;
+			resets = <&soc1_rst SCU1_RESET_I2C>;
 			clocks = <&soc1_clk AST2700_SOC1_CLK_APB>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_i2c3_default>;

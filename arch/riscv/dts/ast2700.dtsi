@@ -39,7 +39,7 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			clocks = <&soc0_clk AST2700_SOC0_CLK_GATE_EMMCCLK>;
-			resets = <&soc0_rst SCU_CPU_RESET_EMMC>;
+			resets = <&soc0_rst SCU0_RESET_EMMC>;
 			ranges = <0 0x12090000 0x10000>;
 			status = "disabled";
 
@@ -61,7 +61,7 @@
 			#size-cells = <1>;
 			ranges = <0 0x12c08000 0x400>;
 			clocks = <&soc0_clk AST2700_SOC0_CLK_GATE_UFSCLK>;
-			resets = <&soc0_rst SCU_CPU_RESET_UFS>;
+			resets = <&soc0_rst SCU0_RESET_UFS>;
 			status = "disabled";
 
 			ufshc: ufshc@12c08200 {
