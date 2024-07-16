@@ -38,7 +38,7 @@
 			reg = <0x12090000 0x100>;
 			#address-cells = <1>;
 			#size-cells = <1>;
-			clocks = <&soc0_clk AST2700_SOC0_CLK_GATE_EMMCCLK>;
+			clocks = <&soc0_clk SCU0_CLK_GATE_EMMCCLK>;
 			resets = <&soc0_rst SCU0_RESET_EMMC>;
 			ranges = <0 0x12090000 0x10000>;
 			status = "disabled";
@@ -48,7 +48,7 @@
 				reg = <0x100 0x100>;
 				sdhci,auto-cmd12;
 				#interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&soc0_clk AST2700_SOC0_CLK_GATE_EMMCCLK>;
+				clocks = <&soc0_clk SCU0_CLK_GATE_EMMCCLK>;
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_emmc_default>;
 			};
@@ -60,7 +60,7 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			ranges = <0 0x12c08000 0x400>;
-			clocks = <&soc0_clk AST2700_SOC0_CLK_GATE_UFSCLK>;
+			clocks = <&soc0_clk SCU0_CLK_GATE_UFSCLK>;
 			resets = <&soc0_rst SCU0_RESET_UFS>;
 			status = "disabled";
 
@@ -69,7 +69,7 @@
 				reg = <0x200 0x100>;
 				#interrupts = <GIC_SPI 118 IRQ_TYPE_LEVEL_HIGH>;
 				freq-table-hz = <24000000 24000000>;
-				clocks = <&soc0_clk AST2700_SOC0_CLK_AXI1>;
+				clocks = <&soc0_clk SCU0_CLK_AXI1>;
 				clock-names = "core_clk";
 				dma-coherent;
 			};

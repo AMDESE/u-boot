@@ -18,16 +18,16 @@ struct aspeed_clks {
 };
 
 static struct aspeed_clks ast2700_clk0_names[] = {
-	{ AST2700_SOC0_CLK_PSP, "cpu clk" },     { AST2700_SOC0_CLK_HPLL, "hpll" },
-	{ AST2700_SOC0_CLK_DPLL, "dpll" },     { AST2700_SOC0_CLK_MPLL, "mpll" },
-	{ AST2700_SOC0_CLK_AXI1, "axi1" },     { AST2700_SOC0_CLK_AHB, "hclk" },
-	{ AST2700_SOC0_CLK_APB, "pclk" },
+	{ SCU0_CLK_PSP, "cpu clk" },     { SCU0_CLK_HPLL, "hpll" },
+	{ SCU0_CLK_DPLL, "dpll" },     { SCU0_CLK_MPLL, "mpll" },
+	{ SCU0_CLK_AXI1, "axi1" },     { SCU0_CLK_AHB, "hclk" },
+	{ SCU0_CLK_APB, "pclk" },
 };
 
 static struct aspeed_clks ast2700_clk1_names[] = {
-	{ AST2700_SOC1_CLK_HPLL, "hpll" },     { AST2700_SOC1_CLK_APLL, "apll" },
-	{ AST2700_SOC1_CLK_DPLL, "dpll" },     { AST2700_SOC1_CLK_AHB, "hclk" },
-	{ AST2700_SOC1_CLK_APB, "pclk" },
+	{ SCU1_CLK_HPLL, "hpll" },     { SCU1_CLK_APLL, "apll" },
+	{ SCU1_CLK_DPLL, "dpll" },     { SCU1_CLK_AHB, "hclk" },
+	{ SCU1_CLK_APB, "pclk" },
 };
 
 /**
