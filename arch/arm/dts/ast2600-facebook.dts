@@ -6,7 +6,7 @@
 
 / {
 	model = "Facebook BMC";
-	compatible = "facebook,harma-bmc", "facebook,minerva-bmc", "aspeed,ast2600";
+	compatible = "facebook,harma-bmc", "facebook,minerva-bmc", "facebook,catalina-bmc", "aspeed,ast2600";
 
 	memory {
 		device_type = "memory";
