@@ -738,6 +738,15 @@ int dram_init(void)
 	debug("%s is successfully initialized\n", ac->desc);
 	sdramc_set_flag(DRAMC_INIT_DONE);
 
+	/* raise SLI write priority */
+	writel(0xa000, (void *)0x12c00410);
+	writel(0x9000, (void *)0x12c00408);
+	writel(0x8c, (void *)0x12c00400);
+
+	/* raise usb 2.0 B1/B2 priority */
+	writel(0x99, (void *)0x12c00308);
+	writel(0x8c, (void *)0x12c00300);
+
 out:
 	sdramc->info.base = 0x80000000;
 	sdramc->info.size = 0x40000000;
