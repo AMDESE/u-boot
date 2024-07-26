@@ -105,7 +105,8 @@ static void vidconsole_newline(struct udevice *dev)
 	ret = video_sync(dev->parent, false);
 	if (ret) {
 #ifdef DEBUG
-		console_puts_select_stderr(true, "[vc err: video_sync]");
+		if (IS_ENABLED(CONFIG_CONSOLE_MUX))
+			console_puts_select_stderr(true, "[vc err: video_sync]");
 #endif
 	}
 }
@@ -304,7 +305,8 @@ static void vidconsole_escape_char(struct udevice *dev, char ch)
 			ret = video_sync(dev->parent, false);
 			if (ret) {
 #ifdef DEBUG
-				console_puts_select_stderr(true, "[vc err: video_sync]");
+				if (IS_ENABLED(CONFIG_CONSOLE_MUX))
+					console_puts_select_stderr(true, "[vc err: video_sync]");
 #endif
 			}
 			priv->ycur = 0;
@@ -519,13 +521,15 @@ static void vidconsole_putc(struct stdio_dev *sdev, const char ch)
 	ret = vidconsole_put_char(dev, ch);
 	if (ret) {
 #ifdef DEBUG
-		console_puts_select_stderr(true, "[vc err: putc]");
+		if (IS_ENABLED(CONFIG_CONSOLE_MUX))
+			console_puts_select_stderr(true, "[vc err: putc]");
 #endif
 	}
 	ret = video_sync(dev->parent, false);
 	if (ret) {
 #ifdef DEBUG
-		console_puts_select_stderr(true, "[vc err: video_sync]");
+		if (IS_ENABLED(CONFIG_CONSOLE_MUX))
+			console_puts_select_stderr(true, "[vc err: video_sync]");
 #endif
 	}
 }
@@ -538,16 +542,19 @@ static void vidconsole_puts(struct stdio_dev *sdev, const char *s)
 	ret = vidconsole_put_string(dev, s);
 	if (ret) {
 #ifdef DEBUG
-		char str[30];
+		if (IS_ENABLED(CONFIG_CONSOLE_MUX)) {
+			char str[30];
 
-		snprintf(str, sizeof(str), "[vc err: puts %d]", ret);
-		console_puts_select_stderr(true, str);
+			snprintf(str, sizeof(str), "[vc err: puts %d]", ret);
+			console_puts_select_stderr(true, str);
+		}
 #endif
 	}
 	ret = video_sync(dev->parent, false);
 	if (ret) {
 #ifdef DEBUG
-		console_puts_select_stderr(true, "[vc err: video_sync]");
+		if (IS_ENABLED(CONFIG_CONSOLE_MUX))
+			console_puts_select_stderr(true, "[vc err: video_sync]");
 #endif
 	}
 }
