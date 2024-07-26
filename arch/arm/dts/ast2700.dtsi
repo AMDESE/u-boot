@@ -311,7 +311,7 @@
 			compatible = "aspeed,ast2700-spi";
 			status = "disabled";
 			clocks = <&soc1_clk SCU1_CLK_AHB>;
-			resets = <&soc1_rst SCU1_RESET_SPI3>;
+			resets = <&soc1_rst SCU1_RESET_SPI2>;
 			num-cs = <2>;
 
 			flash@0 {
