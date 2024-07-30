@@ -98,7 +98,7 @@
 		hace: hace@12070000 {
 			compatible = "aspeed,ast2700-hace";
 			reg = <0 0x12070000 0 0x200>;
-			clocks = <&soc0_clk SCU0_CLK_GATE_YCLK>;
+			clocks = <&soc0_clk SCU0_CLK_GATE_HACCLK>;
 			resets = <&soc0_rst SCU0_RESET_HACE>;
 			status = "disabled";
 		};
@@ -205,8 +205,8 @@
 			reg = <0 0x12c02000 0 0x1000>, <0 0x12c00000 0 0x200>,
 			      <0 0x12c21000 0 0x200>, <0 0x12c22000 0 0x200>,
 			      <0 0x12c1d000 0 0x200>, <0 0x14c3a000 0 0x200>;
-			clocks = <&soc0_clk SCU0_CLK_GATE_D1CLK>,
-				 <&soc0_clk SCU0_CLK_GATE_D2CLK>,
+			clocks = <&soc0_clk SCU0_CLK_GATE_VGA0CLK>,
+				 <&soc0_clk SCU0_CLK_GATE_VGA1CLK>,
 				 <&soc0_clk SCU0_CLK_GATE_DACCLK>;
 			status = "disabled";
 		};
