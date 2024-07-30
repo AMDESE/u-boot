@@ -1,0 +1,17 @@
+if TARGET_AST2700_DCSCM
+
+config SYS_BOARD
+	default "ast2700_dcscm"
+
+config SYS_VENDOR
+	default "aspeed"
+
+config SYS_CONFIG_NAME
+	string "board configuration name"
+	default "ast2700_dcscm"
+
+config AVENUE_CITY_CRB
+	bool "Support for Intel Avenue City CRB"
+	default n
+
+endif
