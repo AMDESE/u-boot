@@ -17,6 +17,7 @@ obj-$(CONFIG_PCIE_APPLE) += pcie_apple.o
 obj-$(CONFIG_PCI_GT64120) += pci_gt64120.o
 obj-$(CONFIG_PCI_MPC85XX) += pci_mpc85xx.o
 obj-$(CONFIG_PCI_MSC01) += pci_msc01.o
+obj-$(CONFIG_PCIE_ASPEED) += pcie_aspeed.o aspeed_pcie_phy.o
 obj-$(CONFIG_PCIE_IMX) += pcie_imx.o
 obj-$(CONFIG_PCI_MVEBU) += pci_mvebu.o
 obj-$(CONFIG_PCI_RCAR_GEN2) += pci-rcar-gen2.o
