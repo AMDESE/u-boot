@@ -29,6 +29,7 @@ ifdef CONFIG_SPL_BUILD
 obj-$(CONFIG_SANDBOX) += spltest_sandbox.o
 endif
 endif
+obj-$(CONFIG_ASPEED_AHBC) += aspeed_ahbc.o
 obj-$(CONFIG_ALTERA_SYSID) += altera_sysid.o
 obj-$(CONFIG_ATSHA204A) += atsha204a-i2c.o
 obj-$(CONFIG_CBMEM_CONSOLE) += cbmem_console.o
