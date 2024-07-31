@@ -282,3 +282,11 @@
 &display_port {
 	status = "okay";
 };
+
+&pcie_phy1 {
+	status = "okay";
+};
+
+&pcie_bridge {
+	status = "okay";
+};
