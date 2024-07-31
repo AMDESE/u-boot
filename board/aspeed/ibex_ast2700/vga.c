@@ -58,7 +58,7 @@ static int dp_init(struct ast2700_soc0_scu *scu)
 			return -1;
 		}
 		// TODO: SPL boot only now
-		fw_addr = (u32 *)(binman_sym(u32, dp_fw, image_pos) - CONFIG_SPL_TEXT_BASE + 0x20000000 + 0x20000);
+		fw_addr = (u32 *)(binman_sym(u32, dp_fw, image_pos) - CONFIG_SPL_TEXT_BASE + 0x20000000);
 	} else {
 		fmc_hdr_get_prebuilt(PBT_DP_FW, &fw_ofst, &fw_size, NULL);
 		fw_addr = (u32 *)(0x20000000 + 0x20000 + fw_ofst);
@@ -157,7 +157,7 @@ static int vbios_init(struct ast2700_soc0_scu *scu, u8 node)
 		vbios_size = binman_sym(u32, VBIOS, size);
 		debug("vbios size : 0x%x\n", vbios_size);
 
-		vbios_addr = (u32 *)(binman_sym(u32, VBIOS, image_pos) - CONFIG_SPL_TEXT_BASE + 0x20000000 + 0x20000);
+		vbios_addr = (u32 *)(binman_sym(u32, VBIOS, image_pos) - CONFIG_SPL_TEXT_BASE + 0x20000000);
 		debug("vbios addr : 0x%p\n", vbios_addr);
 	} else {
 		fmc_hdr_get_prebuilt(PBT_UEFI_X64_AST2700, &vbios_ofst, &vbios_size, NULL);

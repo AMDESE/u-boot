@@ -993,15 +993,15 @@ void dwc_phy_init(struct sdramc *sdramc)
 		ddr5_dmem_len = binman_sym(u32, ddr5_dmem_fw, size);
 
 		// ddr5
-		dwc_train[0][0].imem_base = ddr5_imem - base + 0x20000;
+		dwc_train[0][0].imem_base = ddr5_imem - base;
 		dwc_train[0][0].imem_len = ddr5_imem_len;
-		dwc_train[0][0].dmem_base = ddr5_dmem - base + 0x20000;
+		dwc_train[0][0].dmem_base = ddr5_dmem - base;
 		dwc_train[0][0].dmem_len = ddr5_dmem_len;
 
 		// ddr4 1d
-		dwc_train[1][0].imem_base = imem_start - base + 0x20000;
+		dwc_train[1][0].imem_base = imem_start - base;
 		dwc_train[1][0].imem_len = imem_len;
-		dwc_train[1][0].dmem_base = dmem_start - base + 0x20000;
+		dwc_train[1][0].dmem_base = dmem_start - base;
 		dwc_train[1][0].dmem_len = dmem_len;
 
 		// ddr4 2d
