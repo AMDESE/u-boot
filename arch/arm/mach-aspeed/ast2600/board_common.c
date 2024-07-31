@@ -13,6 +13,7 @@
 #include <dm/uclass.h>
 #include <asm/arch/scu_ast2600.h>
 #include <asm/global_data.h>
+#include <init.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -61,6 +62,8 @@ int board_init(void)
 		if (rc)
 			break;
 	}
+
+	pci_init();
 
 	return 0;
 }
