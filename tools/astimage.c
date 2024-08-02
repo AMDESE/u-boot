@@ -8,24 +8,38 @@
 #include <image.h>
 #include "compiler.h"
 
-#define AST_HDR_MAGIC		"ASTH"
+#define FMC_HDR_MAGIC		0x48545341 /* ASTH */
 #define FMC_MAX_SIZE		88 * 1024 /* 88KB */
 
 #define SHA384_BLOCK_SIZE	128
 #define INTPUT_FILE_MAX		10
 
+#define ECC_SIGN_LEN	96
+#define LMS_SIGN_LEN	1620
+#define SHA_DGST_LEN	48
+
+/* SoC FMC Header Structure */
 struct hdr_preamble {
-	char magic[4];
-	uint8_t sig_ecc[96];
-	uint8_t sig_lms[1620];
-	uint32_t reserved[18];
+	uint32_t magic;
+	uint16_t ecc_key_idx;
+	uint16_t lms_key_idx;
+	uint8_t ecc_sig[ECC_SIGN_LEN];
+	uint8_t lms_sig[LMS_SIGN_LEN];
+	uint32_t raz[17];
 };
 
 struct hdr_body {
-	uint32_t svn;
-	uint32_t fmc_size;
-	uint8_t digest_arr[INTPUT_FILE_MAX][48];
-	uint32_t reserved[70];
+	uint32_t size : 24;
+	uint32_t svn : 8;
+	uint8_t dgst[SHA_DGST_LEN];
+	union {
+		struct {
+			uint32_t size : 24;
+			uint32_t type : 8;
+			uint8_t dgst[SHA_DGST_LEN];
+		} pbs[0];
+		uint32_t raz[179];
+	};
 };
 
 struct ast_image_header {
@@ -72,8 +86,8 @@ static int ast_image_verify_header(unsigned char *ptr, int image_size,
 {
 	struct ast_image_header *hdr = (struct ast_image_header *)ptr;
 
-	if (memcmp(hdr->preamble.magic, AST_HDR_MAGIC, sizeof(hdr->preamble.magic))) {
-		printf("header magic wrong, %s\n", hdr->preamble.magic);
+	if (hdr->preamble.magic != FMC_HDR_MAGIC) {
+		printf("header magic wrong, %x\n", hdr->preamble.magic);
 		return -FDT_ERR_BADSTRUCTURE;
 	}
 
@@ -87,7 +101,7 @@ static void ast_image_print_header(const void *ptr, struct image_tool_params *pa
 
 	printf("Image Type: Aspeed Boot Image\n");
 	fprintf(stdout, "Image SVN: 0x%x\n", hdr->body.svn);
-	fprintf(stdout, "Image Size: 0x%x\n", hdr->body.fmc_size);
+	fprintf(stdout, "Image Size: 0x%x\n", hdr->body.size);
 }
 
 static void ast_image_set_header(void *ptr, struct stat *sbuf, int ifd,
@@ -109,18 +123,18 @@ static void ast_image_set_header(void *ptr, struct stat *sbuf, int ifd,
 
 	hdr_size = sizeof(struct ast_image_header);
 	image_ptr = (uint8_t *)hdr + hdr_size;
-	memcpy(hdr->preamble.magic, AST_HDR_MAGIC, sizeof(hdr->preamble.magic));
+	hdr->preamble.magic = FMC_HDR_MAGIC;
 
 	// fprintf(stdout, "ast mkimage file sz = 0x%lx\n", sbuf->st_size);
 	// printf("%s..., hdr size:0x%x\n", __func__, hdr_size);
 
 	hdr->body.svn = 0;
-	hdr->body.fmc_size = input_images[0].size;
+	hdr->body.size = input_images[0].size;
 
 	for (int i = 0; i < INTPUT_FILE_MAX; i++) {
 		size = input_images[i].size;
 		if (size) {
-			sha384_csum_wd(image_ptr + total_size, size, hdr->body.digest_arr[i], SHA384_BLOCK_SIZE);
+			sha384_csum_wd(image_ptr + total_size, size, &hdr->body.dgst[i], SHA384_BLOCK_SIZE);
 			total_size += size;
 		}
 	}
@@ -148,7 +162,7 @@ static void ast_image_set_header(void *ptr, struct stat *sbuf, int ifd,
 	if (ret)
 		fprintf(stdout, "ecdsa_verify ret:0x%x\n", ret);
 
-	memcpy(hdr->preamble.sig_ecc, sig, sig_len);
+	memcpy(hdr->preamble.ecc_sig, sig, sig_len);
 }
 
 static int ast_image_check_image_types(uint8_t type)
