@@ -4,7 +4,7 @@ config SYS_CPU
 	default "armv8"
 
 config SPI_KERNEL_FIT_ADDR
-	hex
+	hex "SPI address of kernel FIT image"
 	default 0x100220000
 	help
 	  Kernel FIT start address in the SPI flash.
