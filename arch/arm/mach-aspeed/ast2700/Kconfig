@@ -25,6 +25,12 @@ config TARGET_AST2700_DCSCM
 	help
 	  AST2700_DCSCM is an Aspeed demo board in DCSCM form factor.
 
+config SPI_KERNEL_FIT_ADDR
+	hex
+	default 0x100220000
+	help
+	  Kernel FIT start address in the SPI flash.
+
 endchoice
 
 source "board/aspeed/evb_ast2700/Kconfig"

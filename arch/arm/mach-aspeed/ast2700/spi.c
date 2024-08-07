@@ -112,8 +112,6 @@ u32 aspeed_spi_abr_offset(void)
 	return (spi_get_flash_sz_strap() / 2);
 }
 
-#define SPI_KERNEL_FIT_ADDR	0x100220000
-
 void spi_bootarg_config(void)
 {
 	char *bootargs = NULL;
@@ -121,7 +119,7 @@ void spi_bootarg_config(void)
 	u32 bootargs_len;
 
 	env_set_hex("fdtspiaddr",
-		    SPI_KERNEL_FIT_ADDR + aspeed_spi_abr_offset());
+		    CONFIG_SPI_KERNEL_FIT_ADDR + aspeed_spi_abr_offset());
 
 	if (spi_abr_enabled() &&
 	    get_spi_flash_abr_mode() == SINGLE_FLASH_ABR) {
