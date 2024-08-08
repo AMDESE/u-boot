@@ -165,7 +165,7 @@ static void aspeed_spi_cs_activate(struct aspeed_spi_priv *priv, u32 cs)
 	struct aspeed_spi_dev *spi_dev = &priv->spi_devs[cs];
 	uintptr_t ctrl_reg = (uintptr_t)&priv->regs->ce_ctrl[cs];
 
-	/* Start user mode */
+	/* start user mode */
 	writel(spi_dev->ctrl_val, ctrl_reg);
 	writel((spi_dev->ctrl_val & (~CTRL_STOP_ACTIVE)), ctrl_reg);
 }
@@ -175,7 +175,7 @@ static void aspeed_spi_cs_deactivate(struct aspeed_spi_priv *priv, u32 cs)
 	struct aspeed_spi_dev *spi_dev = &priv->spi_devs[cs];
 	uintptr_t ctrl_reg = (uintptr_t)&priv->regs->ce_ctrl[cs];
 
-	/* Start user mode */
+	/* stop user mode */
 	writel((spi_dev->ctrl_val | CTRL_STOP_ACTIVE), ctrl_reg);
 }
 
