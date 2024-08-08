@@ -456,6 +456,13 @@ config SPI_ASPEED_SMC
 	  Enable ASPEED SPI flash controller driver for AST2500
 	  and AST2600 SoCs.
 
+config SPI_ASPEED_TXRX
+	tristate "Aspeed SPI controllers"
+	depends on DM_SPI
+	help
+	  This enables support for pure SPI controller driver in the
+	  Aspeed SoCs.
+
 config SPI_ASPEED_DIRMAP_WRITE
 	bool "ASPEED_SPI_DIRMAP_WRITE"
 	depends on SPI_ASPEED_SMC

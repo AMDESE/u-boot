@@ -1909,7 +1909,7 @@ static const struct udevice_id aspeed_spi_ids[] = {
 	{ }
 };
 
-U_BOOT_DRIVER(aspeed_spi) = {
+U_BOOT_DRIVER(aspeed_spi_smc) = {
 	.name = "aspeed_spi_smc",
 	.id = UCLASS_SPI,
 	.of_match = aspeed_spi_ids,

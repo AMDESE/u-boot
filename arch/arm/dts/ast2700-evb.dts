@@ -154,6 +154,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_spi2_default &pinctrl_spi2_cs1_default>;
 
+#if 1
 	flash@0 {
 		status = "okay";
 		spi-max-frequency = <50000000>;
@@ -167,6 +168,16 @@
 		spi-tx-bus-width = <2>;
 		spi-rx-bus-width = <2>;
 	};
+#else
+	compatible = "aspeed,ast2700-spi-txrx";
+	spi-aspeed-full-duplex;
+	tpm0: tpmdev@0 {
+		compatible = "tcg,tpm_tis-spi";
+		spi-max-frequency = <25000000>;
+		reg = <0>;
+		status = "okay";
+	};
+#endif
 };
 
 &emmc_controller {
