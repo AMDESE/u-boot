@@ -27,23 +27,21 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define OTP_VER				"1.0.0"
-
 /***********************
  *                     *
  * OTP regs definition *
  *                     *
  ***********************/
-#define OTP_REG_SIZE		0x200
+#define OTP_REG_SIZE			0x200
 
-#define OTP_PASSWD		0x349fe38a
-#define OTP_CMD_READ		0x23b1e361
-#define OTP_CMD_PROG		0x23b1e364
-#define OTP_CMD_CMP		0x23b1e363
-#define OTP_CMD_BIST		0x23b1e368
+#define OTP_PASSWD			0x349fe38a
+#define OTP_CMD_READ			0x23b1e361
+#define OTP_CMD_PROG			0x23b1e364
+#define OTP_CMD_CMP			0x23b1e363
+#define OTP_CMD_BIST			0x23b1e368
 
-#define OTP_CMD_OFFSET		0x20
-#define OTP_MASTER		OTP_M0
+#define OTP_CMD_OFFSET			0x20
+#define OTP_MASTER			OTP_M0
 
 #define OTP_KEY				0x0
 #define OTP_CMD				(OTP_MASTER * OTP_CMD_OFFSET + 0x4)
@@ -56,6 +54,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define OTP_RDATA			(OTP_MASTER * OTP_CMD_OFFSET + 0x20)
 
 #define OTP_DBG00			0x0C4
+#define OTP_DBG01			0x0C8
 #define OTP_MASTER_PID			0x0D0
 #define OTP_ECC_EN			0x0D4
 #define OTP_CMD_LOCK			0x0D8
@@ -63,14 +62,19 @@ DECLARE_GLOBAL_DATA_PTR;
 #define OTP_SLV_ID			0x0E0
 #define OTP_PMC_CQ			0x0E4
 #define OTP_FPGA			0x0EC
+#define OTP_CLR_FPGA			0x0F0
 #define OTP_REGION_ROM_PATCH		0x100
 #define OTP_REGION_OTPCFG		0x104
 #define OTP_REGION_OTPSTRAP		0x108
-#define OTP_REGION_OTP_FLASHSTRAP	0x10C
-#define OTP_REGION_SECURE		0x120
-#define OTP_REGION_SECURE_RANGE		0x124
+#define OTP_REGION_OTPSTRAP_EXT		0x10C
+#define OTP_REGION_SECURE0		0x120
+#define OTP_REGION_SECURE0_RANGE	0x124
 #define OTP_REGION_SECURE1		0x128
 #define OTP_REGION_SECURE1_RANGE	0x12C
+#define OTP_REGION_SECURE2		0x130
+#define OTP_REGION_SECURE2_RANGE	0x134
+#define OTP_REGION_SECURE3		0x138
+#define OTP_REGION_SECURE3_RANGE	0x13C
 #define OTP_REGION_USR0			0x140
 #define OTP_REGION_USR0_RANGE		0x144
 #define OTP_REGION_USR1			0x148
@@ -79,151 +83,95 @@ DECLARE_GLOBAL_DATA_PTR;
 #define OTP_REGION_USR2_RANGE		0x154
 #define OTP_REGION_USR3			0x158
 #define OTP_REGION_USR3_RANGE		0x15C
-#define OTP_PUF				0x160
-#define OTP_MASTER_ID			0x170
-#define OTP_MASTER_ID_EXT		0x174
-#define OTP_R_MASTER_ID			0x178
-#define OTP_R_MASTER_ID_EXT		0x17C
-#define OTP_R_LOCK			0x180
+#define OTP_REGION_CALIPTRA_0		0x160
+#define OTP_REGION_CALIPTRA_0_RANGE	0x164
+#define OTP_REGION_CALIPTRA_1		0x168
+#define OTP_REGION_CALIPTRA_1_RANGE	0x16C
+#define OTP_REGION_CALIPTRA_2		0x170
+#define OTP_REGION_CALIPTRA_2_RANGE	0x174
+#define OTP_REGION_CALIPTRA_3		0x178
+#define OTP_REGION_CALIPTRA_3_RANGE	0x17C
+#define OTP_RBP_SOC_SVN			0x180
+#define OTP_RBP_SOC_KEYRETIRE		0x184
+#define OTP_RBP_CALIP_SVN		0x188
+#define OTP_RBP_CALIP_KEYRETIRE		0x18C
+#define OTP_PUF				0x1A0
+#define OTP_MASTER_ID			0x1B0
+#define OTP_MASTER_ID_EXT		0x1B4
+#define OTP_R_MASTER_ID			0x1B8
+#define OTP_R_MASTER_ID_EXT		0x1BC
+#define OTP_SOC_ECCKEY			0x1C0
+#define OTP_SEC_BOOT_EN			0x1C4
+#define OTP_SOC_KEY			0x1C8
+#define OTP_CALPITRA_MANU_KEY		0x1CC
+#define OTP_CALPITRA_OWNER_KEY		0x1D0
+#define OTP_FW_ID_LSB			0x1D4
+#define OTP_FW_ID_MSB			0x1D8
+#define OTP_CALIP_FMC_SVN		0x1DC
+#define OTP_CALIP_RUNTIME_SVN0		0x1E0
+#define OTP_CALIP_RUNTIME_SVN1		0x1E4
+#define OTP_CALIP_RUNTIME_SVN2		0x1E8
+#define OTP_CALIP_RUNTIME_SVN3		0x1EC
+#define OTP_SVN_WLOCK			0x1F0
+#define OTP_INTR_EN			0x200
+#define OTP_INTR_STS			0x204
+#define OTP_INTR_MID			0x208
+#define OTP_INTR_FUNC_INFO		0x20C
+#define OTP_INTR_M_INFO			0x210
+#define OTP_INTR_R_INFO			0x214
 
-#define OTP_PMC				0x200
-#define OTP_DAP				0x300
+#define OTP_PMC				0x400
+#define OTP_DAP				0x500
 
 /* OTP status: [0] */
-#define OTP_STS_IDLE		0x0
-#define OTP_STS_BUSY		0x1
+#define OTP_STS_IDLE			0x0
+#define OTP_STS_BUSY			0x1
 
 /* OTP cmd status: [7:4] */
-#define OTP_GET_CMD_STS(x)	(((x) & 0xF0) >> 4)
-#define OTP_STS_PASS		0x0
-#define OTP_STS_FAIL		0x1
-#define OTP_STS_CMP_FAIL	0x2
-#define OTP_STS_REGION_FAIL	0x3
-#define OTP_STS_MASTER_FAIL	0x4
+#define OTP_GET_CMD_STS(x)		(((x) & 0xF0) >> 4)
+#define OTP_STS_PASS			0x0
+#define OTP_STS_FAIL			0x1
+#define OTP_STS_CMP_FAIL		0x2
+#define OTP_STS_REGION_FAIL		0x3
+#define OTP_STS_MASTER_FAIL		0x4
 
 /* OTP ECC EN */
-#define ECC_ENABLE		0x1
-#define ECC_DISABLE		0x0
-#define ECCBRP_EN		BIT(0)
-#define CFG_ECCBRP_EN		BIT(2)
+#define ECC_ENABLE			0x1
+#define ECC_DISABLE			0x0
+#define ECCBRP_EN			BIT(0)
 
-/* OTP PUF */
-#define OTP_SW_PUF		BIT(0)
-#define OTP_HW_PUF		BIT(1)
-
-/********************************************************************/
-
-/* OTP memory address from 0x0~0x2000. (unit: Single Word 16-bits) */
-/* ----  0x0  -----
- *     OTP ROM
- * ---- 0x400 -----
- *     OTPCFG
- * ---- 0x420 -----
- *     HW STRAP
- * ---- 0x430 -----
- *   Flash STRAP
- * ---- 0x440 -----
- *   User Region
- * ---- 0x1000 ----
- *  Secure Region
- * ---- 0x1f80 ----
- *      SW PUF
- * ---- 0x1fc0 ----
- *      HW PUF
- * ---- 0x2000 ----
- */
-#define OTPROM_START_ADDR		0x0
-#define OTPROM_END_ADDR			0x400
-#define OTPCFG_START_ADDR		0x400
-#define OTPCFG_END_ADDR			0x420
-#define OTPSTRAP_START_ADDR		0x420
-#define OTPSTRAP_END_ADDR		0x430
-#define OTPFLASHSTRAP_START_ADDR	0x430
-#define OTPFLASHSTRAP_END_ADDR		0x440
-#define USER_REGION_START_ADDR		0x440
+#define ROM_REGION_START_ADDR		0x0
+#define ROM_REGION_END_ADDR		0x3e0
+#define RBP_REGION_START_ADDR		ROM_REGION_END_ADDR
+#define RBP_REGION_END_ADDR		0x400
+#define CONF_REGION_START_ADDR		RBP_REGION_END_ADDR
+#define CONF_REGION_END_ADDR		0x420
+#define STRAP_REGION_START_ADDR		CONF_REGION_END_ADDR
+#define STRAP_REGION_END_ADDR		0x430
+#define STRAPEXT_REGION_START_ADDR	STRAP_REGION_END_ADDR
+#define STRAPEXT_REGION_END_ADDR	0x440
+#define USER_REGION_START_ADDR		STRAPEXT_REGION_END_ADDR
 #define USER_REGION_END_ADDR		0x1000
-#define SEC_REGION_START_ADDR		0x1000
-#define SEC_REGION_END_ADDR		0x1f80
-#define SW_PUF_START_ADDR		0x1f80
-#define SW_PUF_END_ADDR			0x1fc0
-#define HW_PUF_START_ADDR		0x1fc0
-#define HW_PUF_END_ADDR			0x2000
+#define SEC_REGION_START_ADDR		USER_REGION_END_ADDR
+#define SEC_REGION_END_ADDR		0x1c00
+#define CAL_REGION_START_ADDR		SEC_REGION_END_ADDR
+#define CAL_REGION_END_ADDR		0x1f80
+#define SW_PUF_REGION_START_ADDR	CAL_REGION_END_ADDR
+#define SW_PUF_REGION_END_ADDR		0x1fc0
+#define HW_PUF_REGION_START_ADDR	SW_PUF_REGION_END_ADDR
+#define HW_PUF_REGION_END_ADDR		0x2000
 
-#define OTP_MEM_ADDR_MAX		HW_PUF_START_ADDR
-#define OTP_USER_REGION_SIZE	(USER_REGION_END_ADDR - USER_REGION_START_ADDR)
-#define OTP_SEC_REGION_SIZE	(SEC_REGION_END_ADDR - SEC_REGION_START_ADDR)
-
-/* OTPCFG */
-#define OTPCFG0_ADDR			OTPCFG_START_ADDR
-#define OTPCFG1_ADDR			(OTPCFG0_ADDR + 0x1)
-#define OTPCFG2_ADDR			(OTPCFG0_ADDR + 0x2)
-#define OTPCFG3_ADDR			(OTPCFG0_ADDR + 0x3)
-#define OTPCFG4_ADDR			(OTPCFG0_ADDR + 0x4)
-#define OTPCFG5_ADDR			(OTPCFG0_ADDR + 0x5)
-#define OTPCFG6_ADDR			(OTPCFG0_ADDR + 0x6)
-#define OTPCFG7_ADDR			(OTPCFG0_ADDR + 0x7)
-#define OTPCFG8_ADDR			(OTPCFG0_ADDR + 0x8)
-#define OTPCFG9_ADDR			(OTPCFG0_ADDR + 0x9)
-#define OTPCFG10_ADDR			(OTPCFG0_ADDR + 0xa)
-#define OTPCFG11_ADDR			(OTPCFG0_ADDR + 0xb)
-#define OTPCFG12_ADDR			(OTPCFG0_ADDR + 0xc)
-#define OTPCFG13_ADDR			(OTPCFG0_ADDR + 0xd)
-#define OTPCFG14_ADDR			(OTPCFG0_ADDR + 0xe)
-#define OTPCFG15_ADDR			(OTPCFG0_ADDR + 0xf)
-#define OTPCFG16_ADDR			(OTPCFG0_ADDR + 0x10)
-
-/* OTPCFG0 */
-enum otpcfg0_desc {
-	RD_PROT_OTP_FLASH_STRAP = 0,
-	RD_PROT_OTP_ROM,
-	RD_PROT_OTP_CFG,
-	RD_PROT_OTP_STRAP,
-	WR_PROT_OTP_FLASH_STRAP,
-	WR_PROT_OTP_ROM,
-	WR_PROT_OTP_CFG,
-	WR_PROT_OTP_STRAP,
-	OTPCFG0_8_RESERVED,
-	WR_PROT_OTPKEY_RETIRE,
-	OTPCFG0_10_RESERVED,
-	OTPCFG0_11_RESERVED,
-	OTPCFG0_12_RESERVED,
-	OTPCFG0_13_RESERVED,
-	OTP_MEM_ECC_ENABLE,
-	OTP_MEM_LOCK_ENABLE,
-};
-
-#define OTP_TIMEOUT_US		10000
-#define OTP_PATTERN		0x1
-
-/* SCU IO */
-#define SCU_RESET_LOG		0x50
-#define SYS_PWR_RESET		BIT(11)
-#define SYS_EXT_RESET		BIT(1)
-#define SYS_SYS_RESET		BIT(0)
+#define OTP_TIMEOUT_US			10000
 
 /* OTPSTRAP */
-#define OTPSTRAP0_ADDR		OTPSTRAP_START_ADDR
-#define OTPSTRAP1_ADDR		(OTPSTRAP0_ADDR + 1)
-#define OTPSTRAP2_ADDR		(OTPSTRAP0_ADDR + 2)
-#define OTPSTRAP3_ADDR		(OTPSTRAP0_ADDR + 3)
-#define OTPSTRAP4_ADDR		(OTPSTRAP0_ADDR + 4)
-#define OTPSTRAP5_ADDR		(OTPSTRAP0_ADDR + 5)
-#define OTPSTRAP6_ADDR		(OTPSTRAP0_ADDR + 6)
-#define OTPSTRAP7_ADDR		(OTPSTRAP0_ADDR + 7)
-#define OTPSTRAP8_ADDR		(OTPSTRAP0_ADDR + 8)
-#define OTPSTRAP9_ADDR		(OTPSTRAP0_ADDR + 9)
-#define OTPSTRAP10_ADDR		(OTPSTRAP0_ADDR + 0xa)
-#define OTPSTRAP11_ADDR		(OTPSTRAP0_ADDR + 0xb)
-#define OTPSTRAP12_ADDR		(OTPSTRAP0_ADDR + 0xc)
-#define OTPSTRAP13_ADDR		(OTPSTRAP0_ADDR + 0xd)
-#define OTPSTRAP14_ADDR		(OTPSTRAP0_ADDR + 0xe)
-#define OTPSTRAP15_ADDR		(OTPSTRAP0_ADDR + 0xf)
+#define OTPSTRAP0_ADDR			STRAP_REGION_START_ADDR
+#define OTPSTRAP14_ADDR			(OTPSTRAP0_ADDR + 0xe)
 
-#define OTPTOOL_VERSION(a, b, c) (((a) << 24) + ((b) << 12) + (c))
-#define OTPTOOL_VERSION_MAJOR(x) (((x) >> 24) & 0xff)
-#define OTPTOOL_VERSION_PATCHLEVEL(x) (((x) >> 12) & 0xfff)
-#define OTPTOOL_VERSION_SUBLEVEL(x) ((x) & 0xfff)
-#define OTPTOOL_COMPT_VERSION 2
+#define OTPTOOL_VERSION(a, b, c)	(((a) << 24) + ((b) << 12) + (c))
+#define OTPTOOL_VERSION_MAJOR(x)	(((x) >> 24) & 0xff)
+#define OTPTOOL_VERSION_PATCHLEVEL(x)	(((x) >> 12) & 0xfff)
+#define OTPTOOL_VERSION_SUBLEVEL(x)	((x) & 0xfff)
+#define OTPTOOL_COMPT_VERSION		2
 
 enum otp_error_code {
 	OTP_READ_FAIL,
@@ -244,8 +192,7 @@ enum aspeed_otp_master_id {
 struct aspeed_otp {
 	phys_addr_t base;
 	struct clk clk;
-	int cfg_ecc_en;
-	int mem_ecc_en;
+	int gbl_ecc_en;
 };
 
 static void otp_unlock(struct udevice *dev)
@@ -281,15 +228,7 @@ static int otp_read_data(struct udevice *dev, u32 offset, u16 *data)
 	struct aspeed_otp *otp = dev_get_priv(dev);
 	int ret;
 
-	/* Set cfg/non-cfg ecc */
-	if ((offset >= OTPCFG_START_ADDR && offset < OTPCFG_END_ADDR) &&
-	    otp->cfg_ecc_en)
-		writel(CFG_ECCBRP_EN, otp->base + OTP_ECC_EN);
-	else if (otp->mem_ecc_en)
-		writel(ECCBRP_EN, otp->base + OTP_ECC_EN);
-	else
-		writel(0, otp->base + OTP_ECC_EN);
-
+	writel(otp->gbl_ecc_en, otp->base + OTP_ECC_EN);
 	writel(offset, otp->base + OTP_ADDR);
 	writel(OTP_CMD_READ, otp->base + OTP_CMD);
 	ret = wait_complete(dev);
@@ -306,15 +245,7 @@ int otp_prog_data(struct udevice *dev, u32 offset, u16 data)
 	struct aspeed_otp *otp = dev_get_priv(dev);
 	int ret;
 
-	/* cfg/non-cfg ecc */
-	if ((offset >= OTPCFG_START_ADDR && offset < OTPCFG_END_ADDR) &&
-	    otp->cfg_ecc_en)
-		writel(CFG_ECCBRP_EN, otp->base + OTP_ECC_EN);
-	else if (otp->mem_ecc_en)
-		writel(ECCBRP_EN, otp->base + OTP_ECC_EN);
-	else
-		writel(0, otp->base + OTP_ECC_EN);
-
+	writel(otp->gbl_ecc_en, otp->base + OTP_ECC_EN);
 	writel(offset, otp->base + OTP_ADDR);
 	writel(data, otp->base + OTP_WDATA_0);
 	writel(OTP_CMD_PROG, otp->base + OTP_CMD);
@@ -353,7 +284,7 @@ static int aspeed_otp_write(struct udevice *dev, int offset,
 	otp_unlock(dev);
 
 	for (int i = 0; i < size; i++) {
-//		printf("%s: prog 0x%x=0x%x\n", __func__, offset + i, data[i]);
+		// printf("%s: prog 0x%x=0x%x\n", __func__, offset + i, data[i]);
 		ret = otp_prog_data(dev, offset + i, data[i]);
 		if (ret) {
 			printf("%s: prog failed\n", __func__);
@@ -371,7 +302,7 @@ static int aspeed_otp_ecc_en(struct udevice *dev)
 	int ret = 0;
 
 	/* Check ecc is already enabled */
-	if (otp->cfg_ecc_en == 1 || otp->mem_ecc_en == 1)
+	if (otp->gbl_ecc_en == 1)
 		return 0;
 
 	otp_unlock(dev);
@@ -383,17 +314,7 @@ static int aspeed_otp_ecc_en(struct udevice *dev)
 		goto end;
 	}
 
-	otp->cfg_ecc_en = 1;
-
-	/* enable mem ecc */
-	ret = otp_prog_data(dev, OTPCFG0_ADDR, BIT(OTP_MEM_ECC_ENABLE));
-	if (ret) {
-		printf("%s: prog failed\n", __func__);
-		goto end;
-	}
-
-	otp->mem_ecc_en = 1;
-
+	otp->gbl_ecc_en = 1;
 end:
 	otp_lock(dev);
 
@@ -411,15 +332,10 @@ static int aspeed_otp_ioctl(struct udevice *dev, unsigned long request,
 
 	switch (request) {
 	case GET_ECC_STATUS:
-		if (otp->cfg_ecc_en == 1 && otp->mem_ecc_en == 1) {
+		if (otp->gbl_ecc_en == 1)
 			*data = OTP_ECC_ENABLE;
-		} else if (otp->cfg_ecc_en == 0 && otp->mem_ecc_en == 0) {
+		else
 			*data = OTP_ECC_DISABLE;
-		} else {
-			printf("ECC status mismatch, cfg_ecc:%d, mem_ecc:%d\n",
-			       otp->cfg_ecc_en, otp->mem_ecc_en);
-			*data = OTP_ECC_MISMATCH;
-		}
 		break;
 	case SET_ECC_ENABLE:
 		ret = aspeed_otp_ecc_en(dev);
@@ -451,27 +367,9 @@ static int aspeed_otp_ecc_init(struct udevice *dev)
 
 	val = readl(otp->base + OTP_RDATA);
 	if (val & 0x1)
-		otp->cfg_ecc_en = 0x1;
+		otp->gbl_ecc_en = 0x1;
 	else
-		otp->cfg_ecc_en = 0x0;
-
-	/* Check mem_ecc_en */
-	if (otp->cfg_ecc_en)
-		writel(CFG_ECCBRP_EN, otp->base + OTP_ECC_EN);
-	else
-		writel(0, otp->base + OTP_ECC_EN);
-
-	writel(OTPCFG0_ADDR, otp->base + OTP_ADDR);
-	writel(OTP_CMD_READ, otp->base + OTP_CMD);
-	ret = wait_complete(dev);
-	if (ret)
-		return OTP_READ_FAIL;
-
-	val = readl(otp->base + OTP_RDATA);
-	if (val & BIT(OTP_MEM_ECC_ENABLE))
-		otp->mem_ecc_en = 0x1;
-	else
-		otp->mem_ecc_en = 0x0;
+		otp->gbl_ecc_en = 0x0;
 
 	otp_lock(dev);
 

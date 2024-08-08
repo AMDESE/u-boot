@@ -29,6 +29,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 enum otp_region {
 	OTP_REGION_ROM,
+	OTP_REGION_RBP,
 	OTP_REGION_CONF,
 	OTP_REGION_STRAP,
 	OTP_REGION_STRAP_EXT,
@@ -46,7 +47,7 @@ enum otp_status {
 	OTP_PROG_SKIP,
 };
 
-#define OTP_VER				"1.0.0"
+#define OTP_VER				"1.1.0"
 
 #define OTP_AST2700_A0			0
 #define OTP_AST2700_A1			1
@@ -62,6 +63,8 @@ enum otp_status {
 /* OTP memory address from 0x0~0x2000. (unit: Single Word 16-bits) */
 /* ----  0x0  -----
  *       ROM
+ * ---- 0x3e0 -----
+ *       RBP
  * ---- 0x400 -----
  *      CONF
  * ---- 0x420 -----
@@ -81,8 +84,10 @@ enum otp_status {
  * ---- 0x2000 ----
  */
 #define ROM_REGION_START_ADDR		0x0
-#define ROM_REGION_END_ADDR		0x400
-#define CONF_REGION_START_ADDR		ROM_REGION_END_ADDR
+#define ROM_REGION_END_ADDR		0x3e0
+#define RBP_REGION_START_ADDR		ROM_REGION_END_ADDR
+#define RBP_REGION_END_ADDR		0x400
+#define CONF_REGION_START_ADDR		RBP_REGION_END_ADDR
 #define CONF_REGION_END_ADDR		0x420
 #define STRAP_REGION_START_ADDR		CONF_REGION_END_ADDR
 #define STRAP_REGION_END_ADDR		0x430
@@ -101,6 +106,7 @@ enum otp_status {
 
 #define OTP_MEM_ADDR_MAX		HW_PUF_REGION_START_ADDR
 #define OTP_ROM_REGION_SIZE		(ROM_REGION_END_ADDR - ROM_REGION_START_ADDR)
+#define OTP_RBP_REGION_SIZE		(RBP_REGION_END_ADDR - RBP_REGION_START_ADDR)
 #define OTP_CONF_REGION_SIZE		(CONF_REGION_END_ADDR - CONF_REGION_START_ADDR)
 #define OTP_STRAP_REGION_SIZE		(STRAP_REGION_END_ADDR - STRAP_REGION_START_ADDR - 4)
 #define OTP_STRAP_EXT_REGION_SIZE	(STRAPEXT_REGION_END_ADDR - STRAPEXT_REGION_START_ADDR)
@@ -112,24 +118,25 @@ enum otp_status {
 #define OTP_DEVICE_NAME_0		"otp@14c07000"
 #define OTP_DEVICE_NAME_1		"otp@30c07000"
 
-#define OTP_MAGIC		"SOCOTP"
-#define CHECKSUM_LEN		48
-#define OTP_INC_ROM		BIT(31)
-#define OTP_INC_CONFIG		BIT(30)
-#define OTP_INC_STRAP		BIT(29)
-#define OTP_INC_STRAP_EXT	BIT(28)
-#define OTP_INC_SECURE		BIT(27)
-#define OTP_INC_CALIPTRA	BIT(26)
-#define OTP_REGION_SIZE(info)	(((info) >> 16) & 0xffff)
-#define OTP_REGION_OFFSET(info)	((info) & 0xffff)
-#define OTP_IMAGE_SIZE(info)	((info) & 0xffff)
+#define OTP_MAGIC			"SOCOTP"
+#define CHECKSUM_LEN			48
+#define OTP_INC_ROM			BIT(31)
+#define OTP_INC_RBP			BIT(30)
+#define OTP_INC_CONFIG			BIT(29)
+#define OTP_INC_STRAP			BIT(28)
+#define OTP_INC_STRAP_EXT		BIT(27)
+#define OTP_INC_SECURE			BIT(26)
+#define OTP_INC_CALIPTRA		BIT(25)
+#define OTP_REGION_SIZE(info)		(((info) >> 16) & 0xffff)
+#define OTP_REGION_OFFSET(info)		((info) & 0xffff)
+#define OTP_IMAGE_SIZE(info)		((info) & 0xffff)
 
 /* OTP key header format */
-#define OTP_KH_NUM		64
-#define OTP_KH_KEY_ID(kh)	((kh) & 0xf)
-#define OTP_KH_KEY_TYPE(kh)	(((kh) >> 4) & 0x7)
-#define OTP_KH_LAST(kh)		(((kh) >> 15) & 0x1)
-#define OTP_KH_OFFSET(kh)	(((kh) >> 16) & 0xfff)
+#define OTP_KH_NUM			80
+#define OTP_KH_KEY_ID(kh)		((kh) & 0xf)
+#define OTP_KH_KEY_TYPE(kh)		(((kh) >> 4) & 0x7)
+#define OTP_KH_LAST(kh)			(((kh) >> 15) & 0x1)
+#define OTP_KH_OFFSET(kh)		(((kh) >> 16) & 0xfff)
 
 struct otp_header {
 	u8	otp_magic[8];
@@ -137,6 +144,7 @@ struct otp_header {
 	u32	otptool_ver;
 	u32	image_info;
 	u32	rom_info;
+	u32	rbp_info;
 	u32	config_info;
 	u32	strap_info;
 	u32	strap_ext_info;
@@ -165,12 +173,12 @@ union otp_pro_sts {
 		char w_prot_conf : 1;
 		char w_prot_strap : 1;
 		char retire_option : 1;
-		char w_prot_key_ret : 1;
-		char w_prot_rid : 1;
+		char en_sec_boot : 1;
+		char w_prot_rbp : 1;
 		char r_prot_cal : 1;
 		char w_prot_cal : 1;
-		char reserved : 1;
-		char ecc_enable : 1;
+		char dis_otp_bist : 1;
+		char w_prot_puf : 1;
 		char mem_lock : 1;
 	} fields;
 };
@@ -195,12 +203,14 @@ static struct otp_info_cb info_cb;
 
 struct otp_image_layout {
 	int rom_length;
+	int rbp_length;
 	int conf_length;
 	int strap_length;
 	int strap_ext_length;
 	int secure_length;
 	int caliptra_length;
 	u8 *rom;
+	u8 *rbp;
 	u8 *conf;
 	u8 *strap;
 	u8 *strap_ext;
@@ -971,6 +981,9 @@ static int _otp_print_key(u32 header, u32 offset, u8 *data)
 	int last;
 	int i;
 
+	if (!header)
+		return -1;
+
 	key_id = OTP_KH_KEY_ID(header);
 	key_w_offset = OTP_KH_OFFSET(header);
 	key_offset = key_w_offset * 2;
@@ -1010,7 +1023,14 @@ static int _otp_print_key(u32 header, u32 offset, u8 *data)
 		buf_print(&data[key_offset + 0x30], 0x30);
 
 	} else if (key_info.key_type == SOC_LMS_PUB) {
-		printf("LMS (todo):\n");
+		printf("tree_type:\n");
+		buf_print(&data[key_offset], 0x4);
+		printf("otstype:\n");
+		buf_print(&data[key_offset + 0x4], 0x4);
+		printf("id:\n");
+		buf_print(&data[key_offset + 0x8], 0x10);
+		printf("digest:\n");
+		buf_print(&data[key_offset + 0x18], 0x18);
 
 	} else if (key_info.key_type == CAL_MANU_PUB_HASH) {
 		buf_print(&data[key_offset], 0x30);
@@ -1471,6 +1491,9 @@ static int otp_prog_image(phys_addr_t addr, int nconfirm)
 
 	image_layout.rom_length = OTP_REGION_SIZE(otp_header->rom_info);
 	image_layout.rom = buf + OTP_REGION_OFFSET(otp_header->rom_info);
+
+	image_layout.rbp_length = OTP_REGION_SIZE(otp_header->rbp_info);
+	image_layout.rbp = buf + OTP_REGION_OFFSET(otp_header->rbp_info);
 
 	image_layout.conf_length = OTP_REGION_SIZE(otp_header->config_info);
 	image_layout.conf = buf + OTP_REGION_OFFSET(otp_header->config_info);
@@ -2025,6 +2048,9 @@ static int do_ast_otp(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 	u32 ver;
 	int ret;
 	u16 otp_conf0;
+
+	if (argc < 2)
+		return CMD_RET_USAGE;
 
 	ret = do_driver_init(argc, argv);
 	if (ret)
