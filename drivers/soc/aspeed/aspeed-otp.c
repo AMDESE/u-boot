@@ -190,7 +190,7 @@ enum aspeed_otp_master_id {
 };
 
 struct aspeed_otp {
-	phys_addr_t base;
+	u8 *base;
 	struct clk clk;
 	int gbl_ecc_en;
 };
@@ -381,7 +381,7 @@ static int aspeed_otp_probe(struct udevice *dev)
 	struct aspeed_otp *otp = dev_get_priv(dev);
 	int rc;
 
-	otp->base = devfdt_get_addr(dev);
+	otp->base = (u8 *)devfdt_get_addr(dev);
 
 	/* OTP ECC init */
 	rc = aspeed_otp_ecc_init(dev);

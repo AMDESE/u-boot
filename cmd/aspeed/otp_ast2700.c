@@ -224,8 +224,8 @@ static u32 chip_version(void)
 {
 	u32 revid0, revid1;
 
-	revid0 = readl(ASPEED_CPU_REVISION_ID);
-	revid1 = readl(ASPEED_IO_REVISION_ID);
+	revid0 = readl((u8 *)ASPEED_CPU_REVISION_ID);
+	revid1 = readl((u8 *)ASPEED_IO_REVISION_ID);
 
 	if (revid0 == ID0_AST2700A0 && revid1 == ID1_AST2700A0) {
 		/* AST2700-A0 */
@@ -821,18 +821,18 @@ static void otp_print_strap_ext_info(void)
 	}
 }
 
-static int otp_patch_prog(phys_addr_t addr, u32 offset, size_t size)
+static int otp_patch_prog(u32 addr, u32 offset, u32 size)
 {
 	int ret = 0;
 	u16 val;
 
-	printf("%s: addr:0x%llx, offset:0x%x, size:0x%lx\n", __func__,
+	printf("%s: addr:0x%x, offset:0x%x, size:0x%x\n", __func__,
 	       addr, offset, size);
 
 	for (int i = 0; i < size; i++) {
-		val = readw((u16 *)addr + i);
-		printf("read 0x%lx = 0x%x..., prog into OTP addr 0x%x\n",
-		       (uintptr_t)addr + i, val, offset + i);
+		val = readw((uintptr_t)addr + i);
+		printf("read 0x%x = 0x%x..., prog into OTP addr 0x%x\n",
+		       addr + i, val, offset + i);
 		ret += otp_prog(offset + i, val);
 	}
 
@@ -1773,7 +1773,7 @@ static int do_otppatch(struct cmd_tbl *cmdtp, int flag, int argc, char *const ar
 		offset = simple_strtoul(argv[2], NULL, 16);
 		size = simple_strtoul(argv[3], NULL, 16);
 
-		ret = otp_patch_prog(addr, offset, size);
+		ret = otp_patch_prog((u32)addr, offset, (u32)size);
 
 	} else if (!strcmp(argv[0], "enable")) {
 		offset = simple_strtoul(argv[2], NULL, 16);
