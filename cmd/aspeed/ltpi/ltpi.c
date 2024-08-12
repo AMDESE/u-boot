@@ -12,6 +12,7 @@
 #include <asm/arch-aspeed/scu_ast2700.h>
 #include <command.h>
 #include <getopt.h>
+#include <console.h>
 #include "ltpi.h"
 #include "ltpi_top.h"
 #include "ltpi_ctrl.h"
@@ -722,6 +723,11 @@ static void ltpi_scm_normal_mode_training(struct ltpi_priv *ltpi)
 		if (ltpi->phy_speed_cap == 0)
 			ltpi->phy_speed_cap |= BIT(0);
 
+		if (ctrlc()) {
+			printf("Abort\n");
+			return;
+		}
+
 		/* Restart the link speed detection */
 		ltpi_scm_set_sdr_mode(ltpi);
 		ret = ltpi_wait_state_link_speed(ltpi);
@@ -818,6 +824,11 @@ static void ltpi_scm_cdr_mode_training(struct ltpi_priv *ltpi)
 		if (ltpi->phy_speed_cap == 0)
 			ltpi->phy_speed_cap |= BIT(0);
 
+		if (ctrlc()) {
+			printf("Abort\n");
+			return;
+		}
+
 		ltpi_scm_set_cdr_mode(ltpi);
 		ret = ltpi_wait_state_link_speed(ltpi);
 		if (ret) {
@@ -892,6 +903,11 @@ static void ltpi_scm_init(struct ltpi_priv *ltpi0, struct ltpi_priv *ltpi1)
 		if (ret == LTPI_OK) {
 			common->bus_topology = 1;
 			break;
+		}
+
+		if (ctrlc()) {
+			printf("Abort\n");
+			return;
 		}
 
 		if (common->cdr_mask == CDR_MASK_NONE) {
@@ -986,6 +1002,11 @@ static void ltpi_hpm_normal_mode_loop(struct ltpi_priv *ltpi)
 		if (ret == LTPI_ERR_SEVERE)
 			break;
 
+		if (ctrlc()) {
+			printf("Abort\n");
+			return;
+		}
+
 	} while (ret != LTPI_OK);
 
 	if (ret == LTPI_OK) {
@@ -1055,6 +1076,11 @@ static void ltpi_hpm_cdr_loop(struct ltpi_priv *ltpi)
 		/* Severe error! do not retry */
 		if (ret == LTPI_ERR_SEVERE)
 			break;
+
+		if (ctrlc()) {
+			printf("Abort\n");
+			return;
+		}
 
 	} while (ret != LTPI_OK);
 
