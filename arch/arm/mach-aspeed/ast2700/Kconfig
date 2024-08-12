@@ -3,6 +3,12 @@ if ASPEED_AST2700
 config SYS_CPU
 	default "armv8"
 
+config SPI_KERNEL_FIT_ADDR
+	hex
+	default 0x100220000
+	help
+	  Kernel FIT start address in the SPI flash.
+
 choice
 	prompt "AST2700 board select"
 	depends on ASPEED_AST2700
@@ -24,12 +30,6 @@ config TARGET_AST2700_DCSCM
 	select ARCH_MISC_INIT
 	help
 	  AST2700_DCSCM is an Aspeed demo board in DCSCM form factor.
-
-config SPI_KERNEL_FIT_ADDR
-	hex
-	default 0x100220000
-	help
-	  Kernel FIT start address in the SPI flash.
 
 endchoice
 
