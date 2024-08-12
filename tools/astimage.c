@@ -112,7 +112,7 @@ static void ast_image_set_header(void *ptr, struct stat *sbuf, int ifd,
 	struct image_sign_info info;
 	struct image_region region;
 	struct crypto_algo *crypto;
-	uint8_t *sig, *image_ptr;
+	uint8_t *sig, *image_ptr, *dgst_ptr;
 	int hdr_size, size;
 	int total_size = 0;
 	uint sig_len;
@@ -133,8 +133,13 @@ static void ast_image_set_header(void *ptr, struct stat *sbuf, int ifd,
 
 	for (int i = 0; i < INTPUT_FILE_MAX; i++) {
 		size = input_images[i].size;
+		if (i == 0)
+			dgst_ptr = hdr->body.dgst;
+		else
+			dgst_ptr = hdr->body.pbs[i].dgst;
+
 		if (size) {
-			sha384_csum_wd(image_ptr + total_size, size, &hdr->body.dgst[i], SHA384_BLOCK_SIZE);
+			sha384_csum_wd(image_ptr + total_size, size, dgst_ptr, SHA384_BLOCK_SIZE);
 			total_size += size;
 		}
 	}
