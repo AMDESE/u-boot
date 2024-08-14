@@ -1239,37 +1239,38 @@ static int otp_print_caliptra_image(struct otp_image_layout *image_layout)
 	const struct otpcal_info *cal_info = info_cb.cal_info;
 	u16 *OTPCAL = (u16 *)image_layout->caliptra;
 	u32 w_offset;
-	u32 bit_offset;
 	u32 otp_value;
-	u32 mask;
+	u32 bit_len;
 
-	printf("Word    Bit        Value       Description\n");
+	printf("Word    Bit-length      Value       Description\n");
 	printf("__________________________________________________________________________\n");
 	for (int i = 0; i < info_cb.cal_info_len; i++) {
 		w_offset = cal_info[i].w_offset;
-		bit_offset = cal_info[i].bit_offset;
-		mask = BIT(cal_info[i].length) - 1;
-		otp_value = (OTPCAL[w_offset] >> bit_offset) & mask;
+		bit_len = cal_info[i].length;
 
-		if (!otp_value)
+		if (bit_len <= 32)
+			otp_value = OTPCAL[w_offset] & (BIT(bit_len) - 1);
+		else
+			otp_value = OTPCAL[w_offset];
+
+		if (cal_info[i].value != OTP_REG_VALUE && otp_value != cal_info[i].value)
 			continue;
 
-		printf("0x%-4X", w_offset);
-
-		if (cal_info[i].length == 1) {
-			printf("0x%-9X", cal_info[i].bit_offset);
-		} else {
-			printf("0x%-2X:0x%-4X",
-			       cal_info[i].bit_offset + cal_info[i].length - 1,
-			       cal_info[i].bit_offset);
-		}
-		printf("0x%-10x", otp_value);
+		printf("0x%-6X0x%-14X0x%-10x", w_offset, bit_len, otp_value);
 
 		if (cal_info[i].value == OTP_REG_RESERVED) {
 			printf("Reserved\n");
 
 		} else if (cal_info[i].value == OTP_REG_VALUE) {
 			printf(cal_info[i].information, otp_value);
+			for (int i = 0; i < bit_len / 16; i++) {
+				if (!otp_value)
+					break;
+				if (i % 8 == 0)
+					printf("\n\t\t\t\t%02x: 0x%04x ", i, OTPCAL[w_offset + i]);
+				else
+					printf("0x%04x ", OTPCAL[w_offset + i]);
+			}
 			printf("\n");
 
 		} else {
@@ -1583,7 +1584,7 @@ static int otp_prog_image(phys_addr_t addr, int nconfirm)
 
 	if (!nconfirm) {
 		if (otp_header->image_info & OTP_INC_ROM) {
-			printf("\nOTP ROM region:\n");
+			printf("\nOTP ROM region :\n");
 			if (otp_print_rom_image(&image_layout) < 0) {
 				printf("OTP print rom error, please check.\n");
 				return OTP_FAILURE;
