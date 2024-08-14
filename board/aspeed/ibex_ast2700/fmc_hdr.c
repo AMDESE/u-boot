@@ -10,15 +10,6 @@
 #include <spl.h>
 #include <string.h>
 
-struct prebuilt_cache {
-	uint32_t cached;
-	uint32_t ofst;
-	uint32_t size;
-	uint8_t *dgst;
-};
-
-static struct prebuilt_cache pb_cache[PBT_NUM] = { 0 };
-
 int fmc_hdr_get_prebuilt(uint32_t type, uint32_t *ofst, uint32_t *size, uint8_t *dgst)
 {
 	struct fmc_hdr_preamble *preamble;
@@ -33,16 +24,6 @@ int fmc_hdr_get_prebuilt(uint32_t type, uint32_t *ofst, uint32_t *size, uint8_t 
 
 	if (!ofst || !size)
 		return -EINVAL;
-
-	if (pb_cache[type].cached) {
-		*ofst = pb_cache[type].ofst;
-		*size = pb_cache[type].size;
-
-		if (dgst)
-			memcpy(dgst, pb_cache[type].dgst, HDR_DGST_LEN);
-
-		goto found;
-	}
 
 	hdr = (struct fmc_hdr *)(_start - sizeof(*hdr));
 	preamble = &hdr->preamble;
@@ -65,14 +46,6 @@ int fmc_hdr_get_prebuilt(uint32_t type, uint32_t *ofst, uint32_t *size, uint8_t 
 		/* prebuilt end mark */
 		if (t == 0 && s == 0)
 			break;
-
-		/* cache the prebuilt info. scanned */
-		if (!pb_cache[t].cached) {
-			pb_cache[t].ofst = o;
-			pb_cache[t].size = s;
-			pb_cache[t].dgst = d;
-			pb_cache[t].cached = 1;
-		}
 
 		/* return the prebuilt info if found */
 		if (t == type) {
