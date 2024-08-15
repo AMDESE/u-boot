@@ -824,16 +824,17 @@ static void otp_print_strap_ext_info(void)
 static int otp_patch_prog(u32 addr, u32 offset, u32 size)
 {
 	int ret = 0;
-	u16 val;
+	u32 val;
 
 	printf("%s: addr:0x%x, offset:0x%x, size:0x%x\n", __func__,
 	       addr, offset, size);
 
-	for (int i = 0; i < size; i++) {
-		val = readw((uintptr_t)addr + i);
+	for (int i = 0; i < size / 2; i++) {
+		val = readl((uintptr_t)addr + i * 4);
 		printf("read 0x%x = 0x%x..., prog into OTP addr 0x%x\n",
-		       addr + i, val, offset + i);
-		ret += otp_prog(offset + i, val);
+		       addr + i * 4, val, offset + i * 2);
+		ret += otp_prog(offset + i * 2, val & GENMASK(15, 0));
+		ret += otp_prog(offset + i * 2 + 1, (val >> 16) & GENMASK(15, 0));
 	}
 
 	return ret;
