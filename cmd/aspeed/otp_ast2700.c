@@ -186,6 +186,8 @@ union otp_pro_sts {
 struct otp_info_cb {
 	int version;
 	char ver_name[3];
+	const struct otprbp_info *rbp_info;
+	int rbp_info_len;
 	const struct otpconf_info *conf_info;
 	int conf_info_len;
 	const struct otpstrap_info *strap_info;
@@ -268,6 +270,11 @@ static int otp_read_rom(u32 offset, u16 *data)
 	return otp_read(offset + ROM_REGION_START_ADDR, data);
 }
 
+static int otp_read_rbp(u32 offset, u16 *data)
+{
+	return otp_read(offset + RBP_REGION_START_ADDR, data);
+}
+
 static int otp_read_conf(u32 offset, u16 *data)
 {
 	return otp_read(offset + CONF_REGION_START_ADDR, data);
@@ -324,6 +331,24 @@ static int otp_print_rom(u32 offset, int w_count)
 			printf("\n%03X: %04X ", i * 2, ret[0]);
 		else
 			printf("%04X ", ret[0]);
+	}
+	printf("\n");
+
+	return OTP_SUCCESS;
+}
+
+static int otp_print_rbp(u32 offset, int w_count)
+{
+	int range = OTP_RBP_REGION_SIZE;
+	u16 ret[1];
+	int i;
+
+	if (offset + w_count > range)
+		return OTP_USAGE;
+
+	for (i = offset; i < offset + w_count; i++) {
+		otp_read(RBP_REGION_START_ADDR + i, ret);
+		printf("OTPRBP0x%X: 0x%04X\n", i, ret[0]);
 	}
 	printf("\n");
 
@@ -523,6 +548,13 @@ static int otp_prog_data(int mode, int otp_w_offset, int bit_offset,
 			printf("Program OTPROM%d[0x%X] = 0x%x...\n", otp_w_offset,
 			       bit_offset, value);
 		break;
+	case OTP_REGION_RBP:
+		otp_read_rbp(otp_w_offset, read);
+		prog_address = RBP_REGION_START_ADDR + otp_w_offset;
+		if (debug)
+			printf("Program OTPRBP%d[0x%X] = 0x%x...\n", otp_w_offset,
+			       bit_offset, value);
+		break;
 	case OTP_REGION_CONF:
 		otp_read_conf(otp_w_offset, read);
 		prog_address = CONF_REGION_START_ADDR + otp_w_offset;
@@ -672,6 +704,82 @@ static void otp_strap_status(struct otpstrap_status *otpstrap)
 		printf("\n");
 	}
 #endif
+}
+
+static int otp_print_rbp_info(void)
+{
+	const struct otprbp_info *rbp_info = info_cb.rbp_info;
+	u16 OTPRBP[21];
+	u32 w_offset;
+	u32 length;
+
+	for (int i = 0; i < 21; i++)
+		otp_read_rbp(i, &OTPRBP[i]);
+
+	printf("W   bit-length            Description                       Value\n");
+	printf("__________________________________________________________________________\n");
+	for (int i = 0; i < info_cb.rbp_info_len; i++) {
+		w_offset = rbp_info[i].w_offset;
+		length = rbp_info[i].length;
+
+		printf("0x%-4X", w_offset);
+		printf("0x%-9X", length);
+		printf("%s: ", rbp_info[i].information);
+
+		for (int j = 0; j < (length + 15) / 16; j++)
+			printf("0x%04x ", OTPRBP[w_offset + j]);
+		printf("\n");
+	}
+
+	return OTP_SUCCESS;
+}
+
+static int otp_print_conf_info(void)
+{
+	const struct otpconf_info *conf_info = info_cb.conf_info;
+	u16 OTPCFG[32];
+	u32 mask;
+	u32 w_offset;
+	u32 bit_offset;
+	u32 otp_value;
+
+	for (int i = 0; i < 32; i++)
+		otp_read_conf(i, &OTPCFG[i]);
+
+	printf("W    BIT        Value       Description\n");
+	printf("__________________________________________________________________________\n");
+	for (int i = 0; i < info_cb.conf_info_len; i++) {
+		w_offset = conf_info[i].w_offset;
+		bit_offset = conf_info[i].bit_offset;
+		mask = BIT(conf_info[i].length) - 1;
+		otp_value = (OTPCFG[w_offset] >> bit_offset) & mask;
+
+		if (otp_value != conf_info[i].value &&
+		    conf_info[i].value != OTP_REG_RESERVED &&
+		    conf_info[i].value != OTP_REG_VALUE)
+			continue;
+		printf("0x%-4X", w_offset);
+
+		if (conf_info[i].length == 1) {
+			printf("0x%-9X", conf_info[i].bit_offset);
+		} else {
+			printf("0x%-2X:0x%-4X",
+			       conf_info[i].bit_offset + conf_info[i].length - 1,
+			       conf_info[i].bit_offset);
+		}
+		printf("0x%-10x", otp_value);
+
+		if (conf_info[i].value == OTP_REG_RESERVED) {
+			printf("Reserved\n");
+		} else if (conf_info[i].value == OTP_REG_VALUE) {
+			printf(conf_info[i].information, otp_value);
+			printf("\n");
+		} else {
+			printf("%s\n", conf_info[i].information);
+		}
+	}
+
+	return OTP_SUCCESS;
 }
 
 static void otp_print_strap_info(void)
@@ -1697,7 +1805,11 @@ static int do_otpinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 	if (argc != 2 && argc != 3)
 		return CMD_RET_USAGE;
 
-	if (!strcmp(argv[1], "strap"))
+	if (!strcmp(argv[1], "rbp"))
+		otp_print_rbp_info();
+	if (!strcmp(argv[1], "conf"))
+		otp_print_conf_info();
+	else if (!strcmp(argv[1], "strap"))
 		otp_print_strap_info();
 	else if (!strcmp(argv[1], "strap-ext"))
 		otp_print_strap_ext_info();
@@ -1728,6 +1840,8 @@ static int do_otpread(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 
 	if (!strcmp(argv[1], "rom"))
 		ret = otp_print_rom(offset, count);
+	else if (!strcmp(argv[1], "rbp"))
+		ret = otp_print_rbp(offset, count);
 	else if (!strcmp(argv[1], "conf"))
 		ret = otp_print_conf(offset, count);
 	else if (!strcmp(argv[1], "strap"))
@@ -1848,6 +1962,8 @@ static int do_otppb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[
 
 	if (!strcmp(argv[0], "conf"))
 		mode = OTP_REGION_CONF;
+	else if (!strcmp(argv[0], "rbp"))
+		mode = OTP_REGION_RBP;
 	else if (!strcmp(argv[0], "strap"))
 		mode = OTP_REGION_STRAP;
 	else if (!strcmp(argv[0], "strap-ext"))
@@ -1913,7 +2029,11 @@ static int do_otppb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[
 	}
 
 	/* Check param */
-	if (mode == OTP_REGION_CONF) {
+	if (mode == OTP_REGION_RBP) {
+		if (otp_addr >= OTP_RBP_REGION_SIZE)
+			return CMD_RET_USAGE;
+
+	} else if (mode == OTP_REGION_CONF) {
 		if (otp_addr >= OTP_CONF_REGION_SIZE)
 			return CMD_RET_USAGE;
 
@@ -2086,6 +2206,8 @@ static int do_ast_otp(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 	case OTP_AST2700_A1:
 		printf("Chip: AST2700-A1\n");
 		info_cb.version = OTP_AST2700_A1;
+		info_cb.rbp_info = a1_rbp_info;
+		info_cb.rbp_info_len = ARRAY_SIZE(a1_rbp_info);
 		info_cb.conf_info = a1_conf_info;
 		info_cb.conf_info_len = ARRAY_SIZE(a1_conf_info);
 		info_cb.strap_info = a1_strap_info;
@@ -2114,13 +2236,12 @@ static int do_ast_otp(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 U_BOOT_CMD(otp, 7, 0,  do_ast_otp,
 	   "ASPEED One-Time-Programmable sub-system",
 	   "<dev> version\n"
-	   "otp <dev> read rom|conf|strap|strap-pro|strap-ext|strap-ext-vld|u-data|s-data|caliptra|puf <otp_w_offset> <w_count>\n"
-	   "otp <dev> pb conf|data [o] <otp_w_offset> <bit_offset> <value>\n"
+	   "otp <dev> read rom|rbp|conf|strap|strap-pro|strap-ext|strap-ext-vld|u-data|s-data|caliptra|puf <otp_w_offset> <w_count>\n"
+	   "otp <dev> pb rbp|conf|data [o] <otp_w_offset> <bit_offset> <value>\n"
 	   "otp <dev> pb strap|strap-ext|strap-ext-vld [o] <bit_offset> <value>\n"
 	   "otp <dev> pb strap-ext-vld all\n"
 	   "otp <dev> prog <addr>\n"
-	   "otp <dev> info key\n"
-	   "otp <dev> info strap|strap-ext\n"
+	   "otp <dev> info key|rbp|conf|strap|strap-ext\n"
 	   "otp <dev> patch prog <dram_addr> <otp_w_offset> <w_count>\n"
 	   "otp <dev> patch enable pre|post <otp_start_w_offset> <w_count>\n"
 	   "otp <dev> ecc status|enable\n"

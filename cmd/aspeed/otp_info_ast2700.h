@@ -7,9 +7,7 @@
 
 struct otprbp_info {
 	signed char w_offset;
-	signed char bit_offset;
-	signed char length;
-	signed char value;
+	unsigned char length;
 	const char *information;
 };
 struct otpconf_info {
@@ -66,8 +64,19 @@ static const struct otpkey_type a1_key_type[] = {
 	{6, SOC_VAULT_SEED,    "AES-256 as secret vault key seed"},
 };
 
+static const struct otprbp_info a1_rbp_info[] = {
+	{ 0,  16,  "SoC FMC ECC Key Retire bits" },
+	{ 1,  16,  "SoC FMC LMS Key Retire bits" },
+	{ 3,  16,  "Caliptra Owner pk key hash retire" },
+	{ 4,  64,  "SoC FMC Hardware SVN" },
+	{ 8,  32,  "Caliptra FMC Hardware SVN" },
+	{ 10, 128, "Caliptra Runtime Hardware SVN" },
+	{ 18, 4,   "Caliptra Manufacture ECC key mask" },
+	{ 19, 32,  "Caliptra Manufacture LMS key mask" },
+};
+
 static const struct otpconf_info a1_conf_info[] = {
-		{ 0, 15, 1, 1, "OTP memory lock enable" },
+	{ 0, 15, 1, 1, "OTP memory lock enable" },
 	{ 0, 15, 1, 0, "OTP memory lock disable" },
 	{ 0, 14, 1, 1, "Enable PUF program done" },
 	{ 0, 14, 1, 0, "Disable PUF program done" },
