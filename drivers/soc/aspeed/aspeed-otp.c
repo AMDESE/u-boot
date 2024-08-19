@@ -37,6 +37,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define OTP_PASSWD			0x349fe38a
 #define OTP_CMD_READ			0x23b1e361
 #define OTP_CMD_PROG			0x23b1e364
+#define OTP_CMD_PROG_MULTI		0x23b1e365
 #define OTP_CMD_CMP			0x23b1e363
 #define OTP_CMD_BIST			0x23b1e368
 
@@ -256,6 +257,24 @@ int otp_prog_data(struct udevice *dev, u32 offset, u16 data)
 	return 0;
 }
 
+int otp_prog_multi_data(struct udevice *dev, u32 offset, u32 *data, int count)
+{
+	struct aspeed_otp *otp = dev_get_priv(dev);
+	int ret;
+
+	writel(otp->gbl_ecc_en, otp->base + OTP_ECC_EN);
+	writel(offset, otp->base + OTP_ADDR);
+	for (int i = 0; i < count; i++)
+		writel(data[i], otp->base + OTP_WDATA_0 + 4 * i);
+
+	writel(OTP_CMD_PROG_MULTI, otp->base + OTP_CMD);
+	ret = wait_complete(dev);
+	if (ret)
+		return OTP_PROG_FAIL;
+
+	return 0;
+}
+
 static int aspeed_otp_read(struct udevice *dev, int offset,
 			   void *buf, int size)
 {
@@ -278,19 +297,19 @@ static int aspeed_otp_read(struct udevice *dev, int offset,
 static int aspeed_otp_write(struct udevice *dev, int offset,
 			    const void *buf, int size)
 {
+	u32 *data32 = (u32 *)buf;
 	u16 *data = (u16 *)buf;
 	int ret;
 
 	otp_unlock(dev);
 
-	for (int i = 0; i < size; i++) {
-		// printf("%s: prog 0x%x=0x%x\n", __func__, offset + i, data[i]);
-		ret = otp_prog_data(dev, offset + i, data[i]);
-		if (ret) {
-			printf("%s: prog failed\n", __func__);
-			break;
-		}
-	}
+	if (size == 1)
+		ret = otp_prog_data(dev, offset, data[0]);
+	else
+		ret = otp_prog_multi_data(dev, offset, data32, size / 2);
+
+	if (ret)
+		printf("%s: prog failed\n", __func__);
 
 	otp_lock(dev);
 	return ret;

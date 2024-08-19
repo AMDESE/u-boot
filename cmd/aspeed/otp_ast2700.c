@@ -115,6 +115,24 @@ enum otp_status {
 #define OTP_CAL_REGION_SIZE		(CAL_REGION_END_ADDR - CAL_REGION_START_ADDR)
 #define OTP_PUF_REGION_SIZE		(HW_PUF_REGION_END_ADDR - SW_PUF_REGION_START_ADDR)
 
+/* OTPRBP */
+#define OTPRBP0_ADDR			OTPRBP_START_ADDR
+#define OTPRBP1_ADDR			0x1
+#define OTPRBP2_ADDR			0x2
+#define OTPRBP3_ADDR			0x3
+#define OTPRBP4_ADDR			0x4
+#define OTPRBP8_ADDR			0x8
+#define OTPRBP10_ADDR			0xa
+#define OTPRBP18_ADDR			0x12
+
+#define SOC_ECC_KEY_RETIRE		OTPRBP0_ADDR
+#define SOC_LMS_KEY_RETIRE		OTPRBP1_ADDR
+#define CAL_OWN_KEY_RETURE		OTPRBP3_ADDR
+#define SOC_HW_SVN_ADDR			OTPRBP4_ADDR
+#define CAL_FMC_HW_SVN_ADDR		OTPRBP8_ADDR
+#define CAL_RT_HW_SVN_ADDR		OTPRBP10_ADDR
+#define CAL_MANU_ECC_KEY_MASK		OTPRBP18_ADDR
+
 #define OTP_DEVICE_NAME_0		"otp@14c07000"
 #define OTP_DEVICE_NAME_1		"otp@30c07000"
 
@@ -263,6 +281,11 @@ static int otp_read(u32 offset, u16 *data)
 static int otp_prog(u32 offset, u16 data)
 {
 	return misc_write(otp_dev, offset, &data, 1);
+}
+
+static int otp_prog_multi(u32 offset, u16 *data, int num)
+{
+	return misc_write(otp_dev, offset, data, num);
 }
 
 static int otp_read_rom(u32 offset, u16 *data)
@@ -470,7 +493,7 @@ static int otp_print_user_data(u32 offset, int w_count)
 static int otp_print_sec_data(u32 offset, int w_count)
 {
 	int range = OTP_SEC_REGION_SIZE;
-	u16 ret[1];
+	u16 ret;
 	int i;
 
 	if (offset + w_count > range)
@@ -478,11 +501,11 @@ static int otp_print_sec_data(u32 offset, int w_count)
 
 	printf("Secure Region: 0x%x~0x%x\n", offset, offset + w_count);
 	for (i = offset; i < offset + w_count; i++) {
-		otp_read(SEC_REGION_START_ADDR + i, &ret[0]);
+		otp_read(SEC_REGION_START_ADDR + i, &ret);
 		if (i % 8 == 0)
-			printf("\n%03X: %04X ", i * 2, ret[0]);
+			printf("\n%03X: %04X ", i * 2, ret);
 		else
-			printf("%04X ", ret[0]);
+			printf("%04X ", ret);
 	}
 	printf("\n");
 
@@ -536,9 +559,14 @@ static int otp_print_puf(u32 offset, int w_count)
 static int otp_prog_data(int mode, int otp_w_offset, int bit_offset,
 			 int value, int nconfirm, bool debug)
 {
+	bool prog_multi = false;
 	u32 prog_address;
+	u16 data[8];
 	u16 read[1];
 	int ret = 0;
+	int w_count;
+
+	memset(data, 0, sizeof(data));
 
 	switch (mode) {
 	case OTP_REGION_ROM:
@@ -550,10 +578,40 @@ static int otp_prog_data(int mode, int otp_w_offset, int bit_offset,
 		break;
 	case OTP_REGION_RBP:
 		otp_read_rbp(otp_w_offset, read);
-		prog_address = RBP_REGION_START_ADDR + otp_w_offset;
+
+		if (otp_w_offset >= SOC_HW_SVN_ADDR && otp_w_offset < CAL_FMC_HW_SVN_ADDR) {
+			prog_multi = true;
+			w_count = 4;
+			prog_address = RBP_REGION_START_ADDR + SOC_HW_SVN_ADDR;
+			data[otp_w_offset - SOC_HW_SVN_ADDR] = value << bit_offset;
+
+		} else if (otp_w_offset >= CAL_FMC_HW_SVN_ADDR && otp_w_offset < CAL_RT_HW_SVN_ADDR) {
+			prog_multi = true;
+			w_count = 2;
+			prog_address = RBP_REGION_START_ADDR + CAL_FMC_HW_SVN_ADDR;
+			data[otp_w_offset - CAL_FMC_HW_SVN_ADDR] = value << bit_offset;
+
+		} else if (otp_w_offset >= CAL_RT_HW_SVN_ADDR && otp_w_offset < CAL_MANU_ECC_KEY_MASK) {
+			prog_multi = true;
+			w_count = 8;
+			prog_address = RBP_REGION_START_ADDR + CAL_RT_HW_SVN_ADDR;
+			data[otp_w_offset - CAL_RT_HW_SVN_ADDR] = value << bit_offset;
+
+		} else {
+			prog_address = RBP_REGION_START_ADDR + otp_w_offset;
+		}
+
 		if (debug)
 			printf("Program OTPRBP%d[0x%X] = 0x%x...\n", otp_w_offset,
 			       bit_offset, value);
+
+		if (prog_multi && debug) {
+			printf("Program OTPRBP%d = ", prog_address - RBP_REGION_START_ADDR);
+			for (int i = 0; i < w_count; i++)
+				printf("0x%04x ", data[i]);
+			printf("\n");
+		}
+
 		break;
 	case OTP_REGION_CONF:
 		otp_read_conf(otp_w_offset, read);
@@ -617,8 +675,13 @@ static int otp_prog_data(int mode, int otp_w_offset, int bit_offset,
 		}
 	}
 
-	value = value << bit_offset;
-	ret = otp_prog(prog_address, value);
+	if (prog_multi) {
+		ret = otp_prog_multi(prog_address, data, w_count);
+	} else {
+		value = value << bit_offset;
+		ret = otp_prog(prog_address, value);
+	}
+
 	if (ret) {
 		printf("OTP cannot be programmed\n");
 		printf("FAILURE\n");
