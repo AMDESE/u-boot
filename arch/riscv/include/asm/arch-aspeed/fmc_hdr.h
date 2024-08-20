@@ -31,24 +31,25 @@ enum prebuilt_type {
 
 struct fmc_hdr_preamble {
 	uint32_t magic;
-	uint16_t ecc_key_idx;
-	uint16_t lms_key_idx;
-	uint8_t ecc_sign[HDR_ECC_SIGN_LEN];
-	uint8_t lms_sign[HDR_LMS_SIGN_LEN];
-	uint32_t raz[17];
+	uint32_t version;
+	uint32_t ecc_key_idx;
+	uint32_t lms_key_idx;
+	uint8_t ecc_sig[HDR_ECC_SIGN_LEN];
+	uint8_t lms_sig[HDR_LMS_SIGN_LEN];
+	uint32_t raz[15];
 };
 
 struct fmc_hdr_body {
-	uint32_t size : 24;
-	uint32_t svn : 8;
+	uint32_t svn;
+	uint32_t size;
 	uint8_t dgst[HDR_DGST_LEN];
 	union {
 		struct {
-			uint32_t size : 24;
-			uint32_t type : 8;
+			uint32_t type;
+			uint32_t size;
 			uint8_t dgst[HDR_DGST_LEN];
 		} pbs[0];
-		uint32_t raz[179];
+		uint32_t raz[178];
 	};
 };
 
