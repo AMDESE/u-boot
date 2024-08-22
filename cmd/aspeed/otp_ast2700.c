@@ -751,6 +751,7 @@ static void otp_strap_status(struct otpstrap_status *otpstrap)
 		if (((data[0] >> j) & 0x1) == 1)
 			otpstrap[j].protected = 1;
 	}
+
 	for (int j = 16; j < 32; j++) {
 		if (((data[1] >> (j - 16)) & 0x1) == 1)
 			otpstrap[j].protected = 1;
@@ -761,6 +762,7 @@ static void otp_strap_status(struct otpstrap_status *otpstrap)
 		printf("otpstrap[%d]: value:%d, remain_times:%d, writeable_option:%d, protected:%d\n",
 		       i, otpstrap[i].value, otpstrap[i].remain_times,
 		       otpstrap[i].writeable_option, otpstrap[i].protected);
+
 		printf("option_value: ");
 		for (int j = 0; j < 6; j++)
 			printf("%d ", otpstrap[i].option_value[j]);
@@ -787,7 +789,7 @@ static int otp_print_rbp_info(void)
 
 		printf("0x%-4X", w_offset);
 		printf("0x%-9X", length);
-		printf("%s: ", rbp_info[i].information);
+		printf("%-40s: ", rbp_info[i].information);
 
 		for (int j = 0; j < (length + 15) / 16; j++)
 			printf("0x%04x ", OTPRBP[w_offset + j]);
@@ -1238,11 +1240,8 @@ static void otp_print_key(u32 *data)
 		return;
 	}
 
-	for (int i = 0; i < OTP_KH_NUM; i++) {
+	for (int i = 0; i < OTP_KH_NUM; i++)
 		ret = _otp_print_key(data[i], i, byte_buf);
-		if (ret)
-			break;
-	}
 }
 
 static void otp_print_key_info(void)
@@ -1259,6 +1258,31 @@ static int otp_print_secure_image(struct otp_image_layout *image_layout)
 
 	buf = (u32 *)image_layout->secure;
 	otp_print_key(buf);
+
+	return OTP_SUCCESS;
+}
+
+static int otp_print_rbp_image(struct otp_image_layout *image_layout)
+{
+	const struct otprbp_info *rbp_info = info_cb.rbp_info;
+	u16 *OTPRBP = (u16 *)image_layout->rbp;
+	u32 w_offset;
+	u32 length;
+
+	printf("W   bit-length            Description                       Value\n");
+	printf("__________________________________________________________________________\n");
+	for (int i = 0; i < info_cb.rbp_info_len; i++) {
+		w_offset = rbp_info[i].w_offset;
+		length = rbp_info[i].length;
+
+		printf("0x%-4X", w_offset);
+		printf("0x%-9X", length);
+		printf("%-40s: ", rbp_info[i].information);
+
+		for (int j = 0; j < (length + 15) / 16; j++)
+			printf("0x%04x ", OTPRBP[w_offset + j]);
+		printf("\n");
+	}
 
 	return OTP_SUCCESS;
 }
@@ -1467,6 +1491,12 @@ static int otp_prog_image_region(struct otp_image_layout *image_layout, enum otp
 		size = image_layout->rom_length;
 		w_region_size = OTP_ROM_REGION_SIZE;
 		otp_read_func = otp_read_rom;
+		break;
+	case OTP_REGION_RBP:
+		buf = (u16 *)image_layout->rbp;
+		size = image_layout->rbp_length;
+		w_region_size = OTP_RBP_REGION_SIZE;
+		otp_read_func = otp_read_rbp;
 		break;
 	case OTP_REGION_CONF:
 		buf = (u16 *)image_layout->conf;
@@ -1762,6 +1792,13 @@ static int otp_prog_image(phys_addr_t addr, int nconfirm)
 				return OTP_FAILURE;
 			}
 		}
+		if (otp_header->image_info & OTP_INC_RBP) {
+			printf("\nOTP RBP region :\n");
+			if (otp_print_rbp_image(&image_layout) < 0) {
+				printf("OTP print rbp error, please check.\n");
+				return OTP_FAILURE;
+			}
+		}
 		if (otp_header->image_info & OTP_INC_SECURE) {
 			printf("\nOTP secure region :\n");
 			if (otp_print_secure_image(&image_layout) < 0) {
@@ -1808,6 +1845,15 @@ static int otp_prog_image(phys_addr_t addr, int nconfirm)
 	if (otp_header->image_info & OTP_INC_ROM) {
 		printf("programing rom region ...\n");
 		ret = otp_prog_image_region(&image_layout, OTP_REGION_ROM);
+		if (ret) {
+			printf("Error\n");
+			return ret;
+		}
+		// printf("Done\n");
+	}
+	if (otp_header->image_info & OTP_INC_RBP) {
+		printf("programing rbp region ...\n");
+		ret = otp_prog_image_region(&image_layout, OTP_REGION_RBP);
 		if (ret) {
 			printf("Error\n");
 			return ret;
