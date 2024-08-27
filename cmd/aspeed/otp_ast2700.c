@@ -167,7 +167,7 @@ struct otp_header {
 	u32	strap_info;
 	u32	strap_ext_info;
 	u32	secure_info;
-	u32	caliptra_info;
+	u32	cptra_info;
 	u32	checksum_offset;
 } __packed;
 
@@ -228,14 +228,14 @@ struct otp_image_layout {
 	int strap_length;
 	int strap_ext_length;
 	int secure_length;
-	int caliptra_length;
+	int cptra_length;
 	u8 *rom;
 	u8 *rbp;
 	u8 *conf;
 	u8 *strap;
 	u8 *strap_ext;
 	u8 *secure;
-	u8 *caliptra;
+	u8 *cptra;
 };
 
 struct udevice *otp_dev;
@@ -333,7 +333,7 @@ static int otp_read_secure_multi(u32 offset, u16 *data, int num)
 	return misc_read(otp_dev, offset + SEC_REGION_START_ADDR, data, num);
 }
 
-static int otp_read_caliptra(u32 offset, u16 *data)
+static int otp_read_cptra(u32 offset, u16 *data)
 {
 	return otp_read(offset + CAL_REGION_START_ADDR, data);
 }
@@ -512,7 +512,7 @@ static int otp_print_sec_data(u32 offset, int w_count)
 	return OTP_SUCCESS;
 }
 
-static int otp_print_caliptra(u32 offset, int w_count)
+static int otp_print_cptra(u32 offset, int w_count)
 {
 	int range = OTP_CAL_REGION_SIZE;
 	u16 ret[1];
@@ -656,7 +656,7 @@ static int otp_prog_data(int mode, int otp_w_offset, int bit_offset,
 			       bit_offset, value);
 		break;
 	case OTP_REGION_CALIPTRA:
-		otp_read_caliptra(otp_w_offset, read);
+		otp_read_cptra(otp_w_offset, read);
 		prog_address = CAL_REGION_START_ADDR + otp_w_offset;
 		if (debug)
 			printf("Program OTPCAL%d[0x%X] = 0x%x...\n", otp_w_offset,
@@ -1430,10 +1430,10 @@ static int otp_print_strap_ext_image(struct otp_image_layout *image_layout)
 	return OTP_SUCCESS;
 }
 
-static int otp_print_caliptra_image(struct otp_image_layout *image_layout)
+static int otp_print_cptra_image(struct otp_image_layout *image_layout)
 {
 	const struct otpcal_info *cal_info = info_cb.cal_info;
-	u16 *OTPCAL = (u16 *)image_layout->caliptra;
+	u16 *OTPCAL = (u16 *)image_layout->cptra;
 	u32 w_offset;
 	u32 otp_value;
 	u32 bit_len;
@@ -1511,10 +1511,10 @@ static int otp_prog_image_region(struct otp_image_layout *image_layout, enum otp
 		otp_read_func = otp_read_secure;
 		break;
 	case OTP_REGION_CALIPTRA:
-		buf = (u16 *)image_layout->caliptra;
-		size = image_layout->caliptra_length;
+		buf = (u16 *)image_layout->cptra;
+		size = image_layout->cptra_length;
 		w_region_size = OTP_CAL_REGION_SIZE;
-		otp_read_func = otp_read_caliptra;
+		otp_read_func = otp_read_cptra;
 		break;
 	default:
 		printf("%s: region type 0x%x is not supported\n", __func__, region_type);
@@ -1710,8 +1710,8 @@ static int otp_prog_image(phys_addr_t addr, int nconfirm)
 	image_layout.secure_length = OTP_REGION_SIZE(otp_header->secure_info);
 	image_layout.secure = buf + OTP_REGION_OFFSET(otp_header->secure_info);
 
-	image_layout.caliptra_length = OTP_REGION_SIZE(otp_header->caliptra_info);
-	image_layout.caliptra = buf + OTP_REGION_OFFSET(otp_header->caliptra_info);
+	image_layout.cptra_length = OTP_REGION_SIZE(otp_header->cptra_info);
+	image_layout.cptra = buf + OTP_REGION_OFFSET(otp_header->cptra_info);
 
 	if (otp_header->soc_ver == SOC_AST2700A0) {
 		image_soc_ver = OTP_AST2700_A0;
@@ -1829,7 +1829,7 @@ static int otp_prog_image(phys_addr_t addr, int nconfirm)
 		}
 		if (otp_header->image_info & OTP_INC_CALIPTRA) {
 			printf("\nOTP caliptra region :\n");
-			if (otp_print_caliptra_image(&image_layout) < 0) {
+			if (otp_print_cptra_image(&image_layout) < 0) {
 				printf("OTP caliptra error, please check.\n");
 				return OTP_FAILURE;
 			}
@@ -1965,8 +1965,8 @@ static int do_otpread(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 		ret = otp_print_user_data(offset, count);
 	else if (!strcmp(argv[1], "s-data"))
 		ret = otp_print_sec_data(offset, count);
-	else if (!strcmp(argv[1], "caliptra"))
-		ret = otp_print_caliptra(offset, count);
+	else if (!strcmp(argv[1], "cptra"))
+		ret = otp_print_cptra(offset, count);
 	else if (!strcmp(argv[1], "puf"))
 		ret = otp_print_puf(offset, count);
 	else
@@ -2079,8 +2079,12 @@ static int do_otppb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[
 		mode = OTP_REGION_STRAP_EXT;
 	else if (!strcmp(argv[0], "strap-ext-vld"))
 		mode = OTP_REGION_STRAP_EXT_VLD;
-	else if (!strcmp(argv[0], "data"))
+	else if (!strcmp(argv[0], "u-data"))
 		mode = OTP_REGION_USER_DATA;
+	else if (!strcmp(argv[0], "s-data"))
+		mode = OTP_REGION_SECURE;
+	else if (!strcmp(argv[0], "cptra"))
+		mode = OTP_REGION_CALIPTRA;
 	else
 		return CMD_RET_USAGE;
 
@@ -2168,9 +2172,16 @@ static int do_otppb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[
 		otp_addr = bit_offset / 16;
 		bit_offset = bit_offset % 16;
 
-	} else {
-		/* user data + secure data region */
-		if (otp_addr >= OTP_USER_REGION_SIZE + OTP_SEC_REGION_SIZE)
+	} else if (mode == OTP_REGION_USER_DATA) {
+		if (otp_addr >= OTP_USER_REGION_SIZE)
+			return CMD_RET_USAGE;
+
+	} else if (mode == OTP_REGION_SECURE) {
+		if (otp_addr >= OTP_SEC_REGION_SIZE)
+			return CMD_RET_USAGE;
+
+	} else if (mode == OTP_REGION_CALIPTRA) {
+		if (otp_addr >= OTP_CAL_REGION_SIZE)
 			return CMD_RET_USAGE;
 	}
 
@@ -2345,8 +2356,8 @@ static int do_ast_otp(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 U_BOOT_CMD(otp, 7, 0,  do_ast_otp,
 	   "ASPEED One-Time-Programmable sub-system",
 	   "<dev> version\n"
-	   "otp <dev> read rom|rbp|conf|strap|strap-pro|strap-ext|strap-ext-vld|u-data|s-data|caliptra|puf <otp_w_offset> <w_count>\n"
-	   "otp <dev> pb rbp|conf|data [o] <otp_w_offset> <bit_offset> <value>\n"
+	   "otp <dev> read rom|rbp|conf|strap|strap-pro|strap-ext|strap-ext-vld|u-data|s-data|cptra|puf <otp_w_offset> <w_count>\n"
+	   "otp <dev> pb rbp|conf|u-data|s-data|cptra [o] <otp_w_offset> <bit_offset> <value>\n"
 	   "otp <dev> pb strap|strap-ext|strap-ext-vld [o] <bit_offset> <value>\n"
 	   "otp <dev> pb strap-ext-vld all\n"
 	   "otp <dev> prog <addr>\n"
