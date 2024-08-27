@@ -342,14 +342,17 @@ static int otp_print_rom(u32 offset, int w_count)
 {
 	int range = OTP_ROM_REGION_SIZE;
 	u16 ret[1];
-	int i;
+	int rc;
 
 	if (offset + w_count > range)
 		return OTP_USAGE;
 
 	printf("ROM_REGION: 0x%x~0x%x\n", offset, offset + w_count);
-	for (i = offset; i < offset + w_count; i++) {
-		otp_read(ROM_REGION_START_ADDR + i, &ret[0]);
+	for (int i = offset; i < offset + w_count; i++) {
+		rc = otp_read(ROM_REGION_START_ADDR + i, &ret[0]);
+		if (rc)
+			return rc;
+
 		if (i % 8 == 0)
 			printf("\n%03X: %04X ", i * 2, ret[0]);
 		else
@@ -364,13 +367,16 @@ static int otp_print_rbp(u32 offset, int w_count)
 {
 	int range = OTP_RBP_REGION_SIZE;
 	u16 ret[1];
-	int i;
+	int rc;
 
 	if (offset + w_count > range)
 		return OTP_USAGE;
 
-	for (i = offset; i < offset + w_count; i++) {
-		otp_read(RBP_REGION_START_ADDR + i, ret);
+	for (int i = offset; i < offset + w_count; i++) {
+		rc = otp_read(RBP_REGION_START_ADDR + i, ret);
+		if (rc)
+			return rc;
+
 		printf("OTPRBP0x%X: 0x%04X\n", i, ret[0]);
 	}
 	printf("\n");
@@ -382,13 +388,16 @@ static int otp_print_conf(u32 offset, int w_count)
 {
 	int range = OTP_CONF_REGION_SIZE;
 	u16 ret[1];
-	int i;
+	int rc;
 
 	if (offset + w_count > range)
 		return OTP_USAGE;
 
-	for (i = offset; i < offset + w_count; i++) {
-		otp_read(CONF_REGION_START_ADDR + i, ret);
+	for (int i = offset; i < offset + w_count; i++) {
+		rc = otp_read(CONF_REGION_START_ADDR + i, ret);
+		if (rc)
+			return rc;
+
 		printf("OTPCFG0x%X: 0x%04X\n", i, ret[0]);
 	}
 	printf("\n");
@@ -400,13 +409,16 @@ static int otp_print_strap(u32 offset, int w_count)
 {
 	int range = 12;	/* 32-bit * 6 / 16 (per word) */
 	u16 ret[1];
-	int i;
+	int rc;
 
 	if (offset + w_count > range)
 		return OTP_USAGE;
 
-	for (i = offset; i < offset + w_count; i++) {
-		otp_read(STRAP_REGION_START_ADDR + 2 + i, ret);
+	for (int i = offset; i < offset + w_count; i++) {
+		rc = otp_read(STRAP_REGION_START_ADDR + 2 + i, ret);
+		if (rc)
+			return rc;
+
 		printf("OTPSTRAP0x%X: 0x%04X\n", i, ret[0]);
 	}
 	printf("\n");
@@ -418,13 +430,16 @@ static int otp_print_strap_pro(u32 offset, int w_count)
 {
 	int range = 2;	/* 32-bit / 16 (per word) */
 	u16 ret[1];
-	int i;
+	int rc;
 
 	if (offset + w_count > range)
 		return OTP_USAGE;
 
-	for (i = offset; i < offset + w_count; i++) {
-		otp_read(STRAP_REGION_START_ADDR + i, ret);
+	for (int i = offset; i < offset + w_count; i++) {
+		rc = otp_read(STRAP_REGION_START_ADDR + i, ret);
+		if (rc)
+			return rc;
+
 		printf("OTPSTRAP_PRO0x%X: 0x%04X\n", i, ret[0]);
 	}
 	printf("\n");
@@ -436,13 +451,16 @@ static int otp_print_strap_ext(u32 offset, int w_count)
 {
 	int range = (OTP_STRAP_EXT_REGION_SIZE) / 2;
 	u16 ret[1];
-	int i;
+	int rc;
 
 	if (offset + w_count > range)
 		return OTP_USAGE;
 
-	for (i = offset; i < offset + w_count; i++) {
-		otp_read(STRAPEXT_REGION_START_ADDR + i, ret);
+	for (int i = offset; i < offset + w_count; i++) {
+		rc = otp_read(STRAPEXT_REGION_START_ADDR + i, ret);
+		if (rc)
+			return rc;
+
 		printf("OTPSTRAPEXT0x%X: 0x%04X\n", i, ret[0]);
 	}
 	printf("\n");
@@ -454,13 +472,16 @@ static int otp_print_strap_ext_valid(u32 offset, int w_count)
 {
 	int range = (OTP_STRAP_EXT_REGION_SIZE) / 2;
 	u16 ret[1];
-	int i;
+	int rc;
 
 	if (offset + w_count > range)
 		return OTP_USAGE;
 
-	for (i = offset; i < offset + w_count; i++) {
-		otp_read(STRAPEXT_REGION_START_ADDR + 0x8 + i, ret);
+	for (int i = offset; i < offset + w_count; i++) {
+		rc = otp_read(STRAPEXT_REGION_START_ADDR + 0x8 + i, ret);
+		if (rc)
+			return rc;
+
 		printf("OTPSTRAPEXT_VLD0x%X: 0x%04X\n", i, ret[0]);
 	}
 	printf("\n");
@@ -472,14 +493,17 @@ static int otp_print_user_data(u32 offset, int w_count)
 {
 	int range = OTP_USER_REGION_SIZE;
 	u16 ret[1];
-	int i;
+	int rc;
 
 	if (offset + w_count > range)
 		return OTP_USAGE;
 
 	printf("User Region: 0x%x~0x%x\n", offset, offset + w_count);
-	for (i = offset; i < offset + w_count; i++) {
-		otp_read(USER_REGION_START_ADDR + i, &ret[0]);
+	for (int i = offset; i < offset + w_count; i++) {
+		rc = otp_read(USER_REGION_START_ADDR + i, &ret[0]);
+		if (rc)
+			return rc;
+
 		if (i % 8 == 0)
 			printf("\n%03X: %04X ", i * 2, ret[0]);
 		else
@@ -494,14 +518,17 @@ static int otp_print_sec_data(u32 offset, int w_count)
 {
 	int range = OTP_SEC_REGION_SIZE;
 	u16 ret;
-	int i;
+	int rc;
 
 	if (offset + w_count > range)
 		return OTP_USAGE;
 
 	printf("Secure Region: 0x%x~0x%x\n", offset, offset + w_count);
-	for (i = offset; i < offset + w_count; i++) {
-		otp_read(SEC_REGION_START_ADDR + i, &ret);
+	for (int i = offset; i < offset + w_count; i++) {
+		rc = otp_read(SEC_REGION_START_ADDR + i, &ret);
+		if (rc)
+			return rc;
+
 		if (i % 8 == 0)
 			printf("\n%03X: %04X ", i * 2, ret);
 		else
@@ -516,14 +543,17 @@ static int otp_print_cptra(u32 offset, int w_count)
 {
 	int range = OTP_CAL_REGION_SIZE;
 	u16 ret[1];
-	int i;
+	int rc;
 
 	if (offset + w_count > range)
 		return OTP_USAGE;
 
 	printf("Caliptra Region: 0x%x~0x%x\n", offset, offset + w_count);
-	for (i = offset; i < offset + w_count; i++) {
-		otp_read(CAL_REGION_START_ADDR + i, &ret[0]);
+	for (int i = offset; i < offset + w_count; i++) {
+		rc = otp_read(CAL_REGION_START_ADDR + i, &ret[0]);
+		if (rc)
+			return rc;
+
 		if (i % 8 == 0)
 			printf("\n%03X: %04X ", i * 2, ret[0]);
 		else
@@ -538,14 +568,17 @@ static int otp_print_puf(u32 offset, int w_count)
 {
 	int range = OTP_PUF_REGION_SIZE;
 	u16 ret[1];
-	int i;
+	int rc;
 
 	if (offset + w_count > range)
 		return OTP_USAGE;
 
 	printf("PUF: 0x%x~0x%x\n", offset, offset + w_count);
-	for (i = offset; i < offset + w_count; i++) {
-		otp_read(SW_PUF_REGION_START_ADDR + i, &ret[0]);
+	for (int i = offset; i < offset + w_count; i++) {
+		rc = otp_read(SW_PUF_REGION_START_ADDR + i, &ret[0]);
+		if (rc)
+			return rc;
+
 		if (i % 8 == 0)
 			printf("\n%03X: %04X ", i * 2, ret[0]);
 		else
