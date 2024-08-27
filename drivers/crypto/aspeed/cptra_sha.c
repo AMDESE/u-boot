@@ -109,7 +109,7 @@ free_n_out:
 static int cptra_sha_update(struct udevice *dev, void *ctx, const void *ibuf, uint32_t ilen)
 {
 	struct cptra_sha *cs;
-	uint32_t chunk_be;
+	uint32_t din_be;
 	uint32_t dlen_sum;
 	uint8_t *p8;
 	uint32_t i;
@@ -120,18 +120,21 @@ static int cptra_sha_update(struct udevice *dev, void *ctx, const void *ibuf, ui
 	dlen_sum = readl(cs->regs + CPTRA_SHA_DLEN) + ilen;
 	writel(dlen_sum, cs->regs + CPTRA_SHA_DLEN);
 
-	chunk_be = 0;
+	din_be = 0;
 	for (i = 0, p8 = (uint8_t *)ibuf; i < ilen; ++i) {
-		if (i && (i % sizeof(chunk_be) == 0)) {
-			writel(chunk_be, cs->regs + CPTRA_SHA_DATAIN);
-			chunk_be = 0;
+		if (i && (i % sizeof(din_be) == 0)) {
+			writel(din_be, cs->regs + CPTRA_SHA_DATAIN);
+			din_be = 0;
 		}
 
-		chunk_be <<= 8;
-		chunk_be |= p8[i];
+		din_be <<= 8;
+		din_be |= p8[i];
 	}
 
-	writel(chunk_be, cs->regs + CPTRA_SHA_DATAIN);
+	if (i % sizeof(din_be))
+		din_be <<= (8 * (sizeof(din_be) - (i % sizeof(din_be))));
+
+	writel(din_be, cs->regs + CPTRA_SHA_DATAIN);
 
 	return 0;
 }
@@ -159,7 +162,7 @@ static int cptra_sha_finish(struct udevice *dev, void *ctx, void *obuf)
 	/* get the SHA digest in big-endian */
 	p32 = (uint32_t *)obuf;
 	for (i = 0; i < (cs_ctx->dgst_len / sizeof(*p32)); ++i, p32++)
-		*p32 = readl(cs->regs + CPTRA_SHA_DIGEST(i));
+		*p32 = be32_to_cpu(readl(cs->regs + CPTRA_SHA_DIGEST(i)));
 
 	/* release CPTRA SHA lock */
 	writel(0x1, cs->regs + CPTRA_SHA_LOCK);
