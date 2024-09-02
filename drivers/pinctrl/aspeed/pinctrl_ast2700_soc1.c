@@ -187,6 +187,54 @@ static struct ast2700_soc1_sig_desc i2c3[] = {
 	{ 0x54, GENMASK(30, 28) | GENMASK(26, 24), BIT(28) | BIT(24) },
 };
 
+static struct ast2700_soc1_sig_desc i2c4[] = {
+	{ 0x58, GENMASK(6, 4) | GENMASK(2, 0), BIT(4) | BIT(0) },
+};
+
+static struct ast2700_soc1_sig_desc i2c5[] = {
+	{ 0x58, GENMASK(14, 12) | GENMASK(10, 8), BIT(12) | BIT(8) },
+};
+
+static struct ast2700_soc1_sig_desc i2c6[] = {
+	{ 0x58, GENMASK(22, 20) | GENMASK(18, 16), BIT(20) | BIT(16) },
+};
+
+static struct ast2700_soc1_sig_desc i2c7[] = {
+	{ 0x58, GENMASK(30, 28) | GENMASK(26, 24), BIT(28) | BIT(24) },
+};
+
+static struct ast2700_soc1_sig_desc i2c8[] = {
+	{ 0x5c, GENMASK(6, 4) | GENMASK(2, 0), BIT(4) | BIT(0) },
+};
+
+static struct ast2700_soc1_sig_desc i2c9[] = {
+	{ 0x5c, GENMASK(14, 12) | GENMASK(10, 8), BIT(12) | BIT(8) },
+};
+
+static struct ast2700_soc1_sig_desc i2c10[] = {
+	{ 0x5c, GENMASK(22, 20) | GENMASK(18, 16), BIT(20) | BIT(16) },
+};
+
+static struct ast2700_soc1_sig_desc i2c11[] = {
+	{ 0x5c, GENMASK(30, 28) | GENMASK(26, 24), BIT(28) | BIT(24) },
+};
+
+static struct ast2700_soc1_sig_desc i2c12[] = {
+	{ 0x20, GENMASK(6, 4) | GENMASK(2, 0), BIT(5) | BIT(1) },
+};
+
+static struct ast2700_soc1_sig_desc i2c13[] = {
+	{ 0x20, GENMASK(14, 12) | GENMASK(10, 8), BIT(13) | BIT(9) },
+};
+
+static struct ast2700_soc1_sig_desc i2c14[] = {
+	{ 0x20, GENMASK(22, 20) | GENMASK(18, 16), BIT(21) | BIT(17) },
+};
+
+static struct ast2700_soc1_sig_desc i2c15[] = {
+	{ 0x20, GENMASK(30, 28) | GENMASK(26, 24), BIT(29) | BIT(25) },
+};
+
 static struct ast2700_soc1_sig_desc pwm0[] = {
 	{ 0x0c, GENMASK(2, 0), BIT(0) },
 };
@@ -248,6 +296,18 @@ static const struct aspeed_group_config ast2700_soc1_groups[] = {
 	{ "I2C1", ARRAY_SIZE(i2c1), i2c1 },
 	{ "I2C2", ARRAY_SIZE(i2c2), i2c2 },
 	{ "I2C3", ARRAY_SIZE(i2c3), i2c3 },
+	{ "I2C4", ARRAY_SIZE(i2c4), i2c4 },
+	{ "I2C5", ARRAY_SIZE(i2c5), i2c5 },
+	{ "I2C6", ARRAY_SIZE(i2c6), i2c6 },
+	{ "I2C7", ARRAY_SIZE(i2c7), i2c7 },
+	{ "I2C8", ARRAY_SIZE(i2c8), i2c8 },
+	{ "I2C9", ARRAY_SIZE(i2c9), i2c9 },
+	{ "I2C10", ARRAY_SIZE(i2c10), i2c10 },
+	{ "I2C11", ARRAY_SIZE(i2c11), i2c11 },
+	{ "I2C12", ARRAY_SIZE(i2c12), i2c12 },
+	{ "I2C13", ARRAY_SIZE(i2c13), i2c13 },
+	{ "I2C14", ARRAY_SIZE(i2c14), i2c14 },
+	{ "I2C15", ARRAY_SIZE(i2c15), i2c15 },
 	{ "PWM0", ARRAY_SIZE(pwm0), pwm0 },
 	{ "PWM1", ARRAY_SIZE(pwm1), pwm1 },
 	{ "PWM2", ARRAY_SIZE(pwm2), pwm2 },
