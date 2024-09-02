@@ -209,6 +209,14 @@
 	status = "okay";
 };
 
+&i2c8 {
+	status = "okay";
+};
+
+&i2c11 {
+	status = "okay";
+};
+
 &wdt0 {
 	status = "okay";
 };
