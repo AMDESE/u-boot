@@ -63,7 +63,7 @@ int set_mac_addresses(const u8 *eeprom_buf)
 	if(NULL == eeprom_buf)
 		return -1;
 
-	if (env_get(ENV_ETH_ADDR) && env_get(ENV_ETH1_ADDR) && env_get(ENV_ETH2_ADDR)) {
+	if (env_get(ENV_ETH_ADDR) && env_get(ENV_ETH1_ADDR)) {
 		printf("ethaddr already set !!\n");
 		return 0;
 	}
@@ -164,6 +164,18 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 		return 0;
 	}
 
+	/* calculate HPM Multi Rec Area offsets */
+	hpm_mrc = (*(hpm_eeprom_buf + FRU_MRC_HDR_OFFSET)) * MRC_HDR_AREA_START;
+	board_id = *(hpm_eeprom_buf + hpm_mrc + HPM_BRD_ID_OFFSET);
+	board_rev = *(hpm_eeprom_buf + hpm_mrc + HPM_BRD_REV_OFFSET);
+
+	/* HPM board name */
+	get_platform_name(board_id, &plat_name);
+
+	/* HPM board FDT config */
+	snprintf(board_conf_name, sizeof(board_conf_name),"#conf-aspeed-bmc-amd-%s.dtb", plat_name);
+	env_set(ENV_BOARD_FIT_CONF, board_conf_name);
+
 	/* check if scm has valid data */
 	memcpy(enetaddr, scm_eeprom_buf + MAC0_ADDR_OFFSET, sizeof enetaddr);
 	if (!is_valid_ethaddr(enetaddr)) {
@@ -174,24 +186,11 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 	else
 		bin2hex(mac_str, scm_eeprom_buf + LAST_2B_MAC0_ADDR, LAST_2B_MAC0_LEN);
 
-	/* calculate HPM Multi Rec Area offsets */
-	hpm_mrc = (*(hpm_eeprom_buf + FRU_MRC_HDR_OFFSET)) * MRC_HDR_AREA_START;
-	board_id = *(hpm_eeprom_buf + hpm_mrc + HPM_BRD_ID_OFFSET);
-	board_rev = *(hpm_eeprom_buf + hpm_mrc + HPM_BRD_REV_OFFSET);
-
-	/* HPM board name */
-	get_platform_name(board_id, &plat_name);
-
 	/* Hostname to pass to systemd-networking */
-
 	snprintf(new_hostname, sizeof(new_hostname), "systemd.hostname=%s-%s", plat_name, mac_str);
 	old_bootargs = env_get(ENV_BOOTARGS);
 	snprintf(new_bootargs, sizeof(new_bootargs),"%s %s",old_bootargs,new_hostname);
 	env_set(ENV_BOOTARGS, new_bootargs);
-
-	/* HPM board FDT config */
-	snprintf(board_conf_name, sizeof(board_conf_name),"#conf-aspeed-bmc-amd-%s.dtb", plat_name);
-	env_set(ENV_BOARD_FIT_CONF, board_conf_name);
 
 	/* HPM board env variables for linux apps */
 	bin2hex(board_id_str, &board_id, sizeof board_id);
