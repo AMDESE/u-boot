@@ -11,8 +11,10 @@
 
 #define SCM_EEPROM_I2C_BUS    (7)
 #define HPM_EEPROM_I2C_BUS    (8)
+#define SCM_EEPROM_OFF_LEN    (1) // AT24C08C
+#define HPM_EEPROM_OFF_LEN    (2) // AT24C32E
 #define EEPROM_DEV_ADDR    (0x50)
-#define EEPROM_BUF_LEN      (256)
+#define EEPROM_BUF_LEN    (0x400)
 #define MAC_ADDR_LEN          (6)
 #define MAC0_ADDR_OFFSET     (16)
 #define MAC1_ADDR_OFFSET     (24)
@@ -91,6 +93,7 @@ int set_mac_addresses(const u8 *eeprom_buf)
 
 int get_platform_name( const u8 board_id, char* platname)
 {
+	int ret = 0;
 	switch (board_id) {
 		case CONGO_1:
 		case CONGO_2:
@@ -141,8 +144,9 @@ int get_platform_name( const u8 board_id, char* platname)
 			break;
 		default:
 			strcpy(platname, "sp7");
+			ret = -1;
 	}
-	return 0;
+	return ret;
 }
 int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 {
@@ -159,22 +163,45 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 	u8 board_rev = 0;
 	u8 hpm_mrc = 0;
 
-	if (env_get(ENV_BOARD_FIT_CONF) && env_get(ENV_BOARD_ID) && env_get(ENV_BOARD_REV)) {
-		printf("Board info already set !!\n");
-		return 0;
-	}
-
 	/* calculate HPM Multi Rec Area offsets */
 	hpm_mrc = (*(hpm_eeprom_buf + FRU_MRC_HDR_OFFSET)) * MRC_HDR_AREA_START;
 	board_id = *(hpm_eeprom_buf + hpm_mrc + HPM_BRD_ID_OFFSET);
 	board_rev = *(hpm_eeprom_buf + hpm_mrc + HPM_BRD_REV_OFFSET);
 
 	/* HPM board name */
-	get_platform_name(board_id, &plat_name);
+	if(!env_get(ENV_BOARD_FIT_CONF)) {
+		if (get_platform_name(board_id, &plat_name) == 0) {
+			/* HPM board FDT config */
+			snprintf(board_conf_name, sizeof(board_conf_name),"#conf-aspeed-bmc-amd-%s.dtb", plat_name);
+			env_set(ENV_BOARD_FIT_CONF, board_conf_name);
+			printf("Saving Board FDT config: %s\n", board_conf_name);
+			env_save();
+		}
+		else
+			printf("HPM EEPROM not programmed\nLoading first DTB config\n");
+	}
 
-	/* HPM board FDT config */
-	snprintf(board_conf_name, sizeof(board_conf_name),"#conf-aspeed-bmc-amd-%s.dtb", plat_name);
-	env_set(ENV_BOARD_FIT_CONF, board_conf_name);
+	/* HPM board env variables for linux apps */
+	if(!env_get(ENV_BOARD_ID)) {
+		if ((board_id != 0xff)) {
+			bin2hex(board_id_str, &board_id, sizeof board_id);
+			env_set(ENV_BOARD_ID, board_id_str);
+			printf("Saving board_id: %s\n", board_id_str);
+			env_save();
+		}
+		else
+			printf("Invalid board_id in HPM EEPROM\n");
+	}
+	if(!env_get(ENV_BOARD_REV)) {
+		if ((board_rev != 0xff)) {
+			bin2hex(board_rev_str, &board_rev, sizeof board_rev);
+			env_set(ENV_BOARD_REV, board_rev_str);
+			printf("Saving board_rev: %s\n", board_rev_str);
+			env_save();
+		}
+		else
+			printf("Invalid board_rev in HPM EEPROM\n");
+	}
 
 	/* check if scm has valid data */
 	memcpy(enetaddr, scm_eeprom_buf + MAC0_ADDR_OFFSET, sizeof enetaddr);
@@ -183,22 +210,18 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 		printf("Please program SCM EEPROM\n");
 		return -1;
 	}
-	else
+	else {
 		bin2hex(mac_str, scm_eeprom_buf + LAST_2B_MAC0_ADDR, LAST_2B_MAC0_LEN);
-
-	/* Hostname to pass to systemd-networking */
-	snprintf(new_hostname, sizeof(new_hostname), "systemd.hostname=%s-%s", plat_name, mac_str);
-	old_bootargs = env_get(ENV_BOOTARGS);
-	snprintf(new_bootargs, sizeof(new_bootargs),"%s %s",old_bootargs,new_hostname);
-	env_set(ENV_BOOTARGS, new_bootargs);
-
-	/* HPM board env variables for linux apps */
-	bin2hex(board_id_str, &board_id, sizeof board_id);
-	env_set(ENV_BOARD_ID, board_id_str);
-
-	bin2hex(board_rev_str, &board_rev, sizeof board_rev);
-	env_set(ENV_BOARD_REV, board_rev_str);
-
+		old_bootargs = env_get(ENV_BOOTARGS);
+		if  ( !(strstr(old_bootargs, "systemd.hostname")) ) {
+			/* Hostname to pass to systemd-networking */
+			snprintf(new_hostname, sizeof(new_hostname), "systemd.hostname=%s-%s", plat_name, mac_str);
+			snprintf(new_bootargs, sizeof(new_bootargs),"%s %s",old_bootargs,new_hostname);
+			env_set(ENV_BOOTARGS, new_bootargs);
+			printf("Setting new hostname %s\n", new_hostname);
+			env_save();
+		}
+	}
 	return 0;
 }
 
@@ -214,27 +237,35 @@ int misc_init_r(void)
 
 	ret = uclass_get_device_by_seq(UCLASS_I2C, SCM_EEPROM_I2C_BUS, &ibus);
 	if (ret)
-		return -1;
+		goto err;
 	ret = dm_i2c_probe(ibus, EEPROM_DEV_ADDR, 0, &idev);
 	if (ret)
-		return -1;
+		goto err;
+
+	ret = i2c_set_chip_offset_len(idev, SCM_EEPROM_OFF_LEN);
+	if (ret)
+		goto err;
 
 	if (dm_i2c_read(idev, 0, &scm_eeprom_buf, sizeof scm_eeprom_buf)) {
 		printf("\nSCM EEPROM read failed!\n");
-		return -1;
+		goto err;
 	}
 
 	ret = uclass_get_device_by_seq(UCLASS_I2C, HPM_EEPROM_I2C_BUS, &ibus);
 	if (ret)
-		return -1;
+		goto err;
 
 	ret = dm_i2c_probe(ibus, EEPROM_DEV_ADDR, 0, &idev);
 	if (ret)
-		return -1;
+		goto err;
 
-	if (dm_i2c_read(idev, 0, &hpm_eeprom_buf, sizeof scm_eeprom_buf)) {
+	ret = i2c_set_chip_offset_len(idev, HPM_EEPROM_OFF_LEN);
+	if (ret)
+		goto err;
+
+	if (dm_i2c_read(idev, 0, &hpm_eeprom_buf, sizeof hpm_eeprom_buf)) {
 		printf("\nHPM EEPROM read failed!\n");
-		return -1;
+		goto err;
 	}
 
 	/* set MAC addresses from SCM EEPROM */
@@ -258,4 +289,7 @@ int misc_init_r(void)
 	}
 
 	return 0;
+err:
+	printf("EEPROM i2c error in %s\n", __func__);
+	return 0; // non-zero return code will halt u-boot
 }
