@@ -169,9 +169,9 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 	board_rev = *(hpm_eeprom_buf + hpm_mrc + HPM_BRD_REV_OFFSET);
 
 	/* HPM board name */
-	if(!env_get(ENV_BOARD_FIT_CONF)) {
-		if (get_platform_name(board_id, &plat_name) == 0) {
-			/* HPM board FDT config */
+	if (get_platform_name(board_id, &plat_name) == 0) {
+		/* HPM board FDT config */
+		if(!env_get(ENV_BOARD_FIT_CONF)) {
 			snprintf(board_conf_name, sizeof(board_conf_name),"#conf-aspeed-bmc-amd-%s.dtb", plat_name);
 			env_set(ENV_BOARD_FIT_CONF, board_conf_name);
 			printf("Saving Board FDT config: %s\n", board_conf_name);
