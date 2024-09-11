@@ -374,14 +374,9 @@ static int ftgmac100_start(struct udevice *dev)
 	flush_dcache_range(start, end);
 
 	for (i = 0; i < PKTBUFSRX; i++) {
-		unsigned int ip_align = 0;
-
 		dma_addr.addr = (dma_addr_t)net_rx_packets[i];
 		priv->rxdes[i].rxdes2 = FIELD_PREP(FTGMAC100_RXDES2_RXBUF_BADR_HI, dma_addr.hi);
-		/* For IP alignment */
-		if ((dma_addr.lo & (PKTALIGN - 1)) == 0)
-			ip_align = 2;
-		priv->rxdes[i].rxdes3 = dma_addr.lo + ip_align;
+		priv->rxdes[i].rxdes3 = dma_addr.lo;
 		priv->rxdes[i].rxdes0 = 0;
 	}
 	priv->rxdes[PKTBUFSRX - 1].rxdes0 = priv->rxdes0_edorr_mask;
