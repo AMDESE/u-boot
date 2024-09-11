@@ -60,7 +60,6 @@
 enum ftgmac100_model {
 	FTGMAC100_MODEL_FARADAY,
 	FTGMAC100_MODEL_ASPEED,
-	FTGMAC100_MODEL_ASPEED_AST2700,
 };
 
 union ftgmac100_dma_addr {
@@ -109,7 +108,6 @@ struct ftgmac100_data {
 	u32 rxdes0_edorr_mask;
 	u32 txdes0_edotr_mask;
 
-	bool is_ast2700;
 	struct phy sgmii;
 };
 
@@ -341,7 +339,7 @@ static int ftgmac100_start(struct udevice *dev)
 	struct eth_pdata *plat = dev_get_plat(dev);
 	struct ftgmac100_data *priv = dev_get_priv(dev);
 	struct ftgmac100 *ftgmac100 = priv->iobase;
-	union ftgmac100_dma_addr dma_addr = {.hi = 0, .lo = 0};
+	union ftgmac100_dma_addr dma_addr;
 	struct phy_device *phydev = priv->phydev;
 	unsigned int maccr, dblac, desc_size;
 	ulong start, end;
@@ -372,6 +370,12 @@ static int ftgmac100_start(struct udevice *dev)
 	start = ((ulong)&priv->txdes[0]) & ~(ARCH_DMA_MINALIGN - 1);
 	end = start + roundup(sizeof(priv->txdes), ARCH_DMA_MINALIGN);
 	flush_dcache_range(start, end);
+
+	/**
+	 * Because AST2700 is 64-bit SoC and the old platform is 32-bit SoC,
+	 * set hi variable to zero for the old platform.
+	 */
+	dma_addr.hi = 0;
 
 	for (i = 0; i < PKTBUFSRX; i++) {
 		dma_addr.addr = (dma_addr_t)net_rx_packets[i];
@@ -420,8 +424,9 @@ static int ftgmac100_start(struct udevice *dev)
 		FTGMAC100_MACCR_RX_RUNT |
 		FTGMAC100_MACCR_RX_BROADPKT;
 
-	if (priv->is_ast2700 && (priv->phydev->interface == PHY_INTERFACE_MODE_RMII ||
-				 priv->phydev->interface == PHY_INTERFACE_MODE_NCSI))
+	if (device_is_compatible(dev, "aspeed,ast2700-mac") &&
+	    (priv->phydev->interface == PHY_INTERFACE_MODE_RMII ||
+	     priv->phydev->interface == PHY_INTERFACE_MODE_NCSI))
 		maccr |= FTGMAC100_MACCR_RMII_ENABLE;
 
 	writel(maccr, &ftgmac100->maccr);
@@ -433,7 +438,8 @@ static int ftgmac100_start(struct udevice *dev)
 	}
 
 	/* If fixed link, it configures the speed of fixed-link property */
-	if (priv->is_ast2700 && priv->phydev->interface == PHY_INTERFACE_MODE_SGMII)
+	if (device_is_compatible(dev, "aspeed,ast2700-mac") &&
+	    priv->phydev->interface == PHY_INTERFACE_MODE_SGMII)
 		if (ofnode_phy_is_fixed_link(dev_ofnode(dev), NULL))
 			generic_phy_set_speed(&priv->sgmii, priv->phydev->speed);
 
@@ -486,7 +492,7 @@ static int ftgmac100_recv(struct udevice *dev, int flags, uchar **packetp)
 	ulong des_start = ((ulong)curr_des) & ~(ARCH_DMA_MINALIGN - 1);
 	ulong des_end = des_start +
 		roundup(sizeof(*curr_des), ARCH_DMA_MINALIGN);
-	union ftgmac100_dma_addr data_start = { .lo = 0, .hi = 0 };
+	union ftgmac100_dma_addr data_start;
 	ulong data_end;
 
 	data_start.hi = FIELD_GET(FTGMAC100_RXDES2_RXBUF_BADR_HI, curr_des->rxdes2);
@@ -625,11 +631,6 @@ static int ftgmac100_of_to_plat(struct udevice *dev)
 	if (dev_get_driver_data(dev) == FTGMAC100_MODEL_ASPEED) {
 		priv->rxdes0_edorr_mask = BIT(30);
 		priv->txdes0_edotr_mask = BIT(30);
-		priv->is_ast2700 = false;
-	} else if (dev_get_driver_data(dev) == FTGMAC100_MODEL_ASPEED_AST2700) {
-		priv->rxdes0_edorr_mask = BIT(30);
-		priv->txdes0_edotr_mask = BIT(30);
-		priv->is_ast2700 = true;
 	} else {
 		priv->rxdes0_edorr_mask = BIT(15);
 		priv->txdes0_edotr_mask = BIT(15);
@@ -690,7 +691,8 @@ static int ftgmac100_probe(struct udevice *dev)
 	ftgmac_read_hwaddr(dev);
 
 	/* Get sgmii phy driver and initialize the sgmii */
-	if (priv->is_ast2700 && pdata->phy_interface == PHY_INTERFACE_MODE_SGMII) {
+	if (device_is_compatible(dev, "aspeed,ast2700-mac") &&
+	    pdata->phy_interface == PHY_INTERFACE_MODE_SGMII) {
 		ret = generic_phy_get_by_name(dev, "sgmii", &priv->sgmii);
 		generic_phy_init(&priv->sgmii);
 	}
@@ -729,7 +731,7 @@ static const struct udevice_id ftgmac100_ids[] = {
 	{ .compatible = "faraday,ftgmac100", .data = FTGMAC100_MODEL_FARADAY },
 	{ .compatible = "aspeed,ast2500-mac", .data = FTGMAC100_MODEL_ASPEED },
 	{ .compatible = "aspeed,ast2600-mac", .data = FTGMAC100_MODEL_ASPEED },
-	{ .compatible = "aspeed,ast2700-mac", .data = FTGMAC100_MODEL_ASPEED_AST2700 },
+	{ .compatible = "aspeed,ast2700-mac", .data = FTGMAC100_MODEL_ASPEED },
 	{}
 };
 
