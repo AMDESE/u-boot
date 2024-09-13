@@ -19,6 +19,7 @@
 #define SCU_CPU_MISC_XDMA_CLIENT_EN		BIT(4)
 #define SCU_CPU_MISC_2D_CLIENT_EN		BIT(3)
 
+#define SCU_CPU_RST_SSP				BIT(30)
 #define SCU_CPU_RST_DPMCU			BIT(29)
 #define SCU_CPU_RST_DP				BIT(28)
 #define SCU_CPU_RST_XDMA1			BIT(26)
@@ -36,6 +37,7 @@
 #define SCU_CPU_RST2_VGA			BIT(12)
 #define SCU_CPU_RST2_E2M1			BIT(11)
 #define SCU_CPU_RST2_E2M0			BIT(10)
+#define SCU_CPU_RST2_TSP			BIT(9)
 
 #define SCU_CPU_VGA_FUNC_DAC_OUTPUT		GENMASK(11, 10)
 #define SCU_CPU_VGA_FUNC_DP_OUTPUT		GENMASK(9, 8)
@@ -54,6 +56,16 @@
 
 #define SCU_CPU_HPLL2_LOCK			BIT(31)
 #define SCU_CPU_HPLL2_BWADJ			GENMASK(11, 0)
+
+#define SCU_CPU_SSP_TSP_RESET_STS		BIT(8)
+#define SCU_CPU_SSP_TSP_SRAM_SD			BIT(7)
+#define SCU_CPU_SSP_TSP_SRAM_DSLP		BIT(6)
+#define SCU_CPU_SSP_TSP_SRAM_SLP		BIT(5)
+#define SCU_CPU_SSP_TSP_NIDEN			BIT(4)
+#define SCU_CPU_SSP_TSP_DBGEN			BIT(3)
+#define SCU_CPU_SSP_TSP_DBG_ENABLE		BIT(2)
+#define SCU_CPU_SSP_TSP_RESET			BIT(1)
+#define SCU_CPU_SSP_TSP_ENABLE			BIT(0)
 
 /* SoC1 SCU Register */
 #define SCU_IO_HWSTRAP_UFS			BIT(23)
@@ -151,8 +163,32 @@ struct ast2700_soc0_scu {
 	uint32_t rsv_0xE8[2];		/* 0x0E8 ~ 0x0EC */
 	uint32_t random_num_ctrl;	/* 0x0F0 */
 	uint32_t random_num_data;	/* 0x0F4 */
-	uint32_t rsv_0xF0[2];		/* 0x0F8 ~ 0x0FC */
-	uint32_t rsv_0x100[64];		/* 0x100 ~ 0x1FC */
+	uint32_t rsv_0xF8[10];		/* 0x0F8 ~ 0x11C */
+	uint32_t ssp_ctrl_1;		/* 0x120 */
+	uint32_t ssp_ctrl_2;		/* 0x124 */
+	uint32_t ssp_ctrl_3;		/* 0x128 */
+	uint32_t ssp_ctrl_4;		/* 0x12C */
+	uint32_t ssp_ctrl_5;		/* 0x130 */
+	uint32_t ssp_ctrl_6;		/* 0x134 */
+	uint32_t ssp_ctrl_7;		/* 0x138 */
+	uint32_t rsv_0x13c[1];		/* 0x13C */
+	uint32_t ssp_remap0_base;	/* 0x140 */
+	uint32_t ssp_remap0_size;	/* 0x144 */
+	uint32_t ssp_remap1_base;	/* 0x148 */
+	uint32_t ssp_remap1_size;	/* 0x14c */
+	uint32_t ssp_remap2_base;	/* 0x150 */
+	uint32_t ssp_remap2_size;	/* 0x154 */
+	uint32_t rsv_0x158[2];		/* 0x158 ~ 0x15C */
+	uint32_t tsp_ctrl_1;		/* 0x160 */
+	uint32_t rsv_0x164[1];		/* 0x164 */
+	uint32_t tsp_ctrl_3;		/* 0x168 */
+	uint32_t tsp_ctrl_4;		/* 0x16C */
+	uint32_t tsp_ctrl_5;		/* 0x170 */
+	uint32_t tsp_ctrl_6;		/* 0x174 */
+	uint32_t tsp_ctrl_7;		/* 0x178 */
+	uint32_t rsv_0x17c[6];		/* 0x17C ~ 0x190 */
+	uint32_t tsp_remap_size;	/* 0x194 */
+	uint32_t rsv_0x198[26];		/* 0x198 ~ 0x1FC */
 	uint32_t modrst1_ctrl;		/* 0x200 */
 	uint32_t modrst1_clr;		/* 0x204 */
 	uint32_t rsv_0x208[2];		/* 0x208 ~ 0x20C */

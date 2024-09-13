@@ -19,6 +19,7 @@
 #include <asm/arch-aspeed/sdram_ast2700.h>
 #include <asm/arch-aspeed/stor_ast2700.h>
 #include <asm/arch-aspeed/wdt.h>
+#include <asm/arch-aspeed/ssp_tsp_ast2700.h>
 #include <linux/bitfield.h>
 #include <linux/bitops.h>
 #include <linux/delay.h>
@@ -28,6 +29,8 @@
 DECLARE_GLOBAL_DATA_PTR;
 
 static bool ibex_boot2fw;
+static bool has_sspfw;
+static bool has_tspfw;
 
 int misc_init(void)
 {
@@ -120,15 +123,33 @@ void board_fit_image_post_process(const void *fit, int node, void **p_image, siz
 	uint8_t type;
 	uint8_t os;
 	ulong ep;
+	ulong load_addr;
+	const char *name;
+	int len;
 
 	fit_image_get_arch(fit, node, &arch);
 	fit_image_get_type(fit, node, &type);
 	fit_image_get_os(fit, node, &os);
 	fit_image_get_entry(fit, node, &ep);
+	name = fdt_getprop(fit, node, "description", &len);
 
 	/* ibex firmware recognized */
 	if (arch == IH_ARCH_RISCV && type == IH_TYPE_FIRMWARE) {
 		ibex_boot2fw = true;
+		return;
+	}
+
+	if (strncmp(name, "SSP", 3) == 0) {
+		fit_image_get_load(fit, node, &load_addr);
+		ssp_init(load_addr);
+		has_sspfw = true;
+		return;
+	}
+
+	if (strncmp(name, "TSP", 3) == 0) {
+		fit_image_get_load(fit, node, &load_addr);
+		tsp_init(load_addr);
+		has_tspfw = true;
 		return;
 	}
 
@@ -163,6 +184,14 @@ void spl_board_prepare_for_boot(void)
 
 	/* release CA35 reset */
 	writel(0x1, (void *)ASPEED_CPU_CA35_REL);
+
+	/* release SSP reset */
+	if (has_sspfw)
+		ssp_enable();
+
+	/* release TSP reset */
+	if (has_tspfw)
+		tsp_enable();
 
 	/* keep going if ibex has further FW to run */
 	if (ibex_boot2fw) {
