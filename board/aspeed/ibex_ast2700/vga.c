@@ -50,6 +50,7 @@ static int dp_init(struct ast2700_soc0_scu *scu)
 	u32 mcu_ctrl, val;
 	void *scu_offset;
 	bool is_mcu_stop = false;
+	u32 rev_id = readl((void *)ASPEED_IO_REVISION_ID);
 
 	if (BINMAN_SYMS_OK) {
 		fw_size = binman_sym(u32, dp_fw, size);
@@ -61,7 +62,7 @@ static int dp_init(struct ast2700_soc0_scu *scu)
 		fw_addr = (u32 *)(binman_sym(u32, dp_fw, image_pos) - CONFIG_SPL_TEXT_BASE + 0x20000000);
 	} else {
 		fmc_hdr_get_prebuilt(PBT_DP_FW, &fw_ofst, &fw_size, NULL);
-		fw_addr = (u32 *)(0x20000000 + 0x20000 + fw_ofst);
+		fw_addr = (u32 *)(0x20000000 + fw_ofst + ((rev_id == 0x06010003) ? 0x20000 : 0x0));
 	}
 
 	val = scu->vga_func_ctrl;
@@ -152,6 +153,7 @@ static int vbios_init(struct ast2700_soc0_scu *scu, u8 node)
 	void *vbios_base;
 	u32 vbios_e2m_value;
 	u32 arm_dram_base = ASPEED_DRAM_BASE >> 1;
+	u32 rev_id = readl((void *)ASPEED_IO_REVISION_ID);
 
 	if (BINMAN_SYMS_OK) {
 		vbios_size = binman_sym(u32, VBIOS, size);
@@ -161,7 +163,7 @@ static int vbios_init(struct ast2700_soc0_scu *scu, u8 node)
 		debug("vbios addr : 0x%p\n", vbios_addr);
 	} else {
 		fmc_hdr_get_prebuilt(PBT_UEFI_X64_AST2700, &vbios_ofst, &vbios_size, NULL);
-		vbios_addr = (u32 *)(0x20000000 + 0x20000 + vbios_ofst);
+		vbios_addr = (u32 *)(0x20000000 + vbios_ofst + ((rev_id == 0x06010003) ? 0x20000 : 0x0));
 	}
 
 	if (node == 0)

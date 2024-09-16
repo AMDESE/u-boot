@@ -972,10 +972,15 @@ int dwc_ddrphy_phyinit_userCustom_F_loadDMEM(const int pState, const int train2D
 
 void dwc_phy_init(struct sdramc *sdramc)
 {
+#define CHIP_REVID_AST2700A0	0x06000003
+#define CHIP_REVID_AST2700A1	0x06010003
+
 	u32 ctx_start, imem_start, dmem_start, imem_2d_start, dmem_2d_start;
 	u32 imem_len, dmem_len, imem_2d_len, dmem_2d_len;
 	u32 ddr5_imem, ddr5_imem_len, ddr5_dmem, ddr5_dmem_len;
 	u32 base = CONFIG_SPL_TEXT_BASE;
+	u32 rev_id = readl((void *)ASPEED_IO_REVISION_ID);
+	u32 stor_ofst = 0x0;
 
 	if (BINMAN_SYMS_OK) {
 		ctx_start = binman_sym(u32, u_boot_spl_ddr, image_pos);
@@ -1017,22 +1022,24 @@ void dwc_phy_init(struct sdramc *sdramc)
 		fmc_hdr_get_prebuilt(PBT_DDR5_PMU_TRAIN_IMEM, &ddr5_imem, &ddr5_imem_len, NULL);
 		fmc_hdr_get_prebuilt(PBT_DDR5_PMU_TRAIN_DMEM, &ddr5_dmem, &ddr5_dmem_len, NULL);
 
+		stor_ofst = (rev_id == CHIP_REVID_AST2700A1) ? 0x20000 : 0x0;
+
 		// ddr5
-		dwc_train[0][0].imem_base = ddr5_imem + 0x20000;
+		dwc_train[0][0].imem_base = ddr5_imem + stor_ofst;
 		dwc_train[0][0].imem_len = ddr5_imem_len;
-		dwc_train[0][0].dmem_base = ddr5_dmem + 0x20000;
+		dwc_train[0][0].dmem_base = ddr5_dmem + stor_ofst;
 		dwc_train[0][0].dmem_len = ddr5_dmem_len;
 
 		// ddr4 1d
-		dwc_train[1][0].imem_base = imem_start + 0x20000;
+		dwc_train[1][0].imem_base = imem_start + stor_ofst;
 		dwc_train[1][0].imem_len = imem_len;
-		dwc_train[1][0].dmem_base = dmem_start + 0x20000;
+		dwc_train[1][0].dmem_base = dmem_start + stor_ofst;
 		dwc_train[1][0].dmem_len = dmem_len;
 
 		// ddr4 2d
-		dwc_train[1][1].imem_base = imem_2d_start + 0x20000;
+		dwc_train[1][1].imem_base = imem_2d_start + stor_ofst;
 		dwc_train[1][1].imem_len = imem_2d_len;
-		dwc_train[1][1].dmem_base = dmem_2d_start + 0x20000;
+		dwc_train[1][1].dmem_base = dmem_2d_start + stor_ofst;
 		dwc_train[1][1].dmem_len = dmem_2d_len;
 	}
 
