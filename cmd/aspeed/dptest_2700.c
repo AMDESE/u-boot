@@ -149,6 +149,7 @@ do_ast_dptest(struct cmd_tbl *cmdtp, int flags, int argc, char *const argv[])
 	printf("2: Set data rate 2.7\n");
 	printf("3: Select voltage swing level\n");
 	printf("4: Select pre-emphasis level\n");
+	printf("5: Set data rate 5.4\n");
 	printf("!: Show configs\n\n");
 
 	printf("TestItems as below:\n");
@@ -174,6 +175,11 @@ do_ast_dptest(struct cmd_tbl *cmdtp, int flags, int argc, char *const argv[])
 			case '2':
 				DP_Rate = DP_RATE_2_70;
 				PRINT_RATE_2_70;
+				break;
+			/* Press "5" : Set DP_Rate as 5.4 */
+			case '5':
+				DP_Rate = DP_RATE_5_40;
+				PRINT_RATE_5_40;
 				break;
 			case '3':
 				printf("Please give the voltage swing level (0~3): ");
@@ -861,6 +867,10 @@ void Apply_HPD_Auto_Test(void)
 		DP_Rate = DP_RATE_2_70;
 		PRINT_RATE_2_70;
 	} else if (AUX_Data[0] == 0x14) {
+		Auto_Link_Rate = AUX_Data[0];
+		DP_Rate = DP_RATE_5_40;
+		PRINT_RATE_5_40;
+	} else if (AUX_Data[0] == 0x14) {
 		DBG(DBG_ERR, "!!DON'T SET 5.4 bps !!\n");
 		return;
 	}
@@ -900,6 +910,10 @@ void Apply_HPD_Auto_Test(void)
 				Auto_Link_Rate = AUX_Data[0];
 				DP_Rate = DP_RATE_2_70;
 				PRINT_RATE_2_70;
+			} else if (AUX_Data[0] == 0x14) {
+				Auto_Link_Rate = AUX_Data[0];
+				DP_Rate = DP_RATE_5_40;
+				PRINT_RATE_5_40;
 			} else if (AUX_Data[0] == 0x14) {
 				DBG(DBG_ERR, "!!DON'T SET 5.4 bps !!\n");
 				return;
