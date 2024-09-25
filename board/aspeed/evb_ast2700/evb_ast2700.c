@@ -225,6 +225,14 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 	return 0;
 }
 
+void aspeed_errata_app_note_6_pcie_ep()
+{
+       printf("applying Aspeed app note 6 pcie ep ...\n");
+       run_command("mw 12c02a60 0", 0);
+       run_command("mw 12c02ae0 0", 0);
+       printf("applying Aspeed app note 6 pcie ep ... Done\n");
+}
+
 int misc_init_r(void)
 {
 	/* Read the FRU EEPROM and store in buffer */
@@ -287,6 +295,9 @@ int misc_init_r(void)
 	{
 		printf("Loading %s\n", env_get(ENV_BOARD_FIT_CONF));
 	}
+
+        /* apply aspeed errata */
+        aspeed_errata_app_note_6_pcie_ep();
 
 	return 0;
 err:
