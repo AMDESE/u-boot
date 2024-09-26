@@ -127,6 +127,9 @@ struct ltpi_common {
 	const struct ltpi_clk_info *ddr_lookup;
 	const struct ltpi_clk_info *cdr_lookup;
 	const struct ltpi_clk_info *cdr2x_lookup;
+
+	/* Advertise timeout in us */
+	int ad_timeout;
 };
 
 struct ltpi_priv {
@@ -581,8 +584,8 @@ static int ltpi_wait_state_pll_set(struct ltpi_priv *ltpi)
 
 static int ltpi_wait_state_op(struct ltpi_priv *ltpi)
 {
-	return ltpi_poll_link_manage_state(ltpi, LTPI_LINK_MANAGE_ST_OP,
-					   LTPI_LINK_MANAGE_ST_DETECT_ALIGN, ADVERTISE_TIMEOUT_US);
+	return ltpi_poll_link_manage_state(ltpi, LTPI_LINK_MANAGE_ST_OP, -1,
+					   ltpi->common->ad_timeout);
 }
 
 static int ltpi_wait_state_link_speed(struct ltpi_priv *ltpi)
@@ -1719,11 +1722,12 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 	uint32_t pin_strap, otp_strap;
 
 	ltpi_common_data.cdr_mask = CDR_MASK_ALL;
+	ltpi_common_data.ad_timeout = ADVERTISE_TIMEOUT_US;
 	ltpi_data[0].clk_inverse = 0x0;
 	ltpi_data[1].clk_inverse = 0x0;
 
 	getopt_init_state(&gs);
-	while ((opt = getopt(&gs, argc, argv, "l:m:c:i:h")) > 0) {
+	while ((opt = getopt(&gs, argc, argv, "l:m:c:i:t:h")) > 0) {
 		switch (opt) {
 		case 'l':
 			speed = simple_strtoul(gs.arg, &endp, 0);
@@ -1737,6 +1741,9 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 		case 'i':
 			ltpi_data[0].clk_inverse = simple_strtoul(gs.arg, &endp, 0);
 			ltpi_data[1].clk_inverse = ltpi_data[0].clk_inverse;
+			break;
+		case 't':
+			ltpi_common_data.ad_timeout = simple_strtoul(gs.arg, &endp, 0);
 			break;
 		case 'h':
 			fallthrough;
@@ -1802,6 +1809,7 @@ static char ltpi_help_text[] = {
 	"-l <speed limit>, 0=1G, 1=800M, 2=400M, 3=250M, 4=200M, 5=100M, 6=50M, 7=25M\n"
 	"-c <cdr mask>, 0x0=disable CDR, 0x1=ltpi0, 0x2=ltpi1, 0x3=ltpi0+ltpi1\n"
 	"-i <clk inverse>, 0x0=no inverse, 0x1=inverse tx, 0x2=inverse rx, 0x3=inverse both\n"
+	"-t <advertise timeout in us>, default 100000\n"
 };
 
-U_BOOT_CMD(ltpi, 5, 0, do_ltpi, "ASPEED LTPI commands", ltpi_help_text);
+U_BOOT_CMD(ltpi, 11, 0, do_ltpi, "ASPEED LTPI commands", ltpi_help_text);
