@@ -171,11 +171,16 @@ void board_fit_image_post_process(const void *fit, int node, void **p_image, siz
 	}
 }
 
+#define ASPEED_UFS_PATH_AXI	(0x12c080e4)
+
 void spl_board_prepare_for_boot(void)
 {
 	/* for v7 FPGA only to switch to uart12. */
 	if (IS_ENABLED(CONFIG_ASPEED_FPGA))
 		writel(SCU_CPU_HWSTRAP_DIS_CPU, (void *)ASPEED_CPU_HW_STRAP1_CLR);
+
+	if (IS_ENABLED(CONFIG_ASPEED_UFS))
+		writel(1, (void *)ASPEED_UFS_PATH_AXI);
 
 	/* clean up secondary entries */
 	writeq(0x0, (void *)ASPEED_CPU_SMP_EP1);
