@@ -13,7 +13,7 @@
 #include <command.h>
 #include <getopt.h>
 #include <console.h>
-#include "ltpi.h"
+#include "ltpi-v1.h"
 #include "ltpi_top.h"
 #include "ltpi_ctrl.h"
 #include "internal.h"

@@ -30,6 +30,8 @@
 #define     REG_LTPI_PLL_400M			5
 #define     REG_LTPI_PLL_800M			6
 #define     REG_LTPI_PLL_1G			7
+/* AST2700A1 */
+#define     REG_LTPI_PLL_LPLL			7
 
 #define LTPI_PHY_ALIGN_CTRL			0x008
 #define LTPI_DLL_CTRL				0x00C
@@ -91,6 +93,7 @@
 #define   REG_LTPI_STRAP_1700_EN		BIT(0)
 #define LTPI_SW_FORCE_EN			0x010
 #define LTPI_SW_FORCE_VAL			0x014
+#define   REG_LTPI_SW_FORCE_LVDS_TX_DS_EN	BIT(2)
 #define   REG_LTPI_SW_FORCE_2LTPI_EN		BIT(1)
 #define   REG_LTPI_SW_FORCE_1700_EN		BIT(0)
 #endif	/* _LPTI_TOP_H_ */

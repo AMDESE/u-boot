@@ -3,14 +3,6 @@
  * Copyright (c) 2023 ASPEED Technology Inc.
  */
 #include <linux/bitops.h>
-//#include <debug.h>
-#define BOOTSTAGE_DCSCM				"M "
-#define BOOTSTAGE_LTPI_MASTER			"Lm"
-#define BOOTSTAGE_LTPI_SLAVE			"Ls"
-#define BOOTSTAGE_LTPI_INIT			"Li"
-#define BOOTSTAGE_LTPI_SP_CAP			"Lc"
-#define BOOTSTAGE_LTPI_WAIT_OP			"Lo"
-#define BOOTSTAGE_STATUS_SUCCESS		0x00
 
 /* OCP_DC-SCM_2.0_LTPI_ver_1.0, Table 21 LTPI speed capability encoding */
 #define LTPI_SP_CAP_25M				BIT(0)
@@ -28,20 +20,6 @@
 #define LTPI_SP_CAP_500M			BIT(12)	/* Aspeed only */
 /* --gap-- */
 #define LTPI_SP_CAP_DDR				BIT(15)
-#define LTPI_SP_CAP_ASPEED_SUPPORTED                                               \
-	(LTPI_SP_CAP_25M | LTPI_SP_CAP_50M | LTPI_SP_CAP_100M | LTPI_SP_CAP_200M | \
-	 LTPI_SP_CAP_250M | LTPI_SP_CAP_400M | LTPI_SP_CAP_800M | LTPI_SP_CAP_1G)
-
-#define LTPI_SP_CAP_ASPEED_SUPPORTED_NORMAL                       \
-	(LTPI_SP_CAP_25M | LTPI_SP_CAP_50M | LTPI_SP_CAP_75M |    \
-	 LTPI_SP_CAP_100M | LTPI_SP_CAP_150M | LTPI_SP_CAP_200M | \
-	 LTPI_SP_CAP_250M | LTPI_SP_CAP_300M | LTPI_SP_CAP_400M | \
-	 LTPI_SP_CAP_600M | LTPI_SP_CAP_500M)
-
-#define LTPI_SP_CAP_ASPEED_SUPPORTED_CDR                          \
-	(LTPI_SP_CAP_25M | LTPI_SP_CAP_50M | LTPI_SP_CAP_75M |    \
-	 LTPI_SP_CAP_150M | LTPI_SP_CAP_250M | LTPI_SP_CAP_300M | \
-	 LTPI_SP_CAP_600M | LTPI_SP_CAP_500M)
 
 #define LTPI_SP_CAP_MASK_25M			GENMASK(0, 0)
 #define LTPI_SP_CAP_MASK_50M			GENMASK(1, 0)

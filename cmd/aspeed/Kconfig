@@ -33,13 +33,21 @@ config AST2700_CMD_FLASH_STRAP
 	help
 	  Enable AST2700 flash strap operation.
 
-config AST2700_CMD_LTPI
-	bool "ASPEED LTPI"
+config AST2700_CMD_LTPI_V2
+	bool "ASPEED LTPI V2 command"
 	depends on ASPEED_AST2700
 	select GETOPT
 	default n
 	help
-	  Enable AST2700 LTPI commands.
+	  Enable AST2700 LTPI commands for AST2700A1 SoC.
+
+config AST2700_CMD_LTPI_V1
+	bool "ASPEED LTPI V1 command"
+	depends on ASPEED_AST2700
+	select GETOPT
+	default n
+	help
+	  Enable AST2700 LTPI commands for AST2700A0 SoC.
 
 config AST2600_CMD_DPTEST
 	bool "ASPEED AST2600 DP CTS utility"
