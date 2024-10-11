@@ -25,17 +25,6 @@
 //#define CONFIG_AS1700_EMU	1
 
 #define SCU_IO_REG		0x14c02000
-#define   SCU_IO_LPLL_1		0x340
-#define     LPLL_1_RESET	BIT(25)
-#define     LPLL_1_BYPASS	BIT(24)
-#define     LPLL_1_DIS		BIT(23)
-#define     LPLL_1_P		GENMASK(22, 19)
-#define     LPLL_1_N		GENMASK(18, 13)
-#define     LPLL_1_M		GENMASK(12, 0)
-#define   SCU_IO_LPLL_2		0x344
-#define     LPLL_2_LOCK		BIT(31)
-#define     LPLL_2_BWADJ	GENMASK(11, 0)
-
 #define GPIO_IO_REG		0x14c0b000
 #define LTPI_REG		0x14c34000
 #define SGPIOS_REG		0x14c3c000
@@ -196,71 +185,6 @@ static const int16_t otp_to_speed_mask_lookup[8] = {
 	LTPI_SP_CAP_MASK_25M & LTPI_SP_CAP_ASPEED_SUPPORTED
 };
 
-/* A1 */
-static const struct ltpi_clk_info ltpi_clk_lookup_sdr[13] = {
-	{ 25, REG_LTPI_PLL_25M, 25 },
-	{ 50, REG_LTPI_PLL_LPLL, 50 },
-	{ 75, REG_LTPI_PLL_LPLL, 75 },
-	{ 100, REG_LTPI_PLL_HPLL_DIV_10, 100 },
-	{ 150, REG_LTPI_PLL_LPLL, 150 },
-	{ 200, REG_LTPI_PLL_HCLK, 200 },
-	{ 250, REG_LTPI_PLL_HPLL_DIV_4, 250 },
-	{ 300, REG_LTPI_PLL_LPLL_DIV_4, 300 },
-	{ 400, REG_LTPI_PLL_LPLL, 400 },
-	{ 600, REG_LTPI_PLL_LPLL_DIV_2, 600 },
-	{ -1, -1, -1 },
-	{ -1, -1, -1 },
-	{ 500, REG_LTPI_PLL_HPLL_DIV_2, 500 }
-};
-
-static const struct ltpi_clk_info ltpi_clk_lookup_ddr[13] = {
-	{ 50, REG_LTPI_PLL_LPLL, 50 },
-	{ 100, REG_LTPI_PLL_HPLL_DIV_10, 100 },
-	{ 150, REG_LTPI_PLL_LPLL, 150 },
-	{ 200, REG_LTPI_PLL_HCLK, 200 },
-	{ 300, REG_LTPI_PLL_LPLL_DIV_4, 300 },
-	{ 400, REG_LTPI_PLL_LPLL, 400 },
-	{ 500, REG_LTPI_PLL_HPLL_DIV_2, 500 },
-	{ 600, REG_LTPI_PLL_LPLL_DIV_2, 600 },
-	{ 800, REG_LTPI_PLL_LPLL, 800 },
-	{ 1200, REG_LTPI_PLL_LPLL, 1200 },
-	{ -1, -1, -1 },
-	{ -1, -1, -1 },
-	{ 1000, REG_LTPI_PLL_LPLL, 1000 }
-};
-
-static const struct ltpi_clk_info ltpi_clk_lookup_cdr[13] = {
-	{ 100, REG_LTPI_PLL_HPLL_DIV_10, 25 },
-	{ -1, -1, -1 },
-	{ 300, REG_LTPI_PLL_LPLL_DIV_4, 75 },
-	{ -1, -1, -1 },
-	{ 600, REG_LTPI_PLL_LPLL_DIV_2, 150 },
-	{ -1, -1, -1 },
-	{ 250, REG_LTPI_PLL_HPLL_DIV_4, 250 },
-	{ 300, REG_LTPI_PLL_LPLL_DIV_4, 300 },
-	{ -1, -1, -1 },
-	{ 600, REG_LTPI_PLL_LPLL_DIV_2, 600 },
-	{ -1, -1, -1 },
-	{ -1, -1, -1 },
-	{ -1, -1, -1 }
-};
-
-static const struct ltpi_clk_info ltpi_clk_lookup_cdr2x[13] = {
-	{ 200, REG_LTPI_PLL_HCLK, 50 },
-	{ -1, -1, -1 },
-	{ 600, REG_LTPI_PLL_LPLL_DIV_2, 150 },
-	{ -1, -1, -1 },
-	{ 300, REG_LTPI_PLL_LPLL_DIV_4, 300 },
-	{ -1, -1, -1 },
-	{ 500, REG_LTPI_PLL_HPLL_DIV_2, 500 },
-	{ 600, REG_LTPI_PLL_LPLL_DIV_2, 600 },
-	{ -1, -1, -1 },
-	{ 1200, REG_LTPI_PLL_LPLL, 1200 },
-	{ -1, -1, -1 },
-	{ -1, -1, -1 },
-	{ -1, -1, -1 }
-};
-
 static uint32_t get_pin_strap(void);
 
 static void bootstage_end_status(uint8_t status)
@@ -271,104 +195,6 @@ static void bootstage_end_status(uint8_t status)
 static void bootstage_start_mark(char *str)
 {
 	printf("%s", str);
-}
-
-#define SCU_IO_REG		0x14c02000
-#define   SCU_IO_LPLL_1		0x340
-#define     LPLL_1_RESET	BIT(25)
-#define     LPLL_1_BYPASS	BIT(24)
-#define     LPLL_1_DIS		BIT(23)
-#define     LPLL_1_P		GENMASK(22, 19)
-#define     LPLL_1_N		GENMASK(18, 13)
-#define     LPLL_1_M		GENMASK(12, 0)
-#define   SCU_IO_LPLL_2		0x344
-#define     LPLL_2_LOCK		BIT(31)
-#define     LPLL_2_BWADJ	GENMASK(11, 0)
-
-#define PLL_ID_LPLL		0
-static int scu_get_pll_freq(int pll_id)
-{
-	uint32_t reg;
-	int m, n, p;
-
-	if (pll_id != PLL_ID_LPLL)
-		return 0;
-
-	reg = readl((void *)SCU_IO_REG + SCU_IO_LPLL_1);
-	m = FIELD_GET(LPLL_1_M, reg);
-	n = FIELD_GET(LPLL_1_N, reg);
-	p = FIELD_GET(LPLL_1_P, reg);
-
-	return (25000000 * (m + 1) / (n + 1) / (p + 1));
-}
-
-static int scu_set_pll_freq(int pll_id, int freq)
-{
-	int curr_freq = scu_get_pll_freq(pll_id);
-	int m, n, p, bwadj;
-	uint32_t reg;
-
-	if (curr_freq == freq)
-		return 0;
-
-	switch (freq) {
-	case 50:
-		m = 32;
-		n = 1;
-		p = 16;
-		bwadj = 16;
-		break;
-	case 75:
-		m = 48;
-		n = 1;
-		p = 16;
-		bwadj = 24;
-		break;
-	case 150:
-		m = 60;
-		n = 1;
-		p = 10;
-		bwadj = 30;
-		break;
-	case 400:
-		m = 32;
-		n = 1;
-		p = 2;
-		bwadj = 16;
-		break;
-	case 800:
-		m = 32;
-		n = 1;
-		p = 1;
-		bwadj = 16;
-		break;
-	case 1000:
-		m = 40;
-		n = 1;
-		p = 1;
-		bwadj = 20;
-		break;
-	case 1200:
-	default:
-		m = 48;
-		n = 1;
-		p = 1;
-		bwadj = 24;
-		break;
-	}
-
-	reg = readl((void *)SCU_IO_REG + SCU_IO_LPLL_1);
-	reg &= ~(LPLL_1_M | LPLL_1_N | LPLL_1_P);
-	reg |= FIELD_PREP(LPLL_1_M, m - 1) | FIELD_PREP(LPLL_1_N, n - 1) |
-	       FIELD_PREP(LPLL_1_P, p - 1);
-	writel(reg, (void *)SCU_IO_REG + SCU_IO_LPLL_1);
-
-	reg = readl((void *)SCU_IO_REG + SCU_IO_LPLL_2);
-	reg &= ~LPLL_2_BWADJ;
-	reg |= FIELD_PREP(LPLL_2_BWADJ, bwadj - 1);
-	writel(reg, (void *)SCU_IO_REG + SCU_IO_LPLL_2);
-
-	return 0;
 }
 
 /**
@@ -435,14 +261,6 @@ static int ltpi_phy_set_pll(struct ltpi_priv *ltpi, const struct ltpi_clk_info *
 	if (info->clk_sel < REG_LTPI_PLL_25M || info->clk_sel > REG_LTPI_PLL_1G) {
 		debug("%s: invalid freq %d\n", __func__, info->clk_sel);
 		return -1;
-	}
-
-	if (ltpi->common->soc_rev == SOC_REV_AST2700A1) {
-		if (info->clk_sel == REG_LTPI_PLL_LPLL)
-			scu_set_pll_freq(PLL_ID_LPLL, info->freq);
-		else if (info->clk_sel == REG_LTPI_PLL_LPLL_DIV_4 ||
-			 info->clk_sel == REG_LTPI_PLL_LPLL_DIV_2)
-			scu_set_pll_freq(PLL_ID_LPLL, 1200);
 	}
 
 	reg = readl((void *)ltpi->phy_base + LTPI_PLL_CTRL);
@@ -537,15 +355,15 @@ static uint32_t ltpi_get_link_manage_state(struct ltpi_priv *ltpi)
 {
 	uint32_t reg;
 
-	reg = readl((void *)ltpi->base + LTPI_LINK_MANAGE_ST);
-	return FIELD_GET(REG_LTPI_LINK_MANAGE_ST, reg);
+	reg = readl((void *)ltpi->base + LTPI_LINK_MNG_ST);
+	return FIELD_GET(REG_LTPI_LINK_MNG_ST, reg);
 }
 
 static int ltpi_poll_link_manage_state(struct ltpi_priv *ltpi, uint32_t expected,
 				       uint32_t unexpected, int timeout_us)
 {
 	uint64_t start, timeout_tick;
-	uintptr_t addr = ltpi->base + LTPI_LINK_MANAGE_ST;
+	uintptr_t addr = ltpi->base + LTPI_LINK_MNG_ST;
 	uint32_t reg = readl((void *)addr);
 	uint32_t state;
 	int ret = LTPI_OK;
@@ -557,7 +375,7 @@ static int ltpi_poll_link_manage_state(struct ltpi_priv *ltpi, uint32_t expected
 
 	do {
 		reg = readl((void *)addr);
-		state = FIELD_GET(REG_LTPI_LINK_MANAGE_ST, reg);
+		state = FIELD_GET(REG_LTPI_LINK_MNG_ST, reg);
 
 		if (state == expected)
 			break;
@@ -579,24 +397,24 @@ static int ltpi_poll_link_manage_state(struct ltpi_priv *ltpi, uint32_t expected
 
 static int ltpi_wait_state_pll_set(struct ltpi_priv *ltpi)
 {
-	return ltpi_poll_link_manage_state(ltpi, LTPI_LINK_MANAGE_ST_WAIT_PLL_SET, -1, 0);
+	return ltpi_poll_link_manage_state(ltpi, LTPI_LINK_MNG_ST_WAIT_PLL_SET, -1, 0);
 }
 
 static int ltpi_wait_state_op(struct ltpi_priv *ltpi)
 {
-	return ltpi_poll_link_manage_state(ltpi, LTPI_LINK_MANAGE_ST_OP, -1,
+	return ltpi_poll_link_manage_state(ltpi, LTPI_LINK_MNG_ST_OP, -1,
 					   ltpi->common->ad_timeout);
 }
 
 static int ltpi_wait_state_link_speed(struct ltpi_priv *ltpi)
 {
-	return ltpi_poll_link_manage_state(ltpi, LTPI_LINK_MANAGE_ST_SPEED,
+	return ltpi_poll_link_manage_state(ltpi, LTPI_LINK_MNG_ST_SPEED,
 					   -1, ADVERTISE_TIMEOUT_US);
 }
 
 static int ltpi_get_link_partner(struct ltpi_priv *ltpi)
 {
-	uint32_t reg = readl((void *)ltpi->base + LTPI_LINK_MANAGE_ST);
+	uint32_t reg = readl((void *)ltpi->base + LTPI_LINK_MNG_ST);
 
 	return FIELD_GET(REG_LTPI_LINK_PARTNER_FLAG, reg);
 }
@@ -606,17 +424,7 @@ static int ltpi_set_local_speed_cap(struct ltpi_priv *ltpi, uint32_t speed_cap)
 	uint32_t reg;
 
 	/* only set bits that Aspeed SOC supported */
-	if (ltpi->common->soc_rev == SOC_REV_AST2700A0) {
-		speed_cap &= LTPI_SP_CAP_ASPEED_SUPPORTED;
-	} else {
-		if (ltpi->phy_mode_attempt == LTPI_PHY_MODE_CDR_LO_SP)
-			speed_cap &= LTPI_SP_CAP_ASPEED_SUPPORTED_CDR;
-		else
-			speed_cap &= LTPI_SP_CAP_ASPEED_SUPPORTED_NORMAL;
-
-		/* TODO: Check pinstrap DDR_Dis here */
-		speed_cap |= LTPI_SP_CAP_DDR;
-	}
+	speed_cap &= LTPI_SP_CAP_ASPEED_SUPPORTED;
 
 	reg = readl((void *)ltpi->base + LTPI_CAP_LOCAL);
 	reg &= ~REG_LTPI_SP_CAP_LOCAL;
@@ -640,8 +448,6 @@ static void ltpi_scm_set_sdr_mode(struct ltpi_priv *ltpi)
 
 static void ltpi_scm_set_cdr_mode(struct ltpi_priv *ltpi)
 {
-	struct ltpi_common *common = ltpi->common;
-
 	ltpi_reset(ltpi);
 	ltpi->phy_mode_attempt = LTPI_PHY_MODE_CDR_LO_SP;
 	ltpi_set_local_speed_cap(ltpi, ltpi->phy_speed_cap);
@@ -650,11 +456,9 @@ static void ltpi_scm_set_cdr_mode(struct ltpi_priv *ltpi)
 	 * For AST2700A0: LTPI0 and LTPI1 share the same SCU reset line and the LTPI-PHY,
 	 * so LTPI1's local capabilities need to be re-initialized after ltpi_reset().
 	 */
-	if (common->soc_rev == SOC_REV_AST2700A0) {
-		ltpi_set_local_speed_cap(&ltpi_data[1], ltpi->phy_speed_cap);
-		writel(0x18, ltpi_data[1].base + LTPI_AD_CAP_LOW_LOCAL);
-		writel(0x0, ltpi_data[1].base + LTPI_AD_CAP_HIGH_LOCAL);
-	}
+	ltpi_set_local_speed_cap(&ltpi_data[1], ltpi->phy_speed_cap);
+	writel(0x18, ltpi_data[1].base + LTPI_AD_CAP_LOW_LOCAL);
+	writel(0x0, ltpi_data[1].base + LTPI_AD_CAP_HIGH_LOCAL);
 
 	if (ltpi->index) {
 		/* Disable LTPI1 I2C/UART/GPIO passthrough */
@@ -699,7 +503,7 @@ static void ltpi_scm_normal_mode_training(struct ltpi_priv *ltpi)
 		ret = ltpi_wait_state_pll_set(ltpi);
 
 		/* read intersection of the speed capabilities */
-		reg = readl((void *)ltpi->base + LTPI_LINK_MANAGE_ST);
+		reg = readl((void *)ltpi->base + LTPI_LINK_MNG_ST);
 		speed_cap = FIELD_GET(REG_LTPI_SP_INTERSETION, reg);
 		if (speed_cap == 0) {
 			bootstage_start_mark(BOOTSTAGE_LTPI_SP_CAP);
@@ -748,7 +552,6 @@ static void ltpi_scm_normal_mode_training(struct ltpi_priv *ltpi)
 static int ltpi_set_cdr_operation_clk(struct ltpi_priv *ltpi)
 {
 	const struct ltpi_clk_info *info;
-	uint32_t reg;
 	int target_speed, phy_mode;
 	bool dll2x = false;
 
@@ -770,20 +573,6 @@ static int ltpi_set_cdr_operation_clk(struct ltpi_priv *ltpi)
 	if (info->bandwidth > 200)
 		phy_mode = LTPI_PHY_MODE_CDR_HI_SP;
 
-	if (ltpi->common->soc_rev == SOC_REV_AST2700A1) {
-		reg = readl((void *)ltpi->phy_base + LTPI_DLL_CTRL);
-		reg &= ~REG_LTPI_DLL_CLK_2X;
-		if (dll2x)
-			reg |= REG_LTPI_DLL_CLK_2X;
-		writel(reg, (void *)ltpi->phy_base + LTPI_DLL_CTRL);
-
-		reg = readl((void *)ltpi->phy_base + LTPI_PLL_CTRL);
-		reg &= ~REG_LTPI_RX_PLL_DIV2;
-		if (dll2x)
-			reg |= REG_LTPI_RX_PLL_DIV2;
-		writel(reg, (void *)ltpi->phy_base + LTPI_PLL_CTRL);
-	}
-
 	ltpi_phy_set_pll(ltpi, info, 1);
 	ltpi_phy_set_mode(ltpi, phy_mode);
 
@@ -799,7 +588,7 @@ static void ltpi_scm_cdr_mode_training(struct ltpi_priv *ltpi)
 		ret = ltpi_wait_state_pll_set(ltpi);
 
 		/* read intersection of the speed capabilities */
-		reg = readl((void *)ltpi->base + LTPI_LINK_MANAGE_ST);
+		reg = readl((void *)ltpi->base + LTPI_LINK_MNG_ST);
 		speed_cap = FIELD_GET(REG_LTPI_SP_INTERSETION, reg);
 		ltpi->phy_speed_cap = speed_cap;
 
@@ -857,7 +646,7 @@ static void ltpi_scm_init(struct ltpi_priv *ltpi0, struct ltpi_priv *ltpi1)
 	phy_mode = FIELD_GET(REG_LTPI_PHY_MODE, reg);
 	state0 = ltpi_get_link_manage_state(ltpi0);
 	state1 = ltpi_get_link_manage_state(ltpi1);
-	if (state0 == LTPI_LINK_MANAGE_ST_OP) {
+	if (state0 == LTPI_LINK_MNG_ST_OP) {
 		if (phy_mode == LTPI_PHY_MODE_SDR ||
 		    phy_mode == LTPI_PHY_MODE_DDR) {
 			bootstage_end_status(BOOTSTAGE_LTPI_INIT_SKIP |
@@ -876,7 +665,7 @@ static void ltpi_scm_init(struct ltpi_priv *ltpi0, struct ltpi_priv *ltpi1)
 			}
 
 			if (common->cdr_mask == CDR_MASK_ALL &&
-			    state1 == LTPI_LINK_MANAGE_ST_OP) {
+			    state1 == LTPI_LINK_MNG_ST_OP) {
 				bootstage_end_status(BOOTSTAGE_LTPI_INIT_SKIP |
 						     BOOTSTAGE_LTPI_MODE_CDR);
 				return;
@@ -885,7 +674,7 @@ static void ltpi_scm_init(struct ltpi_priv *ltpi0, struct ltpi_priv *ltpi1)
 	}
 
 	state1 = ltpi_get_link_manage_state(ltpi1);
-	if (state1 == LTPI_LINK_MANAGE_ST_OP &&
+	if (state1 == LTPI_LINK_MNG_ST_OP &&
 	    common->cdr_mask == CDR_MASK_LTPI1) {
 		bootstage_end_status(BOOTSTAGE_LTPI_INIT_SKIP |
 				     BOOTSTAGE_LTPI_MODE_CDR);
@@ -954,7 +743,7 @@ static int ltpi_hpm_init_normal_mode(struct ltpi_priv *ltpi)
 	/* wait forever until PLL_SET_STATE */
 	ret = ltpi_wait_state_pll_set(ltpi);
 
-	reg = readl((void *)ltpi->base + LTPI_LINK_MANAGE_ST);
+	reg = readl((void *)ltpi->base + LTPI_LINK_MNG_ST);
 	speed_cap = FIELD_GET(REG_LTPI_SP_INTERSETION, reg);
 	if (speed_cap == 0) {
 		bootstage_start_mark(BOOTSTAGE_LTPI_SP_CAP);
@@ -988,7 +777,7 @@ static void ltpi_hpm_normal_mode_loop(struct ltpi_priv *ltpi)
 	uint32_t state = ltpi_get_link_manage_state(ltpi);
 
 	bootstage_start_mark(BOOTSTAGE_LTPI_INIT);
-	if (state == LTPI_LINK_MANAGE_ST_OP) {
+	if (state == LTPI_LINK_MNG_ST_OP) {
 		bootstage_end_status(BOOTSTAGE_LTPI_INIT_SKIP |
 				     BOOTSTAGE_LTPI_MODE_SDR);
 		return;
@@ -1028,7 +817,7 @@ static int ltpi_hpm_init_cdr(struct ltpi_priv *ltpi)
 	ltpi_phy_set_mode(ltpi, LTPI_PHY_MODE_CDR_LO_SP);
 
 	ret = ltpi_wait_state_pll_set(ltpi);
-	reg = readl((void *)ltpi->base + LTPI_LINK_MANAGE_ST);
+	reg = readl((void *)ltpi->base + LTPI_LINK_MNG_ST);
 	speed_cap = FIELD_GET(REG_LTPI_SP_INTERSETION, reg);
 	ltpi->phy_speed_cap = speed_cap;
 
@@ -1063,7 +852,7 @@ static void ltpi_hpm_cdr_loop(struct ltpi_priv *ltpi)
 	uint32_t state = ltpi_get_link_manage_state(ltpi);
 
 	bootstage_start_mark(BOOTSTAGE_LTPI_INIT);
-	if (state == LTPI_LINK_MANAGE_ST_OP) {
+	if (state == LTPI_LINK_MNG_ST_OP) {
 		bootstage_end_status(BOOTSTAGE_LTPI_INIT_SKIP |
 				     BOOTSTAGE_LTPI_MODE_CDR);
 		return;
@@ -1542,7 +1331,7 @@ bool ltpi_query_link_status(int index)
 	uint32_t status;
 
 	status = ltpi_get_link_manage_state(ltpi);
-	if (status == LTPI_LINK_MANAGE_ST_OP)
+	if (status == LTPI_LINK_MNG_ST_OP)
 		return true;
 
 	return false;
@@ -1563,87 +1352,38 @@ void ltpi_init(void)
 	ltpi0->index = 0;
 	ltpi1->index = 1;
 
-	if (common->soc_rev == SOC_REV_AST2700A0) {
-		ltpi0->base = LTPI_REG;
-		ltpi1->base = LTPI_REG + 0x1000;
+	ltpi0->base = LTPI_REG;
+	ltpi1->base = LTPI_REG + 0x1000;
 
-		/* AST2700A0 only has one LTPI PHY */
-		ltpi0->phy_base = LTPI_REG + 0x200;
-		ltpi1->phy_base = LTPI_REG + 0x200;
+	/* AST2700A0 only has one LTPI PHY */
+	ltpi0->phy_base = LTPI_REG + 0x200;
+	ltpi1->phy_base = LTPI_REG + 0x200;
 
-		ltpi0->reset.regs_assert = SCU_IO_REG + 0x220;
-		ltpi0->reset.regs_deassert = SCU_IO_REG + 0x224;
-		ltpi0->reset.bit_mask = BIT(20);
+	ltpi0->reset.regs_assert = SCU_IO_REG + 0x220;
+	ltpi0->reset.regs_deassert = SCU_IO_REG + 0x224;
+	ltpi0->reset.bit_mask = BIT(20);
 
-		ltpi0->clk_ctrl.regs_gate = SCU_IO_REG + 0x260;
-		ltpi0->clk_ctrl.regs_ungate = SCU_IO_REG + 0x264;
-		ltpi0->clk_ctrl.bit_mask = BIT(9);
+	ltpi0->clk_ctrl.regs_gate = SCU_IO_REG + 0x260;
+	ltpi0->clk_ctrl.regs_ungate = SCU_IO_REG + 0x264;
+	ltpi0->clk_ctrl.bit_mask = BIT(9);
 
-		ltpi1->reset.regs_assert = SCU_IO_REG + 0x220;
-		ltpi1->reset.regs_deassert = SCU_IO_REG + 0x224;
-		ltpi1->reset.bit_mask = BIT(20);
+	ltpi1->reset.regs_assert = SCU_IO_REG + 0x220;
+	ltpi1->reset.regs_deassert = SCU_IO_REG + 0x224;
+	ltpi1->reset.bit_mask = BIT(20);
 
-		ltpi1->clk_ctrl.regs_gate = SCU_IO_REG + 0x260;
-		ltpi1->clk_ctrl.regs_ungate = SCU_IO_REG + 0x264;
-		ltpi1->clk_ctrl.bit_mask = BIT(9);
+	ltpi1->clk_ctrl.regs_gate = SCU_IO_REG + 0x260;
+	ltpi1->clk_ctrl.regs_ungate = SCU_IO_REG + 0x264;
+	ltpi1->clk_ctrl.bit_mask = BIT(9);
 
-		common->top_base = LTPI_REG + 0x214;
-		common->otp_speed_cap =
-			otp_to_speed_mask_lookup[FIELD_GET(SCU_I_LTPI_MAX, otp_strap)];
-		ltpi0->phy_speed_cap = common->otp_speed_cap;
-		ltpi1->phy_speed_cap = common->otp_speed_cap;
+	common->top_base = LTPI_REG + 0x214;
+	common->otp_speed_cap = otp_to_speed_mask_lookup[FIELD_GET(SCU_I_LTPI_MAX, otp_strap)];
+	ltpi0->phy_speed_cap = common->otp_speed_cap;
+	ltpi1->phy_speed_cap = common->otp_speed_cap;
 
-		common->sdr_lookup = ltpi_clk_lookup_sdr_a0;
-		common->cdr_lookup = ltpi_clk_lookup_cdr_a0;
-		common->ddr_lookup = ltpi_clk_lookup_sdr_a0;
-		common->cdr2x_lookup = ltpi_clk_lookup_cdr_a0;
-	} else {
-		uint32_t rx_ctrl;
-
-		ltpi0->base = LTPI_REG;
-		ltpi1->base = LTPI_REG + 0x1000;
-		ltpi0->phy_base = ltpi0->base + 0x200;
-		ltpi1->phy_base = ltpi1->base + 0x200;
-
-		ltpi0->reset.regs_assert = SCU_IO_REG + 0x220;
-		ltpi0->reset.regs_deassert = SCU_IO_REG + 0x224;
-		ltpi0->reset.bit_mask = BIT(20);
-
-		ltpi0->clk_ctrl.regs_gate = SCU_IO_REG + 0x260;
-		ltpi0->clk_ctrl.regs_ungate = SCU_IO_REG + 0x264;
-		ltpi0->clk_ctrl.bit_mask = BIT(9);
-
-		ltpi1->reset.regs_assert = SCU_IO_REG + 0x220;
-		ltpi1->reset.regs_deassert = SCU_IO_REG + 0x224;
-		ltpi1->reset.bit_mask = BIT(22);
-
-		ltpi1->clk_ctrl.regs_gate = SCU_IO_REG + 0x260;
-		ltpi1->clk_ctrl.regs_ungate = SCU_IO_REG + 0x264;
-		ltpi1->clk_ctrl.bit_mask = BIT(19);
-
-		common->top_base = LTPI_REG + 0x800;
-
-		/* FIXME: the read OTPCFG31 for the speed mask on A1 */
-		common->otp_speed_cap =
-			otp_to_speed_mask_lookup[FIELD_GET(SCU_I_LTPI_MAX, otp_strap)];
-		ltpi0->phy_speed_cap = common->otp_speed_cap;
-		ltpi1->phy_speed_cap = common->otp_speed_cap;
-
-		common->sdr_lookup = ltpi_clk_lookup_sdr;
-		common->ddr_lookup = ltpi_clk_lookup_ddr;
-		common->cdr_lookup = ltpi_clk_lookup_cdr;
-		common->cdr2x_lookup = ltpi_clk_lookup_cdr2x;
-
-		/* Unlock the LTPI registers */
-		writel(LTPI_PROT_KEY_UNLOCK, ltpi0->phy_base + LTPI_PROT_KEY);
-		writel(LTPI_PROT_KEY_UNLOCK, ltpi1->phy_base + LTPI_PROT_KEY);
-
-		rx_ctrl = readl(common->top_base + LTPI_LVDS_RX_CTRL);
-		rx_ctrl |= REG_LTPI_LVDS_RX0_BIAS_EN |
-			   REG_LTPI_LVDS_RX1_BIAS_EN;
-		writel(rx_ctrl, common->top_base + LTPI_LVDS_RX_CTRL);
-		udelay(1);
-	}
+	common->sdr_lookup = ltpi_clk_lookup_sdr_a0;
+	common->cdr_lookup = ltpi_clk_lookup_cdr_a0;
+	common->ddr_lookup = ltpi_clk_lookup_sdr_a0;
+	common->cdr2x_lookup = ltpi_clk_lookup_cdr_a0;
 
 	if (pin_strap & SCU_I_LTPI_MODE) {
 		bootstage_start_mark(BOOTSTAGE_LTPI_SLAVE);
@@ -1678,7 +1418,7 @@ static void ltpi_show_status(struct ltpi_priv *ltpi)
 			     "NA",  "NA",  "NA",  "CDR_HI" };
 
 	ret = ltpi_get_link_manage_state(ltpi);
-	if (ret != LTPI_LINK_MANAGE_ST_OP) {
+	if (ret != LTPI_LINK_MNG_ST_OP) {
 		printf("LTPI%d: Not linked\n", ltpi->index);
 		return;
 	}

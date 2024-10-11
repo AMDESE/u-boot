@@ -30,14 +30,6 @@
 #define     REG_LTPI_PLL_400M			5
 #define     REG_LTPI_PLL_800M			6
 #define     REG_LTPI_PLL_1G			7
-/* AST2700A1 */
-#define     REG_LTPI_PLL_HPLL_DIV_10		1	/* 100M */
-#define     REG_LTPI_PLL_HCLK			2	/* 200M */
-#define     REG_LTPI_PLL_HPLL_DIV_4		3	/* 250M */
-#define     REG_LTPI_PLL_LPLL_DIV_4		4	/* 300M */
-#define     REG_LTPI_PLL_HPLL_DIV_2		5	/* 500M */
-#define     REG_LTPI_PLL_LPLL_DIV_2		6	/* 600M */
-#define     REG_LTPI_PLL_LPLL			7	/* 1200M, 50M, 75M, 150M, 400M, 800M, 1000M, */
 
 #define LTPI_PHY_ALIGN_CTRL			0x008
 #define LTPI_DLL_CTRL				0x00C
