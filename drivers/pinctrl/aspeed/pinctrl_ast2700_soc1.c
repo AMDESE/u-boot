@@ -267,6 +267,18 @@ static struct ast2700_soc1_sig_desc pwm7[] = {
 	{ 0x0c, GENMASK(30, 28), BIT(28) },
 };
 
+static struct ast2700_soc1_sig_desc mac0_link[] = {
+	{ 0x68, GENMASK(2, 0), BIT(2) },
+};
+
+static struct ast2700_soc1_sig_desc mac1_link[] = {
+	{ 0x68, GENMASK(30, 28), BIT(28) | BIT(29) },
+};
+
+static struct ast2700_soc1_sig_desc mac2_link[] = {
+	{ 0x68, GENMASK(6, 4), BIT(6) },
+};
+
 static const struct aspeed_group_config ast2700_soc1_groups[] = {
 	{ "ESPI1", ARRAY_SIZE(espi1_link), espi1_link },
 	{ "SD", ARRAY_SIZE(sdio_link), sdio_link },
@@ -316,6 +328,9 @@ static const struct aspeed_group_config ast2700_soc1_groups[] = {
 	{ "PWM5", ARRAY_SIZE(pwm5), pwm5 },
 	{ "PWM6", ARRAY_SIZE(pwm6), pwm6 },
 	{ "PWM7", ARRAY_SIZE(pwm7), pwm7 },
+	{ "MAC0LINK", ARRAY_SIZE(mac0_link), mac0_link },
+	{ "MAC1LINK", ARRAY_SIZE(mac1_link), mac1_link },
+	{ "MAC2LINK", ARRAY_SIZE(mac2_link), mac2_link },
 };
 
 static int ast2700_soc1_pinctrl_get_groups_count(struct udevice *dev)
