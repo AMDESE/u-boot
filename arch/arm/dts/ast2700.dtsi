@@ -918,6 +918,11 @@
 		groups = "I2C15";
 	};
 
+	pinctrl_mac0link_default: mac0link_default {
+		function = "MAC0LINK";
+		groups = "MAC0LINK";
+	};
+
 	pinctrl_mac1link_default: mac1link_default {
 		function = "MAC1LINK";
 		groups = "MAC1LINK";
@@ -926,11 +931,6 @@
 	pinctrl_mac2link_default: mac2link_default {
 		function = "MAC2LINK";
 		groups = "MAC2LINK";
-	};
-
-	pinctrl_mac3link_default: mac3link_default {
-		function = "MAC3LINK";
-		groups = "MAC3LINK";
 	};
 
 	pinctrl_mdio0_default: mdio0_default {
