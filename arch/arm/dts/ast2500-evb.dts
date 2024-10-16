@@ -139,3 +139,8 @@
                 reg = <0x4d>;
         };
 };
+
+&sgpio {
+	status = "okay";
+	ngpios = <80>;
+};

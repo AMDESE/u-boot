@@ -65,6 +65,7 @@ static const struct ast2500_group_config ast2500_groups[] = {
 	{ "SPI1CS1", 1, (1 << 15) },
 	{ "USB2AH", 5, (1 << 29) },
 	{ "USB2BH", 6, (1 << 14) },
+	{ "SGPM", 2, GENMASK(11, 8) },
 };
 
 static int ast2500_pinctrl_get_groups_count(struct udevice *dev)
