@@ -167,6 +167,7 @@ struct ltpi_priv {
 	int clk_inverse;
 
 	int index;
+	int link_speed_frm_rx_cnt;
 	struct bootstage_t *bootstage;
 
 	/* Advertise timeout in us */
@@ -835,7 +836,7 @@ struct bootstage_t ltpi_init(struct rom_context *rom_ctx)
 	struct ltpi_priv *ltpi0 = &ltpi_data[0];
 	struct ltpi_priv *ltpi1 = &ltpi_data[1];
 	uint32_t pin_strap = readl(SCU1_HWSTRAP1);
-	uint32_t otpcfg_31_30, otpcfg_23_22, otpcfg_03_02;
+	uint32_t otpcfg_03_02;
 
 	otpcfg_03_02 = readl(SCU1_OTPCFG_03_02);
 	if (!(otpcfg_03_02 & OTPCFG2_DIS_RECOVERY_MODE) &&
@@ -881,29 +882,8 @@ struct bootstage_t ltpi_init(struct rom_context *rom_ctx)
 	writel(SCU1_CLKGATE2_LTPI_AHB, (void *)SCU1_CLKGATE2_CLR);
 
 	/* Parse configurations from the OTP */
-	otpcfg_31_30 = readl(SCU1_OTPCFG_31_30);
-	otpcfg_23_22 = readl(SCU1_OTPCFG_23_22);
-
-	//unsupported_speed = FIELD_GET(SCU1_OTPCFG30_LTPI0_SPEED_CAPA_DIS, otpcfg_31_30);
-	//ltpi0->otp_speed_cap = LTPI_SP_CAP_ASPEED_SUPPORTED & ~unsupported_speed;
-	//ltpi0->otp_ddr_dis = !!(otpcfg_31_30 & SCU1_OTPCFG30_LTPI0_DDR_DIS);
-	ltpi0->io_driving = FIELD_GET(SCU1_HWSTRAP1_LTPI0_IO_DRIVING, pin_strap);
-
-	//unsupported_speed = FIELD_GET(SCU1_OTPCFG31_LTPI1_SPEED_CAPA_DIS, otpcfg_31_30);
-	//ltpi1->otp_speed_cap = LTPI_SP_CAP_ASPEED_SUPPORTED & ~unsupported_speed;
-	//ltpi1->otp_ddr_dis = !!(otpcfg_31_30 & SCU1_OTPCFG31_LTPI1_DDR_DIS);
-	ltpi1->io_driving = FIELD_GET(SCU1_OTPCFG23_LTPI1_IO_DRIVING, otpcfg_23_22);
-
-	ltpi0->crc_format = !!(otpcfg_23_22 & SCU1_OTPCFG23_LTPI_CRC_FORMAT);
-	ltpi1->crc_format = ltpi0->crc_format;
-
-	//ltpi0->phy_speed_cap = ltpi0->otp_speed_cap;
-	//ltpi1->phy_speed_cap = ltpi1->otp_speed_cap;
-	ltpi0->phy_speed_cap = 0x1;
-	ltpi1->phy_speed_cap = 0x1;
-
-	ltpi0->clk_inverse = FIELD_GET(SCU1_OTPCFG23_LTPI0_PHYCLK_INV, otpcfg_23_22);
-	ltpi1->clk_inverse = FIELD_GET(SCU1_OTPCFG23_LTPI1_PHYCLK_INV, otpcfg_23_22);
+	ltpi0->phy_speed_cap = ltpi0->otp_speed_cap;
+	ltpi1->phy_speed_cap = ltpi1->otp_speed_cap;
 
 	/*
 	 * LTPI_MODE    LTPI0_EN    LTPI1_EN    Description
@@ -985,9 +965,15 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 	ltpi_data[1].ad_timeout = ADVERTISE_TIMEOUT_US;
 	ltpi_data[0].clk_inverse = 0x0;
 	ltpi_data[1].clk_inverse = 0x0;
+	ltpi_data[0].io_driving = 0x2;
+	ltpi_data[1].io_driving = 0x2;
+	ltpi_data[0].crc_format = 0x0;
+	ltpi_data[1].crc_format = 0x0;
+	ltpi_data[0].link_speed_frm_rx_cnt = 0;
+	ltpi_data[1].link_speed_frm_rx_cnt = 0;
 
 	getopt_init_state(&gs);
-	while ((opt = getopt(&gs, argc, argv, "l:m:p:i:t:sh")) > 0) {
+	while ((opt = getopt(&gs, argc, argv, "l:m:i:t:d:c:r:sh")) > 0) {
 		switch (opt) {
 		case 'l':
 			speed = simple_strtoul(gs.arg, &endp, 16);
@@ -1002,6 +988,18 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 		case 't':
 			ltpi_data[0].ad_timeout = simple_strtoul(gs.arg, &endp, 0);
 			ltpi_data[1].ad_timeout = ltpi_data[0].ad_timeout;
+			break;
+		case 'd':
+			ltpi_data[0].io_driving = simple_strtoul(gs.arg, &endp, 0);
+			ltpi_data[1].io_driving = ltpi_data[0].io_driving;
+			break;
+		case 'c':
+			ltpi_data[0].crc_format = simple_strtoul(gs.arg, &endp, 0);
+			ltpi_data[1].crc_format = ltpi_data[0].crc_format;
+			break;
+		case 'r':
+			ltpi_data[0].link_speed_frm_rx_cnt = simple_strtoul(gs.arg, &endp, 0);
+			ltpi_data[1].link_speed_frm_rx_cnt = ltpi_data[0].link_speed_frm_rx_cnt;
 			break;
 		case 's':
 			ltpi_show_status(&ltpi_data[0]);
@@ -1063,9 +1061,11 @@ static char ltpi_help_text[] = {
 	"-l <speed mask>, set bitmask to disable the corresponding speeds\n"
 	"    [15] DDR [14] N/A [13] N/A [12] 500M [11] N/A [10] N/A [9] 600M [8] 400M\n"
 	"    [7] 300M [6] 250M [5] 200M [4] 150M  [3] 100M [2] 75M  [1] 50M  [0] 25M\n"
-	"-p <port enabling>, 0=ltpi0, 1=ltpi0+ltpi1\n"
 	"-i <clk inverse>, 0x0=no inverse, 0x1=inverse tx, 0x2=inverse rx, 0x3=inverse both\n"
 	"-t <advertise timeout in us>, default 100000\n"
+	"-d <driving strength>, 0=weakest 3=strongest, default 2\n"
+	"-c <crc format>, 0=default 1=\n"
+	"-r <rx link-speed count in AD-align>, default 0\n"
 	"-s, Display current link status\n"
 };
 
