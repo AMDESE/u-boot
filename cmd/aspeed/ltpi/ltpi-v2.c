@@ -1023,9 +1023,9 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 	pin_strap = readl((void *)SCU1_HWSTRAP1);
 
 	/* Set otp strap according to the command argument */
-	ltpi_data[0].otp_speed_cap = speed;
+	ltpi_data[0].otp_speed_cap = LTPI_SP_CAP_ASPEED_SUPPORTED & ~speed;
 	ltpi_data[0].otp_ddr_dis = !!(speed & LTPI_SP_CAP_DDR);
-	ltpi_data[1].otp_speed_cap = speed;
+	ltpi_data[1].otp_speed_cap = LTPI_SP_CAP_ASPEED_SUPPORTED & ~speed;
 	ltpi_data[1].otp_ddr_dis = !!(speed & LTPI_SP_CAP_DDR);
 
 	ltpi_init(&rc);
