@@ -453,6 +453,14 @@ static void ltpi_do_link_training(struct ltpi_priv *ltpi)
 	ltpi_set_lvds_io_driving(ltpi, ltpi->io_driving);
 	ltpi_set_crc_format(ltpi, ltpi->crc_format);
 
+	/*
+	 * Configure the LINK_SPEED frame count to be received before
+	 * entering AD. This configuraiton only effects the SCM LTPI.
+	 */
+	clrsetbits_le32((void *)ltpi->base + LTPI_LINK_MANAGE_CTRL0,
+			REG_LTPI_RX_LINK_SP_FRM_NUM,
+			FIELD_PREP(REG_LTPI_RX_LINK_SP_FRM_NUM, ltpi->link_speed_frm_rx_cnt));
+
 	/* Set the clock source to the base frequency 25MHz */
 	ltpi_phy_set_clksel(ltpi, REG_LTPI_PLL_25M, false);
 
