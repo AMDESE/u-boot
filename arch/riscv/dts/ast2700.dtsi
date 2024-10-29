@@ -151,12 +151,14 @@
 		edaf_bridge0: edaf-bridge@14c38000 {
 			compatible = "aspeed,ast2700-edaf-bridge";
 			reg = <0x14c38000 0x200>;
+			aspeed,scu1 = <&syscon1>;
 			status = "disabled";
 		};
 
 		edaf_bridge1: edaf-bridge@14c38200 {
 			compatible = "aspeed,ast2700-edaf-bridge";
 			reg = <0x14c38200 0x200>;
+			aspeed,scu1 = <&syscon1>;
 			status = "disabled";
 		};
 

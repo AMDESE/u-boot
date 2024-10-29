@@ -12,6 +12,11 @@
 #include <linux/bitfield.h>
 #include <reset.h>
 
+#define SCU1_HOST_CONF_1		0xa00
+#define SCU1_HOST_CONF_2		0xa20
+#define   SCU1_HOST_CONF_EDAF_EN	BIT(10)
+#define   SCU1_HOST_CONF_LPC_EN		BIT(9)
+
 #define EDAF_BDGE_CBASE			0x20
 #define EDAF_BDGE_MBASE			0x24
 #define EDAF_BDGE_CMD_READ		0x40
@@ -30,7 +35,9 @@ static int aspeed_edaf_bridge_probe(struct udevice *dev)
 	void *edaf_bridge_regs;
 	uint64_t cbase, mbase;
 	uint32_t cfg;
-	ofnode node;
+	uint32_t phandle;
+	ofnode node, scu1_node;
+	void *scu_regs;
 	int rc;
 
 	edaf_bridge_regs = (void *)devfdt_get_addr_index(dev, 0);
@@ -44,6 +51,40 @@ static int aspeed_edaf_bridge_probe(struct udevice *dev)
 		printf("cannot get eDAF device node\n");
 		return -ENODEV;
 	}
+
+	rc = ofnode_read_u32(node, "aspeed,scu1", &phandle);
+	if (rc) {
+		printf("cannot get SCU1 phandle\n");
+		return -ENODEV;
+	}
+
+	scu1_node = ofnode_get_by_phandle(phandle);
+	if (!ofnode_valid(scu1_node)) {
+		printf("cannot get SCU1 device node\n");
+		return -ENODEV;
+	}
+
+	scu_regs = (void *)ofnode_get_addr(scu1_node);
+	if (scu_regs == (void *)FDT_ADDR_T_NONE) {
+		printf("cannot map SCU1 registers\n");
+		return -ENODEV;
+	}
+
+	cfg = readl(scu_regs + SCU1_HOST_CONF_1);
+	if (cfg & SCU1_HOST_CONF_LPC_EN) {
+		printf("Host Configuration1: eSPI0 eDAF is not valid\n");
+		return -EINVAL;
+	}
+	cfg |= SCU1_HOST_CONF_EDAF_EN;
+	writel(cfg, scu_regs + SCU1_HOST_CONF_1);
+
+	cfg = readl(scu_regs + SCU1_HOST_CONF_2);
+	if (cfg & SCU1_HOST_CONF_LPC_EN) {
+		printf("Host Configuration2: eSPI1 eDAF is not valid\n");
+		return -EINVAL;
+	}
+	cfg |= SCU1_HOST_CONF_EDAF_EN;
+	writel(cfg, scu_regs + SCU1_HOST_CONF_2);
 
 	rc = ofnode_read_u64(node, "ctl-base", &cbase);
 	if (!rc) {
