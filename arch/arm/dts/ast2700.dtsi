@@ -434,7 +434,7 @@
 			#address-cells = <2>;
 			#size-cells = <2>;
 			clocks = <&soc1_clk SCU1_CLK_GATE_SDCLK>;
-			resets = <&soc1_rst SCU1_RESET_SDC>;
+			resets = <&soc1_rst SCU1_RESET_SD>;
 			ranges = <0 0 0 0x14080000 0 0x10000>;
 			status = "disable";
 
