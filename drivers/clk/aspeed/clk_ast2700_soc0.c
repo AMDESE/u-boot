@@ -288,7 +288,7 @@ static ulong ast2700_soc0_clk_get_rate(struct clk *clk)
 	case SCU0_CLK_APB:
 		rate = ast2700_soc0_get_pclk_rate(priv->scu);
 		break;
-	case SCU0_CLK_BCLK:
+	case SCU0_CLK_PBUS:
 		rate = ast2700_soc0_get_bclk_rate(priv->scu);
 		break;
 	case SCU0_CLK_GATE_EMMCCLK:
