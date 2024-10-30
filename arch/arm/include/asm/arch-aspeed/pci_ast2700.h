@@ -15,6 +15,6 @@
 #define ASPEED_PLDA2_PRESET0		(ASPEED_PLDA2_BASE + 0xb0)
 #define ASPEED_PLDA2_PRESET1		(ASPEED_PLDA2_BASE + 0xb4)
 
-void pci_config(struct ast2700_soc0_scu *scu);
+void pci_config(struct ast2700_scu0 *scu);
 
 #endif

@@ -15,10 +15,10 @@
 DECLARE_GLOBAL_DATA_PTR;
 
 struct ast2700_soc0_clk_priv {
-	struct ast2700_soc0_scu *scu;
+	struct ast2700_scu0 *scu;
 };
 
-static uint32_t ast2700_soc0_get_pll_rate(struct ast2700_soc0_scu *scu, int pll_idx)
+static uint32_t ast2700_soc0_get_pll_rate(struct ast2700_scu0 *scu, int pll_idx)
 {
 	union ast2700_pll_reg pll_reg;
 	uint32_t mul = 1, div = 1;
@@ -90,7 +90,7 @@ static uint32_t ast2700_soc0_get_pll_rate(struct ast2700_soc0_scu *scu, int pll_
 #define SCU_CPUCLK_MASK		GENMASK(4, 2)
 #define SCU_CPUCLK_SHIFT	2
 
-static uint32_t ast2700_soc0_get_pspclk_rate(struct ast2700_soc0_scu *scu)
+static uint32_t ast2700_soc0_get_pspclk_rate(struct ast2700_scu0 *scu)
 {
 	uint32_t rate;
 	int cpuclk_set;
@@ -120,7 +120,7 @@ static uint32_t ast2700_soc0_get_pspclk_rate(struct ast2700_soc0_scu *scu)
 	return rate;
 }
 
-static uint32_t ast2700_soc0_get_axi0clk_rate(struct ast2700_soc0_scu *scu)
+static uint32_t ast2700_soc0_get_axi0clk_rate(struct ast2700_scu0 *scu)
 {
 	return ast2700_soc0_get_pspclk_rate(scu) / 2;
 }
@@ -131,7 +131,7 @@ static uint32_t hclk_ast2700a1_div_table[] = {
 	6, 5, 4, 7,
 };
 
-static uint32_t ast2700_soc0_get_hclk_rate(struct ast2700_soc0_scu *scu)
+static uint32_t ast2700_soc0_get_hclk_rate(struct ast2700_scu0 *scu)
 {
 	u32 hwstrap1 = readl(&scu->hwstrap1);
 	u32 src_clk;
@@ -161,7 +161,7 @@ static uint32_t ast2700_soc0_get_hclk_rate(struct ast2700_soc0_scu *scu)
 	return (src_clk / div);
 }
 
-static uint32_t ast2700_soc0_get_axi1clk_rate(struct ast2700_soc0_scu *scu)
+static uint32_t ast2700_soc0_get_axi1clk_rate(struct ast2700_scu0 *scu)
 {
 	if (scu->chip_id1 & SCU_HW_REVISION_ID)
 		return ast2700_soc0_get_pll_rate(scu, SCU0_CLK_MPLL) / 4;
@@ -172,7 +172,7 @@ static uint32_t ast2700_soc0_get_axi1clk_rate(struct ast2700_soc0_scu *scu)
 #define SCU_CLKSEL1_PCLK_DIV_MASK		GENMASK(25, 23)
 #define SCU_CLKSEL1_PCLK_DIV_SHIFT		23
 
-static uint32_t ast2700_soc0_get_pclk_rate(struct ast2700_soc0_scu *scu)
+static uint32_t ast2700_soc0_get_pclk_rate(struct ast2700_scu0 *scu)
 {
 	u32 rate = ast2700_soc0_get_axi0clk_rate(scu);
 	u32 clksel1 = readl(&scu->clk_sel1);
@@ -186,7 +186,7 @@ static uint32_t ast2700_soc0_get_pclk_rate(struct ast2700_soc0_scu *scu)
 
 #define SCU_CLKSEL1_BCLK_DIV_MASK		GENMASK(22, 20)
 #define SCU_CLKSEL1_BCLK_DIV_SHIFT		20
-static uint32_t ast2700_soc0_get_bclk_rate(struct ast2700_soc0_scu *scu)
+static uint32_t ast2700_soc0_get_bclk_rate(struct ast2700_scu0 *scu)
 {
 	u32 rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_MPLL);
 	u32 clksel1 = readl(&scu->clk_sel1);
@@ -201,7 +201,7 @@ static uint32_t ast2700_soc0_get_bclk_rate(struct ast2700_soc0_scu *scu)
 #define SCU_CLKSEL1_MPHYCLK_SEL_MASK		GENMASK(19, 18)
 #define SCU_CLKSEL1_MPHYCLK_SEL_SHIFT		18
 #define SCU_CLKSEL1_MPHYCLK_DIV_MASK		GENMASK(7, 0)
-static uint32_t ast2700_soc0_get_mphyclk_rate(struct ast2700_soc0_scu *scu)
+static uint32_t ast2700_soc0_get_mphyclk_rate(struct ast2700_scu0 *scu)
 {
 	int div = readl(&scu->mphyclk_para) & SCU_CLKSEL1_BCLK_DIV_MASK;
 	int clk_sel;
@@ -233,7 +233,7 @@ static uint32_t ast2700_soc0_get_mphyclk_rate(struct ast2700_soc0_scu *scu)
 #define SCU_CLKSRC1_EMMC_DIV_MASK		GENMASK(14, 12)
 #define SCU_CLKSRC1_EMMC_DIV_SHIFT		12
 #define SCU_CLKSRC1_EMMC_SEL			BIT(11)
-static uint32_t ast2700_soc0_get_emmcclk_rate(struct ast2700_soc0_scu *scu)
+static uint32_t ast2700_soc0_get_emmcclk_rate(struct ast2700_scu0 *scu)
 {
 	u32 clksel1 = readl(&scu->clk_sel1);
 	u32 rate;
@@ -249,7 +249,7 @@ static uint32_t ast2700_soc0_get_emmcclk_rate(struct ast2700_soc0_scu *scu)
 	return (rate / ((div + 1) * 2));
 }
 
-static uint32_t ast2700_soc0_get_uartclk_rate(struct ast2700_soc0_scu *scu)
+static uint32_t ast2700_soc0_get_uartclk_rate(struct ast2700_scu0 *scu)
 {
 	u32 clksel2 = readl(&scu->clk_sel2);
 	u32 div = 1;
@@ -311,7 +311,7 @@ static ulong ast2700_soc0_clk_get_rate(struct clk *clk)
 static int ast2700_soc0_clk_enable(struct clk *clk)
 {
 	struct ast2700_soc0_clk_priv *priv = dev_get_priv(clk->dev);
-	struct ast2700_soc0_scu *scu = priv->scu;
+	struct ast2700_scu0 *scu = priv->scu;
 	u32 clkgate_bit = BIT(clk->id);
 
 	writel(clkgate_bit, &scu->clkgate_clr);
@@ -327,7 +327,7 @@ struct clk_ops ast2700_soc0_clk_ops = {
 static int ast2700_soc0_clk_probe(struct udevice *dev)
 {
 	struct ast2700_soc0_clk_priv *priv = dev_get_priv(dev);
-	struct ast2700_soc0_scu *scu;
+	struct ast2700_scu0 *scu;
 	u32 rate = 0;
 	u32 div = 0;
 	int i = 0;

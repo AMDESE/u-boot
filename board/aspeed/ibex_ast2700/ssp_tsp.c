@@ -10,11 +10,11 @@
 
 int ssp_init(ulong load_addr)
 {
-	struct ast2700_soc0_scu *scu;
+	struct ast2700_scu0 *scu;
 	uint32_t reg_val;
 	uint64_t phy_addr;
 
-	scu = (struct ast2700_soc0_scu *)ASPEED_CPU_SCU_BASE;
+	scu = (struct ast2700_scu0 *)ASPEED_CPU_SCU_BASE;
 
 	reg_val = readl((void *)&scu->ssp_ctrl_1);
 	if (!(reg_val & SCU_CPU_SSP_TSP_RESET_STS))
@@ -61,9 +61,9 @@ int ssp_init(ulong load_addr)
 
 int ssp_enable(void)
 {
-	struct ast2700_soc0_scu *scu;
+	struct ast2700_scu0 *scu;
 
-	scu = (struct ast2700_soc0_scu *)ASPEED_CPU_SCU_BASE;
+	scu = (struct ast2700_scu0 *)ASPEED_CPU_SCU_BASE;
 	setbits_le32((void *)&scu->ssp_ctrl_1, SCU_CPU_SSP_TSP_ENABLE);
 
 	/* HW auto de-asserts SSP reset when WDT timeout reset occurs */
@@ -74,11 +74,11 @@ int ssp_enable(void)
 
 int tsp_init(ulong load_addr)
 {
-	struct ast2700_soc0_scu *scu;
+	struct ast2700_scu0 *scu;
 	uint32_t reg_val;
 	uint64_t phy_addr;
 
-	scu = (struct ast2700_soc0_scu *)ASPEED_CPU_SCU_BASE;
+	scu = (struct ast2700_scu0 *)ASPEED_CPU_SCU_BASE;
 
 	reg_val = readl((void *)&scu->tsp_ctrl_1);
 	if (!(reg_val & SCU_CPU_SSP_TSP_RESET_STS))
@@ -113,9 +113,9 @@ int tsp_init(ulong load_addr)
 
 int tsp_enable(void)
 {
-	struct ast2700_soc0_scu *scu;
+	struct ast2700_scu0 *scu;
 
-	scu = (struct ast2700_soc0_scu *)ASPEED_CPU_SCU_BASE;
+	scu = (struct ast2700_scu0 *)ASPEED_CPU_SCU_BASE;
 	setbits_le32((void *)&scu->tsp_ctrl_1, SCU_CPU_SSP_TSP_ENABLE);
 
 	/* HW auto de-asserts TSP reset when WDT timeout reset occurs */

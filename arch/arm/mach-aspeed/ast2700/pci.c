@@ -27,7 +27,7 @@ static u32 _ast_get_e2m_addr(struct sdramc_regs *ram, u8 node)
 	return val;
 }
 
-static int pci_vga_init(struct ast2700_soc0_scu *scu)
+static int pci_vga_init(struct ast2700_scu0 *scu)
 {
 	struct sdramc_regs *ram = (struct sdramc_regs *)DRAMC_BASE;
 	u32 val, vram_size;
@@ -139,7 +139,7 @@ static int pci_vga_init(struct ast2700_soc0_scu *scu)
 	return 0;
 }
 
-void pci_config(struct ast2700_soc0_scu *scu)
+void pci_config(struct ast2700_scu0 *scu)
 {
 	u8 efuse = FIELD_GET(SCU_CPU_REVISION_ID_EFUSE, scu->chip_id1);
 

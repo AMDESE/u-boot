@@ -125,7 +125,7 @@ struct aspeed_clks {
 };
 
 #ifndef __ASSEMBLY__
-struct ast2700_soc0_scu {
+struct ast2700_scu0 {
 	uint32_t chip_id1;		/* 0x000 */
 	uint32_t rsv_0x04[3];		/* 0x004 ~ 0x00C */
 	uint32_t hwstrap1;		/* 0x010 */
@@ -294,7 +294,7 @@ struct ast2700_soc0_scu {
 	uint32_t pci1_misc[32];		/* 0xA80 ~ 0xAFC */
 };
 
-struct ast2700_soc1_scu {
+struct ast2700_scu1 {
 	uint32_t chip_id1;		/* 0x000 */
 	uint32_t rsv_0x04[3];		/* 0x004 ~ 0x00C */
 	uint32_t hwstrap1;		/* 0x010 */

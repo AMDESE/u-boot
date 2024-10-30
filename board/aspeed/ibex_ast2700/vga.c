@@ -42,7 +42,7 @@ static u32 _ast_get_e2m_addr(struct sdramc_regs *ram, u8 node)
 	return val;
 }
 
-static int dp_init(struct ast2700_soc0_scu *scu)
+static int dp_init(struct ast2700_scu0 *scu)
 {
 	u32 *fw_addr;
 	u32 fw_ofst;
@@ -142,7 +142,7 @@ static int dp_init(struct ast2700_soc0_scu *scu)
 	return 0;
 }
 
-static int vbios_init(struct ast2700_soc0_scu *scu, u8 node)
+static int vbios_init(struct ast2700_scu0 *scu, u8 node)
 {
 	u32 *vbios_addr;
 	u32 vbios_ofst;
@@ -203,7 +203,7 @@ static int vbios_init(struct ast2700_soc0_scu *scu, u8 node)
 	return 0;
 }
 
-static int pci_vga_init(struct ast2700_soc0_scu *scu)
+static int pci_vga_init(struct ast2700_scu0 *scu)
 {
 	struct sdramc_regs *ram = (struct sdramc_regs *)DRAMC_BASE;
 	u32 val, vram_size;
@@ -336,7 +336,7 @@ int pci_init(void)
 {
 	int nodeoffset;
 	ofnode node;
-	struct ast2700_soc0_scu *scu;
+	struct ast2700_scu0 *scu;
 	u8 efuse;
 
 	/* find the offset of compatible node */
@@ -350,7 +350,7 @@ int pci_init(void)
 	/* get ast2700-scu0 node */
 	node = offset_to_ofnode(nodeoffset);
 
-	scu = (struct ast2700_soc0_scu *)ofnode_get_addr(node);
+	scu = (struct ast2700_scu0 *)ofnode_get_addr(node);
 	if (IS_ERR_OR_NULL(scu)) {
 		printf("%s: cannot get SYSCON address pointer\n", __func__);
 		return PTR_ERR(scu);

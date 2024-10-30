@@ -54,7 +54,7 @@ int arch_misc_init(void)
 	/* get ast2700-scu0 node */
 	node = offset_to_ofnode(nodeoffset);
 
-	pci_config((struct ast2700_soc0_scu *)ofnode_get_addr(node));
+	pci_config((struct ast2700_scu0 *)ofnode_get_addr(node));
 
 	return 0;
 }

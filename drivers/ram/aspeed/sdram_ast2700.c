@@ -129,7 +129,7 @@ enum {
 
 static size_t ast2700_sdrammc_get_vga_mem_size(struct dram_priv *priv)
 {
-	struct ast2700_soc0_scu *scu;
+	struct ast2700_scu0 *scu;
 	int nodeoffset;
 	size_t vga_ram_size[] = {
 		0x2000000, // 32MB
@@ -152,7 +152,7 @@ static size_t ast2700_sdrammc_get_vga_mem_size(struct dram_priv *priv)
 	/* get ast2700-scu0 node */
 	node = offset_to_ofnode(nodeoffset);
 
-	scu = (struct ast2700_soc0_scu *)ofnode_get_addr(node);
+	scu = (struct ast2700_scu0 *)ofnode_get_addr(node);
 
 	if (scu->pci0_misc[28] & BIT(0)) {
 		printf("VGA0:%ldMiB, ", vga_ram_size[vga_sz_sel] / SZ_1M);

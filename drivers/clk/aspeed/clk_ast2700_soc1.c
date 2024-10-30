@@ -66,10 +66,10 @@ struct mac_delay_config {
 };
 
 struct ast2700_soc1_clk_priv {
-	struct ast2700_soc1_scu *scu;
+	struct ast2700_scu1 *scu;
 };
 
-static uint32_t ast2700_soc1_get_pll_rate(struct ast2700_soc1_scu *scu, int pll_idx)
+static uint32_t ast2700_soc1_get_pll_rate(struct ast2700_scu1 *scu, int pll_idx)
 {
 	union ast2700_pll_reg pll_reg;
 	uint32_t mul = 1, div = 1;
@@ -97,7 +97,7 @@ static uint32_t ast2700_soc1_get_pll_rate(struct ast2700_soc1_scu *scu, int pll_
 #define SCU_CLKSEL2_HCLK_DIV_MASK		GENMASK(22, 20)
 #define SCU_CLKSEL2_HCLK_DIV_SHIFT		20
 
-static uint32_t ast2700_soc1_get_hclk_rate(struct ast2700_soc1_scu *scu)
+static uint32_t ast2700_soc1_get_hclk_rate(struct ast2700_scu1 *scu)
 {
 	u32 rate = ast2700_soc1_get_pll_rate(scu, SCU1_CLK_HPLL);
 	u32 clk_sel2 = readl(&scu->clk_sel2);
@@ -115,7 +115,7 @@ static uint32_t ast2700_soc1_get_hclk_rate(struct ast2700_soc1_scu *scu)
 #define SCU_CLKSEL1_PCLK_DIV_MASK		GENMASK(20, 18)
 #define SCU_CLKSEL1_PCLK_DIV_SHIFT		18
 
-static uint32_t ast2700_soc1_get_pclk_rate(struct ast2700_soc1_scu *scu)
+static uint32_t ast2700_soc1_get_pclk_rate(struct ast2700_scu1 *scu)
 {
 	u32 rate = ast2700_soc1_get_pll_rate(scu, SCU1_CLK_HPLL);
 
@@ -131,7 +131,7 @@ static uint32_t ast2700_soc1_get_pclk_rate(struct ast2700_soc1_scu *scu)
 #define SCU_UART_CLKGEN_R_MASK			GENMASK(7, 0)
 #define SCU_UART_CLKGEN_R_SHIFT			0
 
-static uint32_t ast2700_soc1_get_uart_uxclk_rate(struct ast2700_soc1_scu *scu)
+static uint32_t ast2700_soc1_get_uart_uxclk_rate(struct ast2700_scu1 *scu)
 {
 	u32 uxclk_sel = readl(&scu->clk_sel2) & GENMASK(1, 0);
 	u32 uxclk_ctrl = readl(&scu->uxclk_ctrl);
@@ -165,7 +165,7 @@ static uint32_t ast2700_soc1_get_uart_uxclk_rate(struct ast2700_soc1_scu *scu)
 #define SCU_HUART_CLKGEN_R_MASK			GENMASK(7, 0)
 #define SCU_HUART_CLKGEN_R_SHIFT		0
 
-static uint32_t ast2700_soc1_get_uart_huxclk_rate(struct ast2700_soc1_scu *scu)
+static uint32_t ast2700_soc1_get_uart_huxclk_rate(struct ast2700_scu1 *scu)
 {
 	u32 huxclk_sel = (readl(&scu->clk_sel2) & GENMASK(4, 3)) >> 3;
 	u32 huxclk_ctrl = readl(&scu->huxclk_ctrl);
@@ -196,7 +196,7 @@ static uint32_t ast2700_soc1_get_uart_huxclk_rate(struct ast2700_soc1_scu *scu)
 #define SCU_CLKSRC4_SDIO_DIV_MASK		GENMASK(16, 14)
 #define SCU_CLKSRC4_SDIO_DIV_SHIFT		14
 
-static uint32_t ast2700_soc1_get_sdio_clk_rate(struct ast2700_soc1_scu *scu)
+static uint32_t ast2700_soc1_get_sdio_clk_rate(struct ast2700_scu1 *scu)
 {
 	uint32_t rate = 0;
 	uint32_t clk_sel1 = readl(&scu->clk_sel1);
@@ -217,7 +217,7 @@ static uint32_t ast2700_soc1_get_sdio_clk_rate(struct ast2700_soc1_scu *scu)
 }
 
 static uint32_t
-ast2700_soc1_get_uart_clk_rate(struct ast2700_soc1_scu *scu, int uart_idx)
+ast2700_soc1_get_uart_clk_rate(struct ast2700_scu1 *scu, int uart_idx)
 {
 	uint32_t rate = 0;
 
@@ -344,7 +344,7 @@ static void ast2700_init_rmii_clk(struct udevice *dev)
 static void ast2700_configure_mac01_clk(struct udevice *dev)
 {
 	struct ast2700_soc1_clk_priv *priv = dev_get_priv(dev);
-	struct ast2700_soc1_scu *scu = priv->scu;
+	struct ast2700_scu1 *scu = priv->scu;
 	struct mac_delay_config mac1_cfg, mac2_cfg;
 	u32 reg[3];
 	int ret;
@@ -496,7 +496,7 @@ static ulong ast2700_soc1_clk_get_rate(struct clk *clk)
 static int ast2700_soc1_clk_enable(struct clk *clk)
 {
 	struct ast2700_soc1_clk_priv *priv = dev_get_priv(clk->dev);
-	struct ast2700_soc1_scu *scu = priv->scu;
+	struct ast2700_scu1 *scu = priv->scu;
 	u32 clkgate_bit;
 
 	if (clk->id > 32)
