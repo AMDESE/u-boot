@@ -77,6 +77,7 @@
 
 &edaf_bridge0 {
 	status = "okay";
+	espi-base = <0x0 0x14c05000>;
 	ctl-base = <0x0 0x14010000>;
 	mem-base = <0x1 0x80000000>;
 	cmd-read = <0x130401>;
@@ -90,6 +91,7 @@
 
 &edaf_bridge1 {
 	status = "okay";
+	espi-base = <0x0 0x14c06000>;
 	ctl-base = <0x0 0x14020000>;
 	mem-base = <0x2 0x00000000>;
 	cmd-read = <0x130401>;

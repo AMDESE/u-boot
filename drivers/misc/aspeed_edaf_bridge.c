@@ -17,6 +17,9 @@
 #define   SCU1_HOST_CONF_EDAF_EN	BIT(10)
 #define   SCU1_HOST_CONF_LPC_EN		BIT(9)
 
+#define ESPI_CHN3_CTL			0x400
+#define   ESPI_CHN3_SW_READY		BIT(5)
+
 #define EDAF_BDGE_CBASE			0x20
 #define EDAF_BDGE_MBASE			0x24
 #define EDAF_BDGE_CMD_READ		0x40
@@ -33,11 +36,11 @@
 static int aspeed_edaf_bridge_probe(struct udevice *dev)
 {
 	void *edaf_bridge_regs;
-	uint64_t cbase, mbase;
+	uint64_t cbase, mbase, espibase;
 	uint32_t cfg;
 	uint32_t phandle;
 	ofnode node, scu1_node;
-	void *scu_regs;
+	void *scu_regs, *espi_regs;
 	int rc;
 
 	edaf_bridge_regs = (void *)devfdt_get_addr_index(dev, 0);
@@ -133,6 +136,14 @@ static int aspeed_edaf_bridge_probe(struct udevice *dev)
 	rc = ofnode_read_u32(node, "cmd-erase-64k", &cfg);
 	if (!rc)
 		writel(cfg, edaf_bridge_regs + EDAF_BDGE_CMD_ERASE_64K);
+
+	rc = ofnode_read_u64(node, "espi-base", &espibase);
+	if (!rc) {
+		espi_regs = (void *)(uintptr_t)espibase;
+		cfg = readl(espi_regs + ESPI_CHN3_CTL);
+		cfg |= ESPI_CHN3_SW_READY;
+		writel(cfg, espi_regs + ESPI_CHN3_CTL);
+	}
 
 	return 0;
 }
