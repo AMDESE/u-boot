@@ -891,7 +891,7 @@ static int ast2700_clk_probe(struct udevice *dev)
 	struct ast2700_clk_priv *priv = dev_get_priv(dev);
 
 	priv->init = (ast2700_clk_init_fn)dev_get_driver_data(dev);
-	priv->reg =  (void __iomem *)dev_read_addr_ptr(dev);
+	priv->reg =  (void __iomem *)dev_read_addr_ptr(dev->parent);
 
 	if (priv->init)
 		return priv->init(dev);
