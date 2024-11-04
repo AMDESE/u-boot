@@ -195,17 +195,21 @@ static u32 ast2700_soc1_get_uart_huxclk_rate(struct ast2700_scu1 *scu)
 	return ((rate * r) / (n * 2));
 }
 
-#define SCU_CLKSRC4_SDIO_DIV_MASK		GENMASK(16, 14)
-#define SCU_CLKSRC4_SDIO_DIV_SHIFT		14
+#define SCU_CLKSRC1_SDIO_DIV_MASK		GENMASK(16, 14)
+#define SCU_CLKSRC1_SDIO_DIV_SHIFT		14
+#define SCU_CLKSRC1_SDIO_SEL			BIT(13)
+const int ast2700_sd_div_tbl[] = {
+	2, 2, 3, 4, 5, 6, 7, 8
+};
 
 static u32 ast2700_soc1_get_sdio_clk_rate(struct ast2700_scu1 *scu)
 {
 	u32 rate = 0;
 	u32 clk_sel1 = readl(&scu->clk_sel1);
-	u32 div = (clk_sel1 & SCU_CLKSRC4_SDIO_DIV_MASK) >>
-			     SCU_CLKSRC4_SDIO_DIV_SHIFT;
+	u32 div = (clk_sel1 & SCU_CLKSRC1_SDIO_DIV_MASK) >>
+			     SCU_CLKSRC1_SDIO_DIV_SHIFT;
 
-	if (clk_sel1 & BIT(13))
+	if (clk_sel1 & SCU_CLKSRC1_SDIO_SEL)
 		rate = ast2700_soc1_get_pll_rate(scu, SCU1_CLK_APLL);
 	else
 		rate = ast2700_soc1_get_pll_rate(scu, SCU1_CLK_HPLL);
@@ -216,6 +220,23 @@ static u32 ast2700_soc1_get_sdio_clk_rate(struct ast2700_scu1 *scu)
 	div++;
 
 	return (rate / div);
+}
+
+static void ast2700_init_sdclk(struct ast2700_scu1 *scu)
+{
+	u32 src_clk = ast2700_soc1_get_pll_rate(scu, SCU1_CLK_HPLL);
+	u32 reg_280;
+	int i;
+
+	for (i = 0; i < 8; i++) {
+		if (src_clk / ast2700_sd_div_tbl[i] <= 200000000)
+			break;
+	}
+
+	reg_280 = readl(&scu->clk_sel1);
+	reg_280 &= ~(SCU_CLKSRC1_SDIO_DIV_MASK | SCU_CLKSRC1_SDIO_SEL);
+	reg_280 |= i << SCU_CLKSRC1_SDIO_DIV_SHIFT;
+	writel(reg_280, &scu->clk_sel1);
 }
 
 static u32
@@ -406,6 +427,13 @@ static u32 ast2700_soc0_get_pspclk_rate(struct ast2700_scu0 *scu)
 		case 0:
 			rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_MPLL);
 			break;
+		case 1:
+		case 2:
+		case 3:
+		case 6:
+		case 7:
+			rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_HPLL);
+			break;
 		case 4:
 			rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_MPLL) / 2;
 			break;
@@ -536,6 +564,43 @@ static u32 ast2700_soc0_get_mphyclk_rate(struct ast2700_scu0 *scu)
 	return (rate / (div + 1));
 }
 
+static void ast2700_mphy_clk_init(struct ast2700_scu0 *scu)
+{
+	u32 clksrc1, rate;
+	int i;
+
+	/* set mphy clk */
+	if (scu->chip_id1 & SCU_HW_REVISION_ID) {
+		clksrc1 = (scu->clk_sel2 & SCU_CLKSEL1_MPHYCLK_SEL_MASK)
+			  >> SCU_CLKSEL1_MPHYCLK_SEL_SHIFT;
+		switch (clksrc1) {
+		case 0:
+			rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_MPLL);
+			break;
+		case 1:
+			rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_HPLL);
+			break;
+		case 2:
+			rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_DPLL);
+			break;
+		case 3:
+			rate = 26000000;
+			break;
+		}
+	} else {
+		rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_HPLL);
+	}
+
+	for (i = 1; i < 256; i++) {
+		if ((rate / i) <= 26000000)
+			break;
+	}
+
+	/* register defined the value plus 1 is divider*/
+	i--;
+	writel(i, &scu->mphyclk_para);
+}
+
 #define SCU_CLKSRC1_EMMC_DIV_MASK		GENMASK(14, 12)
 #define SCU_CLKSRC1_EMMC_DIV_SHIFT		12
 #define SCU_CLKSRC1_EMMC_SEL			BIT(11)
@@ -553,6 +618,25 @@ static u32 ast2700_soc0_get_emmcclk_rate(struct ast2700_scu0 *scu)
 		rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_MPLL) / 4;
 
 	return (rate / ((div + 1) * 2));
+}
+
+static void ast2700_emmc_clk_init(struct ast2700_scu0 *scu)
+{
+	u32 clksrc1, rate, div;
+	int i;
+
+	/* set emmc clk src mpll/4:400Mhz */
+	clksrc1 = readl(&scu->clk_sel1);
+	rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_MPLL) / 4;
+	for (i = 0; i < 8; i++) {
+		div = (i + 1) * 2;
+		if ((rate / div) <= 200000000)
+			break;
+	}
+
+	clksrc1 &= ~(SCU_CLKSRC1_EMMC_DIV_MASK | SCU_CLKSRC1_EMMC_SEL);
+	clksrc1 |= (i << SCU_CLKSRC1_EMMC_DIV_SHIFT);
+	writel(clksrc1, &scu->clk_sel1);
 }
 
 static u32 ast2700_soc0_get_uartclk_rate(struct ast2700_scu0 *scu)
@@ -584,6 +668,9 @@ static ulong ast2700_soc0_clk_get_rate(struct clk *clk)
 	case SCU0_CLK_DPLL:
 	case SCU0_CLK_MPLL:
 		rate = ast2700_soc0_get_pll_rate((struct ast2700_scu0 *)priv->reg, clk->id);
+		break;
+	case SCU0_CLK_AXI0:
+		rate = ast2700_soc0_get_axi0clk_rate((struct ast2700_scu0 *)priv->reg);
 		break;
 	case SCU0_CLK_AXI1:
 		rate = ast2700_soc0_get_axi1clk_rate((struct ast2700_scu0 *)priv->reg);
@@ -737,85 +824,6 @@ static void ast2700_init_rmii_clk(struct ast2700_scu1 *scu)
 	reg_280 &= ~GENMASK(23, 21);
 	reg_280 |= div_idx << 21;
 	writel(reg_280, &scu->clk_sel1);
-}
-
-#define SCU_CLKSRC1_SD_DIV_SEL_MASK	GENMASK(17, 13)
-#define SCU_CLKSRC1_SD_DIV_SHIFT	14
-const int ast2700_sd_div_tbl[] = {
-	2, 2, 3, 4, 5, 6, 7, 8
-};
-
-static void ast2700_init_sdclk(struct ast2700_scu1 *scu)
-{
-	u32 src_clk = ast2700_soc1_get_pll_rate(scu, SCU1_CLK_HPLL);
-	u32 reg_280;
-	int i;
-
-	for (i = 0; i < 8; i++) {
-		if (src_clk / ast2700_sd_div_tbl[i] <= 200000000)
-			break;
-	}
-
-	reg_280 = readl(&scu->clk_sel1);
-	reg_280 &= ~SCU_CLKSRC1_SD_DIV_SEL_MASK;
-	reg_280 |= i << SCU_CLKSRC1_SD_DIV_SHIFT;
-	writel(reg_280, &scu->clk_sel1);
-}
-
-static void ast2700_emmc_clk_init(struct ast2700_scu0 *scu)
-{
-	u32 clksrc1, rate, div;
-	int i;
-
-	/* set emmc clk src mpll/4:400Mhz */
-	clksrc1 = readl(&scu->clk_sel1);
-	rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_MPLL) / 4;
-	for (i = 0; i < 8; i++) {
-		div = (i + 1) * 2;
-		if ((rate / div) <= 200000000)
-			break;
-	}
-
-	clksrc1 &= ~(SCU_CLKSRC1_EMMC_DIV_MASK | SCU_CLKSRC1_EMMC_SEL);
-	clksrc1 |= (i << SCU_CLKSRC1_EMMC_DIV_SHIFT);
-	writel(clksrc1, &scu->clk_sel1);
-}
-
-static void ast2700_mphy_clk_init(struct ast2700_scu0 *scu)
-{
-	u32 clksrc1, rate;
-	int i;
-
-	/* set mphy clk */
-	if (scu->chip_id1 & SCU_HW_REVISION_ID) {
-		clksrc1 = (scu->clk_sel2 & SCU_CLKSEL1_MPHYCLK_SEL_MASK)
-			  >> SCU_CLKSEL1_MPHYCLK_SEL_SHIFT;
-		switch (clksrc1) {
-		case 0:
-			rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_MPLL);
-			break;
-		case 1:
-			rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_HPLL);
-			break;
-		case 2:
-			rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_DPLL);
-			break;
-		case 3:
-			rate = 26000000;
-			break;
-		}
-	} else {
-		rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_HPLL);
-	}
-
-	for (i = 1; i < 256; i++) {
-		if ((rate / i) <= 26000000)
-			break;
-	}
-
-	/* register defined the value plus 1 is divider*/
-	i--;
-	writel(i, &scu->mphyclk_para);
 }
 
 static int ast2700_clk1_init(struct udevice *dev)
