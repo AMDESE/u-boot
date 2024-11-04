@@ -1022,6 +1022,11 @@
 		function = "SPI1QUAD";
 		groups = "SPI1QUAD";
 	};
+
+	pinctrl_sdio_default: sdio_default {
+		function = "SD";
+		groups = "SD";
+	};
 };
 
 #ifdef CONFIG_ASPEED_DP

@@ -200,14 +200,48 @@
 };
 
 &sdc {
-	timing-phase = <0x1f0097>;
 	status = "okay";
+	timing-phase = <0x1f00a7>;
+	sdhci_hs200; /* enable sdr104 */
+
+	vcc_sdio: vcc-sdio {
+		status = "okay";
+		compatible = "regulator-fixed";
+		gpios = <&gpio0 ASPEED_GPIO(G, 6) GPIO_ACTIVE_HIGH>;
+		regulator-name = "vcc_sdio";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		enable-active-high;
+		regulator-boot-on;
+	};
+
+	vccq_sdio: vccq-sdio {
+		status = "okay";
+		compatible = "regulator-gpio";
+		gpios = <&gpio0 ASPEED_GPIO(G, 7) GPIO_ACTIVE_HIGH>;
+		gpios-states = <1>;
+		states = <1800000 0x0>,
+			 <3300000 0x1>;
+		regulator-name = "vccq_sdio";
+		regulator-type = "voltage";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
 };
 
 &sdhci {
 	status = "okay";
-	sdhci,auto-cmd12;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sdio_default>;
+	vmmc-supply = <&vcc_sdio>;
+	vqmmc-supply = <&vccq_sdio>;
+	/*
+	 * When running SDR104 mode, it suggests to set driving to 3.
+	 * When running HS mode, it suggests to set driving to 2.
+	 */
 	sdhci-drive-type = <3>;
+	max-frequency = <100000000>;
 };
 
 &ufs {
