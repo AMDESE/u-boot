@@ -5,7 +5,7 @@ config SYS_CPU
 
 config SPI_KERNEL_FIT_ADDR
 	hex "SPI address of kernel FIT image"
-	default 0x100220000
+	default 0x100420000
 	help
 	  Kernel FIT start address in the SPI flash.
 
