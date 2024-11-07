@@ -12,6 +12,7 @@
 #include <linux/bitops.h>
 #include <linux/err.h>
 #include <dm/uclass.h>
+#include <power/regulator.h>
 
 #define AHBC_GROUP(x)				(0x40 * (x))
 #define AHBC_HREADY_WAIT_CNT_REG		0x34
@@ -63,6 +64,8 @@ int board_init(void)
 	int ret;
 
 	ahbc_init();
+
+	regulators_enable_boot_on(0);
 
 	/*
 	 * Loop over all MISC uclass drivers to call the comphy code
