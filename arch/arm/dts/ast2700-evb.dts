@@ -193,10 +193,12 @@
 &emmc_controller {
 	status = "okay";
 	timing-phase = <0xf0097>;
+	sdhci_hs200; /* enable hs200 */
 };
 
 &emmc {
 	status = "okay";
+	max-frequency = <200000000>;
 };
 
 &sdc {
