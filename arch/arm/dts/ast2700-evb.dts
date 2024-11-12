@@ -192,7 +192,6 @@
 
 &emmc_controller {
 	status = "okay";
-	timing-phase = <0xf0097>;
 	sdhci_hs200; /* enable hs200 */
 };
 
@@ -203,7 +202,6 @@
 
 &sdc {
 	status = "okay";
-	timing-phase = <0x1f00a7>;
 	sdhci_hs200; /* enable sdr104 */
 
 	vcc_sdio: vcc-sdio {
