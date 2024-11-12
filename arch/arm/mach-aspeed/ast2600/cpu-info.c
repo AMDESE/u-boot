@@ -258,7 +258,7 @@ void aspeed_print_sysrst_info(void)
 
 		if (rest & SYS_DRAM_ECC_RESET) {
 			printf("RST: DRAM_ECC_RESET\n");
-			writel(SYS_FLASH_ABR_RESET, ASPEED_SYS_RESET_CTRL);
+			writel(SYS_DRAM_ECC_RESET, ASPEED_SYS_RESET_CTRL);
 		}
 
 		if (rest & SYS_FLASH_ABR_RESET) {
