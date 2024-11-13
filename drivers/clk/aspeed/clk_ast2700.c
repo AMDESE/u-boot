@@ -344,28 +344,35 @@ struct clk_ops ast2700_soc1_clk_ops = {
 	.enable = ast2700_soc1_clk_enable,
 };
 
-static u32 ast2700_soc0_get_pll_rate(struct ast2700_scu0 *scu, int pll_idx)
+#define SCU_HW_REVISION_ID		GENMASK(23, 16)
+#define SCU_CPUCLK_MASK		GENMASK(4, 2)
+#define SCU_CPUCLK_SHIFT	2
+static u32 ast2700_soc0_get_hpll_rate(struct ast2700_scu0 *scu)
 {
 	union ast2700_pll_reg pll_reg;
 	u32 mul = 1, div = 1;
 	u32 rate;
 
-	switch (pll_idx) {
-	case SCU0_CLK_HPLL:
-		pll_reg.w = readl(&scu->hpll);
-		break;
-	case SCU0_CLK_DPLL:
-		pll_reg.w = readl(&scu->dpll);
-		break;
-	case SCU0_CLK_MPLL:
-		pll_reg.w = readl(&scu->mpll);
-		break;
-	default:
-		pr_err("Error:%s: invalid PSP clock source (%d)\n", __func__, pll_idx);
-		return -EINVAL;
-	}
+	pll_reg.w = readl(&scu->hpll);
 
-	if (pll_idx == SCU0_CLK_HPLL && ((scu->hwstrap1 & GENMASK(3, 2)) != 0U)) {
+	if ((scu->chip_id1 & SCU_HW_REVISION_ID) && (scu->hwstrap1 & BIT(3))) {
+		switch ((scu->hwstrap1 & GENMASK(4, 2)) >> 2) {
+		case 2:
+			rate = 1800000000;
+			break;
+		case 3:
+			rate = 1700000000;
+			break;
+		case 6:
+			rate = 1200000000;
+			break;
+		case 7:
+			rate = 800000000;
+			break;
+		default:
+			rate = 1600000000;
+		}
+	} else if (scu->hwstrap1 & GENMASK(3, 2)) {
 		switch ((scu->hwstrap1 & GENMASK(3, 2)) >> 2) {
 		case 1U:
 			rate = 1900000000;
@@ -377,24 +384,52 @@ static u32 ast2700_soc0_get_pll_rate(struct ast2700_scu0 *scu, int pll_idx)
 			rate = 1700000000;
 			break;
 		default:
-			rate = 2000000000;
+			rate = 1600000000;
 			break;
 		}
 	} else {
 		if (pll_reg.b.bypass == 0U) {
-			if (pll_idx == SCU0_CLK_MPLL) {
-				/* F = 25Mhz * [M / (n + 1)] / (p + 1) */
-				mul = (pll_reg.b.m) / ((pll_reg.b.n + 1));
-				div = (pll_reg.b.p + 1);
-			} else {
-				/* F = 25Mhz * [(M + 2) / 2 * (n + 1)] / (p + 1) */
-				mul = (pll_reg.b.m + 1) / ((pll_reg.b.n + 1) * 2);
-				div = (pll_reg.b.p + 1);
-			}
+			/* F = 25Mhz * [(M + 2) / 2 * (n + 1)] / (p + 1) */
+			mul = (pll_reg.b.m + 1) / ((pll_reg.b.n + 1) * 2);
+			div = (pll_reg.b.p + 1);
 		}
-
 		rate = ((CLKIN_25M * mul) / div);
 	}
+
+	return rate;
+}
+
+static u32 ast2700_soc0_get_pll_rate(struct ast2700_scu0 *scu, int pll_idx)
+{
+	union ast2700_pll_reg pll_reg;
+	u32 mul = 1, div = 1;
+	u32 rate;
+
+	switch (pll_idx) {
+	case SCU0_CLK_DPLL:
+		pll_reg.w = readl(&scu->dpll);
+		break;
+	case SCU0_CLK_MPLL:
+		pll_reg.w = readl(&scu->mpll);
+		break;
+	default:
+		pr_err("Error:%s: invalid PSP clock source (%d)\n", __func__, pll_idx);
+		return -EINVAL;
+	}
+
+	if (pll_reg.b.bypass == 0U) {
+		if (pll_idx == SCU0_CLK_MPLL) {
+			/* F = 25Mhz * [M / (n + 1)] / (p + 1) */
+			mul = (pll_reg.b.m) / ((pll_reg.b.n + 1));
+			div = (pll_reg.b.p + 1);
+		} else {
+			/* F = 25Mhz * [(M + 2) / 2 * (n + 1)] / (p + 1) */
+			mul = (pll_reg.b.m + 1) / ((pll_reg.b.n + 1) * 2);
+			div = (pll_reg.b.p + 1);
+		}
+	}
+
+	rate = ((CLKIN_25M * mul) / div);
 
 	return rate;
 }
@@ -412,10 +447,6 @@ static u32 ast2700_soc0_get_pll_rate(struct ast2700_scu0 *scu, int pll_idx)
  * 111: CPUCLK=HPLL=800MHz (HPLL frequency is constance and is not controlled by SCU300, SCU304)
  */
 
-#define SCU_HW_REVISION_ID		GENMASK(23, 16)
-#define SCU_CPUCLK_MASK		GENMASK(4, 2)
-#define SCU_CPUCLK_SHIFT	2
-
 static u32 ast2700_soc0_get_pspclk_rate(struct ast2700_scu0 *scu)
 {
 	u32 rate;
@@ -432,21 +463,21 @@ static u32 ast2700_soc0_get_pspclk_rate(struct ast2700_scu0 *scu)
 		case 3:
 		case 6:
 		case 7:
-			rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_HPLL);
+			rate = ast2700_soc0_get_hpll_rate(scu);
 			break;
 		case 4:
 			rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_MPLL) / 2;
 			break;
 		case 5:
-			rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_HPLL) / 2;
+			rate = ast2700_soc0_get_hpll_rate(scu) / 2;
 			break;
 		default:
-			rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_HPLL);
+			rate = ast2700_soc0_get_hpll_rate(scu);
 			break;
 		}
 	} else {
 		if (readl(&scu->hwstrap1) & BIT(4))
-			rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_HPLL);
+			rate = ast2700_soc0_get_hpll_rate(scu);
 		else
 			rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_MPLL);
 	}
@@ -472,7 +503,7 @@ static u32 ast2700_soc0_get_hclk_rate(struct ast2700_scu0 *scu)
 
 	if (scu->chip_id1 & SCU_HW_REVISION_ID) {
 		if (hwstrap1 & BIT(7))
-			src_clk = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_HPLL);
+			src_clk = ast2700_soc0_get_hpll_rate(scu);
 		else
 			src_clk = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_MPLL);
 
@@ -480,16 +511,16 @@ static u32 ast2700_soc0_get_hclk_rate(struct ast2700_scu0 *scu)
 		div = hclk_ast2700a1_div_table[div];
 	} else {
 		if (hwstrap1 & BIT(7))
-			src_clk = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_HPLL) / 2;
+			src_clk = ast2700_soc0_get_hpll_rate(scu);
 		else
-			src_clk = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_MPLL) / 2;
+			src_clk = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_MPLL);
 
 		div = (hwstrap1 & SCU_AHB_DIV_MASK) >> SCU_AHB_DIV_SHIFT;
 
 		if (!div)
-			div = 2;
+			div = 4;
 		else
-			div++;
+			div = (div + 1) * 2;
 	}
 	return (src_clk / div);
 }
@@ -548,7 +579,7 @@ static u32 ast2700_soc0_get_mphyclk_rate(struct ast2700_scu0 *scu)
 			rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_MPLL);
 			break;
 		case 1:
-			rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_HPLL);
+			rate = ast2700_soc0_get_hpll_rate(scu);
 			break;
 		case 2:
 			rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_DPLL);
@@ -558,7 +589,7 @@ static u32 ast2700_soc0_get_mphyclk_rate(struct ast2700_scu0 *scu)
 			break;
 		}
 	} else {
-		rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_HPLL);
+		rate = ast2700_soc0_get_hpll_rate(scu);
 	}
 
 	return (rate / (div + 1));
@@ -578,7 +609,7 @@ static void ast2700_mphy_clk_init(struct ast2700_scu0 *scu)
 			rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_MPLL);
 			break;
 		case 1:
-			rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_HPLL);
+			rate = ast2700_soc0_get_hpll_rate(scu);
 			break;
 		case 2:
 			rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_DPLL);
@@ -588,7 +619,7 @@ static void ast2700_mphy_clk_init(struct ast2700_scu0 *scu)
 			break;
 		}
 	} else {
-		rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_HPLL);
+		rate = ast2700_soc0_get_hpll_rate(scu);
 	}
 
 	for (i = 1; i < 256; i++) {
@@ -613,7 +644,7 @@ static u32 ast2700_soc0_get_emmcclk_rate(struct ast2700_scu0 *scu)
 	div = (clksel1 & SCU_CLKSRC1_EMMC_DIV_MASK) >> SCU_CLKSRC1_EMMC_DIV_SHIFT;
 
 	if (clksel1 & SCU_CLKSRC1_EMMC_SEL)
-		rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_HPLL) / 4;
+		rate = ast2700_soc0_get_hpll_rate(scu) / 4;
 	else
 		rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_MPLL) / 4;
 
@@ -665,6 +696,8 @@ static ulong ast2700_soc0_clk_get_rate(struct clk *clk)
 		rate = ast2700_soc0_get_pspclk_rate((struct ast2700_scu0 *)priv->reg);
 		break;
 	case SCU0_CLK_HPLL:
+		rate = ast2700_soc0_get_hpll_rate((struct ast2700_scu0 *)priv->reg);
+		break;
 	case SCU0_CLK_DPLL:
 	case SCU0_CLK_MPLL:
 		rate = ast2700_soc0_get_pll_rate((struct ast2700_scu0 *)priv->reg, clk->id);
