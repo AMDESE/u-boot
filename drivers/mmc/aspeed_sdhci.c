@@ -149,6 +149,7 @@ static int aspeed_set_ios_post(struct sdhci_host *host)
 	reg &= ~SDHCI_CTRL_DRV_TYPE_MASK;
 
 	switch (mmc->selected_mode) {
+	case MMC_LEGACY:
 	case SD_HS:
 	case UHS_SDR50:
 	case UHS_DDR50:
