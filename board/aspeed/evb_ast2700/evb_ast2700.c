@@ -8,6 +8,8 @@
 #include <dm/uclass.h>
 #include <net.h>
 #include <hexdump.h>
+#include <errno.h>
+#include <asm/io.h>
 
 #define SCM_EEPROM_I2C_BUS    (7)
 #define HPM_EEPROM_I2C_BUS    (8)
@@ -35,6 +37,10 @@
 #define ENV_ETH_ADDR            "ethaddr"
 #define ENV_ETH1_ADDR          "eth1addr"
 #define ENV_ETH2_ADDR          "eth2addr"
+
+/* Sys Scratch reg that holds sys_rst info, refer cpu-info.c */
+#define ASPEED_SYS_SCRATCH_7FC 0x12C027FC
+#define SYS_SRST		BIT(0)
 
 /* SP7 HPM boards */
 #define MARLEY_1        0x79
@@ -233,6 +239,20 @@ void aspeed_errata_app_note_6_pcie_ep()
        printf("applying Aspeed app note 6 pcie ep ... Done\n");
 }
 
+void update_por_env(void)
+{
+	const char *s;
+	u32 por_rst = readl(ASPEED_SYS_SCRATCH_7FC);
+
+	/* set reset reason env */
+	printf("Scratch register value: 0x%08x\n", por_rst);
+	if (por_rst & SYS_SRST)
+		env_set("por_rst", "true");
+	else
+		env_set("por_rst", "false");
+	env_save();
+}
+
 int misc_init_r(void)
 {
 	/* Read the FRU EEPROM and store in buffer */
@@ -295,6 +315,8 @@ int misc_init_r(void)
 	{
 		printf("Loading %s\n", env_get(ENV_BOARD_FIT_CONF));
 	}
+	/* set power-on reset variable */
+	update_por_env();
 
         /* apply aspeed errata */
         aspeed_errata_app_note_6_pcie_ep();
