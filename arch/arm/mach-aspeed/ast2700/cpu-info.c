@@ -84,9 +84,14 @@ void ast2700_print_wdtrst_info(void)
 #define SYS_EXTRST		BIT(1)
 #define SYS_SRST		BIT(0)
 
+/* One of Sys Scratch reg available for SW use 
+   save CPU reset info to create reset cause env variable */
+#define ASPEED_SYS_SCRATCH_7FC 0x12C027FC
+
 void ast2700_print_sysrst_info(void)
 {
 	u32 sys_rst = readl(ASPEED_CPU_RESET_LOG1);
+	writel(sys_rst, ASPEED_SYS_SCRATCH_7FC);
 
 	if (sys_rst & SYS_SRST) {
 		printf("RST: Power On\n");
