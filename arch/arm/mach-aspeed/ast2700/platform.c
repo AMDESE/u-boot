@@ -21,10 +21,14 @@ enum env_location env_get_location(enum env_operation op, int prio)
 	if (prio)
 		return env_loc;
 
-	if ((readl(ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_EMMC))
-		env_loc =  ENVL_MMC;
-	else
-		env_loc =  ENVL_SPI_FLASH;
+	if (IS_ENABLED(CONFIG_ENV_IS_NOWHERE)) {
+		env_loc = ENVL_NOWHERE;
+	} else {
+		if ((readl(ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_EMMC))
+			env_loc =  ENVL_MMC;
+		else
+			env_loc =  ENVL_SPI_FLASH;
+	}
 
 	return env_loc;
 }
