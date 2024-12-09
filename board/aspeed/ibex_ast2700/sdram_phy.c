@@ -183,7 +183,7 @@ void dwc_decode_streaming_message(void)
 	printf("Para:\n");
 	for (i = 0; i < count; i++) {
 		dwc_get_mailbox(1, &msg2);
-		printf("0x%x ", msg2 & 0xffff);
+		printf("0x%x ", msg2);
 	}
 
 	printf("\n");
