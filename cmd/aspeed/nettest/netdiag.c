@@ -38,7 +38,6 @@ struct mac_adaptor_s {
 static struct mac_adaptor_s mac_adaptor = { 0 };
 struct test_s test_obj = { 0 };
 u8 mac_addr[8] = { 0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 }; /*[0], [1]: pendding*/
-char patterns_cmd[256];
 
 int net_connect_mdio(int mac_idx, int mdio_idx)
 {
@@ -511,6 +510,7 @@ int netdiag_parse_parameter_from_pattern(int pattern_index, struct parameter_s *
 {
 	int argc;
 	char *argv[32] = { NULL };
+	char patterns_cmd[256] = { 0 };
 
 	memcpy(patterns_cmd, patterns[pattern_index], strlen(patterns[pattern_index]));
 
