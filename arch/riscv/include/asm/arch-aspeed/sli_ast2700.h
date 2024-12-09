@@ -14,6 +14,11 @@
 #define SLIV_IOD_BASE			(SLI_IOD_ADRBASE + 0x400)
 
 #define SLI_CTRL_I			0x00
+#define   SLI_ALL_IN_SUSPEND            BIT(28)
+#define   SLI_AUTO_CLR_OFF_DAT          BIT(23) /* No auto-clear when changing data pad delay */
+#define   SLI_AUTO_CLR_OFF_CLK          BIT(22) /* No auto-clear when changing clock pad delay */
+#define   SLI_SP_DOWN_PERIOD            GENMASK(21, 20)
+#define   SLI_NO_RST_TXCLK_CHG          BIT(17) /* No reset when changing TX clock */
 #define   SLIV_RAW_MODE			BIT(15)
 #define   SLI_TX_MODE			BIT(14)
 #define   SLI_RX_PHY_LAH_SEL_REV	BIT(13)
@@ -34,7 +39,8 @@
 #define     SLI_PHYCLK_800M		0x1
 #define     SLI_PHYCLK_400M		0x2
 #define     SLI_PHYCLK_200M		0x3
-#define     SLI_PHYCLK_788M		0x5
+#define     SLI_PHYCLK_1G		0x5	/* AST2700A1 */
+#define     SLI_PHYCLK_788M		0x5	/* AST2700A0 */
 #define     SLI_PHYCLK_500M		0x6
 #define     SLI_PHYCLK_250M		0x7
 #define   SLIH_PAD_DLY_TX1		GENMASK(23, 18)
@@ -68,7 +74,18 @@
 #define SLIM_MARB_FUNC_I		0x60
 #define   SLIM_SLI_MARB_RR		BIT(0)
 
+#if defined(CONFIG_SLI_TARGET_PHYCLK_1GHZ)
+#define SLI_TARGET_PHYCLK		SLI_PHYCLK_1G
+#elif defined(CONFIG_SLI_TARGET_PHYCLK_800MHZ)
+#define SLI_TARGET_PHYCLK		SLI_PHYCLK_800M
+#elif defined(CONFIG_SLI_TARGET_PHYCLK_500MHZ)
+#define SLI_TARGET_PHYCLK		SLI_PHYCLK_500M
+#elif defined(CONFIG_SLI_TARGET_PHYCLK_400MHZ)
 #define SLI_TARGET_PHYCLK		SLI_PHYCLK_400M
+#else
+#define SLI_TARGET_PHYCLK		SLI_PHYCLK_25M
+#endif
+
 #define SLIH_DEFAULT_DELAY		11
 #if (SLI_TARGET_PHYCLK == SLI_PHYCLK_800M) || (SLI_TARGET_PHYCLK == SLI_PHYCLK_788M)
 #define SLIM_DEFAULT_DELAY		5
