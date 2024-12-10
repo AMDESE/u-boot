@@ -29,6 +29,14 @@
 #define HPM_BRD_ID_OFFSET    (18)
 #define HPM_BRD_REV_OFFSET   (19)
 #define STR_BUF_LEN         (128)
+#define FRU_HDR_OFF_MULTIPLIER  8
+#define CIA_START_OFFSET        2
+#define CIA_HDR_SIZE            3
+#define FRU_FIELD_TYPE_LEN_SIZE 1
+#define FRU_FIELD_TYPE_LEN_MASK 0x3F
+#define MIN_CSN_UNIQ_STR_LEN    4
+#define HYPHEN_DELIM_SIZE       1
+#define HYPHEN_DELIM            '-'
 
 #define ENV_BOOTARGS           "bootargs"
 #define ENV_BOARD_FIT_CONF   "board_conf"
@@ -154,6 +162,51 @@ int get_platform_name( const u8 board_id, char* platname)
 	}
 	return ret;
 }
+/* extract chassis serial number as per FRU spec v1.0 */
+int get_cia_ser_num(const uint8_t* fru_buf, char* chassis_ser_num)
+{
+	size_t cia_start_offset, cpn_start_offset, cpn_end_offset, csn_start_offset;
+	int cpn_len = 0;
+	int csn_len = 0;
+
+	if (chassis_ser_num == NULL)
+		return -1;
+
+	cia_start_offset = fru_buf[CIA_START_OFFSET] * FRU_HDR_OFF_MULTIPLIER;
+	cpn_start_offset = cia_start_offset + CIA_HDR_SIZE;
+	cpn_len = (fru_buf[cpn_start_offset] & FRU_FIELD_TYPE_LEN_MASK);
+	cpn_end_offset = cpn_start_offset + cpn_len;
+	csn_start_offset = cpn_end_offset + FRU_FIELD_TYPE_LEN_SIZE;
+	csn_len = (fru_buf[csn_start_offset] & FRU_FIELD_TYPE_LEN_MASK);
+
+	if(csn_len > 0)
+		memcpy(chassis_ser_num, &fru_buf[csn_start_offset+FRU_FIELD_TYPE_LEN_SIZE], csn_len);
+	else
+		printf("invalid chassis serial number\n");
+	return csn_len;
+}
+
+int get_csn_uniq_str(const char* str, char delim, char* buf, size_t buf_len)
+{
+	int pos = 0;
+	int c;
+	int s_len = strlen(str);
+	for (c = 0; c < s_len; c++)
+	{
+		if (*(str+c) == delim)
+			pos = c;
+	}
+	for (c = 0; (*(str+pos) !='\0') && (c < (buf_len - 1)); c++)
+	{
+		buf[c]=*(str+pos);
+		pos++;
+	}
+	if (strlen(buf) > MIN_CSN_UNIQ_STR_LEN)
+		return pos;
+	else
+		return -1;
+}
+
 int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 {
 	char mac_str[MAC_ADDR_LEN] = {0};
@@ -165,6 +218,8 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 	char board_conf_name[STR_BUF_LEN] = {0};
 	char board_id_str[STR_BUF_LEN] = {0};
 	char board_rev_str[STR_BUF_LEN] = {0};
+	char chassis_ser_num[STR_BUF_LEN] = {0};
+	char hpm_csn_uniq_str[STR_BUF_LEN] = {0};
 	u8 board_id = 0;
 	u8 board_rev = 0;
 	u8 hpm_mrc = 0;
@@ -217,7 +272,19 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 		return -1;
 	}
 	else {
-		bin2hex(mac_str, scm_eeprom_buf + LAST_2B_MAC0_ADDR, LAST_2B_MAC0_LEN);
+		/* try reading chassis info area serial number from HPM eeprom */
+		/* Get chassis Info area, read chassis serial num */
+		/* strip out last uniq string and convert to hostname */
+		if (get_cia_ser_num(hpm_eeprom_buf, chassis_ser_num) > 0) {
+			printf("Chassis Serial Number: %s\n", chassis_ser_num);
+			if(get_csn_uniq_str(chassis_ser_num, HYPHEN_DELIM, hpm_csn_uniq_str, sizeof hpm_csn_uniq_str) > 0)
+				printf("Unique ID: %s\n",hpm_csn_uniq_str);
+			if (strlen(hpm_csn_uniq_str) > 0)
+				memcpy(mac_str, hpm_csn_uniq_str + HYPHEN_DELIM_SIZE, strlen(hpm_csn_uniq_str)-HYPHEN_DELIM_SIZE);
+		}
+		else /* read mac address from SCM eeprom */
+			bin2hex(mac_str, scm_eeprom_buf + LAST_2B_MAC0_ADDR, LAST_2B_MAC0_LEN);
+		/* update bootargs with new hostname */
 		old_bootargs = env_get(ENV_BOOTARGS);
 		if  ( !(strstr(old_bootargs, "systemd.hostname")) ) {
 			/* Hostname to pass to systemd-networking */
