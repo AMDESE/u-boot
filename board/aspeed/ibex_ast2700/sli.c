@@ -20,12 +20,33 @@
 
 #define SLI_POLL_TIMEOUT_US	100
 
-static void sli_clear_interrupt_status(uint32_t base)
+#define SLI0_REG		0x12c17000
+#define SLI1_REG		0x14c1e000
+
+struct sli_config {
+	uintptr_t slim; /* SLI MBUS */
+	uintptr_t slih; /* SLI AHB */
+	uintptr_t sliv; /* SLI VIDEO */
+	int eng_clk_freq;
+	int phy_clk_freq;
+};
+
+struct sli_data {
+	struct sli_config die0;	/* CPU die */
+	struct sli_config die1;	/* IO die */
+
+#define SLI_FLAG_AST2700A0		BIT(0)
+#define SLI_FLAG_RX_LAH_NEG_IO_SLIH	BIT(1)
+#define SLI_FLAG_RX_LAH_NEG_IO_SLIM	BIT(2)
+	uint32_t flags;
+};
+
+static void sli_clear_interrupt_status(uintptr_t base)
 {
 	writel(0xfffff, (void *)base + SLI_INTR_STATUS);
 }
 
-static int sli_wait(uint32_t base, uint32_t mask)
+static int sli_wait(uintptr_t base, uint32_t mask)
 {
 	uint32_t value;
 
@@ -40,12 +61,12 @@ static int sli_wait(uint32_t base, uint32_t mask)
 	return 0;
 }
 
-static int sli_wait_suspend(uint32_t base)
+static int sli_wait_suspend(uintptr_t base)
 {
 	return sli_wait(base, SLI_INTR_TX_SUSPEND | SLI_INTR_RX_SUSPEND);
 }
 
-static int is_sli_suspend(uint32_t base)
+static int is_sli_suspend(uintptr_t base)
 {
 	uint32_t value;
 	uint32_t suspend = SLI_INTR_TX_SUSPEND | SLI_INTR_RX_SUSPEND;
@@ -59,7 +80,7 @@ static int is_sli_suspend(uint32_t base)
 		return 0;
 }
 
-static int sli_wait_clear_done(uint32_t base, uint32_t mask)
+static int sli_wait_clear_done(uintptr_t base, uint32_t mask)
 {
 	uint32_t value;
 
@@ -67,14 +88,14 @@ static int sli_wait_clear_done(uint32_t base, uint32_t mask)
 				  SLI_POLL_TIMEOUT_US);
 }
 
-static int sli_clear(uint32_t base, uint32_t clr)
+static int sli_clear(uintptr_t base, uint32_t clr)
 {
 	setbits_le32(base + SLI_CTRL_I, clr);
 
 	return sli_wait_clear_done(base, clr & ~SLI_CLEAR_BUS);
 }
 
-static void __maybe_unused sli_set_ahb_rx_delay_single(uint32_t base, int index, int d)
+static void __maybe_unused sli_set_ahb_rx_delay_single(uintptr_t base, int index, int d)
 {
 	uint32_t offset = index * 6;
 	uint32_t mask = SLIH_PAD_DLY_RX0 << offset;
@@ -83,7 +104,7 @@ static void __maybe_unused sli_set_ahb_rx_delay_single(uint32_t base, int index,
 	udelay(8);
 }
 
-static void sli_set_ahb_rx_delay(uint32_t base, int d0, int d1)
+static void sli_set_ahb_rx_delay(uintptr_t base, int d0, int d1)
 {
 	uint32_t value;
 
@@ -92,25 +113,25 @@ static void sli_set_ahb_rx_delay(uint32_t base, int d0, int d1)
 	udelay(8);
 }
 
-static void sli_calibrate_ahb_delay(int config)
+static void sli_calibrate_ahb_delay(struct sli_data *data)
 {
 	int dc;
 	int d_first_pass = -1;
 	int d_last_pass = -1;
 
-	if (config)
-		setbits_le32(SLIH_IOD_BASE + SLI_CTRL_I, SLI_RX_PHY_LAH_SEL_NEG);
+	if (data->flags & SLI_FLAG_RX_LAH_NEG_IO_SLIH)
+		setbits_le32(data->die1.slih + SLI_CTRL_I, SLI_RX_PHY_LAH_SEL_NEG);
 	else
-		clrbits_le32(SLIH_IOD_BASE + SLI_CTRL_I, SLI_RX_PHY_LAH_SEL_NEG);
+		clrbits_le32(data->die1.slih + SLI_CTRL_I, SLI_RX_PHY_LAH_SEL_NEG);
 
 	for (dc = 6; dc < 20; dc++) {
-		sli_set_ahb_rx_delay(SLIH_IOD_BASE, dc, dc);
-		sli_clear(SLIH_IOD_BASE, SLI_CLEAR_RX | SLI_CLEAR_BUS);
+		sli_set_ahb_rx_delay(data->die1.slih, dc, dc);
+		sli_clear(data->die1.slih, SLI_CLEAR_RX | SLI_CLEAR_BUS);
 
 		/* Check result */
-		sli_clear_interrupt_status(SLIH_IOD_BASE);
+		sli_clear_interrupt_status(data->die1.slih);
 		udelay(10);
-		if (is_sli_suspend(SLIH_IOD_BASE) > 0) {
+		if (is_sli_suspend(data->die1.slih) > 0) {
 			if (d_first_pass == -1)
 				d_first_pass = dc;
 
@@ -123,19 +144,19 @@ static void sli_calibrate_ahb_delay(int config)
 	dc = (d_first_pass + d_last_pass) >> 1;
 	debug("IOD SLIH DS coarse win: {%d, %d} -> select %d\n", d_first_pass, d_last_pass, dc);
 
-	sli_set_ahb_rx_delay(SLIH_IOD_BASE, dc, dc);
+	sli_set_ahb_rx_delay(data->die1.slih, dc, dc);
 
 	/* Reset IOD SLIH Bus (to reset the counters) and RX */
-	sli_clear(SLIH_IOD_BASE, SLI_CLEAR_RX | SLI_CLEAR_BUS);
+	sli_clear(data->die1.slih, SLI_CLEAR_RX | SLI_CLEAR_BUS);
 
 	/* Turn on the hardware training and wait suspend state */
-	clrbits_le32(SLIH_IOD_BASE + SLI_CTRL_I, SLI_AUTO_SEND_TRN_OFF);
-	sli_wait_suspend(SLIH_IOD_BASE);
+	clrbits_le32(data->die1.slih + SLI_CTRL_I, SLI_AUTO_SEND_TRN_OFF);
+	sli_wait_suspend(data->die1.slih);
 
 	/* SLI-H is available now */
 }
 
-static void sli_set_mbus_rx_delay_single(uint32_t base, int index, int d)
+static void sli_set_mbus_rx_delay_single(uintptr_t base, int index, int d)
 {
 	uint32_t offset = index * 6;
 	uint32_t mask = SLIM_PAD_DLY_RX0 << offset;
@@ -144,7 +165,7 @@ static void sli_set_mbus_rx_delay_single(uint32_t base, int index, int d)
 	udelay(8);
 }
 
-static void sli_set_mbus_rx_delay(uint32_t base, int d0, int d1, int d2, int d3)
+static void sli_set_mbus_rx_delay(uintptr_t base, int d0, int d1, int d2, int d3)
 {
 	uint32_t clr, set;
 
@@ -155,23 +176,23 @@ static void sli_set_mbus_rx_delay(uint32_t base, int d0, int d1, int d2, int d3)
 	udelay(8);
 }
 
-static int sli_calibrate_mbus_pad_delay(int index, int begin, int end)
+static int sli_calibrate_mbus_pad_delay(struct sli_data *data, int index, int begin, int end)
 {
 	int d;
 	int d_first_pass = -1;
 	int d_last_pass = -1;
 
 	for (d = begin; d < end; d++) {
-		sli_set_mbus_rx_delay_single(SLIM_IOD_BASE, index, d);
+		sli_set_mbus_rx_delay_single(data->die1.slim, index, d);
 
 		/* Reset CPU-die TX and IO-die RX */
-		sli_clear(SLIM_CPU_BASE, SLI_CLEAR_TX | SLI_CLEAR_BUS);
-		sli_clear(SLIM_IOD_BASE, SLI_CLEAR_RX | SLI_CLEAR_BUS);
+		sli_clear(data->die0.slim, SLI_CLEAR_TX | SLI_CLEAR_BUS);
+		sli_clear(data->die1.slim, SLI_CLEAR_RX | SLI_CLEAR_BUS);
 
 		/* Check result */
-		sli_clear_interrupt_status(SLIM_IOD_BASE);
+		sli_clear_interrupt_status(data->die1.slim);
 		udelay(10);
-		if (is_sli_suspend(SLIM_IOD_BASE) > 0) {
+		if (is_sli_suspend(data->die1.slim) > 0) {
 			if (d_first_pass == -1)
 				d_first_pass = d;
 
@@ -191,30 +212,30 @@ static int sli_calibrate_mbus_pad_delay(int index, int begin, int end)
 	return d;
 }
 
-static void sli_calibrate_mbus_delay(int config)
+static void sli_calibrate_mbus_delay(struct sli_data *data)
 {
 	int dc, d0, d1, d2, d3;
 	int begin, end;
 	int d_first_pass = -1;
 	int d_last_pass = -1;
 
-	if (config)
-		setbits_le32(SLIM_IOD_BASE + SLI_CTRL_I, SLI_RX_PHY_LAH_SEL_NEG);
+	if (data->flags & SLI_FLAG_RX_LAH_NEG_IO_SLIM)
+		setbits_le32(data->die1.slim + SLI_CTRL_I, SLI_RX_PHY_LAH_SEL_NEG);
 	else
-		clrbits_le32(SLIM_IOD_BASE + SLI_CTRL_I, SLI_RX_PHY_LAH_SEL_NEG);
+		clrbits_le32(data->die1.slim + SLI_CTRL_I, SLI_RX_PHY_LAH_SEL_NEG);
 
 	/* Find coarse delay */
 	for (dc = 0; dc < 16; dc++) {
-		sli_set_mbus_rx_delay(SLIM_IOD_BASE, dc, dc, dc, dc);
+		sli_set_mbus_rx_delay(data->die1.slim, dc, dc, dc, dc);
 
 		/* Reset CPU-die TX and IO-die RX */
-		sli_clear(SLIM_CPU_BASE, SLI_CLEAR_TX | SLI_CLEAR_BUS);
-		sli_clear(SLIM_IOD_BASE, SLI_CLEAR_RX | SLI_CLEAR_BUS);
+		sli_clear(data->die0.slim, SLI_CLEAR_TX | SLI_CLEAR_BUS);
+		sli_clear(data->die1.slim, SLI_CLEAR_RX | SLI_CLEAR_BUS);
 
 		/* Check result */
-		sli_clear_interrupt_status(SLIM_IOD_BASE);
+		sli_clear_interrupt_status(data->die1.slim);
 		udelay(10);
-		if (is_sli_suspend(SLIM_IOD_BASE) > 0) {
+		if (is_sli_suspend(data->die1.slim) > 0) {
 			if (d_first_pass == -1)
 				d_first_pass = dc;
 
@@ -231,34 +252,34 @@ static void sli_calibrate_mbus_delay(int config)
 
 	debug("IOD SLIM DS coarse win: {%d, %d} -> select %d\n", d_first_pass, d_last_pass, dc);
 
-	sli_set_mbus_rx_delay(SLIM_IOD_BASE, dc, dc, dc, dc);
+	sli_set_mbus_rx_delay(data->die1.slim, dc, dc, dc, dc);
 
 	begin = max(dc - 5, 0);
 	end = min(dc + 5, 32);
 
 	/* Fine-tune per-PAD delay */
-	d0 = sli_calibrate_mbus_pad_delay(0, begin, end);
-	sli_set_mbus_rx_delay_single(SLIM_IOD_BASE, 0, d0);
+	d0 = sli_calibrate_mbus_pad_delay(data, 0, begin, end);
+	sli_set_mbus_rx_delay_single(data->die1.slim, 0, d0);
 
-	d1 = sli_calibrate_mbus_pad_delay(1, begin, end);
-	sli_set_mbus_rx_delay_single(SLIM_IOD_BASE, 1, d1);
+	d1 = sli_calibrate_mbus_pad_delay(data, 1, begin, end);
+	sli_set_mbus_rx_delay_single(data->die1.slim, 1, d1);
 
-	d2 = sli_calibrate_mbus_pad_delay(2, begin, end);
-	sli_set_mbus_rx_delay_single(SLIM_IOD_BASE, 2, d2);
+	d2 = sli_calibrate_mbus_pad_delay(data, 2, begin, end);
+	sli_set_mbus_rx_delay_single(data->die1.slim, 2, d2);
 
-	d3 = sli_calibrate_mbus_pad_delay(3, begin, end);
-	sli_set_mbus_rx_delay_single(SLIM_IOD_BASE, 3, d3);
+	d3 = sli_calibrate_mbus_pad_delay(data, 3, begin, end);
+	sli_set_mbus_rx_delay_single(data->die1.slim, 3, d3);
 
 	/* Reset CPU-die TX and IO-die RX */
-	sli_clear(SLIM_CPU_BASE, SLI_CLEAR_TX | SLI_CLEAR_BUS);
-	sli_clear(SLIM_IOD_BASE, SLI_CLEAR_RX | SLI_CLEAR_BUS);
+	sli_clear(data->die0.slim, SLI_CLEAR_TX | SLI_CLEAR_BUS);
+	sli_clear(data->die1.slim, SLI_CLEAR_RX | SLI_CLEAR_BUS);
 
 	/* Turn on the hardware training and wait suspend state */
-	clrbits_le32(SLIM_IOD_BASE + SLI_CTRL_I, SLI_AUTO_SEND_TRN_OFF);
-	sli_wait_suspend(SLIM_IOD_BASE);
+	clrbits_le32(data->die1.slim + SLI_CTRL_I, SLI_AUTO_SEND_TRN_OFF);
+	sli_wait_suspend(data->die1.slim);
 
 	/* Enable the MARB RR mode for AST2700A0 */
-	setbits_le32(SLIM_IOD_BASE + SLIM_MARB_FUNC_I, SLIM_SLI_MARB_RR);
+	setbits_le32(data->die1.slim + SLIM_MARB_FUNC_I, SLIM_SLI_MARB_RR);
 }
 
 static void sli_set_cpu_die_hpll(void)
@@ -292,73 +313,90 @@ static void sli_set_cpu_die_hpll(void)
  */
 int sli_init(void)
 {
-	uint32_t value;
-	bool is_ast2700a0;
+	struct sli_data ast2700_sli_data[1];
+	struct sli_data *data = ast2700_sli_data;
+	uint32_t reg_val;
 
 	__maybe_unused int phyclk_lookup[8] = {
 		25, 800, 400, 200, 2000, 1000, 500, 250,
 	};
 
-	/* The following training sequence is designed for AST2700A0 */
-	value = FIELD_GET(SCU_CPU_REVISION_ID_HW,
-			  readl((void *)ASPEED_IO_REVISION_ID));
-	is_ast2700a0 = value ? false : true;
+	/* CPU die */
+	data->die0.slim = SLI0_REG + 0x000;
+	data->die0.slih = SLI0_REG + 0x200;
+	data->die0.sliv = SLI0_REG + 0x400;
+	data->die0.eng_clk_freq = SLI_TARGET_ENGCLK;
+	data->die0.phy_clk_freq = SLI_PHYCLK_25M;
+
+	/* IO die */
+	data->die1.slim = SLI1_REG + 0x000;
+	data->die1.slih = SLI1_REG + 0x200;
+	data->die1.sliv = SLI1_REG + 0x400;
+	data->die1.eng_clk_freq = SLI_TARGET_ENGCLK;
+	data->die1.phy_clk_freq = SLI_TARGET_PHYCLK;
+
+	data->flags = 0;
+
+	reg_val = readl((void *)ASPEED_IO_REVISION_ID);
+	if (FIELD_GET(SCU_CPU_REVISION_ID_HW, reg_val) == 0)
+		data->flags |= SLI_FLAG_AST2700A0;
 
 	/* Return if SLI had been calibrated */
-	value = readl((void *)SLIH_IOD_BASE + SLI_CTRL_III);
-	value = FIELD_GET(SLI_CLK_SEL, value);
-	if (value) {
+	reg_val = readl((void *)data->die1.slih + SLI_CTRL_III);
+	reg_val = FIELD_GET(SLI_CLK_SEL, reg_val);
+	if (reg_val) {
 		debug("SLI has been initialized\n");
 		return 0;
 	}
 
-	if (is_ast2700a0) {
-		/* 25MHz PAD delay for AST2700A0 */
-		value = SLI_RX_PHY_LAH_SEL_NEG | SLI_TRANS_EN | SLI_CLEAR_BUS;
-		writel(value, (void *)SLIH_IOD_BASE + SLI_CTRL_I);
-		writel(value, (void *)SLIM_IOD_BASE + SLI_CTRL_I);
-		writel(value | SLIV_RAW_MODE, (void *)SLIV_IOD_BASE + SLI_CTRL_I);
-		sli_wait_suspend(SLIH_IOD_BASE);
-		sli_wait_suspend(SLIH_CPU_BASE);
+	/* AST2700A0 workaround for 25MHz */
+	if (data->flags & SLI_FLAG_AST2700A0) {
+		reg_val = SLI_RX_PHY_LAH_SEL_NEG | SLI_TRANS_EN | SLI_CLEAR_BUS;
+		writel(reg_val, (void *)data->die1.slih + SLI_CTRL_I);
+		writel(reg_val, (void *)data->die1.slim + SLI_CTRL_I);
+		writel(reg_val | SLIV_RAW_MODE, (void *)data->die1.sliv + SLI_CTRL_I);
+		sli_wait_suspend(data->die1.slih);
+		sli_wait_suspend(data->die0.slih);
 		debug("SLI US/DS @ 25MHz init done\n");
 
 		/* AST2700A0 workaround to save SD waveform */
 		sli_set_cpu_die_hpll();
 		phyclk_lookup[5] = 788;
+
+		if (data->die1.phy_clk_freq == SLI_PHYCLK_800M ||
+		    data->die1.phy_clk_freq == SLI_PHYCLK_788M)
+			data->flags |= SLI_FLAG_RX_LAH_NEG_IO_SLIM;
 	}
 
 	if (IS_ENABLED(CONFIG_SLI_TARGET_PHYCLK_25MHZ))
 		return 0;
 
-	/* Change SLIH engine clock to 500M */
-	value = FIELD_PREP(SLI_CLK_SEL, SLI_CLK_500M);
-	clrsetbits_le32(SLIH_IOD_BASE + SLI_CTRL_III, SLI_CLK_SEL, value);
-	clrsetbits_le32(SLIH_CPU_BASE + SLI_CTRL_III, SLI_CLK_SEL, value);
+	/* Speed up engine clock before adjusting PHY TX clock and delay */
+	reg_val = FIELD_PREP(SLI_CLK_SEL, SLI_TARGET_ENGCLK);
+	clrsetbits_le32(data->die1.slih + SLI_CTRL_III, SLI_CLK_SEL, reg_val);
+	clrsetbits_le32(data->die0.slih + SLI_CTRL_III, SLI_CLK_SEL, reg_val);
 
 	/* Turn off auto-clear for AST2700A1 */
-	if (!is_ast2700a0) {
-		setbits_le32(SLIH_IOD_BASE + SLI_CTRL_I,
+	if (!(data->flags & SLI_FLAG_AST2700A0)) {
+		setbits_le32(data->die1.slih + SLI_CTRL_I,
 			     SLI_AUTO_CLR_OFF_DAT | SLI_AUTO_CLR_OFF_CLK | SLI_NO_RST_TXCLK_CHG);
-		setbits_le32(SLIH_CPU_BASE + SLI_CTRL_I,
+		setbits_le32(data->die0.slih + SLI_CTRL_I,
 			     SLI_AUTO_CLR_OFF_DAT | SLI_AUTO_CLR_OFF_CLK | SLI_NO_RST_TXCLK_CHG);
 	}
 
-	/* Speed up the CPU SLIH PHY clock. Don't access CPU-die from now on */
-	value = FIELD_PREP(SLI_PHYCLK_SEL, SLI_TARGET_PHYCLK);
-	clrsetbits_le32(SLIH_CPU_BASE + SLI_CTRL_III,
-			SLI_PHYCLK_SEL | SLIH_PAD_DLY_TX1 | SLIH_PAD_DLY_TX0,
-			value);
+	/* Speed up CPU die PHY TX clock and clear TX PAD delay */
+	reg_val = FIELD_PREP(SLI_PHYCLK_SEL, SLI_TARGET_PHYCLK);
+	clrsetbits_le32(data->die0.slih + SLI_CTRL_III,
+			SLI_PHYCLK_SEL | SLIH_PAD_DLY_TX1 | SLIH_PAD_DLY_TX0, reg_val);
 
-	/* IOD SLIM/H/V training off */
-	setbits_le32(SLIH_IOD_BASE + SLI_CTRL_I, SLI_AUTO_SEND_TRN_OFF);
-	setbits_le32(SLIM_IOD_BASE + SLI_CTRL_I, SLI_AUTO_SEND_TRN_OFF);
-	setbits_le32(SLIV_IOD_BASE + SLI_CTRL_I, SLI_AUTO_SEND_TRN_OFF);
+	/* Turn off auto-training */
+	setbits_le32(data->die1.slih + SLI_CTRL_I, SLI_AUTO_SEND_TRN_OFF);
+	setbits_le32(data->die1.slim + SLI_CTRL_I, SLI_AUTO_SEND_TRN_OFF);
+	setbits_le32(data->die1.sliv + SLI_CTRL_I, SLI_AUTO_SEND_TRN_OFF);
 
 	/* Calibrate SLIH DS delay */
-	sli_calibrate_ahb_delay(0);
-
-	/* It's okay to access CPU-die now. Calibrate SLIM DS delay */
-	sli_calibrate_mbus_delay(SLIM_LAH_CONFIG);
+	sli_calibrate_ahb_delay(data);
+	sli_calibrate_mbus_delay(data);
 
 	debug("SLI DS @ %dMHz init done\n", phyclk_lookup[SLI_TARGET_PHYCLK]);
 	return 0;
