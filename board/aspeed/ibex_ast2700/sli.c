@@ -255,7 +255,7 @@ static void sli_calibrate_mbus_delay(struct sli_data *data)
 	sli_set_mbus_rx_delay(data->die1.slim, dc, dc, dc, dc);
 
 	begin = max(dc - 5, 0);
-	end = min(dc + 5, 32);
+	end = min(dc + 5, 31);
 
 	/* Fine-tune per-PAD delay */
 	d0 = sli_calibrate_mbus_pad_delay(data, 0, begin, end);
