@@ -19,16 +19,56 @@
 		#size-cells = <1>;
 		bootph-all;
 
-		pcie_vbios0: pcie_vbios0@b10a0000 {
-			reg = <0xb10a0000 0x10000>;
+		espi_mmbi_memory: espi-mmbi-memory@a8000000 {
+			reg = <0xa8000000 0x4000000>;
+			no-map;
+		};
+
+		ssp_memory: ssp-memory@ac000000 {
+			reg = <0xac000000 0x2000000>;
+			no-map;
+		};
+
+		tsp_memory: tsp-memory@ae000000 {
+			reg = <0xae000000 0x2000000>;
+			no-map;
+		};
+
+		atf: trusted-firmware-a@b0000000 {
+			reg = <0xb0000000 0x80000>;
+			no-map;
+		};
+
+		optee_core: optee-core@b0080000 {
+			reg = <0xb0080000 0x1000000>;
+			no-map;
+		};
+
+		pcie_vbios0: pcie_vbios0@b1bb0000 {
+			reg = <0xb1bb0000 0x10000>;
 			no-map;
 			bootph-all;
 		};
 
-		pcie_vbios1: pcie_vbios1@b10b0000 {
-			reg = <0xb10b0000 0x10000>;
+		pcie_vbios1: pcie_vbios1@b1bc0000 {
+			reg = <0xb1bc0000 0x10000>;
 			no-map;
 			bootph-all;
+		};
+
+		mctp0_reserved: mctp0-reserved@b1bd0000 {
+			reg = <0xb1bd0000 0x10000>;
+			no-map;
+		};
+
+		mctp1_reserved: mctp1-reserved@b1be0000 {
+			reg = <0xb1be0000 0x10000>;
+			no-map;
+		};
+
+		mctp2_reserved: mctp2-reserved@b1bf0000 {
+			reg = <0xb1bf0000 0x10000>;
+			no-map;
 		};
 	};
 
