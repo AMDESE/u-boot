@@ -22,8 +22,18 @@
 		#address-cells = <2>;
 		#size-cells = <2>;
 
-		mcu_fw: mcu-firmware@42fe00000 {
-			reg = <0x4 0x2fe00000 0x0 0x200000>;
+		espi_mmbi_memory: espi-mmbi-memory@428000000 {
+			reg = <0x4 0x28000000 0x0 0x4000000>;
+			no-map;
+		};
+
+		ssp_memory: ssp-memory@42c000000 {
+			reg = <0x4 0x2c000000 0x0 0x2000000>;
+			no-map;
+		};
+
+		tsp_memory: tsp-memory@42e000000 {
+			reg = <0x4 0x2e000000 0x0 0x2000000>;
 			no-map;
 		};
 
@@ -32,40 +42,33 @@
 			no-map;
 		};
 
-		optee_core: optee_core@430080000 {
+		optee_core: optee-core@430080000 {
 			reg = <0x4 0x30080000 0x0 0x1000000>;
 			no-map;
 		};
 
-		mctp0_reserved: mctp0_reserved@431080000 {
-			reg = <0x4 0x31080000 0x0 0x10000>;
-			compatible = "shared-dma-pool";
+		vbios_base0: vbios-base0@431bb0000 {
+			reg = <0x4 0x31bb0000 0x0 0x10000>;
 			no-map;
 		};
 
-		mctp1_reserved: mctp1_reserved@431090000 {
-			reg = <0x4 0x31090000 0x0 0x10000>;
-			compatible = "shared-dma-pool";
+		vbios_base1: vbios-base1@431bc0000 {
+			reg = <0x4 0x31bc0000 0x0 0x10000>;
 			no-map;
 		};
 
-		pcie_vbios0: pcie_vbios0@4310a0000 {
-			reg = <0x4 0x310a0000 0x0 0x10000>;
+		mctp0_reserved: mctp0-reserved@431bd0000 {
+			reg = <0x4 0x31bd0000 0x0 0x10000>;
 			no-map;
 		};
 
-		pcie_vbios1: pcie_vbios1@4310b0000 {
-			reg = <0x4 0x310b0000 0x0 0x10000>;
+		mctp1_reserved: mctp1-reserved@431be0000 {
+			reg = <0x4 0x31be0000 0x0 0x10000>;
 			no-map;
 		};
 
-		ssp_memory: ssp-memory@432000000 {
-			reg = <0x4 0x32000000 0x0 0x2000000>;
-			no-map;
-		};
-
-		tsp_memory: tsp-memory@434000000 {
-			reg = <0x4 0x34000000 0x0 0x2000000>;
+		mctp2_reserved: mctp2-reserved@431bf0000 {
+			reg = <0x4 0x31bf0000 0x0 0x10000>;
 			no-map;
 		};
 	};
