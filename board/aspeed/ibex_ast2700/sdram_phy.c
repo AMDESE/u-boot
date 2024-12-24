@@ -11,7 +11,7 @@
 #define SCU0_DDR_PHY_CLOCK	BIT(11)
 #define SCU0_CLOCK_STOP_CLR_REG	(ASPEED_CPU_SCU_BASE + 0x244)
 
-binman_sym_declare(u32, u_boot_spl_ddr, image_pos);
+binman_sym_declare(u32, u_boot_spl, image_pos);
 
 binman_sym_declare(u32, ddr4_1d_imem_fw, image_pos);
 binman_sym_declare(u32, ddr4_1d_imem_fw, size);
@@ -314,12 +314,11 @@ void dwc_phy_init(struct sdramc *sdramc)
 	u32 ctx_start, imem_start, dmem_start, imem_2d_start, dmem_2d_start;
 	u32 imem_len, dmem_len, imem_2d_len, dmem_2d_len;
 	u32 ddr5_imem, ddr5_imem_len, ddr5_dmem, ddr5_dmem_len;
-	u32 base = CONFIG_SPL_TEXT_BASE;
 	u32 rev_id = readl((void *)ASPEED_IO_REVISION_ID);
 	u32 stor_ofst = 0x0;
 
 	if (BINMAN_SYMS_OK) {
-		ctx_start = binman_sym(u32, u_boot_spl_ddr, image_pos);
+		ctx_start = binman_sym(u32, u_boot_spl, image_pos);
 		imem_start = binman_sym(u32, ddr4_1d_imem_fw, image_pos);
 		imem_len = binman_sym(u32, ddr4_1d_imem_fw, size);
 		dmem_start = binman_sym(u32, ddr4_1d_dmem_fw, image_pos);
@@ -333,22 +332,24 @@ void dwc_phy_init(struct sdramc *sdramc)
 		ddr5_dmem = binman_sym(u32, ddr5_dmem_fw, image_pos);
 		ddr5_dmem_len = binman_sym(u32, ddr5_dmem_fw, size);
 
+		stor_ofst = (rev_id == CHIP_REVID_AST2700A1) ? 0x20a00 : 0x0;
+
 		// ddr5
-		dwc_train[0][0].imem_base = ddr5_imem - base;
+		dwc_train[0][0].imem_base = ddr5_imem - ctx_start + stor_ofst;
 		dwc_train[0][0].imem_len = ddr5_imem_len;
-		dwc_train[0][0].dmem_base = ddr5_dmem - base;
+		dwc_train[0][0].dmem_base = ddr5_dmem - ctx_start + stor_ofst;
 		dwc_train[0][0].dmem_len = ddr5_dmem_len;
 
 		// ddr4 1d
-		dwc_train[1][0].imem_base = imem_start - base;
+		dwc_train[1][0].imem_base = imem_start - ctx_start + stor_ofst;
 		dwc_train[1][0].imem_len = imem_len;
-		dwc_train[1][0].dmem_base = dmem_start - base;
+		dwc_train[1][0].dmem_base = dmem_start - ctx_start + stor_ofst;
 		dwc_train[1][0].dmem_len = dmem_len;
 
 		// ddr4 2d
-		dwc_train[1][1].imem_base = imem_2d_start - base;
+		dwc_train[1][1].imem_base = imem_2d_start - ctx_start + stor_ofst;
 		dwc_train[1][1].imem_len = imem_2d_len;
-		dwc_train[1][1].dmem_base = dmem_2d_start - base;
+		dwc_train[1][1].dmem_base = dmem_2d_start - ctx_start + stor_ofst;
 		dwc_train[1][1].dmem_len = dmem_2d_len;
 	} else {
 		fmc_hdr_get_prebuilt(PBT_DDR4_PMU_TRAIN_IMEM, &imem_start, &imem_len, NULL);
