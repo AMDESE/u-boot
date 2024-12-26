@@ -8,6 +8,7 @@
 #include <spl.h>
 #include <common.h>
 #include <asm/csr.h>
+#include <binman_sym.h>
 #include <asm/arch-aspeed/platform.h>
 #include <asm/arch-aspeed/scu_ast2700.h>
 #include <asm/arch-aspeed/spi.h>
@@ -20,6 +21,9 @@
 #include <linux/delay.h>
 
 int boot_dev;
+
+binman_sym_declare(u32, u_boot_spl, image_pos);
+binman_sym_declare(u32, u_boot_spl_ddr, image_pos);
 
 enum {
 	BOOT_DEV_SPI,
@@ -66,8 +70,21 @@ int stor_init(void)
 
 int stor_copy(u32 *src, u32 *dest, u32 len)
 {
+#define CHIP_REVID_AST2700A0	0x06000003
+#define CHIP_REVID_AST2700A1	0x06010003
+
+	u32 addr = (u32)src;
+	u32 stor_ofst = 0x0;
+	u32 rev_id = readl((void *)ASPEED_IO_REVISION_ID);
+
 	if (!stor_dev[boot_dev].copy_cb)
 		return 1;
+
+	stor_ofst = (rev_id == CHIP_REVID_AST2700A1) ?
+		    (binman_sym(u32, u_boot_spl, image_pos) - 0x20a00) :
+		    binman_sym(u32, u_boot_spl_ddr, image_pos);
+
+	src = (u32 *)(addr - stor_ofst);
 
 	return stor_dev[boot_dev].copy_cb(src, dest, len);
 }

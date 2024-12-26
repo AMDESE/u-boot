@@ -13,11 +13,11 @@
 #include <asm/arch-aspeed/platform.h>
 #include <asm/arch-aspeed/dp_ast2700.h>
 #include <asm/arch-aspeed/e2m_ast2700.h>
-#include <asm/arch-aspeed/fmc_hdr.h>
 #include <asm/arch-aspeed/pci_ast2700.h>
 #include <asm/arch-aspeed/sdram_ast2700.h>
 #include <asm/arch-aspeed/scu_ast2700.h>
 #include <asm/arch-aspeed/vga_ast2700.h>
+#include <asm/arch-aspeed/stor_ast2700.h>
 #include <linux/bitfield.h>
 #include <linux/bitops.h>
 #include <linux/delay.h>
@@ -45,25 +45,18 @@ static u32 _ast_get_e2m_addr(struct sdramc_regs *ram, u8 node)
 static int dp_init(struct ast2700_scu0 *scu)
 {
 	u32 *fw_addr;
-	u32 fw_ofst;
 	u32 fw_size;
 	u32 mcu_ctrl, val;
 	void *scu_offset;
 	bool is_mcu_stop = false;
-	u32 rev_id = readl((void *)ASPEED_IO_REVISION_ID);
 
-	if (BINMAN_SYMS_OK) {
-		fw_size = binman_sym(u32, dp_fw, size);
-		if (fw_size == BINMAN_SYM_MISSING) {
-			printf("%s: Can't get dp-firmware\n", __func__);
-			return -1;
-		}
-		// TODO: SPL boot only now
-		fw_addr = (u32 *)(binman_sym(u32, dp_fw, image_pos) - CONFIG_SPL_TEXT_BASE + 0x20000000);
-	} else {
-		fmc_hdr_get_prebuilt(PBT_DP_FW, &fw_ofst, &fw_size, NULL);
-		fw_addr = (u32 *)(0x20000000 + fw_ofst + ((rev_id == 0x06010003) ? 0x20000 : 0x0));
+	fw_size = binman_sym(u32, dp_fw, size);
+	if (fw_size == BINMAN_SYM_MISSING) {
+		printf("%s: Can't get dp-firmware\n", __func__);
+		return -1;
 	}
+	// TODO: SPL boot only now
+	fw_addr = (u32 *)(binman_sym(u32, dp_fw, image_pos));
 
 	val = scu->vga_func_ctrl;
 	scu_offset = (((val >> 8) & 0x3) == 1)
@@ -120,8 +113,7 @@ static int dp_init(struct ast2700_scu0 *scu)
 		mcu_ctrl |= MCU_CTRL_AHBS_IMEM_EN;
 		writel(mcu_ctrl, (void *)MCU_CTRL);
 
-		for (int i = 0; i < fw_size / sizeof(u32); i++)
-			writel(fw_addr[i], (void *)(MCU_IMEM_BASE + (i * 4)));
+		stor_copy(fw_addr, (u32 *)MCU_IMEM_BASE, fw_size);
 
 		/* release DPMCU internal reset */
 		mcu_ctrl &= ~MCU_CTRL_AHBS_IMEM_EN;
@@ -145,7 +137,6 @@ static int dp_init(struct ast2700_scu0 *scu)
 static int vbios_init(struct ast2700_scu0 *scu, u8 node)
 {
 	u32 *vbios_addr;
-	u32 vbios_ofst;
 	u32 vbios_size;
 	u64 value;
 	u32 vbios_mem_base;
@@ -153,18 +144,12 @@ static int vbios_init(struct ast2700_scu0 *scu, u8 node)
 	void *vbios_base;
 	u32 vbios_e2m_value;
 	u32 arm_dram_base = ASPEED_DRAM_BASE >> 1;
-	u32 rev_id = readl((void *)ASPEED_IO_REVISION_ID);
 
-	if (BINMAN_SYMS_OK) {
-		vbios_size = binman_sym(u32, VBIOS, size);
-		debug("vbios size : 0x%x\n", vbios_size);
+	vbios_size = binman_sym(u32, VBIOS, size);
+	debug("vbios size : 0x%x\n", vbios_size);
 
-		vbios_addr = (u32 *)(binman_sym(u32, VBIOS, image_pos) - CONFIG_SPL_TEXT_BASE + 0x20000000);
-		debug("vbios addr : 0x%p\n", vbios_addr);
-	} else {
-		fmc_hdr_get_prebuilt(PBT_UEFI_X64_AST2700, &vbios_ofst, &vbios_size, NULL);
-		vbios_addr = (u32 *)(0x20000000 + vbios_ofst + ((rev_id == 0x06010003) ? 0x20000 : 0x0));
-	}
+	vbios_addr = (u32 *)(binman_sym(u32, VBIOS, image_pos));
+	debug("vbios addr : 0x%p\n", vbios_addr);
 
 	if (node == 0)
 		value = fdt_path_offset(gd->fdt_blob, "/reserved-memory/pcie_vbios0");
@@ -181,7 +166,7 @@ static int vbios_init(struct ast2700_scu0 *scu, u8 node)
 
 	/* Initial memory region and copy vbios into it */
 	memset((u32 *)vbios_base, 0x0, 0x10000);
-	memcpy((u32 *)vbios_base, vbios_addr, vbios_size);
+	stor_copy(vbios_addr, vbios_base, vbios_size);
 
 	/* Remove riscv Dram base */
 	vbios_mem_base &= ~(ASPEED_DRAM_BASE);
