@@ -120,6 +120,10 @@
 	status = "okay";
 };
 
+&rsss {
+	status = "okay";
+};
+
 &emmc_controller {
 	status = "okay";
 	timing-phase = <0xf0097>;

@@ -21,7 +21,7 @@ config ASPEED_ACRY
 
 config ASPEED_RSSS
 	bool "Aspeed RSSS Engine"
-	depends on ASPEED_AST2700
+	depends on ASPEED_AST2700 || TARGET_ASPEED_AST2700
 	help
 	  Select here to enable Aspeed RSSS Engine driver.
 	  Supports RSA 2048 to 4096 bits encryption/decryption and

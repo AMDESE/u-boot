@@ -28,6 +28,10 @@
 			};
 		};
 
+		rsss: rsss@12080000 {
+			bootph-all;
+		};
+
 		emmc_controller: sdc@12090000 {
 			bootph-all;
 
