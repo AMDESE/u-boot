@@ -342,7 +342,8 @@ struct ast2700_scu1 {
 	uint32_t random_num_ctrl;	/* 0x0F0 */
 	uint32_t random_num_data;	/* 0x0F4 */
 	uint32_t rsv_0xF0[2];		/* 0x0F8 ~ 0x0FC */
-	uint32_t rsv_0x100[64];		/* 0x100 ~ 0x1FC */
+	uint32_t rsv_0x100[32];		/* 0x100 ~ 0x17C */
+	uint32_t scratch[32];		/* 0x180 ~ 0x1FC */
 	uint32_t modrst1_ctrl;		/* 0x200 */
 	uint32_t modrst1_clr;		/* 0x204 */
 	uint32_t rsv_0x208[2];		/* 0x208 ~ 0x20C */

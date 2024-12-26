@@ -311,7 +311,7 @@ static void sli_set_cpu_die_hpll(void)
  * US/DS PAD[5:4] : SLIH[1:0]
  * US/DS PAD[7:6] : SLIV[1:0]
  */
-int sli_init(void)
+int sli_init_f(void)
 {
 	struct sli_data ast2700_sli_data[1];
 	struct sli_data *data = ast2700_sli_data;
@@ -400,4 +400,46 @@ int sli_init(void)
 
 	debug("SLI DS @ %dMHz init done\n", phyclk_lookup[SLI_TARGET_PHYCLK]);
 	return 0;
+}
+
+#define SCU1_SCRATCH31_SLI_READY	BIT(0)
+
+int sli_init_r(void)
+{
+	struct ast2700_scu1 *scu;
+	uint32_t reg_val;
+	int retry = 10;
+	bool sli0_ready = false;
+
+	/*
+	 * On AST2700A0, SLI0 RX calibration is handled by ATF. SPL does
+	 * not need to wait for its completion.
+	 */
+	reg_val = readl((void *)ASPEED_IO_REVISION_ID);
+	if (FIELD_GET(SCU_CPU_REVISION_ID_HW, reg_val) == 0)
+		return 0;
+
+	if (IS_ENABLED(CONFIG_SLI_TARGET_PHYCLK_25MHZ)) {
+		debug("AST2700 SLI0 ready, 25MHz\n");
+		return 0;
+	}
+
+	scu = (struct ast2700_scu1 *)ASPEED_IO_SCU_BASE;
+	while (--retry > 0) {
+		reg_val = readl((void *)&scu->scratch[31]);
+		if (reg_val & SCU1_SCRATCH31_SLI_READY) {
+			sli0_ready = true;
+			break;
+		}
+
+		mdelay(100);
+	}
+
+	if (sli0_ready) {
+		debug("SLI0 calibration completed\n");
+		return 0;
+	}
+
+	debug("Timeout to wait SLI0 calibration\n");
+	return -1;
 }

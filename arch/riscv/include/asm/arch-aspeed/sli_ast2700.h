@@ -97,4 +97,5 @@
 #define SLIM_LAH_CONFIG			0
 #endif
 #endif
-int sli_init(void);
+int sli_init_f(void);
+int sli_init_r(void);
