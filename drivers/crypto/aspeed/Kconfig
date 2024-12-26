@@ -24,12 +24,9 @@ config ASPEED_RSSS
 	depends on ASPEED_AST2700
 	help
 	  Select here to enable Aspeed RSSS Engine driver.
-	  Supports RSA 512 to 4096 bits encryption/decryption and
-	  signature/verification, SHA3-224/256/384/512 and XOF of
-	  SHAKE 128/256, SM3 Hash crypto, SM4 ECB/CBC/CFB/OFB/CTR
-	  cryptographic algorithms.
-	  It's a new hardware design from ast2700 for simply SRAM
-	  layout.
+	  Supports RSA 2048 to 4096 bits encryption/decryption and
+	  signature/verification, It's a new hardware design from
+          ast2700 for simply SRAM layout.
 
 config ASPEED_CPTRA_SHA
 	bool "Caliptra SHA ACC for Aspeed SoCs"

@@ -125,7 +125,6 @@
 				 <&soc0_rst SCU0_RESET_SM3>,
 				 <&soc0_rst SCU0_RESET_SM4>;
 			reset-names = "rsa", "sha3", "sm3", "sm4";
-			status = "disabled";
 		};
 
 		emmc_controller: sdc@12090000 {

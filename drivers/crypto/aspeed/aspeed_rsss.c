@@ -82,11 +82,11 @@ static void aspeed_rsa_mode_switch(struct aspeed_rsss *rsss,
 
 	switch (mode) {
 	case ASPEED_RSSS_RSA_AHB_CPU_MODE:
-		setbits_32(rsss->base + ASPEED_RSSS_CTRL, SRAM_AHB_MODE_CPU);
+		setbits_le32(rsss->base + ASPEED_RSSS_CTRL, SRAM_AHB_MODE_CPU);
 		rsa_engine->mode = mode;
 		break;
 	case ASPEED_RSSS_RSA_AHB_ENGINE_MODE:
-		clrbits_32(rsss->base + ASPEED_RSSS_CTRL, SRAM_AHB_MODE_CPU);
+		clrbits_le32(rsss->base + ASPEED_RSSS_CTRL, SRAM_AHB_MODE_CPU);
 		rsa_engine->mode = mode;
 		break;
 	default:
@@ -130,7 +130,7 @@ static int aspeed_rsa_init(struct udevice *dev, struct aspeed_rsss *rsss)
 	rsss->rsa_engine.sram_data = (void *)rsss->base + SRAM_OFFSET_DATA;
 
 	/* Enable RSSS RSA interrupt */
-	setbits_32(rsss->base + ASPEED_RSSS_INT_EN, RSA_INT_EN);
+	setbits_le32(rsss->base + ASPEED_RSSS_INT_EN, RSA_INT_EN);
 
 	if (aspeed_rsa_self_test(rsss))
 		return -ENXIO;
@@ -155,10 +155,10 @@ static int aspeed_rsa_wait_complete(struct aspeed_rsss *rsss)
 		return -ETIME;
 
 	/* Clear rsss rsa interrupt status */
-	setbits_32(rsss->base + ASPEED_RSSS_INT_STS, RSA_INT_DONE);
+	setbits_le32(rsss->base + ASPEED_RSSS_INT_STS, RSA_INT_DONE);
 
 	/* Stop rsss rsa engine */
-	clrbits_32(rsss->base + ASPEED_RSA_TRIGGER, RSA_TRIGGER);
+	clrbits_le32(rsss->base + ASPEED_RSA_TRIGGER, RSA_TRIGGER);
 
 	return 0;
 }
@@ -169,7 +169,7 @@ static void aspeed_rsa_trigger(struct aspeed_rsss *rsss)
 	aspeed_rsa_mode_switch(rsss, ASPEED_RSSS_RSA_AHB_ENGINE_MODE);
 
 	/* Trigger rsa engine */
-	setbits_32(rsss->base + ASPEED_RSA_TRIGGER, RSA_TRIGGER);
+	setbits_le32(rsss->base + ASPEED_RSA_TRIGGER, RSA_TRIGGER);
 }
 
 static void aspeed_rsa_set_key(struct aspeed_rsss *rsss, const void *key_exp,
