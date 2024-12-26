@@ -77,11 +77,11 @@ static int aspeed_vbios_probe(struct udevice *dev)
 	/* load vbios for pcie 0 node */
 	if (is_pcie0_enable) {
 		/* obtain the vbios0 reserved memory */
-		value = fdt_path_offset(gd->fdt_blob, "/reserved-memory/pcie_vbios0");
+		value = fdt_path_offset(gd->fdt_blob, "/reserved-memory/vbios-base0");
 		fdt_get_resource(gd->fdt_blob, value, "reg", 0, &res);
 		vbios->vbios0_base = (void *)res.start;
 		if (IS_ERR(vbios->vbios0_base)) {
-			dev_err(dev, "can't obtain pcie_vbios0 reserved\n");
+			dev_err(dev, "can't obtain vbios-base0 reserved\n");
 			return PTR_ERR(vbios->vbios0_base);
 		}
 
@@ -140,11 +140,11 @@ static int aspeed_vbios_probe(struct udevice *dev)
 	/* load vbios for pcie 1 node */
 	if (is_pcie1_enable) {
 		/* obtain the vbios0 reserved memory */
-		value = fdt_path_offset(gd->fdt_blob, "/reserved-memory/pcie_vbios1");
+		value = fdt_path_offset(gd->fdt_blob, "/reserved-memory/vbios-base1");
 		fdt_get_resource(gd->fdt_blob, value, "reg", 0, &res);
 		vbios->vbios1_base = (void *)res.start;
 		if (IS_ERR(vbios->vbios1_base)) {
-			dev_err(dev, "can't obtain pcie_vbios1 reserved\n");
+			dev_err(dev, "can't obtain vbios-base1 reserved\n");
 			return PTR_ERR(vbios->vbios1_base);
 		}
 
