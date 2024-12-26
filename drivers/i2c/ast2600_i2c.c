@@ -316,7 +316,7 @@ static const struct dm_i2c_ops ast2600_i2c_ops = {
 
 static const struct udevice_id ast2600_i2c_ids[] = {
 	{ .compatible = "aspeed,ast2600-i2cv2" },
-	{ .compatible = "aspeed,ast2700-i2cv2" },
+	{ .compatible = "aspeed,ast2700-i2cv1" },
 };
 
 U_BOOT_DRIVER(ast2600_i2c) = {
