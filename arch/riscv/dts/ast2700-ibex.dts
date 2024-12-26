@@ -27,21 +27,25 @@
 		ssp_memory: ssp-memory@ac000000 {
 			reg = <0xac000000 0x2000000>;
 			no-map;
+			bootph-all;
 		};
 
 		tsp_memory: tsp-memory@ae000000 {
 			reg = <0xae000000 0x2000000>;
 			no-map;
+			bootph-all;
 		};
 
 		atf: trusted-firmware-a@b0000000 {
 			reg = <0xb0000000 0x80000>;
 			no-map;
+			bootph-all;
 		};
 
 		optee_core: optee-core@b0080000 {
 			reg = <0xb0080000 0x1000000>;
 			no-map;
+			bootph-all;
 		};
 
 		pcie_vbios0: pcie_vbios0@b1bb0000 {
