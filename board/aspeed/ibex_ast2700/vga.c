@@ -152,9 +152,9 @@ static int vbios_init(struct ast2700_scu0 *scu, u8 node)
 	debug("vbios addr : 0x%p\n", vbios_addr);
 
 	if (node == 0)
-		value = fdt_path_offset(gd->fdt_blob, "/reserved-memory/pcie_vbios0");
+		value = fdt_path_offset(gd->fdt_blob, "/reserved-memory/vbios-base0");
 	else
-		value = fdt_path_offset(gd->fdt_blob, "/reserved-memory/pcie_vbios1");
+		value = fdt_path_offset(gd->fdt_blob, "/reserved-memory/vbios-base1");
 
 	fdt_get_resource(gd->fdt_blob, value, "reg", 0, &res);
 	vbios_base = (void *)res.start;

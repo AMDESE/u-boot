@@ -48,13 +48,13 @@
 			bootph-all;
 		};
 
-		pcie_vbios0: pcie_vbios0@b1bb0000 {
+		vbios_base0: vbios-base0@b1bb0000 {
 			reg = <0xb1bb0000 0x10000>;
 			no-map;
 			bootph-all;
 		};
 
-		pcie_vbios1: pcie_vbios1@b1bc0000 {
+		vbios_base1: vbios-base1@b1bc0000 {
 			reg = <0xb1bc0000 0x10000>;
 			no-map;
 			bootph-all;
