@@ -122,6 +122,11 @@ struct ast2600_i2c_global_regs {
 #define I2CM_TX_CMD				BIT(1)
 #define I2CM_START_CMD			BIT(0)
 
+#define I2CM_SET_RX_DMA_LEN(x)	((((x) & GENMASK(11, 0)) << 16) | BIT(31))
+#define I2CM_SET_TX_DMA_LEN(x)	(((x) & GENMASK(11, 0)) | BIT(15))
+#define I2CM_SET_DMA_BASE_L(x)	((x) & GENMASK(31, 0))
+#define I2CM_SET_DMA_BASE_H(x)	(((x) >> 32) & GENMASK(8, 0))
+
 #define I2C_TIMEOUT_US 100000
 
 /* I2C Global Register */

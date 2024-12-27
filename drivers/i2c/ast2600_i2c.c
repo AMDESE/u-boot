@@ -24,6 +24,119 @@ struct ast2600_i2c_priv {
 	struct ast2600_i2c_global_regs *global_regs;
 };
 
+static int ast2700_i2c_read_data(struct ast2600_i2c_priv *priv, u8 chip_addr,
+				 u8 *buffer, size_t len, bool send_stop)
+{
+	int rx_cnt, ret = 0;
+	u32 cmd, isr;
+	u8 tx_data[32];
+	u8 rx_data[32];
+
+	/* Set DMA buffer */
+	writel(I2CM_SET_DMA_BASE_H((uintptr_t)&tx_data), &priv->regs->m_dma_tx_hi);
+	writel(I2CM_SET_DMA_BASE_H((uintptr_t)&rx_data), &priv->regs->m_dma_rx_hi);
+	writel(I2CM_SET_DMA_BASE_L((uintptr_t)&tx_data), &priv->regs->m_dma_txa);
+	writel(I2CM_SET_DMA_BASE_L((uintptr_t)&rx_data), &priv->regs->m_dma_rxa);
+
+	for (rx_cnt = 0; rx_cnt < len; rx_cnt++, buffer++) {
+		cmd = I2CM_PKT_EN | I2CM_PKT_ADDR(chip_addr) | I2CM_RX_DMA_EN |
+		      I2CM_RX_CMD;
+
+		if (!rx_cnt)
+			cmd |= I2CM_START_CMD;
+
+		if ((len - 1) == rx_cnt)
+			cmd |= I2CM_RX_CMD_LAST;
+
+		if (send_stop && ((len - 1) == rx_cnt))
+			cmd |= I2CM_STOP_CMD;
+
+		writel(0, &priv->regs->m_dma_len);
+		writel(I2CM_SET_RX_DMA_LEN(0), &priv->regs->m_dma_len);
+
+		writel(cmd, &priv->regs->cmd_sts);
+
+		ret = readl_poll_timeout(&priv->regs->isr, isr,
+					 isr & I2CM_PKT_DONE,
+					 I2C_TIMEOUT_US);
+
+		if (ret)
+			return -ETIMEDOUT;
+
+		*buffer = rx_data[0];
+
+		writel(isr, &priv->regs->isr);
+
+		if (isr & I2CM_TX_NAK)
+			return -EREMOTEIO;
+	}
+
+	return 0;
+}
+
+static int ast2700_i2c_write_data(struct ast2600_i2c_priv *priv, u8 chip_addr,
+				  u8 *buffer, size_t len, bool send_stop)
+{
+	int tx_cnt, ret = 0;
+	u32 cmd, isr;
+	u8 tx_data[32];
+	u8 rx_data[32];
+
+	/* Set DMA buffer */
+	writel(I2CM_SET_DMA_BASE_H((uintptr_t)&tx_data), &priv->regs->m_dma_tx_hi);
+	writel(I2CM_SET_DMA_BASE_H((uintptr_t)&rx_data), &priv->regs->m_dma_rx_hi);
+	writel(I2CM_SET_DMA_BASE_L((uintptr_t)&tx_data), &priv->regs->m_dma_txa);
+	writel(I2CM_SET_DMA_BASE_L((uintptr_t)&rx_data), &priv->regs->m_dma_rxa);
+
+	if (!len) {
+		cmd = I2CM_PKT_EN | I2CM_PKT_ADDR(chip_addr) |
+		      I2CM_START_CMD;
+
+		writel(cmd, &priv->regs->cmd_sts);
+		ret = readl_poll_timeout(&priv->regs->isr, isr,
+					 isr & I2CM_PKT_DONE,
+					 I2C_TIMEOUT_US);
+		if (ret)
+			return -ETIMEDOUT;
+
+		writel(isr, &priv->regs->isr);
+
+		if (isr & I2CM_TX_NAK)
+			return -EREMOTEIO;
+	}
+
+	for (tx_cnt = 0; tx_cnt < len; tx_cnt++, buffer++) {
+		cmd = I2CM_TX_DMA_EN | I2CM_PKT_EN | I2CM_PKT_ADDR(chip_addr);
+		cmd |= I2CM_TX_CMD;
+
+		if (!tx_cnt)
+			cmd |= I2CM_START_CMD;
+
+		if (send_stop && ((len - 1) == tx_cnt))
+			cmd |= I2CM_STOP_CMD;
+
+		tx_data[0] = *buffer;
+
+		writel(0, &priv->regs->m_dma_len);
+		writel(I2CM_SET_TX_DMA_LEN(0), &priv->regs->m_dma_len);
+
+		writel(cmd, &priv->regs->cmd_sts);
+		ret = readl_poll_timeout(&priv->regs->isr, isr,
+					 isr & I2CM_PKT_DONE,
+					 I2C_TIMEOUT_US);
+
+		if (ret)
+			return -ETIMEDOUT;
+
+		writel(isr, &priv->regs->isr);
+
+		if (isr & I2CM_TX_NAK)
+			return -EREMOTEIO;
+	}
+
+	return 0;
+}
+
 static int ast2600_i2c_read_data(struct ast2600_i2c_priv *priv, u8 chip_addr,
 				 u8 *buffer, size_t len, bool send_stop)
 {
@@ -144,7 +257,7 @@ static int i2c_do_deblock(struct udevice *dev)
 	return 0;
 }
 
-static int ast2600_i2c_xfer(struct udevice *dev, struct i2c_msg *msg, int nmsgs)
+static int i2c_xfer(struct udevice *dev, struct i2c_msg *msg, int nmsgs)
 {
 	struct ast2600_i2c_priv *priv = dev_get_priv(dev);
 	int ret;
@@ -156,13 +269,17 @@ static int ast2600_i2c_xfer(struct udevice *dev, struct i2c_msg *msg, int nmsgs)
 		if (msg->flags & I2C_M_RD) {
 			debug("i2c_read: chip=0x%x, len=0x%x, flags=0x%x\n",
 			      msg->addr, msg->len, msg->flags);
-			ret = ast2600_i2c_read_data(priv, msg->addr, msg->buf,
-						    msg->len, (nmsgs == 1));
+			if (priv->version == AST2600)
+				ret = ast2600_i2c_read_data(priv, msg->addr, msg->buf, msg->len, (nmsgs == 1));
+			else
+				ret = ast2700_i2c_read_data(priv, msg->addr, msg->buf, msg->len, (nmsgs == 1));
 		} else {
 			debug("i2c_write: chip=0x%x, len=0x%x, flags=0x%x\n",
 			      msg->addr, msg->len, msg->flags);
-			ret = ast2600_i2c_write_data(priv, msg->addr, msg->buf,
-						     msg->len, (nmsgs == 1));
+			if (priv->version == AST2600)
+				ret = ast2600_i2c_write_data(priv, msg->addr, msg->buf, msg->len, (nmsgs == 1));
+			else
+				ret = ast2700_i2c_write_data(priv, msg->addr, msg->buf, msg->len, (nmsgs == 1));
 		}
 		if (ret) {
 			debug("%s: error (%d)\n", __func__, ret);
@@ -326,6 +443,8 @@ static int ast2600_i2c_probe(struct udevice *dev)
 	}
 
 	writel(GLOBAL_INIT, &priv->global_regs->global_ctrl);
+
+	/* set device specified setting */
 	if (priv->version == AST2600)
 		writel(I2CCG_DIV_CTRL, &priv->global_regs->clk_divid);
 
@@ -367,7 +486,7 @@ static int ast2600_i2c_of_to_plat(struct udevice *dev)
 }
 
 static const struct dm_i2c_ops ast2600_i2c_ops = {
-	.xfer = ast2600_i2c_xfer,
+	.xfer = i2c_xfer,
 	.deblock = i2c_do_deblock,
 	.set_bus_speed = i2c_set_speed,
 };
