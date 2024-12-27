@@ -88,9 +88,10 @@ static int ast2700_i2c_write_data(struct ast2600_i2c_priv *priv, u8 chip_addr,
 	writel(I2CM_SET_DMA_BASE_L((uintptr_t)&tx_data), &priv->regs->m_dma_txa);
 	writel(I2CM_SET_DMA_BASE_L((uintptr_t)&rx_data), &priv->regs->m_dma_rxa);
 
+	/* scan case */
 	if (!len) {
 		cmd = I2CM_PKT_EN | I2CM_PKT_ADDR(chip_addr) |
-		      I2CM_START_CMD;
+		      I2CM_START_CMD | I2CM_STOP_CMD;
 
 		writel(cmd, &priv->regs->cmd_sts);
 		ret = readl_poll_timeout(&priv->regs->isr, isr,
@@ -105,6 +106,7 @@ static int ast2700_i2c_write_data(struct ast2600_i2c_priv *priv, u8 chip_addr,
 			return -EREMOTEIO;
 	}
 
+	/* write case */
 	for (tx_cnt = 0; tx_cnt < len; tx_cnt++, buffer++) {
 		cmd = I2CM_TX_DMA_EN | I2CM_PKT_EN | I2CM_PKT_ADDR(chip_addr);
 		cmd |= I2CM_TX_CMD;
