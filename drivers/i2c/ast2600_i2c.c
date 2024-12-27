@@ -38,6 +38,8 @@ static int ast2700_i2c_read_data(struct ast2600_i2c_priv *priv, u8 chip_addr,
 	writel(I2CM_SET_DMA_BASE_L((uintptr_t)&tx_data), &priv->regs->m_dma_txa);
 	writel(I2CM_SET_DMA_BASE_L((uintptr_t)&rx_data), &priv->regs->m_dma_rxa);
 
+	invalidate_dcache_range((uintptr_t)&rx_data[0], (uintptr_t)&rx_data[31]);
+
 	for (rx_cnt = 0; rx_cnt < len; rx_cnt++, buffer++) {
 		cmd = I2CM_PKT_EN | I2CM_PKT_ADDR(chip_addr) | I2CM_RX_DMA_EN |
 		      I2CM_RX_CMD;
@@ -63,6 +65,7 @@ static int ast2700_i2c_read_data(struct ast2600_i2c_priv *priv, u8 chip_addr,
 		if (ret)
 			return -ETIMEDOUT;
 
+		invalidate_dcache_range((uintptr_t)&rx_data[0], (uintptr_t)&rx_data[31]);
 		*buffer = rx_data[0];
 
 		writel(isr, &priv->regs->isr);
