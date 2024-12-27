@@ -13,6 +13,25 @@ struct ast2600_i2c_regs {
 	u32 ier;
 	u32 isr;
 	u32 cmd_sts;
+	u32 m_dma_len;
+	u32 s_ier;
+	u32 s_isr;
+	u32 s_cmd;
+	u32 s_dma_len;
+	u32 m_dma_txa;
+	u32 m_dma_rxa;
+	u32 s_dma_txa;
+	u32 s_dma_rxa;
+	u32 s_addr_0;
+	u32 s_addr_1;
+	u32 m_len_sta;
+	u32 s_len_sta;
+	u32 dma_cfg;
+	u32 dma_sta;
+	u32 dummy58;
+	u32 dummy5c;
+	u32 m_dma_tx_hi;
+	u32 m_dma_rx_hi;
 };
 
 struct ast2600_i2c_global_regs {
