@@ -112,7 +112,7 @@ static int ast2600_i2c_write_data(struct ast2600_i2c_priv *priv, u8 chip_addr,
 	return 0;
 }
 
-static int ast2600_i2c_deblock(struct udevice *dev)
+static int i2c_do_deblock(struct udevice *dev)
 {
 	struct ast2600_i2c_priv *priv = dev_get_priv(dev);
 	u32 csr = readl(&priv->regs->cmd_sts);
@@ -169,6 +169,47 @@ static int ast2600_i2c_xfer(struct udevice *dev, struct i2c_msg *msg, int nmsgs)
 			return -EREMOTEIO;
 		}
 	}
+
+	return 0;
+}
+
+static int ast2700_i2c_set_speed(struct udevice *dev, unsigned int speed)
+{
+	struct ast2600_i2c_priv *priv = dev_get_priv(dev);
+	unsigned long base_clk;
+	int baseclk_idx;
+	u32 apb_clk;
+	u32 scl_low;
+	u32 scl_high;
+	int divisor;
+	u32 data;
+
+	debug("Setting speed for I2C%d to <%u>\n", dev->seq_, speed);
+	if (!speed) {
+		debug("No valid speed specified\n");
+		return -EINVAL;
+	}
+
+	apb_clk = clk_get_rate(&priv->clk);
+	for (int i = 0; i < 0x100; i++) {
+		base_clk = (apb_clk) / (i + 1);
+		if ((base_clk / speed) <= 32) {
+			baseclk_idx = i;
+			divisor = DIV_ROUND_UP(base_clk, speed);
+			break;
+		}
+	}
+
+	baseclk_idx = min_t(int, baseclk_idx, 0xff);
+	divisor = min_t(int, divisor, 32);
+	scl_low = ((divisor * 9) / 16) - 1;
+	scl_low = min_t(u32, scl_low, 0xf);
+	scl_high = (divisor - scl_low - 2) & 0xf;
+	/* Divisor : Base Clock : tCKHighMin : tCK High : tCK Low  */
+	data = ((scl_high - 1) << 20) | (scl_high << 16) | (scl_low << 12) |
+	       baseclk_idx;
+	/* Set AC Timing */
+	writel(data, &priv->regs->ac_timing);
 
 	return 0;
 }
@@ -238,6 +279,19 @@ static int ast2600_i2c_set_speed(struct udevice *dev, unsigned int speed)
 	return 0;
 }
 
+int i2c_set_speed(struct udevice *dev, unsigned int speed)
+{
+	struct ast2600_i2c_priv *priv = dev_get_priv(dev);
+	int ret;
+
+	if (priv->version == AST2600)
+		ret = ast2600_i2c_set_speed(dev, speed);
+	else
+		ret = ast2700_i2c_set_speed(dev, speed);
+
+	return ret;
+}
+
 /*
  * APB clk : 100Mhz
  * div  : scl       : baseclk [APB/((div/2) + 1)] : tBuf [1/bclk * 16]
@@ -272,7 +326,8 @@ static int ast2600_i2c_probe(struct udevice *dev)
 	}
 
 	writel(GLOBAL_INIT, &priv->global_regs->global_ctrl);
-	writel(I2CCG_DIV_CTRL, &priv->global_regs->clk_divid);
+	if (priv->version == AST2600)
+		writel(I2CCG_DIV_CTRL, &priv->global_regs->clk_divid);
 
 	/* Reset device */
 	writel(0, &priv->regs->fun_ctrl);
@@ -313,8 +368,8 @@ static int ast2600_i2c_of_to_plat(struct udevice *dev)
 
 static const struct dm_i2c_ops ast2600_i2c_ops = {
 	.xfer = ast2600_i2c_xfer,
-	.deblock = ast2600_i2c_deblock,
-	.set_bus_speed = ast2600_i2c_set_speed,
+	.deblock = i2c_do_deblock,
+	.set_bus_speed = i2c_set_speed,
 };
 
 static const struct udevice_id ast2600_i2c_ids[] = {
