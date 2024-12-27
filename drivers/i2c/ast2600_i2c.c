@@ -118,6 +118,7 @@ static int ast2700_i2c_write_data(struct ast2600_i2c_priv *priv, u8 chip_addr,
 			cmd |= I2CM_STOP_CMD;
 
 		tx_data[0] = *buffer;
+		flush_dcache_range((uintptr_t)&tx_data, (uintptr_t)&tx_data);
 
 		writel(0, &priv->regs->m_dma_len);
 		writel(I2CM_SET_TX_DMA_LEN(0), &priv->regs->m_dma_len);
