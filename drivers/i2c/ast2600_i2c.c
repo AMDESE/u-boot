@@ -18,6 +18,7 @@
 
 /* Device private data */
 struct ast2600_i2c_priv {
+	int version;
 	struct clk clk;
 	struct ast2600_i2c_regs *regs;
 	struct ast2600_i2c_global_regs *global_regs;
@@ -305,6 +306,8 @@ static int ast2600_i2c_of_to_plat(struct udevice *dev)
 
 	priv->global_regs = (struct ast2600_i2c_global_regs *)((uintptr_t)priv->regs & 0xFFFFF000);
 
+	priv->version = dev_get_driver_data(dev);
+
 	return 0;
 }
 
@@ -315,8 +318,8 @@ static const struct dm_i2c_ops ast2600_i2c_ops = {
 };
 
 static const struct udevice_id ast2600_i2c_ids[] = {
-	{ .compatible = "aspeed,ast2600-i2cv2" },
-	{ .compatible = "aspeed,ast2700-i2cv2" },
+	{ .compatible = "aspeed,ast2600-i2cv2", .data = AST2600 },
+	{ .compatible = "aspeed,ast2700-i2cv2", .data = AST2700 },
 };
 
 U_BOOT_DRIVER(ast2600_i2c) = {

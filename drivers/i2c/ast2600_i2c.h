@@ -23,6 +23,9 @@ struct ast2600_i2c_global_regs {
 	u32 clk_divid;
 };
 
+#define AST2600 0x0
+#define AST2700 0x1
+
 /* 0x00 : I2CC Master/Slave Function Control Register  */
 #define I2CC_SLAVE_ADDR_RX_EN	BIT(20)
 #define I2CC_MASTER_RETRY_MASK	GENMASK(19, 18)
