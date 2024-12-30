@@ -63,16 +63,9 @@ static int ast2700_i2c_read_data(struct ast2600_i2c_priv *priv, u8 chip_addr,
 static int ast2700_i2c_write_data(struct ast2600_i2c_priv *priv, u8 chip_addr,
 				  u8 *buffer, size_t len, bool send_stop)
 {
-	int tx_cnt, ret = 0;
+	int ret = 0;
 	u32 cmd, isr;
-	u8 tx_data[32];
-	u8 rx_data[32];
-
-	/* Set DMA buffer */
-	writel(I2CM_SET_DMA_BASE_H((uintptr_t)&tx_data), &priv->regs->m_dma_tx_hi);
-	writel(I2CM_SET_DMA_BASE_H((uintptr_t)&rx_data), &priv->regs->m_dma_rx_hi);
-	writel(I2CM_SET_DMA_BASE_L((uintptr_t)&tx_data), &priv->regs->m_dma_txa);
-	writel(I2CM_SET_DMA_BASE_L((uintptr_t)&rx_data), &priv->regs->m_dma_rxa);
+	u64 tx_buf = (uintptr_t)buffer;
 
 	/* scan case */
 	if (!len) {
@@ -88,42 +81,42 @@ static int ast2700_i2c_write_data(struct ast2600_i2c_priv *priv, u8 chip_addr,
 
 		writel(isr, &priv->regs->isr);
 
-		if (isr & I2CM_TX_NAK)
-			return -EREMOTEIO;
-	}
+		if (isr & (I2CM_TX_NAK | I2CM_ABNORMAL)) {
+			debug("abnormal irq: 0x%x\n", isr);
+			ret = -EREMOTEIO;
+		}
+	} else {
+		/* write case */
+		/* Set DMA buffer */
+		writel(I2CM_SET_DMA_BASE_H(tx_buf), &priv->regs->m_dma_tx_hi);
+		writel(I2CM_SET_DMA_BASE_L(tx_buf), &priv->regs->m_dma_txa);
 
-	/* write case */
-	for (tx_cnt = 0; tx_cnt < len; tx_cnt++, buffer++) {
-		cmd = I2CM_TX_DMA_EN | I2CM_PKT_EN | I2CM_PKT_ADDR(chip_addr);
-		cmd |= I2CM_TX_CMD;
-
-		if (!tx_cnt)
-			cmd |= I2CM_START_CMD;
-
-		if (send_stop && ((len - 1) == tx_cnt))
-			cmd |= I2CM_STOP_CMD;
-
-		tx_data[0] = *buffer;
-		flush_dcache_range((uintptr_t)&tx_data, (uintptr_t)&tx_data);
+		cmd = I2CM_PKT_EN | I2CM_PKT_ADDR(chip_addr) | I2CM_TX_DMA_EN |
+			  I2CM_TX_CMD | I2CM_START_CMD | I2CM_STOP_CMD;
 
 		writel(0, &priv->regs->m_dma_len);
-		writel(I2CM_SET_TX_DMA_LEN(0), &priv->regs->m_dma_len);
+		writel(I2CM_SET_TX_DMA_LEN(len - 1), &priv->regs->m_dma_len);
+
+		/* flush tx buffer d cache */
+		flush_dcache_range(tx_buf, tx_buf + len);
 
 		writel(cmd, &priv->regs->cmd_sts);
+
 		ret = readl_poll_timeout(&priv->regs->isr, isr,
 					 isr & I2CM_PKT_DONE,
 					 I2C_TIMEOUT_US);
-
 		if (ret)
 			return -ETIMEDOUT;
 
 		writel(isr, &priv->regs->isr);
 
-		if (isr & I2CM_TX_NAK)
-			return -EREMOTEIO;
+		if (isr & (I2CM_TX_NAK | I2CM_ABNORMAL)) {
+			debug("abnormal irq: 0x%x\n", isr);
+			ret = -EREMOTEIO;
+		}
 	}
 
-	return 0;
+	return ret;
 }
 
 static int ast2600_i2c_read_data(struct ast2600_i2c_priv *priv, u8 chip_addr,
