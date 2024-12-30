@@ -49,6 +49,8 @@ static int ast2700_i2c_read_data(struct ast2600_i2c_priv *priv, u8 chip_addr,
 	ret = readl_poll_timeout(&priv->regs->isr, isr,
 				 isr & I2CM_PKT_DONE,
 				 I2C_TIMEOUT_US);
+	if (ret)
+		return -ETIMEDOUT;
 
 	writel(isr, &priv->regs->isr);
 
@@ -57,7 +59,7 @@ static int ast2700_i2c_read_data(struct ast2600_i2c_priv *priv, u8 chip_addr,
 		return -EREMOTEIO;
 	}
 
-	return 0;
+	return ret;
 }
 
 static int ast2700_i2c_write_data(struct ast2600_i2c_priv *priv, u8 chip_addr,
@@ -83,7 +85,7 @@ static int ast2700_i2c_write_data(struct ast2600_i2c_priv *priv, u8 chip_addr,
 
 		if (isr & (I2CM_TX_NAK | I2CM_ABNORMAL)) {
 			debug("abnormal irq: 0x%x\n", isr);
-			ret = -EREMOTEIO;
+			return -EREMOTEIO;
 		}
 	} else {
 		/* write case */
@@ -112,7 +114,7 @@ static int ast2700_i2c_write_data(struct ast2600_i2c_priv *priv, u8 chip_addr,
 
 		if (isr & (I2CM_TX_NAK | I2CM_ABNORMAL)) {
 			debug("abnormal irq: 0x%x\n", isr);
-			ret = -EREMOTEIO;
+			return -EREMOTEIO;
 		}
 	}
 
