@@ -92,3 +92,4 @@ obj-$(CONFIG_SL28CPLD) += sl28cpld.o
 obj-$(CONFIG_$(SPL_)ASPEED_DP) += aspeed_dp.o
 obj-$(CONFIG_ASPEED_VBIOS) += aspeed_vbios.o
 obj-$(CONFIG_$(SPL_TPL_)ASPEED_EDAF_BRIDGE) += aspeed_edaf_bridge.o
+obj-$(CONFIG_SPL_SLI_AST2700) += sli_ast2700.o

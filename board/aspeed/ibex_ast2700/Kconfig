@@ -94,32 +94,4 @@ config ASPEED_MPLL_1600
 
 endchoice
 
-config SLI_AST2700
-	bool "Enable AST2700 IO-die SLI calibration"
-	default y
-	help
-	  This option enables AST2700 IO-die SLI calibration.
-
-if SLI_AST2700
-choice SLI_TARGET_PHYCLK
-	prompt "SLI PHY clock selection"
-	default SLI_TARGET_PHYCLK_25MHZ
-
-config SLI_TARGET_PHYCLK_1GHZ
-	bool "Enable SLI PHY clock 1GHz"
-
-config SLI_TARGET_PHYCLK_800MHZ
-	bool "Enable SLI PHY clock 800MHz"
-
-config SLI_TARGET_PHYCLK_500MHZ
-	bool "Enable SLI PHY clock 500MHz"
-
-config SLI_TARGET_PHYCLK_400MHZ
-	bool "Enable SLI PHY clock 400MHz"
-
-config SLI_TARGET_PHYCLK_25MHZ
-	bool "Enable SLI PHY clock 25MHz"
-endchoice
-endif
-
 endif
