@@ -27,51 +27,34 @@ struct ast2600_i2c_priv {
 static int ast2700_i2c_read_data(struct ast2600_i2c_priv *priv, u8 chip_addr,
 				 u8 *buffer, size_t len, bool send_stop)
 {
-	int rx_cnt, ret = 0;
+	int ret = 0;
 	u32 cmd, isr;
-	u8 tx_data[32];
-	u8 rx_data[32];
+	u64 rx_buf = (uintptr_t)buffer;
 
-	/* Set DMA buffer */
-	writel(I2CM_SET_DMA_BASE_H((uintptr_t)&tx_data), &priv->regs->m_dma_tx_hi);
-	writel(I2CM_SET_DMA_BASE_H((uintptr_t)&rx_data), &priv->regs->m_dma_rx_hi);
-	writel(I2CM_SET_DMA_BASE_L((uintptr_t)&tx_data), &priv->regs->m_dma_txa);
-	writel(I2CM_SET_DMA_BASE_L((uintptr_t)&rx_data), &priv->regs->m_dma_rxa);
+	/* Set DMA rx buffer */
+	writel(I2CM_SET_DMA_BASE_H(rx_buf), &priv->regs->m_dma_rx_hi);
+	writel(I2CM_SET_DMA_BASE_L(rx_buf), &priv->regs->m_dma_rxa);
 
-	invalidate_dcache_range((uintptr_t)&rx_data[0], (uintptr_t)&rx_data[31]);
+	cmd = I2CM_PKT_EN | I2CM_PKT_ADDR(chip_addr) | I2CM_RX_DMA_EN |
+		  I2CM_RX_CMD | I2CM_START_CMD | I2CM_RX_CMD_LAST | I2CM_STOP_CMD;
 
-	for (rx_cnt = 0; rx_cnt < len; rx_cnt++, buffer++) {
-		cmd = I2CM_PKT_EN | I2CM_PKT_ADDR(chip_addr) | I2CM_RX_DMA_EN |
-		      I2CM_RX_CMD;
+	writel(0, &priv->regs->m_dma_len);
+	writel(I2CM_SET_RX_DMA_LEN(len - 1), &priv->regs->m_dma_len);
 
-		if (!rx_cnt)
-			cmd |= I2CM_START_CMD;
+	/* invalid rx buffer d cache */
+	invalidate_dcache_range(rx_buf, rx_buf + len);
 
-		if ((len - 1) == rx_cnt)
-			cmd |= I2CM_RX_CMD_LAST;
+	writel(cmd, &priv->regs->cmd_sts);
 
-		if (send_stop && ((len - 1) == rx_cnt))
-			cmd |= I2CM_STOP_CMD;
+	ret = readl_poll_timeout(&priv->regs->isr, isr,
+				 isr & I2CM_PKT_DONE,
+				 I2C_TIMEOUT_US);
 
-		writel(0, &priv->regs->m_dma_len);
-		writel(I2CM_SET_RX_DMA_LEN(0), &priv->regs->m_dma_len);
+	writel(isr, &priv->regs->isr);
 
-		writel(cmd, &priv->regs->cmd_sts);
-
-		ret = readl_poll_timeout(&priv->regs->isr, isr,
-					 isr & I2CM_PKT_DONE,
-					 I2C_TIMEOUT_US);
-
-		if (ret)
-			return -ETIMEDOUT;
-
-		invalidate_dcache_range((uintptr_t)&rx_data[0], (uintptr_t)&rx_data[31]);
-		*buffer = rx_data[0];
-
-		writel(isr, &priv->regs->isr);
-
-		if (isr & I2CM_TX_NAK)
-			return -EREMOTEIO;
+	if (isr & (I2CM_TX_NAK | I2CM_ABNORMAL)) {
+		debug("abnormal irq: 0x%x\n", isr);
+		return -EREMOTEIO;
 	}
 
 	return 0;
