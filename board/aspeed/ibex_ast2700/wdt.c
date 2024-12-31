@@ -11,7 +11,7 @@ int wdt_init(void)
 {
 	u32 idx;
 	u32 wdt_base_addr;
-
+	//ast2700a0 only
 	for (idx = 0; idx < 8; idx++) {
 		wdt_base_addr = ASPEED_WDT_BASE + idx * 0x80;
 		/* SoC reset mask */
