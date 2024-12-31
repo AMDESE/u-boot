@@ -651,12 +651,20 @@ static u32 ast2700_soc0_get_emmcclk_rate(struct ast2700_scu0 *scu)
 	return (rate / ((div + 1) * 2));
 }
 
-static void ast2700_emmc_clk_init(struct ast2700_scu0 *scu)
+static void ast2700_emmc_init(struct ast2700_scu0 *scu)
 {
 	u32 clksrc1, rate, div;
 	int i;
 
-	/* set emmc clk src mpll/4:400Mhz */
+	/* set clk/cmd driving */
+	writel(2, &scu->gpio18d0_ioctrl); /* clk driving */
+	writel(1, &scu->gpio18d1_ioctrl); /* cmd driving */
+	writel(1, &scu->gpio18d2_ioctrl); /* data0 driving */
+	writel(1, &scu->gpio18d3_ioctrl); /* data1 driving */
+	writel(1, &scu->gpio18d4_ioctrl); /* data2 driving */
+	writel(1, &scu->gpio18d5_ioctrl); /* data2 driving */
+
+	/* emmc clk: set clk src mpll/4:400Mhz */
 	clksrc1 = readl(&scu->clk_sel1);
 	rate = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_MPLL) / 4;
 	for (i = 0; i < 8; i++) {
@@ -859,6 +867,14 @@ static void ast2700_init_rmii_clk(struct ast2700_scu1 *scu)
 	writel(reg_280, &scu->clk_sel1);
 }
 
+static void ast2700_init_spi(struct ast2700_scu1 *scu)
+{
+	writel(scu->io_driving8 | 0x00000fff, &scu->io_driving8);	/* fwspi driving */
+	writel(scu->io_driving3 | 0x00000fff, &scu->io_driving3);	/* spi0 driving */
+	writel(scu->io_driving3 | 0x0fff0000, &scu->io_driving3);	/* spi1 driving */
+	writel(scu->io_driving3 | 0x00000fff, &scu->io_driving4);	/* spi2 driving */
+}
+
 static int ast2700_clk1_init(struct udevice *dev)
 {
 	struct ast2700_clk_priv *priv = dev_get_priv(dev);
@@ -908,6 +924,7 @@ static int ast2700_clk1_init(struct udevice *dev)
 	writel(reg[1], &scu->mac_100m_delay);
 	writel(reg[2], &scu->mac_10m_delay);
 
+	ast2700_init_spi(scu);
 	ast2700_init_mac_clk(scu);
 	ast2700_init_rgmii_clk(scu);
 	ast2700_init_rmii_clk(scu);
@@ -921,7 +938,7 @@ static int ast2700_clk0_init(struct udevice *dev)
 	struct ast2700_clk_priv *priv = dev_get_priv(dev);
 	struct ast2700_scu0 *scu = (struct ast2700_scu0 *)priv->reg;
 
-	ast2700_emmc_clk_init(scu);
+	ast2700_emmc_init(scu);
 	ast2700_mphy_clk_init(scu);
 
 	return 0;
