@@ -54,6 +54,14 @@
 
 		syscon1: syscon@14c02000 {
 			bootph-all;
+
+			soc1_rst: reset-controller@14c02200 {
+				bootph-all;
+			};
+
+			soc1_clk: clock-controller@14c02200 {
+				bootph-all;
+			};
 		};
 
 		uart12: serial@14c33b00 {
