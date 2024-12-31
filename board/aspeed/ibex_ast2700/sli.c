@@ -181,6 +181,11 @@ static int sli_calibrate_mbus_pad_delay(struct sli_data *data, int index, int be
 	int d;
 	int d_first_pass = -1;
 	int d_last_pass = -1;
+	int d_def = 12;
+
+	if (data->die0.phy_clk_freq == SLI_PHYCLK_800M ||
+	    data->die0.phy_clk_freq == SLI_PHYCLK_788M)
+		d_def = 5;
 
 	for (d = begin; d < end; d++) {
 		sli_set_mbus_rx_delay_single(data->die1.slim, index, d);
@@ -203,7 +208,7 @@ static int sli_calibrate_mbus_pad_delay(struct sli_data *data, int index, int be
 	}
 
 	if (d_first_pass == -1)
-		d = SLIM_DEFAULT_DELAY;
+		d = d_def;
 	else
 		d = (d_first_pass + d_last_pass) >> 1;
 
@@ -218,6 +223,11 @@ static void sli_calibrate_mbus_delay(struct sli_data *data)
 	int begin, end;
 	int d_first_pass = -1;
 	int d_last_pass = -1;
+	int d_def = 12;
+
+	if (data->die0.phy_clk_freq == SLI_PHYCLK_800M ||
+	    data->die0.phy_clk_freq == SLI_PHYCLK_788M)
+		d_def = 5;
 
 	if (data->flags & SLI_FLAG_RX_LAH_NEG_IO_SLIM)
 		setbits_le32(data->die1.slim + SLI_CTRL_I, SLI_RX_PHY_LAH_SEL_NEG);
@@ -246,7 +256,7 @@ static void sli_calibrate_mbus_delay(struct sli_data *data)
 	}
 
 	if (d_first_pass < 0)
-		dc = SLIM_DEFAULT_DELAY;
+		dc = d_def;
 	else
 		dc = (d_first_pass + d_last_pass) >> 1;
 
@@ -325,15 +335,24 @@ int sli_init_f(void)
 	data->die0.slim = SLI0_REG + 0x000;
 	data->die0.slih = SLI0_REG + 0x200;
 	data->die0.sliv = SLI0_REG + 0x400;
-	data->die0.eng_clk_freq = SLI_TARGET_ENGCLK;
-	data->die0.phy_clk_freq = SLI_PHYCLK_25M;
+	data->die0.eng_clk_freq = SLI_CLK_500M;
+	if (IS_ENABLED(CONFIG_SLI_TARGET_PHYCLK_1GHZ))
+		data->die0.phy_clk_freq = SLI_PHYCLK_1G;
+	else if (IS_ENABLED(CONFIG_SLI_TARGET_PHYCLK_800MHZ))
+		data->die0.phy_clk_freq = SLI_PHYCLK_800M;
+	else if (IS_ENABLED(CONFIG_SLI_TARGET_PHYCLK_500MHZ))
+		data->die0.phy_clk_freq = SLI_PHYCLK_500M;
+	else if (IS_ENABLED(CONFIG_SLI_TARGET_PHYCLK_400MHZ))
+		data->die0.phy_clk_freq = SLI_PHYCLK_400M;
+	else
+		data->die0.phy_clk_freq = SLI_PHYCLK_25M;
 
 	/* IO die */
 	data->die1.slim = SLI1_REG + 0x000;
 	data->die1.slih = SLI1_REG + 0x200;
 	data->die1.sliv = SLI1_REG + 0x400;
-	data->die1.eng_clk_freq = SLI_TARGET_ENGCLK;
-	data->die1.phy_clk_freq = SLI_TARGET_PHYCLK;
+	data->die1.eng_clk_freq = SLI_CLK_500M;
+	data->die1.phy_clk_freq = SLI_PHYCLK_25M;
 
 	data->flags = 0;
 
@@ -363,8 +382,8 @@ int sli_init_f(void)
 		sli_set_cpu_die_hpll();
 		phyclk_lookup[5] = 788;
 
-		if (data->die1.phy_clk_freq == SLI_PHYCLK_800M ||
-		    data->die1.phy_clk_freq == SLI_PHYCLK_788M)
+		if (data->die0.phy_clk_freq == SLI_PHYCLK_800M ||
+		    data->die0.phy_clk_freq == SLI_PHYCLK_788M)
 			data->flags |= SLI_FLAG_RX_LAH_NEG_IO_SLIM;
 	}
 
@@ -372,8 +391,9 @@ int sli_init_f(void)
 		return 0;
 
 	/* Speed up engine clock before adjusting PHY TX clock and delay */
-	reg_val = FIELD_PREP(SLI_CLK_SEL, SLI_TARGET_ENGCLK);
+	reg_val = FIELD_PREP(SLI_CLK_SEL, data->die1.eng_clk_freq);
 	clrsetbits_le32(data->die1.slih + SLI_CTRL_III, SLI_CLK_SEL, reg_val);
+	reg_val = FIELD_PREP(SLI_CLK_SEL, data->die0.eng_clk_freq);
 	clrsetbits_le32(data->die0.slih + SLI_CTRL_III, SLI_CLK_SEL, reg_val);
 
 	/* Turn off auto-clear for AST2700A1 */
@@ -385,7 +405,7 @@ int sli_init_f(void)
 	}
 
 	/* Speed up CPU die PHY TX clock and clear TX PAD delay */
-	reg_val = FIELD_PREP(SLI_PHYCLK_SEL, SLI_TARGET_PHYCLK);
+	reg_val = FIELD_PREP(SLI_PHYCLK_SEL, data->die0.phy_clk_freq);
 	clrsetbits_le32(data->die0.slih + SLI_CTRL_III,
 			SLI_PHYCLK_SEL | SLIH_PAD_DLY_TX1 | SLIH_PAD_DLY_TX0, reg_val);
 
@@ -398,7 +418,7 @@ int sli_init_f(void)
 	sli_calibrate_ahb_delay(data);
 	sli_calibrate_mbus_delay(data);
 
-	debug("SLI DS @ %dMHz init done\n", phyclk_lookup[SLI_TARGET_PHYCLK]);
+	debug("SLI DS @ %dMHz init done\n", phyclk_lookup[data->die0.phy_clk_freq]);
 	return 0;
 }
 
