@@ -76,8 +76,6 @@
 #define SLIM_MARB_FUNC_I		0x60
 #define   SLIM_SLI_MARB_RR		BIT(0)
 
-#define SLI_TARGET_ENGCLK		SLI_CLK_500M
-
 struct sli_config {
 	uintptr_t slim; /* SLI MBUS */
 	uintptr_t slih; /* SLI AHB */
@@ -438,7 +436,7 @@ int ast2700_sli1_probe(struct udevice *dev)
 	data->die0.slim = sli0_regs + 0x000;
 	data->die0.slih = sli0_regs + 0x200;
 	data->die0.sliv = sli0_regs + 0x400;
-	data->die0.eng_clk_freq = SLI_TARGET_ENGCLK;
+	data->die0.eng_clk_freq = SLI_CLK_500M;
 	if (IS_ENABLED(CONFIG_SLI_TARGET_PHYCLK_1GHZ))
 		data->die0.phy_clk_freq = SLI_PHYCLK_1G;
 	else if (IS_ENABLED(CONFIG_SLI_TARGET_PHYCLK_800MHZ))
@@ -454,7 +452,7 @@ int ast2700_sli1_probe(struct udevice *dev)
 	data->die1.slim = sli1_regs + 0x000;
 	data->die1.slih = sli1_regs + 0x200;
 	data->die1.sliv = sli1_regs + 0x400;
-	data->die1.eng_clk_freq = SLI_TARGET_ENGCLK;
+	data->die1.eng_clk_freq = SLI_CLK_500M;
 	data->die1.phy_clk_freq = SLI_PHYCLK_25M;
 	data->flags = 0;
 
@@ -494,8 +492,9 @@ int ast2700_sli1_probe(struct udevice *dev)
 		return 0;
 
 	/* Speed up engine clock before adjusting PHY TX clock and delay */
-	reg_val = FIELD_PREP(SLI_CLK_SEL, SLI_TARGET_ENGCLK);
+	reg_val = FIELD_PREP(SLI_CLK_SEL, data->die1.eng_clk_freq);
 	clrsetbits_le32(data->die1.slih + SLI_CTRL_III, SLI_CLK_SEL, reg_val);
+	reg_val = FIELD_PREP(SLI_CLK_SEL, data->die0.eng_clk_freq);
 	clrsetbits_le32(data->die0.slih + SLI_CTRL_III, SLI_CLK_SEL, reg_val);
 
 	/* Turn off auto-clear for AST2700A1 */
