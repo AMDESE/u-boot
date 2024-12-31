@@ -91,8 +91,13 @@ struct init_callback board_init_seq[] = {
 
 int spl_board_init_f(void)
 {
+	struct udevice *dev;
 	int err;
 	int i;
+
+	/* scu1 initial for drving and clk*/
+	if (uclass_get_device_by_name(UCLASS_CLK, "clock-controller@14c02200", &dev))
+		printf("Get soc1 clk udevice Failed.\n");
 
 	for (i = 0; i < ARRAY_SIZE(board_init_seq); i++) {
 
