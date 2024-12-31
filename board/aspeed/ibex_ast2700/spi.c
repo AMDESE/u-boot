@@ -8,29 +8,6 @@
 #include <asm/io.h>
 #include <common.h>
 
-int spi_init(void)
-{
-	u32 reg_val;
-
-	reg_val = readl((void *)ASPEED_IO_FWSPI_DRIVING);
-	reg_val |= 0x00000fff;
-	writel(reg_val, (void *)ASPEED_IO_FWSPI_DRIVING);
-
-	reg_val = readl((void *)ASPEED_IO_SPI0_DRIVING);
-	reg_val |= 0x00000fff;
-	writel(reg_val, (void *)ASPEED_IO_SPI0_DRIVING);
-
-	reg_val = readl((void *)ASPEED_IO_SPI1_DRIVING);
-	reg_val |= 0x0fff0000;
-	writel(reg_val, (void *)ASPEED_IO_SPI1_DRIVING);
-
-	reg_val = readl((void *)ASPEED_IO_SPI2_DRIVING);
-	reg_val |= 0x00000fff;
-	writel(reg_val, (void *)ASPEED_IO_SPI2_DRIVING);
-
-	return 0;
-}
-
 enum spi_abr_mode get_spi_flash_abr_mode(void)
 {
 	u32 abr_mode;
@@ -144,20 +121,6 @@ size_t aspeed_memmove_dma_op(void *dest, const void *src, size_t count)
 
 		return count;
 	}
-
-	return 0;
-}
-
-int spi_load_image(u32 *src, u32 *dest, u32 len)
-{
-	const void *base;
-
-	debug("spi load image base = %x\n", (u32)base);
-
-	base = (const void *)(ASPEED_FMC_CS0_BASE + (u32)src +
-			      aspeed_spi_abr_offset());
-
-	memcpy((void *)dest, base, len);
 
 	return 0;
 }
