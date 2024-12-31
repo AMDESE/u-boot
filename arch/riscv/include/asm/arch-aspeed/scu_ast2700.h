@@ -97,14 +97,13 @@
 union ast2700_pll_reg {
 	uint32_t w;
 	struct {
-		unsigned int m : 13;			/* bit[12:0]	*/
-		unsigned int n : 6;			/* bit[18:13]	*/
-		unsigned int p : 4;			/* bit[22:19]	*/
-		unsigned int off : 1;			/* bit[23]	*/
-		unsigned int bypass : 1;		/* bit[24]	*/
-		unsigned int reset : 1;			/* bit[25]	*/
-		unsigned int reserved : 6;		/* bit[31:26]	*/
-
+		uint16_t m : 13;		/* bit[12:0]	*/
+		uint8_t n : 6;			/* bit[18:13]	*/
+		uint8_t p : 4;			/* bit[22:19]	*/
+		uint8_t off : 1;		/* bit[23]	*/
+		uint8_t bypass : 1;		/* bit[24]	*/
+		uint8_t reset : 1;		/* bit[25]	*/
+		uint8_t reserved : 6;		/* bit[31:26]	*/
 	} b;
 };
 
@@ -267,7 +266,52 @@ struct ast2700_scu0 {
 	uint32_t rsv_0x40c;		/* 0x40C */
 	uint32_t pinmux4;		/* 0x410 */
 	uint32_t vga_func_ctrl;		/* 0x414 */
-	uint32_t rsv_0x418[314];	/* 0x418 ~ 0x8FC */
+	uint32_t rsv_0x418[2];	/* 0x418 */
+	uint32_t pinmux_lock0;	/* 0x420 */
+	uint32_t pinmux_lock1;	/* 0x424 */
+	uint32_t pinmux_lock2;	/* 0x428 */
+	uint32_t rsv_0x42c;
+	uint32_t pinmux_lock3;	/* 0x430 */
+	uint32_t pinmux_lock4;	/* 0x434 */
+	uint32_t rsv_0x438[18];
+	uint32_t gpio18d0_ioctrl;	/* 0x480 */
+	uint32_t gpio18d1_ioctrl;	/* 0x484 */
+	uint32_t gpio18d2_ioctrl;	/* 0x488 */
+	uint32_t gpio18d3_ioctrl;	/* 0x48c */
+	uint32_t gpio18d5_ioctrl;	/* 0x490 */
+	uint32_t gpio18d6_ioctrl;	/* 0x494 */
+	uint32_t gpio18d7_ioctrl;	/* 0x498 */
+	uint32_t gpio18d8_ioctrl;	/* 0x49c */
+	uint32_t gpio18e0_ioctrl;	/* 0x4a0 */
+	uint32_t gpio18e1_ioctrl;	/* 0x4a4 */
+	uint32_t gpio18e2_ioctrl;	/* 0x4a8 */
+	uint32_t gpio18e3_ioctrl;	/* 0x4ac */
+	uint32_t jtag_ioctrl;	/* 0x4b0 */
+	uint32_t uart_ioctrl;	/* 0x4b4 */
+	uint32_t misc_ioctrl;	/* 0x4b8 */
+	uint32_t rsv_0x4bc[17];		/* 0x4bc ~ 0x4fc */
+	uint32_t pinmux_seucre0_0;	/* 0x500 */
+	uint32_t pinmux_seucre0_1;	/* 0x504 */
+	uint32_t pinmux_seucre0_2;	/* 0x508 */
+	uint32_t rsv_0x50c;
+	uint32_t pinmux_seucre0_3;	/* 0x510 */
+	uint32_t pinmux_seucre0_4;	/* 0x514 */
+	uint32_t rsv_0x518[58];
+	uint32_t pinmux_seucre1_0;	/* 0x600 */
+	uint32_t pinmux_seucre1_1;	/* 0x604 */
+	uint32_t pinmux_seucre1_2;	/* 0x608 */
+	uint32_t rsv_0x60c;
+	uint32_t pinmux_seucre1_3;	/* 0x610 */
+	uint32_t pinmux_seucre1_4;	/* 0x614 */
+	uint32_t rsv_0x618[58];
+	uint32_t pinmux_seucre2_0;	/* 0x700 */
+	uint32_t pinmux_seucre2_1;	/* 0x704 */
+	uint32_t pinmux_seucre2_2;	/* 0x708 */
+	uint32_t rsv_0x70c;
+	uint32_t pinmux_seucre2_3;	/* 0x710 */
+	uint32_t pinmux_seucre2s_4;	/* 0x714 */
+	uint32_t rsv_0x718[26];
+	uint32_t cpu_scratch[64];	/* 0x780 ~ 0x8FC */
 	uint32_t vga0_scratch1[4];	/* 0x900 ~ 0x90C */
 	uint32_t vga1_scratch1[4];	/* 0x910 ~ 0x91C */
 	uint32_t vga0_scratch2[8];	/* 0x920 ~ 0x93C */

@@ -19,6 +19,7 @@
 #define SCU_CPU_MISC_XDMA_CLIENT_EN		BIT(4)
 #define SCU_CPU_MISC_2D_CLIENT_EN		BIT(3)
 
+#define SCU_CPU_RST_SSP				BIT(30)
 #define SCU_CPU_RST_DPMCU			BIT(29)
 #define SCU_CPU_RST_DP				BIT(28)
 #define SCU_CPU_RST_XDMA1			BIT(26)
@@ -33,8 +34,10 @@
 #define SCU_CPU_RST_SOC				BIT(5)
 #define SCU_CPU_RST_DDRPHY			BIT(1)
 
+#define SCU_CPU_RST2_VGA			BIT(12)
 #define SCU_CPU_RST2_E2M1			BIT(11)
 #define SCU_CPU_RST2_E2M0			BIT(10)
+#define SCU_CPU_RST2_TSP			BIT(9)
 
 #define SCU_CPU_VGA_FUNC_DAC_OUTPUT		GENMASK(11, 10)
 #define SCU_CPU_VGA_FUNC_DP_OUTPUT		GENMASK(9, 8)
@@ -46,6 +49,23 @@
 #define SCU_CPU_PCI_MISC70_EN_EHCI		BIT(2)
 #define SCU_CPU_PCI_MISC70_EN_IPMI		BIT(1)
 #define SCU_CPU_PCI_MISC70_EN_VGA		BIT(0)
+
+#define SCU_CPU_HPLL_P				GENMASK(22, 19)
+#define SCU_CPU_HPLL_N				GENMASK(18, 13)
+#define SCU_CPU_HPLL_M				GENMASK(12, 0)
+
+#define SCU_CPU_HPLL2_LOCK			BIT(31)
+#define SCU_CPU_HPLL2_BWADJ			GENMASK(11, 0)
+
+#define SCU_CPU_SSP_TSP_RESET_STS		BIT(8)
+#define SCU_CPU_SSP_TSP_SRAM_SD			BIT(7)
+#define SCU_CPU_SSP_TSP_SRAM_DSLP		BIT(6)
+#define SCU_CPU_SSP_TSP_SRAM_SLP		BIT(5)
+#define SCU_CPU_SSP_TSP_NIDEN			BIT(4)
+#define SCU_CPU_SSP_TSP_DBGEN			BIT(3)
+#define SCU_CPU_SSP_TSP_DBG_ENABLE		BIT(2)
+#define SCU_CPU_SSP_TSP_RESET			BIT(1)
+#define SCU_CPU_SSP_TSP_ENABLE			BIT(0)
 
 /* SoC1 SCU Register */
 #define SCU_IO_HWSTRAP_UFS			BIT(23)
@@ -142,8 +162,32 @@ struct ast2700_scu0 {
 	uint32_t rsv_0xE8[2];		/* 0x0E8 ~ 0x0EC */
 	uint32_t random_num_ctrl;	/* 0x0F0 */
 	uint32_t random_num_data;	/* 0x0F4 */
-	uint32_t rsv_0xF0[2];		/* 0x0F8 ~ 0x0FC */
-	uint32_t rsv_0x100[64];		/* 0x100 ~ 0x1FC */
+	uint32_t rsv_0xF8[10];		/* 0x0F8 ~ 0x11C */
+	uint32_t ssp_ctrl_1;		/* 0x120 */
+	uint32_t ssp_ctrl_2;		/* 0x124 */
+	uint32_t ssp_ctrl_3;		/* 0x128 */
+	uint32_t ssp_ctrl_4;		/* 0x12C */
+	uint32_t ssp_ctrl_5;		/* 0x130 */
+	uint32_t ssp_ctrl_6;		/* 0x134 */
+	uint32_t ssp_ctrl_7;		/* 0x138 */
+	uint32_t rsv_0x13c[1];		/* 0x13C */
+	uint32_t ssp_remap0_base;	/* 0x140 */
+	uint32_t ssp_remap0_size;	/* 0x144 */
+	uint32_t ssp_remap1_base;	/* 0x148 */
+	uint32_t ssp_remap1_size;	/* 0x14c */
+	uint32_t ssp_remap2_base;	/* 0x150 */
+	uint32_t ssp_remap2_size;	/* 0x154 */
+	uint32_t rsv_0x158[2];		/* 0x158 ~ 0x15C */
+	uint32_t tsp_ctrl_1;		/* 0x160 */
+	uint32_t rsv_0x164[1];		/* 0x164 */
+	uint32_t tsp_ctrl_3;		/* 0x168 */
+	uint32_t tsp_ctrl_4;		/* 0x16C */
+	uint32_t tsp_ctrl_5;		/* 0x170 */
+	uint32_t tsp_ctrl_6;		/* 0x174 */
+	uint32_t tsp_ctrl_7;		/* 0x178 */
+	uint32_t rsv_0x17c[6];		/* 0x17C ~ 0x190 */
+	uint32_t tsp_remap_size;	/* 0x194 */
+	uint32_t rsv_0x198[26];		/* 0x198 ~ 0x1FC */
 	uint32_t modrst1_ctrl;		/* 0x200 */
 	uint32_t modrst1_clr;		/* 0x204 */
 	uint32_t rsv_0x208[2];		/* 0x208 ~ 0x20C */
@@ -222,7 +266,52 @@ struct ast2700_scu0 {
 	uint32_t rsv_0x40c;		/* 0x40C */
 	uint32_t pinmux4;		/* 0x410 */
 	uint32_t vga_func_ctrl;		/* 0x414 */
-	uint32_t rsv_0x418[314];	/* 0x418 ~ 0x8FC */
+	uint32_t rsv_0x418[2];	/* 0x418 */
+	uint32_t pinmux_lock0;	/* 0x420 */
+	uint32_t pinmux_lock1;	/* 0x424 */
+	uint32_t pinmux_lock2;	/* 0x428 */
+	uint32_t rsv_0x42c;
+	uint32_t pinmux_lock3;	/* 0x430 */
+	uint32_t pinmux_lock4;	/* 0x434 */
+	uint32_t rsv_0x438[18];
+	uint32_t gpio18d0_ioctrl;	/* 0x480 */
+	uint32_t gpio18d1_ioctrl;	/* 0x484 */
+	uint32_t gpio18d2_ioctrl;	/* 0x488 */
+	uint32_t gpio18d3_ioctrl;	/* 0x48c */
+	uint32_t gpio18d5_ioctrl;	/* 0x490 */
+	uint32_t gpio18d6_ioctrl;	/* 0x494 */
+	uint32_t gpio18d7_ioctrl;	/* 0x498 */
+	uint32_t gpio18d8_ioctrl;	/* 0x49c */
+	uint32_t gpio18e0_ioctrl;	/* 0x4a0 */
+	uint32_t gpio18e1_ioctrl;	/* 0x4a4 */
+	uint32_t gpio18e2_ioctrl;	/* 0x4a8 */
+	uint32_t gpio18e3_ioctrl;	/* 0x4ac */
+	uint32_t jtag_ioctrl;	/* 0x4b0 */
+	uint32_t uart_ioctrl;	/* 0x4b4 */
+	uint32_t misc_ioctrl;	/* 0x4b8 */
+	uint32_t rsv_0x4bc[17];		/* 0x4bc ~ 0x4fc */
+	uint32_t pinmux_seucre0_0;	/* 0x500 */
+	uint32_t pinmux_seucre0_1;	/* 0x504 */
+	uint32_t pinmux_seucre0_2;	/* 0x508 */
+	uint32_t rsv_0x50c;
+	uint32_t pinmux_seucre0_3;	/* 0x510 */
+	uint32_t pinmux_seucre0_4;	/* 0x514 */
+	uint32_t rsv_0x518[58];
+	uint32_t pinmux_seucre1_0;	/* 0x600 */
+	uint32_t pinmux_seucre1_1;	/* 0x604 */
+	uint32_t pinmux_seucre1_2;	/* 0x608 */
+	uint32_t rsv_0x60c;
+	uint32_t pinmux_seucre1_3;	/* 0x610 */
+	uint32_t pinmux_seucre1_4;	/* 0x614 */
+	uint32_t rsv_0x618[58];
+	uint32_t pinmux_seucre2_0;	/* 0x700 */
+	uint32_t pinmux_seucre2_1;	/* 0x704 */
+	uint32_t pinmux_seucre2_2;	/* 0x708 */
+	uint32_t rsv_0x70c;
+	uint32_t pinmux_seucre2_3;	/* 0x710 */
+	uint32_t pinmux_seucre2s_4;	/* 0x714 */
+	uint32_t rsv_0x718[26];
+	uint32_t cpu_scratch[64];	/* 0x780 ~ 0x8FC */
 	uint32_t vga0_scratch1[4];	/* 0x900 ~ 0x90C */
 	uint32_t vga1_scratch1[4];	/* 0x910 ~ 0x91C */
 	uint32_t vga0_scratch2[8];	/* 0x920 ~ 0x93C */
@@ -297,7 +386,8 @@ struct ast2700_scu1 {
 	uint32_t random_num_ctrl;	/* 0x0F0 */
 	uint32_t random_num_data;	/* 0x0F4 */
 	uint32_t rsv_0xF0[2];		/* 0x0F8 ~ 0x0FC */
-	uint32_t rsv_0x100[64];		/* 0x100 ~ 0x1FC */
+	uint32_t rsv_0x100[32];		/* 0x100 ~ 0x17C */
+	uint32_t scratch[32];		/* 0x180 ~ 0x1FC */
 	uint32_t modrst1_ctrl;		/* 0x200 */
 	uint32_t modrst1_clr;		/* 0x204 */
 	uint32_t rsv_0x208[2];		/* 0x208 ~ 0x20C */
