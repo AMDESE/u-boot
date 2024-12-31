@@ -278,10 +278,10 @@ struct ast2700_scu0 {
 	uint32_t gpio18d1_ioctrl;	/* 0x484 */
 	uint32_t gpio18d2_ioctrl;	/* 0x488 */
 	uint32_t gpio18d3_ioctrl;	/* 0x48c */
-	uint32_t gpio18d5_ioctrl;	/* 0x490 */
-	uint32_t gpio18d6_ioctrl;	/* 0x494 */
-	uint32_t gpio18d7_ioctrl;	/* 0x498 */
-	uint32_t gpio18d8_ioctrl;	/* 0x49c */
+	uint32_t gpio18d4_ioctrl;	/* 0x490 */
+	uint32_t gpio18d5_ioctrl;	/* 0x494 */
+	uint32_t gpio18d6_ioctrl;	/* 0x498 */
+	uint32_t gpio18d7_ioctrl;	/* 0x49c */
 	uint32_t gpio18e0_ioctrl;	/* 0x4a0 */
 	uint32_t gpio18e1_ioctrl;	/* 0x4a4 */
 	uint32_t gpio18e2_ioctrl;	/* 0x4a8 */
@@ -457,6 +457,53 @@ struct ast2700_scu1 {
 	uint32_t freq_counter_ctrl;	/* 0x3a0 */
 	uint32_t freq_counter_cmp;	/* 0x3a4 */
 	uint32_t rsv_0x3a8[2];		/* 0x3a8 ~ 0x3aC */
+	uint32_t usb_ctrl;		/* 0x3b0 */
+	uint32_t usb_lock;		/* 0x3b4 */
+	uint32_t usb_secure1;	/* 0x3b8 */
+	uint32_t usb_secure2;	/* 0x3bc */
+	uint32_t usb_secure3;	/* 0x3c0 */
+	uint32_t rsv_0x3c4[15];	/* 0x3c4 ~ 0x3fc */
+	uint32_t pinumx1;		/* 0x400 */
+	uint32_t pinumx2;		/* 0x404 */
+	uint32_t pinumx3;		/* 0x408 */
+	uint32_t pinumx4;		/* 0x40c */
+	uint32_t pinumx5;		/* 0x410 */
+	uint32_t pinumx6;		/* 0x414 */
+	uint32_t pinumx7;		/* 0x418 */
+	uint32_t pinumx8;		/* 0x41c */
+	uint32_t pinumx9;		/* 0x420 */
+	uint32_t pinumx10;		/* 0x424 */
+	uint32_t pinumx11;		/* 0x428 */
+	uint32_t pinumx12;		/* 0x42c */
+	uint32_t pinumx13;		/* 0x430 */
+	uint32_t pinumx14;		/* 0x434 */
+	uint32_t pinumx15;		/* 0x438 */
+	uint32_t pinumx16;		/* 0x43c */
+	uint32_t pinumx17;		/* 0x440 */
+	uint32_t pinumx18;		/* 0x444 */
+	uint32_t pinumx19;		/* 0x448 */
+	uint32_t pinumx20;		/* 0x44c */
+	uint32_t pinumx21;		/* 0x450 */
+	uint32_t pinumx22;		/* 0x454 */
+	uint32_t pinumx23;		/* 0x458 */
+	uint32_t pinumx24;		/* 0x45c */
+	uint32_t pinumx25;		/* 0x460 */
+	uint32_t pinumx26;		/* 0x464 */
+	uint32_t pinumx27;		/* 0x468 */
+	uint32_t rsv_0x46c[4];	/* 0x46c ~ 0x478 */
+	uint32_t pinumx31;		/* 0x47c */
+	uint32_t pull_down_dis[8];	/* 0x480 ~ 0x49c */
+	uint32_t pin_conf;		/* 0x4a0 */
+	uint32_t rsv_0x4a4[7];	/* 0x4a4 ~ 0x4bc */
+	uint32_t io_driving0;	/* 0x4c0 */
+	uint32_t io_driving1;	/* 0x4c4 */
+	uint32_t io_driving2;	/* 0x4c8 */
+	uint32_t io_driving3;	/* 0x4cc */
+	uint32_t io_driving4;	/* 0x4d0 */
+	uint32_t io_driving5;	/* 0x4d4 */
+	uint32_t io_driving6;	/* 0x4d8 */
+	uint32_t io_driving7;	/* 0x4dc */
+	uint32_t io_driving8;	/* 0x4e0 */
 };
 
 #endif
