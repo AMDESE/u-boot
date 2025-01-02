@@ -80,13 +80,11 @@ struct init_callback {
 };
 
 struct init_callback board_init_seq[] = {
-	{"SLI_F",		sli_init_f},
 	{"WDT",		wdt_init},
 	{"LTPI",	ltpi_init},
 	{"STOR",	stor_init},
 	{"DRAM",	dram_init},
 	{"PCI",		pci_init},
-	{"SLI_R",		sli_init_r},
 };
 
 int spl_board_init_f(void)
