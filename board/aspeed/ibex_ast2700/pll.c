@@ -4,8 +4,8 @@
  */
 #include <common.h>
 #include <dm.h>
-#include <asm/arch-aspeed/sdram_ast2700.h>
-#include <asm/arch-aspeed/platform.h>
+#include <asm/arch/sdram_ast2700.h>
+#include <asm/arch/platform.h>
 
 #define MPLL_RESET	BIT(25)
 #define MPLL_BYPASS	BIT(24)

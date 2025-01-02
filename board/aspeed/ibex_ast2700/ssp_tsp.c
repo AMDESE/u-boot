@@ -3,8 +3,8 @@
  * Copyright (c) Aspeed Technology Inc.
  */
 #include <asm/io.h>
-#include <asm/arch-aspeed/scu_ast2700.h>
-#include <asm/arch-aspeed/platform.h>
+#include <asm/arch/scu_ast2700.h>
+#include <asm/arch/platform.h>
 #include <dm.h>
 #include <fdt_support.h>
 #include <linux/delay.h>

@@ -3,8 +3,8 @@
  * Copyright (c) Aspeed Technology Inc.
  */
 
-#include <asm/arch-aspeed/spi.h>
-#include <asm/arch-aspeed/abr.h>
+#include <asm/arch/spi.h>
+#include <asm/arch/abr.h>
 #include <asm/io.h>
 #include <common.h>
 

@@ -3,8 +3,8 @@
  * Copyright (c) 2024 Aspeed Technology Inc.
  */
 
-#include <asm/arch-aspeed/platform.h>
-#include <asm/arch-aspeed/sdram_ast2700.h>
+#include <asm/arch/platform.h>
+#include <asm/arch/sdram_ast2700.h>
 #include <asm/io.h>
 #include <asm/u-boot.h>
 #include <common.h>

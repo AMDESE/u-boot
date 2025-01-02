@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2023, Aspeed Technology Inc.
  * Copyright (C) 2018, Bin Meng <bmeng.cn@gmail.com>
+ * Copyright (C) 2024, Aspeed Technology Inc.
  */
 
 #include <irq_func.h>

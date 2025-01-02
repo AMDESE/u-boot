@@ -8,7 +8,7 @@
 #ifndef _ASPEED_WDT_H_
 #define _ASPEED_WDT_H_
 
-#include <asm/arch-aspeed/platform.h>
+#include <asm/arch/platform.h>
 #include <linux/types.h>
 
 #define RELOAD_VAL		0x04

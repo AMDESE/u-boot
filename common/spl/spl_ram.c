@@ -9,7 +9,7 @@
  * Michal Simek <michal.simek@amd.com>
  * Stefan Agner <stefan.agner@toradex.com>
  */
-#include <asm/arch-aspeed/spi.h>
+#include <asm/arch/spi.h>
 #include <common.h>
 #include <binman_sym.h>
 #include <image.h>

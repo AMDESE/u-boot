@@ -1,6 +1,0 @@
-config RISCV_IBEX
-	bool
-	imply CPU
-	imply CPU_RISCV
-	help
-	  Run U-Boot on IBex RISC-V platform.

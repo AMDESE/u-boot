@@ -8,7 +8,7 @@
 #ifndef _ASPEED_SPI_H_
 #define _ASPEED_SPI_H_
 
-#include <asm/arch-aspeed/platform.h>
+#include <asm/arch/platform.h>
 #include <linux/types.h>
 
 #define ASPEED_FMC_CS0_SIZE		0x10000000

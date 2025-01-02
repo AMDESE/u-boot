@@ -3,9 +3,9 @@
  * Copyright (c) Aspeed Technology Inc.
  */
 
-#include <asm/arch-aspeed/platform.h>
-#include <asm/arch-aspeed/wdt.h>
-#include <asm/arch-aspeed/abr.h>
+#include <asm/arch/platform.h>
+#include <asm/arch/wdt.h>
+#include <asm/arch/abr.h>
 #include <asm/io.h>
 #include <common.h>
 

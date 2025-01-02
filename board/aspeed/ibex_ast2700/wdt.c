@@ -3,7 +3,7 @@
  * Copyright (c) Aspeed Technology Inc.
  */
 
-#include <asm/arch-aspeed/wdt.h>
+#include <asm/arch/wdt.h>
 #include <asm/io.h>
 #include <common.h>
 

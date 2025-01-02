@@ -8,7 +8,7 @@
 #include <dm.h>
 #include <regmap.h>
 #include <syscon.h>
-#include <asm/arch-aspeed/scu_ast2700.h>
+#include <asm/arch/scu_ast2700.h>
 #include <dm/lists.h>
 #include <dt-bindings/clock/ast2700-clock.h>
 #include <dt-bindings/reset/ast2700-reset.h>

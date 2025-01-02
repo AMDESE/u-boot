@@ -16,7 +16,7 @@
 #include <errno.h>
 #include <fat.h>
 #include <image.h>
-#include <asm/arch-aspeed/abr.h>
+#include <asm/arch/abr.h>
 
 static int sata_load_legacy(struct spl_image_info *spl_image,
 			    struct spl_boot_device *bootdev,

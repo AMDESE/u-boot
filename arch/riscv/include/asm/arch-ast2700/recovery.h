@@ -8,8 +8,8 @@
 #ifndef _ASPEED_RECOVERY_H_
 #define _ASPEED_RECOVERY_H_
 
-#include <asm/arch-aspeed/platform.h>
-#include <asm/arch-aspeed/sdram_ast2700.h>
+#include <asm/arch/platform.h>
+#include <asm/arch/sdram_ast2700.h>
 #include <linux/types.h>
 
 bool is_recovery(void);

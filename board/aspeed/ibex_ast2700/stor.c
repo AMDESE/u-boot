@@ -9,9 +9,9 @@
 #include <common.h>
 #include <asm/csr.h>
 #include <binman_sym.h>
-#include <asm/arch-aspeed/platform.h>
-#include <asm/arch-aspeed/scu_ast2700.h>
-#include <asm/arch-aspeed/spi.h>
+#include <asm/arch/platform.h>
+#include <asm/arch/scu_ast2700.h>
+#include <asm/arch/spi.h>
 #include <linux/bitfield.h>
 #include <linux/bitops.h>
 #include <linux/delay.h>

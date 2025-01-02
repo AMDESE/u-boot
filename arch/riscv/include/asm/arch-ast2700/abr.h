@@ -8,7 +8,7 @@
 #ifndef _ASPEED_ABR_H_
 #define _ASPEED_ABR_H_
 
-#include <asm/arch-aspeed/wdt.h>
+#include <asm/arch/wdt.h>
 #include <linux/types.h>
 
 #define ABR_REG			(ASPEED_IO_SCU_BASE + 0x030)

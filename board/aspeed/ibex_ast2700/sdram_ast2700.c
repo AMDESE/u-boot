@@ -4,8 +4,8 @@
  */
 #include <common.h>
 #include <dm.h>
-#include <asm/arch-aspeed/sdram_ast2700.h>
-#include <asm/arch-aspeed/pll.h>
+#include <asm/arch/sdram_ast2700.h>
+#include <asm/arch/pll.h>
 
 #define DRAMC_UNLOCK_KEY		0x1688a8a8
 #define DRAMC_VIDEO_UNLOCK_KEY		0x00440003
