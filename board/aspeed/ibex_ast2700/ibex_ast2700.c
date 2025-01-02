@@ -99,12 +99,20 @@ int spl_board_init_f(void)
 	if (uclass_get_device_by_name(UCLASS_CLK, "clock-controller@14c02200", &dev))
 		printf("Get soc1 clk udevice Failed.\n");
 
+	/* sli1 */
+	if (uclass_get_device_by_name(UCLASS_MISC, "sli@14c1e000", &dev))
+		printf("Get sli1 udevice Failed.\n");
+
 	for (i = 0; i < ARRAY_SIZE(board_init_seq); i++) {
 
 		err = board_init_seq[i].init_cb();
 		if (err)
 			printf("%s: %s init failed.\n", __func__, board_init_seq[i].name);
 	}
+
+	/* sli0 */
+	if (uclass_get_device_by_name(UCLASS_MISC, "sli@12c17000", &dev))
+		printf("Get sli0 udevice Failed.\n");
 
 	if (CONFIG_IS_ENABLED(MISC))
 		misc_init();
