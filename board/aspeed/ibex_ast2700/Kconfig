@@ -17,8 +17,16 @@ config SYS_CPU
 config SYS_CONFIG_NAME
 	default "ibex_ast2700"
 
+config FMC_SPECIFIC_OPTIONS
+	bool "FMC image with AST header"
+	default n
+	select RISCV_AST2700
+	select SUPPORT_SPL
+	imply SPL_DRIVERS_MISC
+
 config BOARD_SPECIFIC_OPTIONS
-	def_bool y
+	bool "Binman image without header"
+	default n
 	select RISCV_AST2700
 	select SUPPORT_SPL
 	select BINMAN
