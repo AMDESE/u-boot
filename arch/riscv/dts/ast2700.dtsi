@@ -100,6 +100,13 @@
 			};
 		};
 
+		sli0: sli@12c17000 {
+			compatible = "aspeed,ast2700-sli0";
+			aspeed,scu0 = <&syscon0>;
+			aspeed,scu1 = <&syscon1>;
+			reg = <0x12c17000 0x500>;
+		};
+
 		uart4: serial@12c1a000 {
 			compatible = "ns16550a";
 			reg = <0x12c1a000 0x20>;
@@ -138,6 +145,13 @@
 				compatible = "aspeed,ast2700-soc1-pinctrl";
 				reg = <0x400 0x100>;
 			};
+		};
+
+		sli1: sli@14c1e000 {
+			compatible = "aspeed,ast2700-sli1";
+			reg = <0x14c1e000 0x500>;
+			aspeed,scu1 = <&syscon1>;
+			aspeed,sli0 = <&sli0>;
 		};
 
 		uart12: serial@14c33b00 {
