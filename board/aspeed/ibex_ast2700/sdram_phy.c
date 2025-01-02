@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 #include <binman_sym.h>
 #include <spl.h>
+#include <asm/arch/fmc_hdr.h>
 #include <asm/arch/sdram_ast2700.h>
 #include <asm/arch/stor_ast2700.h>
 #include <asm/arch/recovery.h>
@@ -10,7 +11,7 @@
 #define SCU0_DDR_PHY_CLOCK	BIT(11)
 #define SCU0_CLOCK_STOP_CLR_REG	(ASPEED_CPU_SCU_BASE + 0x244)
 
-//binman_sym_declare(u32, u_boot_spl_ddr, image_pos);
+binman_sym_declare(u32, u_boot_spl_ddr, image_pos);
 
 binman_sym_declare(u32, ddr4_1d_imem_fw, image_pos);
 binman_sym_declare(u32, ddr4_1d_imem_fw, size);
@@ -307,9 +308,10 @@ int dwc_ddrphy_phyinit_userCustom_F_loadDMEM(const int pState, const int train2D
 
 void dwc_phy_init(struct sdramc *sdramc)
 {
-	u32 imem_start, dmem_start, imem_2d_start, dmem_2d_start;
+	u32 ctx_start, imem_start, dmem_start, imem_2d_start, dmem_2d_start;
 	u32 imem_len, dmem_len, imem_2d_len, dmem_2d_len;
 	u32 ddr5_imem, ddr5_imem_len, ddr5_dmem, ddr5_dmem_len;
+	u32 base = CONFIG_SPL_TEXT_BASE;
 
 	imem_start = binman_sym(u32, ddr4_1d_imem_fw, image_pos);
 	imem_len = binman_sym(u32, ddr4_1d_imem_fw, size);
@@ -324,23 +326,64 @@ void dwc_phy_init(struct sdramc *sdramc)
 	ddr5_dmem = binman_sym(u32, ddr5_dmem_fw, image_pos);
 	ddr5_dmem_len = binman_sym(u32, ddr5_dmem_fw, size);
 
-	// ddr5
-	dwc_train[0][0].imem_base = ddr5_imem;
-	dwc_train[0][0].imem_len = ddr5_imem_len;
-	dwc_train[0][0].dmem_base = ddr5_dmem;
-	dwc_train[0][0].dmem_len = ddr5_dmem_len;
+	if (BINMAN_SYMS_OK) {
+		ctx_start = binman_sym(u32, u_boot_spl_ddr, image_pos);
+		imem_start = binman_sym(u32, ddr4_1d_imem_fw, image_pos);
+		imem_len = binman_sym(u32, ddr4_1d_imem_fw, size);
+		dmem_start = binman_sym(u32, ddr4_1d_dmem_fw, image_pos);
+		dmem_len = binman_sym(u32, ddr4_1d_dmem_fw, size);
+		imem_2d_start = binman_sym(u32, ddr4_2d_imem_fw, image_pos);
+		imem_2d_len = binman_sym(u32, ddr4_2d_imem_fw, size);
+		dmem_2d_start = binman_sym(u32, ddr4_2d_dmem_fw, image_pos);
+		dmem_2d_len = binman_sym(u32, ddr4_2d_dmem_fw, size);
+		ddr5_imem = binman_sym(u32, ddr5_imem_fw, image_pos);
+		ddr5_imem_len = binman_sym(u32, ddr5_imem_fw, size);
+		ddr5_dmem = binman_sym(u32, ddr5_dmem_fw, image_pos);
+		ddr5_dmem_len = binman_sym(u32, ddr5_dmem_fw, size);
 
-	// ddr4 1d
-	dwc_train[1][0].imem_base = imem_start;
-	dwc_train[1][0].imem_len = imem_len;
-	dwc_train[1][0].dmem_base = dmem_start;
-	dwc_train[1][0].dmem_len = dmem_len;
+		// ddr5
+		dwc_train[0][0].imem_base = ddr5_imem - base;
+		dwc_train[0][0].imem_len = ddr5_imem_len;
+		dwc_train[0][0].dmem_base = ddr5_dmem - base;
+		dwc_train[0][0].dmem_len = ddr5_dmem_len;
 
-	// ddr4 2d
-	dwc_train[1][1].imem_base = imem_2d_start;
-	dwc_train[1][1].imem_len = imem_2d_len;
-	dwc_train[1][1].dmem_base = dmem_2d_start;
-	dwc_train[1][1].dmem_len = dmem_2d_len;
+		// ddr4 1d
+		dwc_train[1][0].imem_base = imem_start - base;
+		dwc_train[1][0].imem_len = imem_len;
+		dwc_train[1][0].dmem_base = dmem_start - base;
+		dwc_train[1][0].dmem_len = dmem_len;
+
+		// ddr4 2d
+		dwc_train[1][1].imem_base = imem_2d_start - base;
+		dwc_train[1][1].imem_len = imem_2d_len;
+		dwc_train[1][1].dmem_base = dmem_2d_start - base;
+		dwc_train[1][1].dmem_len = dmem_2d_len;
+	} else {
+		fmc_hdr_get_prebuilt(PBT_DDR4_PMU_TRAIN_IMEM, &imem_start, &imem_len, NULL);
+		fmc_hdr_get_prebuilt(PBT_DDR4_PMU_TRAIN_DMEM, &dmem_start, &dmem_len, NULL);
+		fmc_hdr_get_prebuilt(PBT_DDR4_2D_PMU_TRAIN_IMEM, &imem_2d_start, &imem_2d_len, NULL);
+		fmc_hdr_get_prebuilt(PBT_DDR4_2D_PMU_TRAIN_DMEM, &dmem_2d_start, &dmem_2d_len, NULL);
+		fmc_hdr_get_prebuilt(PBT_DDR5_PMU_TRAIN_IMEM, &ddr5_imem, &ddr5_imem_len, NULL);
+		fmc_hdr_get_prebuilt(PBT_DDR5_PMU_TRAIN_DMEM, &ddr5_dmem, &ddr5_dmem_len, NULL);
+
+		// ddr5
+		dwc_train[0][0].imem_base = ddr5_imem;
+		dwc_train[0][0].imem_len = ddr5_imem_len;
+		dwc_train[0][0].dmem_base = ddr5_dmem;
+		dwc_train[0][0].dmem_len = ddr5_dmem_len;
+
+		// ddr4 1d
+		dwc_train[1][0].imem_base = imem_start;
+		dwc_train[1][0].imem_len = imem_len;
+		dwc_train[1][0].dmem_base = dmem_start;
+		dwc_train[1][0].dmem_len = dmem_len;
+
+		// ddr4 2d
+		dwc_train[1][1].imem_base = imem_2d_start;
+		dwc_train[1][1].imem_len = imem_2d_len;
+		dwc_train[1][1].dmem_base = dmem_2d_start;
+		dwc_train[1][1].dmem_len = dmem_2d_len;
+	}
 
 	// enable ddrphy free-run clock
 	writel(SCU0_DDR_PHY_CLOCK, (void *)SCU0_CLOCK_STOP_CLR_REG);

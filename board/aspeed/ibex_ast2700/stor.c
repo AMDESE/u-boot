@@ -23,9 +23,6 @@
 int boot_dev;
 struct udevice *dev;
 
-binman_sym_declare(u32, u_boot_spl, image_pos);
-binman_sym_declare(u32, u_boot_spl_ddr, image_pos);
-
 int stor_init(void)
 {
 	int ret = 0;
@@ -86,11 +83,9 @@ int stor_copy(u32 *src, u32 *dest, u32 len)
 	u32 stor_ofst = 0x0;
 	u32 rev_id = readl((void *)ASPEED_IO_REVISION_ID);
 
-	stor_ofst = (rev_id == CHIP_REVID_AST2700A1) ?
-		    (binman_sym(u32, u_boot_spl, image_pos) - 0x20a00) :
-		    binman_sym(u32, u_boot_spl_ddr, image_pos);
+	stor_ofst = (rev_id == CHIP_REVID_AST2700A1) ? 0x20000 : 0x0;
 
-	src = (u32 *)(addr - stor_ofst);
+	src = (u32 *)(addr + stor_ofst);
 
 	if (boot_dev == BOOT_DEVICE_RAM) {
 		const void *base;
