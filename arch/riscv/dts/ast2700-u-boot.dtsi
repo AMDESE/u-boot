@@ -44,6 +44,10 @@
 			};
 		};
 
+		sli0: sli@12c17000 {
+			bootph-all;
+		};
+
 		uart4: serial@12c1a000 {
 			bootph-all;
 		};
@@ -62,6 +66,10 @@
 			soc1_clk: clock-controller@14c02200 {
 				bootph-all;
 			};
+		};
+
+		sli1: sli@14c1e000 {
+			bootph-all;
 		};
 
 		uart12: serial@14c33b00 {
