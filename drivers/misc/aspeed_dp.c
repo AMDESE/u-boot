@@ -16,6 +16,11 @@
 #include <linux/bitfield.h>
 #include <linux/delay.h>
 
+#ifdef CONFIG_SPL
+#include <asm/arch/fmc_hdr.h>
+#include <asm/arch/stor_ast2700.h>
+#endif
+
 #define MCU_CTRL                        0x00e0
 #define  MCU_CTRL_AHBS_IMEM_EN          BIT(0)
 #define  MCU_CTRL_AHBS_SW_RST           BIT(4)
@@ -58,7 +63,7 @@ struct aspeed_dp_priv {
 	void *mcud_base;	// mcu data
 	void *mcuc_base;	// mcu ctrl regs
 	void *mcui_base;	// mcu instruction mem
-	struct regmap *scu;
+	void *scu_base;
 };
 
 static void _redriver_cfg(struct udevice *dev)
@@ -111,7 +116,7 @@ static u32 _get_scu_offset(struct udevice *dev)
 
 		// There is 2 node in AST2700.
 		// Use DP_output mux to decide which scu
-		regmap_read(priv->scu, data->dp_pin_mux, &val);
+		val = readl(priv->scu_base + data->dp_pin_mux);
 		return (((val >> 8) & 0x3) == 1) ?
 			data->scratch1 : data->scratch0;
 	}
@@ -125,22 +130,31 @@ static int aspeed_dp_probe(struct udevice *dev)
 	struct astdp_data *data = (struct astdp_data *)dev_get_driver_data(dev);
 	struct reset_ctl dp_reset_ctl, dpmcu_reset_ctrl;
 	struct clk clk;
-	int i, ret = 0;
+	int ret = 0;
 	u32 mcu_ctrl, val, scu_offset;
 	bool is_mcu_stop = false;
+#ifndef CONFIG_SPL
+	int i;
 	u32 fw[0x1000];
+#endif
+	u32 fw_ofst;
+	u32 fw_size;
 
 	scu_offset = _get_scu_offset(dev);
-	regmap_read(dp->scu, scu_offset, &val);
+	val = readl(dp->scu_base + scu_offset);
 	is_mcu_stop = ((val & BIT(13)) == 0);
 
 	dev_dbg(dev, "%s(dev=%p) scu offset(%#x)\n", __func__, dev, scu_offset);
 
+#ifdef CONFIG_SPL
+	fmc_hdr_get_prebuilt(PBT_DP_FW, &fw_ofst, &fw_size, NULL);
+#else
 	ret = dev_read_u32_array(dev, "aspeed,dp-fw", fw, ARRAY_SIZE(fw));
 	if (ret) {
 		dev_err(dev, "Can't get dp-firmware, err(%d)\n", ret);
 		return ret;
 	}
+#endif // CONFIG_SPL
 
 	ret = reset_get_by_index(dev, 0, &dp_reset_ctl);
 	if (ret) {
@@ -201,8 +215,12 @@ static int aspeed_dp_probe(struct udevice *dev)
 		mcu_ctrl |= MCU_CTRL_AHBS_IMEM_EN;
 		writel(mcu_ctrl, dp->mcuc_base + MCU_CTRL);
 
+#ifdef CONFIG_SPL
+		stor_copy((u32 *)fw_ofst, (u32 *)dp->mcui_base, fw_size);
+#else
 		for (i = 0; i < ARRAY_SIZE(fw); i++)
 			writel(fw[i], dp->mcui_base + (i * 4));
+#endif // CONFIG_SPL
 
 		/* DPMCU */
 		/* clear display format and enable region */
@@ -220,9 +238,12 @@ static int aspeed_dp_probe(struct udevice *dev)
 	}
 
 	//set vga ASTDP with DPMCU FW handling scratch
-	regmap_update_bits(dp->scu, data->scratch0, 0x7 << 9, 0x7 << 9);
+	val = readl(dp->scu_base + scu_offset);
+	val &= ~(0x7 << 9);
+	val |= 0x7 << 9;
+	writel(val, dp->scu_base + data->scratch0);
 	if (data->scratch1)
-		regmap_update_bits(dp->scu, data->scratch1, 0x7 << 9, 0x7 << 9);
+		writel(val, dp->scu_base + data->scratch1);
 
 	return 0;
 }
@@ -230,6 +251,9 @@ static int aspeed_dp_probe(struct udevice *dev)
 static int aspeed_dp_of_to_plat(struct udevice *dev)
 {
 	struct aspeed_dp_priv *dp = dev_get_priv(dev);
+	uint32_t phandle;
+	ofnode node, scu_node;
+	int rc;
 
 	/* Get the controller base address */
 	dp->ctrl_base = (void *)devfdt_get_addr_index(dev, 0);
@@ -244,10 +268,29 @@ static int aspeed_dp_of_to_plat(struct udevice *dev)
 	dp->mcui_base = (void *)devfdt_get_addr_index(dev, 3);
 	if (IS_ERR(dp->mcui_base))
 		return PTR_ERR(dp->mcui_base);
-	dp->scu = syscon_regmap_lookup_by_phandle(dev, "aspeed,scu");
-	if (IS_ERR(dp->scu)) {
-		dev_err(dev, "%s can't get regmap for scu!\n", dev->name);
-		return PTR_ERR(dp->scu);
+
+	node = dev_ofnode(dev);
+	if (!ofnode_valid(node)) {
+		printf("cannot get DP device node\n");
+		return -ENODEV;
+	}
+
+	rc = ofnode_read_u32(node, "aspeed,scu", &phandle);
+	if (rc) {
+		printf("cannot get SCU phandle\n");
+		return -ENODEV;
+	}
+
+	scu_node = ofnode_get_by_phandle(phandle);
+	if (!ofnode_valid(scu_node)) {
+		printf("cannot get SCU device node\n");
+		return -ENODEV;
+	}
+
+	dp->scu_base = (void *)ofnode_get_addr(scu_node);
+	if (dp->scu_base == (void *)FDT_ADDR_T_NONE) {
+		printf("cannot map SCU registers\n");
+		return -ENODEV;
 	}
 
 	return 0;
