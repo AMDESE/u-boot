@@ -311,7 +311,7 @@ struct ast2700_scu0 {
 	uint32_t pinmux_seucre2_3;	/* 0x710 */
 	uint32_t pinmux_seucre2s_4;	/* 0x714 */
 	uint32_t rsv_0x718[26];
-	uint32_t cpu_scratch[64];	/* 0x780 ~ 0x8FC */
+	uint32_t cpu_scratch[96];	/* 0x780 ~ 0x8FC */
 	uint32_t vga0_scratch1[4];	/* 0x900 ~ 0x90C */
 	uint32_t vga1_scratch1[4];	/* 0x910 ~ 0x91C */
 	uint32_t vga0_scratch2[8];	/* 0x920 ~ 0x93C */
