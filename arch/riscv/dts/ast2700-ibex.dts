@@ -148,6 +148,10 @@
 	cmd-erase-64k = <0xdc040e>;
 };
 
+&display_port {
+	status = "okay";
+};
+
 #if BINMAN_SYMS_OK
 &binman {
 	bootph-all;

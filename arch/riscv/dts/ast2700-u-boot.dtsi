@@ -51,6 +51,10 @@
 		uart4: serial@12c1a000 {
 			bootph-all;
 		};
+
+		display_port: dp@12c0a000 {
+			bootph-all;
+		};
 	};
 
 	soc1: soc@14000000 {
