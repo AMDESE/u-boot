@@ -1,0 +1,303 @@
+// SPDX-License-Identifier: GPL-2.0+
+
+/dts-v1/;
+
+#include "ast2700.dtsi"
+#include "ast2700-u-boot.dtsi"
+
+/ {
+	model = "AST2700 EVB";
+	compatible = "aspeed,ast2700-evb", "aspeed,ast2700";
+
+	memory {
+		device_type = "memory";
+		reg = <0x4 0x00000000 0x0 0x20000000>;
+	};
+
+	chosen {
+		stdout-path = &uart12;
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+
+		espi_mmbi_memory: espi-mmbi-memory@428000000 {
+			reg = <0x4 0x28000000 0x0 0x4000000>;
+			no-map;
+		};
+
+		ssp_memory: ssp-memory@42c000000 {
+			reg = <0x4 0x2c000000 0x0 0x2000000>;
+			no-map;
+		};
+
+		tsp_memory: tsp-memory@42e000000 {
+			reg = <0x4 0x2e000000 0x0 0x2000000>;
+			no-map;
+		};
+
+		atf: trusted-firmware-a@430000000 {
+			reg = <0x4 0x30000000 0x0 0x80000>;
+			no-map;
+		};
+
+		optee_core: optee-core@430080000 {
+			reg = <0x4 0x30080000 0x0 0x1000000>;
+			no-map;
+		};
+
+		vbios_base0: vbios-base0@431bb0000 {
+			reg = <0x4 0x31bb0000 0x0 0x10000>;
+			no-map;
+		};
+
+		vbios_base1: vbios-base1@431bc0000 {
+			reg = <0x4 0x31bc0000 0x0 0x10000>;
+			no-map;
+		};
+
+		mctp0_reserved: mctp0-reserved@431bd0000 {
+			reg = <0x4 0x31bd0000 0x0 0x10000>;
+			no-map;
+		};
+
+		mctp1_reserved: mctp1-reserved@431be0000 {
+			reg = <0x4 0x31be0000 0x0 0x10000>;
+			no-map;
+		};
+
+		mctp2_reserved: mctp2-reserved@431bf0000 {
+			reg = <0x4 0x31bf0000 0x0 0x10000>;
+			no-map;
+		};
+	};
+};
+
+&uart12 {
+	status = "okay";
+};
+
+&mdio2 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	ethphy2: ethernet-phy@0 {
+		reg = <0>;
+	};
+};
+
+&sgmii {
+	status = "okay";
+};
+
+&mac2 {
+	status = "okay";
+	phy-mode = "sgmii";
+	phy-handle = <&ethphy2>;
+};
+
+&fmc {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_fwspi_quad_default>;
+
+	flash@0 {
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <4>;
+		spi-rx-bus-width = <4>;
+	};
+
+	flash@1 {
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <4>;
+		spi-rx-bus-width = <4>;
+	};
+
+	flash@2 {
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <4>;
+		spi-rx-bus-width = <4>;
+	};
+};
+
+&spi0 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_spi0_default &pinctrl_spi0_cs1_default>;
+
+	flash@0 {
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <2>;
+		spi-rx-bus-width = <2>;
+	};
+
+	flash@1 {
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <2>;
+		spi-rx-bus-width = <2>;
+	};
+};
+
+&spi1 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_spi1_default &pinctrl_spi1_cs1_default>;
+
+	flash@0 {
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <2>;
+		spi-rx-bus-width = <2>;
+	};
+
+	flash@1 {
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <2>;
+		spi-rx-bus-width = <2>;
+	};
+};
+
+&spi2 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_spi2_default &pinctrl_spi2_cs1_default>;
+
+#if 1
+	flash@0 {
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <2>;
+		spi-rx-bus-width = <2>;
+	};
+
+	flash@1 {
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <2>;
+		spi-rx-bus-width = <2>;
+	};
+#else
+	compatible = "aspeed,ast2700-spi-txrx";
+	spi-aspeed-full-duplex;
+	tpm0: tpmdev@0 {
+		compatible = "tcg,tpm_tis-spi";
+		spi-max-frequency = <25000000>;
+		reg = <0>;
+		status = "okay";
+	};
+#endif
+};
+
+&emmc_controller {
+	status = "okay";
+	sdhci_hs200; /* enable hs200 */
+};
+
+&emmc {
+	status = "okay";
+	max-frequency = <200000000>;
+};
+
+&sdc {
+	status = "okay";
+	sdhci_hs200; /* enable sdr104 */
+
+	vcc_sdio: vcc-sdio {
+		status = "okay";
+		compatible = "regulator-fixed";
+		gpios = <&gpio0 ASPEED_GPIO(G, 6) GPIO_ACTIVE_HIGH>;
+		regulator-name = "vcc_sdio";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		enable-active-high;
+		regulator-boot-on;
+	};
+
+	vccq_sdio: vccq-sdio {
+		status = "okay";
+		compatible = "regulator-gpio";
+		gpios = <&gpio0 ASPEED_GPIO(G, 7) GPIO_ACTIVE_HIGH>;
+		gpios-states = <1>;
+		states = <1800000 0x0>,
+			 <3300000 0x1>;
+		regulator-name = "vccq_sdio";
+		regulator-type = "voltage";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+};
+
+&sdhci {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sdio_default>;
+	vmmc-supply = <&vcc_sdio>;
+	vqmmc-supply = <&vccq_sdio>;
+	/*
+	 * When running SDR104 mode, it suggests to set driving to 3.
+	 * When running HS mode, it suggests to set driving to 2.
+	 */
+	sdhci-drive-type = <3>;
+	max-frequency = <100000000>;
+};
+
+&ufs {
+	status = "okay";
+};
+
+&i2c0 {
+	status = "okay";
+};
+
+&i2c1 {
+	status = "okay";
+};
+
+&i2c2 {
+	status = "okay";
+};
+
+&i2c3 {
+	status = "okay";
+};
+
+&i2c8 {
+	status = "okay";
+};
+
+&i2c11 {
+	status = "okay";
+};
+
+&wdt0 {
+	status = "okay";
+};
+
+&hace {
+	status = "okay";
+};
+
+&display_port {
+	status = "okay";
+};
+
+&vbios {
+	status = "okay";
+};
+
+&soc1_clk {
+	mac0-clk-delay = <0x35 0x34
+			  0x10 0x10
+			  0x10 0x10>;
+	mac1-clk-delay = <0x35 0x33
+			  0x10 0x10
+			  0x10 0x10>;
+};
