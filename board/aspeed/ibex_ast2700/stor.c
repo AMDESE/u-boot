@@ -48,7 +48,7 @@ int stor_init(void)
 		/* config gpio18 a0 to A5 to emmc mode */
 		writel(0xff, (void *)0x12c02400);
 
-		if (uclass_get_device_by_name(UCLASS_MMC, "sdhci@12090100", &dev)) {
+		if (uclass_get_device(UCLASS_BLK, 0, &dev)) {
 			printf("emmc udevice failed!\n");
 			ret = -1;
 		}
