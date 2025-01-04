@@ -190,7 +190,7 @@ static void sli_calibrate_ahb_delay(struct sli_data *data)
 
 		/* Check result */
 		sli_clear_interrupt_status(data->die1.slih);
-		udelay(10);
+		udelay(50);
 		if (is_sli_suspend(data->die1.slih) > 0) {
 			if (d_first_pass == -1)
 				d_first_pass = dc;
@@ -256,7 +256,7 @@ static int sli_calibrate_mbus_pad_delay(struct sli_data *data, int index, int be
 
 		/* Check result */
 		sli_clear_interrupt_status(data->die1.slim);
-		udelay(10);
+		udelay(50);
 		if (is_sli_suspend(data->die1.slim) > 0) {
 			if (d_first_pass == -1)
 				d_first_pass = d;
@@ -304,7 +304,7 @@ static void sli_calibrate_mbus_delay(struct sli_data *data)
 
 		/* Check result */
 		sli_clear_interrupt_status(data->die1.slim);
-		udelay(10);
+		udelay(50);
 		if (is_sli_suspend(data->die1.slim) > 0) {
 			if (d_first_pass == -1)
 				d_first_pass = dc;
