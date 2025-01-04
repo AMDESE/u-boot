@@ -94,6 +94,13 @@ struct sli_data {
 	uint32_t flags;
 };
 
+#define SLIH_COARSE_D_BEGIN		6
+#define SLIH_COARSE_D_END		20
+
+#define SLIM_COARSE_D_BEGIN		0
+#define SLIM_COARSE_D_END		16
+#define SLIM_FINE_MARGIN		5
+
 static void sli_clear_interrupt_status(uintptr_t base)
 {
 	writel(0xfffff, (void *)base + SLI_INTR_STATUS);
@@ -177,7 +184,7 @@ static void sli_calibrate_ahb_delay(struct sli_data *data)
 	else
 		clrbits_le32(data->die1.slih + SLI_CTRL_I, SLI_RX_PHY_LAH_SEL_NEG);
 
-	for (dc = 6; dc < 20; dc++) {
+	for (dc = SLIH_COARSE_D_BEGIN; dc < SLIH_COARSE_D_END; dc++) {
 		sli_set_ahb_rx_delay(data->die1.slih, dc, dc);
 		sli_clear(data->die1.slih, SLI_CLEAR_RX | SLI_CLEAR_BUS);
 
@@ -288,7 +295,7 @@ static void sli_calibrate_mbus_delay(struct sli_data *data)
 		clrbits_le32(data->die1.slim + SLI_CTRL_I, SLI_RX_PHY_LAH_SEL_NEG);
 
 	/* Find coarse delay */
-	for (dc = 0; dc < 16; dc++) {
+	for (dc = SLIM_COARSE_D_BEGIN; dc < SLIM_COARSE_D_END; dc++) {
 		sli_set_mbus_rx_delay(data->die1.slim, dc, dc, dc, dc);
 
 		/* Reset CPU-die TX and IO-die RX */
@@ -317,8 +324,8 @@ static void sli_calibrate_mbus_delay(struct sli_data *data)
 
 	sli_set_mbus_rx_delay(data->die1.slim, dc, dc, dc, dc);
 
-	begin = max(dc - 5, 0);
-	end = min(dc + 5, 31);
+	begin = max(dc - SLIM_FINE_MARGIN, 0);
+	end = min(dc + SLIM_FINE_MARGIN, 31);
 
 	/* Fine-tune per-PAD delay */
 	d0 = sli_calibrate_mbus_pad_delay(data, 0, begin, end);
