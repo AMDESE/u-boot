@@ -43,103 +43,6 @@ static u32 _ast_get_e2m_addr(struct sdramc_regs *ram, u8 node)
 	return val;
 }
 
-static int dp_init(struct ast2700_scu0 *scu)
-{
-	u32 *fw_addr;
-	u32 fw_ofst;
-	u32 fw_size;
-	u32 mcu_ctrl, val;
-	void *scu_offset;
-	bool is_mcu_stop = false;
-
-	if (BINMAN_SYMS_OK) {
-		fw_size = binman_sym(u32, dp_fw, size);
-		if (fw_size == BINMAN_SYM_MISSING) {
-			printf("%s: Can't get dp-firmware\n", __func__);
-			return -1;
-		}
-		// TODO: SPL boot only now
-		fw_addr = (u32 *)(binman_sym(u32, dp_fw, image_pos) - CONFIG_SPL_TEXT_BASE);
-	} else {
-		fmc_hdr_get_prebuilt(PBT_DP_FW, &fw_ofst, &fw_size, NULL);
-	}
-
-	val = scu->vga_func_ctrl;
-	scu_offset = (((val >> 8) & 0x3) == 1)
-		   ? &scu->vga1_scratch1[0] : &scu->vga0_scratch1[0];
-	val = readl(scu_offset);
-	is_mcu_stop = ((val & BIT(13)) == 0);
-
-	/* reset for DPTX and DPMCU if MCU isn't running */
-	if (is_mcu_stop) {
-		debug("%s: reset DP & MCU\n", __func__);
-		setbits_le32(&scu->modrst1_ctrl, SCU_CPU_RST_DP);
-		setbits_le32(&scu->modrst1_ctrl, SCU_CPU_RST_DPMCU);
-		udelay(100);
-
-		// enable clk
-		setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_DP);
-		mdelay(10);
-
-		setbits_le32(&scu->modrst1_clr, SCU_CPU_RST_DP);
-		setbits_le32(&scu->modrst1_clr, SCU_CPU_RST_DPMCU);
-		udelay(1);
-	}
-
-	val = readl((void *)DP_VERSION);
-	if (val == 0) {
-		printf("%s: Can't access DP, version(%x)\n", __func__, val);
-		return -1;
-	}
-
-	/* select HOST or BMC as display control master
-	 * enable or disable sending EDID to Host
-	 */
-	val = readl((void *)DP_HANDSHAKE);
-	val &= ~(DP_HANDSHAKE_HOST_READ_EDID | DP_HANDSHAKE_VIDEO_FMT_SRC);
-	writel(val, (void *)DP_HANDSHAKE);
-
-	/* DPMCU */
-	/* clear display format and enable region */
-	writel(0, (void *)(MCU_DMEM_BASE + 0x0de0));
-
-	/* load DPMCU firmware to internal instruction memory */
-	if (is_mcu_stop) {
-		debug("%s: DPMCU fw loaded\n", __func__);
-		mcu_ctrl = MCU_CTRL_CONFIG | MCU_CTRL_IMEM_CLK_OFF | MCU_CTRL_IMEM_SHUT_DOWN |
-		      MCU_CTRL_DMEM_CLK_OFF | MCU_CTRL_DMEM_SHUT_DOWN | MCU_CTRL_AHBS_SW_RST;
-		writel(mcu_ctrl, (void *)MCU_CTRL);
-
-		mcu_ctrl &= ~(MCU_CTRL_IMEM_SHUT_DOWN | MCU_CTRL_DMEM_SHUT_DOWN);
-		writel(mcu_ctrl, (void *)MCU_CTRL);
-
-		mcu_ctrl &= ~(MCU_CTRL_IMEM_CLK_OFF | MCU_CTRL_DMEM_CLK_OFF);
-		writel(mcu_ctrl, (void *)MCU_CTRL);
-
-		mcu_ctrl |= MCU_CTRL_AHBS_IMEM_EN;
-		writel(mcu_ctrl, (void *)MCU_CTRL);
-
-		stor_copy((u32 *)fw_ofst, (u32 *)MCU_IMEM_BASE, fw_size);
-
-		/* release DPMCU internal reset */
-		mcu_ctrl &= ~MCU_CTRL_AHBS_IMEM_EN;
-		writel(mcu_ctrl, (void *)MCU_CTRL);
-		mcu_ctrl |= MCU_CTRL_CORE_SW_RST | MCU_CTRL_AHBM_SW_RST;
-		writel(mcu_ctrl, (void *)MCU_CTRL);
-		//disable dp interrupt
-		writel(FIELD_PREP(MCU_INTR_CTRL_EN, 0xff), (void *)MCU_INTR_CTRL);
-	}
-
-	//set vga ASTDP with DPMCU FW handling scratch
-	val = readl(scu_offset);
-	val &= ~(0x7 << 9);
-	val |= 0x7 << 9;
-	writel(val, &scu->vga0_scratch1[0]);
-	writel(val, &scu->vga1_scratch1[0]);
-
-	return 0;
-}
-
 static int vbios_init(struct ast2700_scu0 *scu, u8 node)
 {
 	u32 *vbios_addr;
@@ -321,8 +224,6 @@ static int pci_vga_init(struct ast2700_scu0 *scu)
 		packer_io->REG10.value   = 0x00030009;
 		retimer_io->REG10.value  = 0x00230009;
 		retimer_io->REG44.value  = 0x00100010;
-
-		dp_init(scu);
 	}
 
 	return 0;
