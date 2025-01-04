@@ -457,7 +457,7 @@ int ast2700_sli1_probe(struct udevice *dev)
 	data->flags = 0;
 
 	scu = (struct ast2700_scu1 *)scu1_regs;
-	reg_val = readl((void *)scu->chip_id1);
+	reg_val = readl((void *)&scu->chip_id1);
 	if (FIELD_GET(SCU_CPU_REVISION_ID_HW, reg_val) == 0)
 		data->flags |= SLI_FLAG_AST2700A0;
 
@@ -544,7 +544,7 @@ int ast2700_sli0_probe(struct udevice *dev)
 	 * not need to wait for its completion.
 	 */
 	scu = (struct ast2700_scu1 *)scu1_regs;
-	reg_val = readl((void *)scu->chip_id1);
+	reg_val = readl((void *)&scu->chip_id1);
 	if (FIELD_GET(SCU_CPU_REVISION_ID_HW, reg_val) == 0)
 		return 0;
 
