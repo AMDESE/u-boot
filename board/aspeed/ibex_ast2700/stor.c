@@ -77,13 +77,14 @@ int stor_copy(u32 *src, u32 *dest, u32 len)
 {
 #define CHIP_REVID_AST2700A0	0x06000003
 #define CHIP_REVID_AST2700A1	0x06010003
+#define CHIP_AST2700A1_ID_MASK	BIT(16)
 #define UFS_BLK_LEN 0x1000
 #define MMC_BLK_LEN	0x200
 	u32 addr = (u32)src;
 	u32 stor_ofst = 0x0;
 	u32 rev_id = readl((void *)ASPEED_IO_REVISION_ID);
 
-	stor_ofst = (rev_id == CHIP_REVID_AST2700A1) ? 0x20000 : 0x0;
+	stor_ofst = !!(rev_id & CHIP_AST2700A1_ID_MASK) ? 0x20000 : 0x0;
 
 	src = (u32 *)(addr + stor_ofst);
 
