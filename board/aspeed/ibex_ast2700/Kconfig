@@ -48,6 +48,10 @@ config ASPEED_DRAM_AES
 	bool "Enable dramc AES"
 	default n
 
+config EXTRST_MASK_DEFAULT_INIT
+	bool "Initialize EXTRST mask value"
+	default n
+
 choice
 	prompt "AST2700 DDR target date rate"
 	default ASPEED_DDR_3200

@@ -10,6 +10,7 @@
 #include <binman_sym.h>
 #include <common.h>
 #include <asm/csr.h>
+#include <asm/arch/extrst.h>
 #include <asm/arch/platform.h>
 #include <asm/arch/recovery.h>
 #include <asm/arch/pci_ast2700.h>
@@ -81,6 +82,7 @@ struct init_callback {
 
 struct init_callback board_init_seq[] = {
 	{"WDT",		wdt_init},
+	{"EXTRST",	extrst_mask_init},
 	{"LTPI",	ltpi_init},
 	{"STOR",	stor_init},
 	{"DRAM",	dram_init},
