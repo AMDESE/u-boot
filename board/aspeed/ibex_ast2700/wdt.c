@@ -3,6 +3,7 @@
  * Copyright (c) Aspeed Technology Inc.
  */
 
+#include <asm/arch/platform.h>
 #include <asm/arch/wdt.h>
 #include <asm/io.h>
 #include <common.h>
@@ -11,7 +12,13 @@ int wdt_init(void)
 {
 	u32 idx;
 	u32 wdt_base_addr;
-	//ast2700a0 only
+	u32 project_id;
+
+	project_id = readl((void *)ASPEED_IO_SCU_BASE);
+	if (project_id & BIT(16))
+		return 0;
+
+	/* ast2700a0 only */
 	for (idx = 0; idx < 8; idx++) {
 		wdt_base_addr = ASPEED_WDT_BASE + idx * 0x80;
 		/* SoC reset mask */
