@@ -9,10 +9,12 @@
 #include <timer.h>
 #include <asm/io.h>
 #include <asm/arch/timer.h>
+#include <linux/bitfield.h>
 #include <linux/bitops.h>
 #include <linux/err.h>
 #include <dm/uclass.h>
 #include <power/regulator.h>
+#include <asm/arch-aspeed/scu_ast2700.h>
 
 #define AHBC_GROUP(x)				(0x40 * (x))
 #define AHBC_HREADY_WAIT_CNT_REG		0x34
@@ -44,7 +46,12 @@ int dram_init(void)
 
 static void ahbc_init(void)
 {
+	uint32_t reg_val;
 	int i;
+
+	reg_val = readl(ASPEED_CPU_REVISION_ID);
+	if (FIELD_GET(SCU_CPU_REVISION_ID_HW, reg_val))
+		return;
 
 	/* CPU-die AHBC timeout counter */
 	for (i = 0; i < 4; i++)
