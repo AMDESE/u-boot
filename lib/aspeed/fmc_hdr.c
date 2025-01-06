@@ -3,9 +3,9 @@
  * Copyright (c) Aspeed Technology Inc.
  */
 
-#include <asm/arch/fmc_hdr.h>
 #include <asm/io.h>
 #include <asm/sections.h>
+#include <aspeed/fmc_hdr.h>
 #include <errno.h>
 #include <spl.h>
 #include <string.h>

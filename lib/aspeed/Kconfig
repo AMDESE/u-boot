@@ -1,0 +1,4 @@
+config ASPEED_FMC_HEADER
+	bool "Enable ASPEED FMC header lib"
+	help
+	  Support ASPEED proprietary boot FMC header lib

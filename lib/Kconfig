@@ -1,5 +1,7 @@
 menu "Library routines"
 
+source lib/aspeed/Kconfig
+
 config ADDR_MAP
 	bool "Enable support for non-identity virtual-physical mappings"
 	help

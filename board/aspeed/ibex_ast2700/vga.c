@@ -13,12 +13,12 @@
 #include <asm/arch/platform.h>
 #include <asm/arch/dp_ast2700.h>
 #include <asm/arch/e2m_ast2700.h>
-#include <asm/arch/fmc_hdr.h>
 #include <asm/arch/pci_ast2700.h>
 #include <asm/arch/sdram_ast2700.h>
 #include <asm/arch/scu_ast2700.h>
 #include <asm/arch/vga_ast2700.h>
 #include <asm/arch/stor_ast2700.h>
+#include <aspeed/fmc_hdr.h>
 #include <linux/bitfield.h>
 #include <linux/bitops.h>
 #include <linux/delay.h>

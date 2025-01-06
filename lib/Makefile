@@ -64,6 +64,7 @@ endif
 
 obj-$(CONFIG_$(SPL_TPL_)CRC8) += crc8.o
 
+obj-y += aspeed/
 obj-y += crypto/
 
 obj-$(CONFIG_$(SPL_TPL_)ACPI) += acpi/

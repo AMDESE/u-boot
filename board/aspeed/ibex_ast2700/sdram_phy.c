@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0+
 #include <binman_sym.h>
 #include <spl.h>
-#include <asm/arch/fmc_hdr.h>
 #include <asm/arch/sdram_ast2700.h>
 #include <asm/arch/stor_ast2700.h>
 #include <asm/arch/recovery.h>
+#include <aspeed/fmc_hdr.h>
 
 #define DWC_PHY_IMEM_OFFSET	(0x50000)
 #define DWC_PHY_DMEM_OFFSET	(0x58000)
