@@ -80,6 +80,65 @@ struct init_callback {
 	int (*init_cb)(void);
 };
 
+static int pci_init(void)
+{
+	int nodeoffset;
+	ofnode node;
+	struct ast2700_scu0 *scu;
+	u8 efuse;
+
+	/* find the offset of compatible node */
+	nodeoffset = fdt_node_offset_by_compatible(gd->fdt_blob, -1,
+						   "aspeed,ast2700-scu0");
+	if (nodeoffset < 0) {
+		printf("%s: failed to get aspeed,ast2700-scu0\n", __func__);
+		return -ENODEV;
+	}
+
+	/* get ast2700-scu0 node */
+	node = offset_to_ofnode(nodeoffset);
+
+	scu = (struct ast2700_scu0 *)ofnode_get_addr(node);
+	if (IS_ERR_OR_NULL(scu)) {
+		printf("%s: cannot get SYSCON address pointer\n", __func__);
+		return PTR_ERR(scu);
+	}
+
+	// leave works to u-boot
+	if (FIELD_GET(SCU_CPU_REVISION_ID_HW, scu->chip_id1) == 0) {
+		debug("%s: Do nothing in A0\n", __func__);
+		return 0;
+	}
+
+	efuse = FIELD_GET(SCU_CPU_REVISION_ID_EFUSE, scu->chip_id1);
+	if (efuse == 2) {
+		debug("%s: 2720 has no PCIE\n", __func__);
+		return 0;
+	}
+
+	if (efuse == 0) {
+		// setup preset for plda2
+		writel(0x12600000, (void *)ASPEED_PLDA2_PRESET0);
+		writel(0x00012600, (void *)ASPEED_PLDA2_PRESET1);
+
+		// clk/reset for e2m
+		setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_E2M1);
+		mdelay(10);
+		setbits_le32(&scu->modrst2_clr, SCU_CPU_RST2_E2M1);
+	}
+
+	// setup preset for plda1
+	writel(0x12600000, (void *)ASPEED_PLDA1_PRESET0);
+	writel(0x00012600, (void *)ASPEED_PLDA1_PRESET1);
+
+	// clk/reset for e2m
+	setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_E2M0);
+	mdelay(10);
+	setbits_le32(&scu->modrst2_clr, SCU_CPU_RST2_E2M0);
+
+	return 0;
+}
+
 struct init_callback board_init_seq[] = {
 	{"WDT",		wdt_init},
 	{"EXTRST",	extrst_mask_init},

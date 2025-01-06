@@ -13,6 +13,4 @@
 #define ASPEED_PLDA2_PRESET0		(ASPEED_PLDA2_BASE + 0xb0)
 #define ASPEED_PLDA2_PRESET1		(ASPEED_PLDA2_BASE + 0xb4)
 
-int pci_init(void);
-
 #endif
