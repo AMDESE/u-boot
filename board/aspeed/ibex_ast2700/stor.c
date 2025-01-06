@@ -21,17 +21,18 @@
 #include <ufs.h>
 
 int boot_dev;
-struct udevice *dev;
+struct blk_desc *blk_dev;
 
 int stor_init(void)
 {
+	struct udevice *dev;
 	int ret = 0;
 
 	if ((readl((void *)ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_EMMC)) {
 		if (readl((void *)ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_UFS)
 			boot_dev = BOOT_DEVICE_UFS;
 		else
-			boot_dev = BOOT_DEVICE_MMC1;
+			boot_dev = BOOT_DEVICE_UFS;
 	} else {
 		boot_dev = BOOT_DEVICE_RAM;
 	}
@@ -52,17 +53,28 @@ int stor_init(void)
 			printf("emmc udevice failed!\n");
 			ret = -1;
 		}
-		ret = blk_select_hwpart(dev, 1);
+
+		blk_dev = dev_get_uclass_plat(dev);
+
+		ret = blk_dselect_hwpart(blk_dev, 1);
 		if (ret) {
-			printf("%s: bd selet part fail\n", __func__);
+			printf("%s: blk_dselect_hwpart fail\n", __func__);
 			ret = -1;
 		}
+
 		break;
 	case BOOT_DEVICE_UFS:
-		if (uclass_get_device_by_name(UCLASS_UFS, "ufshc@12c08200", &dev)) {
-			printf("ufs udevice failed!\n");
-			ret = -1;
+
+		if (IS_ENABLED(CONFIG_DM_SCSI) && IS_ENABLED(CONFIG_SPL_SATA)) {
+			scsi_scan(false);
+
+			blk_dev = blk_get_devnum_by_uclass_id(UCLASS_SCSI, 0);
+			if (!blk_dev) {
+				printf("Get SCSI device failed\n");
+				ret = -1;
+			}
 		}
+
 		break;
 	default:
 		printf("Invalid Boot Mode:0x%x\n", boot_dev);
@@ -118,7 +130,7 @@ int stor_copy(u32 *src, u32 *dest, u32 len)
 			blks++;
 
 		debug("blk read blk=0x%x, blks=0x%x\n", blk, blks);
-		ret = blk_read(dev, blk, blks, (void *)ASPEED_SRAM_BASE);
+		ret = blk_dread(blk_dev, blk, blks, (void *)ASPEED_SRAM_BASE);
 		debug("blk read cnt=%d\n", ret);
 		if (ret != blks) {
 			printf("blk read is incomplete!!!\n");
