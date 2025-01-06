@@ -104,6 +104,7 @@
 			compatible = "aspeed,ast2700-sli0";
 			aspeed,scu0 = <&syscon0>;
 			aspeed,scu1 = <&syscon1>;
+			aspeed,sli1 = <&sli1>;
 			reg = <0x12c17000 0x500>;
 		};
 
