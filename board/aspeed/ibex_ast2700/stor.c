@@ -32,7 +32,7 @@ int stor_init(void)
 		if (readl((void *)ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_UFS)
 			boot_dev = BOOT_DEVICE_UFS;
 		else
-			boot_dev = BOOT_DEVICE_UFS;
+			boot_dev = BOOT_DEVICE_MMC1;
 	} else {
 		boot_dev = BOOT_DEVICE_RAM;
 	}
