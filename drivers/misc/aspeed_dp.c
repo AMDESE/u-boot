@@ -16,7 +16,7 @@
 #include <linux/bitfield.h>
 #include <linux/delay.h>
 
-#ifdef CONFIG_SPL
+#ifdef CONFIG_RISCV
 #include <asm/arch/fmc_hdr.h>
 #include <asm/arch/stor_ast2700.h>
 #endif
@@ -133,12 +133,13 @@ static int aspeed_dp_probe(struct udevice *dev)
 	int ret = 0;
 	u32 mcu_ctrl, val, scu_offset;
 	bool is_mcu_stop = false;
-#ifndef CONFIG_SPL
+#ifndef CONFIG_RISCV
 	int i;
 	u32 fw[0x1000];
-#endif
+#else
 	u32 fw_ofst;
 	u32 fw_size;
+#endif
 
 	scu_offset = _get_scu_offset(dev);
 	val = readl(dp->scu_base + scu_offset);
@@ -146,7 +147,7 @@ static int aspeed_dp_probe(struct udevice *dev)
 
 	dev_dbg(dev, "%s(dev=%p) scu offset(%#x)\n", __func__, dev, scu_offset);
 
-#ifdef CONFIG_SPL
+#ifdef CONFIG_RISCV
 	fmc_hdr_get_prebuilt(PBT_DP_FW, &fw_ofst, &fw_size, NULL);
 #else
 	ret = dev_read_u32_array(dev, "aspeed,dp-fw", fw, ARRAY_SIZE(fw));
@@ -154,7 +155,7 @@ static int aspeed_dp_probe(struct udevice *dev)
 		dev_err(dev, "Can't get dp-firmware, err(%d)\n", ret);
 		return ret;
 	}
-#endif // CONFIG_SPL
+#endif // CONFIG_RISCV
 
 	ret = reset_get_by_index(dev, 0, &dp_reset_ctl);
 	if (ret) {
@@ -215,12 +216,12 @@ static int aspeed_dp_probe(struct udevice *dev)
 		mcu_ctrl |= MCU_CTRL_AHBS_IMEM_EN;
 		writel(mcu_ctrl, dp->mcuc_base + MCU_CTRL);
 
-#ifdef CONFIG_SPL
+#ifdef CONFIG_RISCV
 		stor_copy((u32 *)fw_ofst, (u32 *)dp->mcui_base, fw_size);
 #else
 		for (i = 0; i < ARRAY_SIZE(fw); i++)
 			writel(fw[i], dp->mcui_base + (i * 4));
-#endif // CONFIG_SPL
+#endif // CONFIG_RISCV
 
 		/* DPMCU */
 		/* clear display format and enable region */
