@@ -15,6 +15,10 @@
 
 #define SLI_POLL_TIMEOUT_US	100
 
+#define SLIM_REG_OFFSET			0x000
+#define SLIH_REG_OFFSET			0x200
+#define SLIV_REG_OFFSET			0x400
+
 #define SLI_CTRL_I			0x00
 #define   SLI_ALL_IN_SUSPEND            BIT(28)
 #define   SLI_AUTO_CLR_OFF_DAT          BIT(23) /* No auto-clear when changing data pad delay */
@@ -440,9 +444,9 @@ int ast2700_sli1_probe(struct udevice *dev)
 		return ret;
 
 	/* CPU die */
-	data->die0.slim = sli0_regs + 0x000;
-	data->die0.slih = sli0_regs + 0x200;
-	data->die0.sliv = sli0_regs + 0x400;
+	data->die0.slim = sli0_regs + SLIM_REG_OFFSET;
+	data->die0.slih = sli0_regs + SLIH_REG_OFFSET;
+	data->die0.sliv = sli0_regs + SLIV_REG_OFFSET;
 	data->die0.eng_clk_freq = SLI_CLK_500M;
 	if (IS_ENABLED(CONFIG_SLI_TARGET_PHYCLK_1GHZ))
 		data->die0.phy_clk_freq = SLI_PHYCLK_1G;
@@ -456,9 +460,9 @@ int ast2700_sli1_probe(struct udevice *dev)
 		data->die0.phy_clk_freq = SLI_PHYCLK_25M;
 
 	/* IO die */
-	data->die1.slim = sli1_regs + 0x000;
-	data->die1.slih = sli1_regs + 0x200;
-	data->die1.sliv = sli1_regs + 0x400;
+	data->die1.slim = sli1_regs + SLIM_REG_OFFSET;
+	data->die1.slih = sli1_regs + SLIH_REG_OFFSET;
+	data->die1.sliv = sli1_regs + SLIV_REG_OFFSET;
 	data->die1.eng_clk_freq = SLI_CLK_500M;
 	data->die1.phy_clk_freq = SLI_PHYCLK_25M;
 	data->flags = 0;
