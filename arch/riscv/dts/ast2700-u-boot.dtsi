@@ -36,6 +36,10 @@
 			};
 		};
 
+		prictrl: prictrl@12140000 {
+			bootph-all;
+		};
+
 		ufs: ufs-wrapper@12c08000 {
 			bootph-all;
 

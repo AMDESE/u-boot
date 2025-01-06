@@ -3,6 +3,7 @@
 #include <dt-bindings/gpio/aspeed-gpio.h>
 #include <dt-bindings/clock/ast2700-clock.h>
 #include <dt-bindings/reset/ast2700-reset.h>
+#include <dt-bindings/soc/ast2700-prictrl.h>
 
 / {
 	model = "Aspeed AST2700 BootMCU";
@@ -52,6 +53,18 @@
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_emmc_default>;
 			};
+		};
+
+		prictrl: prictrl@12140000 {
+			compatible = "aspeed,ast2700-prictrl";
+			reg = <0x12140000 0x400>, <0x14100000 0x400>;
+			client-list-0 = <IO_S_I_PRICTRL C_S_C_PRICTRL IO_S_WDT_7>;
+			client-list-1 = <>;
+			client-list-2 = <>;
+			client-list-3 = <>;
+			client-list-4 = <>;
+			client-list-5 = <>;
+			status = "disable";
 		};
 
 		ufs: ufs-wrapper@12c08000 {

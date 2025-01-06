@@ -100,6 +100,10 @@
 	max-frequency = <25000000>;
 };
 
+&prictrl {
+	status = "okay";
+};
+
 &ufs {
 	status = "okay";
 };
