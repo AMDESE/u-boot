@@ -35,6 +35,18 @@ config ASPEED_VBIOS
 	help
 	  Select this to enable VBIOS driver
 
+config ASPEED_VGA
+	bool "Aspeed VGA Graphics driver"
+	depends on MISC
+	help
+	  Select this to enable VGA Graphics driver
+
+config SPL_ASPEED_VGA
+	bool "Aspeed VGA Graphics driver in SPL"
+	depends on SPL_MISC
+	help
+	  Select this to enable VGA Graphics driver
+
 config ASPEED_DP
 	bool "Aspeed Display Port firmware driver"
 	depends on MISC
