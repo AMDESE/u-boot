@@ -31,12 +31,4 @@ config PCI_SANDBOX_EP
 	  The sandbox driver act as a dummy driver which stores and
 	  retrieves PCIe endpoint configuration as is.
 
-config PCIE_ASPEED_EP
-	bool "ASPEED PCIe endpoint controller"
-	depends on PCI_ENDPOINT
-	help
-	  Say Y here if you want to support the ASPEED PCIe controller in
-	  endpoint mode. This PCIe controller may be embedded into many
-	  different vendors SoCs.
-
 endmenu

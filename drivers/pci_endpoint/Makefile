@@ -6,4 +6,3 @@
 obj-y += pci_ep-uclass.o
 obj-$(CONFIG_PCIE_CADENCE_EP) += pcie-cadence-ep.o
 obj-$(CONFIG_PCI_SANDBOX_EP) += sandbox-pci_ep.o
-obj-$(CONFIG_PCIE_ASPEED_EP) += pcie-aspeed-ep.o
