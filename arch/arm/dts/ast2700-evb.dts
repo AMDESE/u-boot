@@ -308,6 +308,10 @@
 	status = "okay";
 };
 
+&vga {
+	status = "okay";
+};
+
 &soc1_clk {
 	mac0-clk-delay = <0x33 0x30
 			  0x10 0x10

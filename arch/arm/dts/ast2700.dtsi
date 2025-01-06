@@ -224,8 +224,8 @@
 			status = "disabled";
 		};
 
-		pcie_ep: pcie_ep@12c15000 {
-			compatible = "aspeed,ast2700-pcie-ep";
+		vga: vga@12c14000 {
+			compatible = "aspeed,ast2700-vga";
 			reg = <0 0x12c02000 0 0x1000>, <0 0x12c00000 0 0x200>,
 			      <0 0x12c21000 0 0x200>, <0 0x12c22000 0 0x200>,
 			      <0 0x12c1d000 0 0x200>, <0 0x14c3a000 0 0x200>;
