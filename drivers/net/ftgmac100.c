@@ -694,6 +694,10 @@ static int ftgmac100_probe(struct udevice *dev)
 	if (device_is_compatible(dev, "aspeed,ast2700-mac") &&
 	    pdata->phy_interface == PHY_INTERFACE_MODE_SGMII) {
 		ret = generic_phy_get_by_name(dev, "sgmii", &priv->sgmii);
+		if (ret) {
+			dev_err(dev, "Unable to get sgmii");
+			goto out;
+		}
 		generic_phy_init(&priv->sgmii);
 	}
 
