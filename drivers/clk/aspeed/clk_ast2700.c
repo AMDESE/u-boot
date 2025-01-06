@@ -875,6 +875,19 @@ static void ast2700_init_spi(struct ast2700_scu1 *scu)
 	writel(scu->io_driving3 | 0x00000fff, &scu->io_driving4);	/* spi2 driving */
 }
 
+#define SCU1_CLK_I3C_DIV_MASK	GENMASK(25, 23)
+#define SCU1_CLK_I3C_DIV(n)	((n) - 1)
+static void ast2700_init_i3c_clk(struct ast2700_scu1 *scu)
+{
+	u32 reg_284;
+
+	/* I3C 250MHz = HPLL/4 */
+	reg_284 = readl(&scu->clk_sel2);
+	reg_284 &= ~SCU1_CLK_I3C_DIV_MASK;
+	reg_284 |= FIELD_PREP(SCU1_CLK_I3C_DIV_MASK, SCU1_CLK_I3C_DIV(4));
+	writel(reg_284, &scu->clk_sel2);
+}
+
 static int ast2700_clk1_init(struct udevice *dev)
 {
 	struct ast2700_clk_priv *priv = dev_get_priv(dev);
@@ -929,6 +942,7 @@ static int ast2700_clk1_init(struct udevice *dev)
 	ast2700_init_rgmii_clk(scu);
 	ast2700_init_rmii_clk(scu);
 	ast2700_init_sdclk(scu);
+	ast2700_init_i3c_clk(scu);
 
 	return 0;
 }
