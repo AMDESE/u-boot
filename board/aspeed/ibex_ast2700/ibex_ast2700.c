@@ -110,13 +110,6 @@ int spl_board_init_f(void)
 			printf("%s: %s init failed.\n", __func__, board_init_seq[i].name);
 	}
 
-	/* sli0 */
-	if (uclass_get_device_by_name(UCLASS_MISC, "sli@12c17000", &dev))
-		printf("Get sli0 udevice Failed.\n");
-
-	if (CONFIG_IS_ENABLED(MISC))
-		misc_init();
-
 	return 0;
 }
 
@@ -189,6 +182,8 @@ void board_fit_image_post_process(const void *fit, int node, void **p_image, siz
 
 void spl_board_prepare_for_boot(void)
 {
+	struct udevice *dev;
+
 	/* for v7 FPGA only to switch to uart12. */
 	if (IS_ENABLED(CONFIG_ASPEED_FPGA))
 		writel(SCU_CPU_HWSTRAP_DIS_CPU, (void *)ASPEED_CPU_HW_STRAP1_CLR);
@@ -203,6 +198,13 @@ void spl_board_prepare_for_boot(void)
 
 	/* release CA35 reset */
 	writel(0x1, (void *)ASPEED_CPU_CA35_REL);
+
+	/* sli0 */
+	if (uclass_get_device_by_name(UCLASS_MISC, "sli@12c17000", &dev))
+		printf("Get sli0 udevice Failed.\n");
+
+	if (CONFIG_IS_ENABLED(MISC))
+		misc_init();
 
 	/* release SSP reset */
 	if (has_sspfw)
