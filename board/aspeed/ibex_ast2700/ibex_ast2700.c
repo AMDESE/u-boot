@@ -154,6 +154,10 @@ int spl_board_init_f(void)
 	int err;
 	int i;
 
+	/* prictrl initial for setting permission */
+	if (uclass_get_device_by_name(UCLASS_MISC, "prictrl@12140000", &dev))
+		printf("Get prictrl udevice Failed.\n");
+
 	/* scu1 initial for drving and clk*/
 	if (uclass_get_device_by_name(UCLASS_CLK, "clock-controller@14c02200", &dev))
 		printf("Get soc1 clk udevice Failed.\n");
