@@ -156,6 +156,10 @@
 	status = "okay";
 };
 
+&vga {
+	status = "okay";
+};
+
 #if BINMAN_SYMS_OK
 &binman {
 	bootph-all;

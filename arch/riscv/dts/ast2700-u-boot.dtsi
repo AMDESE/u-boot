@@ -59,6 +59,10 @@
 		display_port: dp@12c0a000 {
 			bootph-all;
 		};
+
+		vga: vga@12c14000 {
+			bootph-all;
+		};
 	};
 
 	soc1: soc@14000000 {

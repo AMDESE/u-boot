@@ -140,6 +140,17 @@
 			aspeed,scu = <&syscon0>;
 			status = "disabled";
 		};
+
+		vga: vga@12c14000 {
+			compatible = "aspeed,ast2700-vga";
+			reg = <0x12c02000 0x1000>, <0x12c00000 0x200>,
+			      <0x12c21000 0x200>, <0x12c22000 0x200>,
+			      <0x12c1d000 0x200>, <0x14c3a000 0x200>;
+			clocks = <&soc0_clk SCU0_CLK_GATE_VGA0CLK>,
+				 <&soc0_clk SCU0_CLK_GATE_VGA1CLK>,
+				 <&soc0_clk SCU0_CLK_GATE_DACCLK>;
+			status = "disabled";
+		};
 	};
 
 	soc1: soc@14000000 {
