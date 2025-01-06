@@ -732,4 +732,11 @@ config SLI_TARGET_PHYCLK_25MHZ
 endchoice
 endif
 
+config SPL_PRIVILEGE_CTRL
+	bool "Enable ASPEED privilege control"
+	depends on MISC
+	help
+	  This option enables privilege control for aspeed
+	  board isolation.
+
 endmenu
