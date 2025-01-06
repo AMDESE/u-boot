@@ -17,7 +17,7 @@
 #include <linux/delay.h>
 
 #ifdef CONFIG_RISCV
-#include <asm/arch/fmc_hdr.h>
+#include <aspeed/fmc_hdr.h>
 #include <asm/arch/stor_ast2700.h>
 #endif
 
