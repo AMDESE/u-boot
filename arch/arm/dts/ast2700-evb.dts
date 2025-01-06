@@ -287,6 +287,10 @@
 	status = "okay";
 };
 
+&vbios {
+	status = "okay";
+};
+
 &soc1_clk {
 	mac0-clk-delay = <0x35 0x34
 			  0x10 0x10
