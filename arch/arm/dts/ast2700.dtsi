@@ -232,6 +232,7 @@
 			clocks = <&soc0_clk SCU0_CLK_GATE_VGA0CLK>,
 				 <&soc0_clk SCU0_CLK_GATE_VGA1CLK>,
 				 <&soc0_clk SCU0_CLK_GATE_DACCLK>;
+			resets = <&soc0_rst SCU0_RESET_VLINK>;
 			status = "disabled";
 		};
 
