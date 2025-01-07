@@ -12,6 +12,7 @@
 #include <asm/arch/platform.h>
 #include <asm/arch/scu_ast2700.h>
 #include <asm/arch/spi.h>
+#include <asm/arch/abr.h>
 #include <linux/bitfield.h>
 #include <linux/bitops.h>
 #include <linux/delay.h>
@@ -56,7 +57,7 @@ int stor_init(void)
 
 		blk_dev = dev_get_uclass_plat(dev);
 
-		ret = blk_dselect_hwpart(blk_dev, 1);
+		ret = blk_dselect_hwpart(blk_dev, 1 << abr_get_indicator());
 		if (ret) {
 			printf("%s: blk_dselect_hwpart fail\n", __func__);
 			ret = -1;
@@ -68,7 +69,7 @@ int stor_init(void)
 		if (IS_ENABLED(CONFIG_DM_SCSI) && IS_ENABLED(CONFIG_SPL_SATA)) {
 			scsi_scan(false);
 
-			blk_dev = blk_get_devnum_by_uclass_id(UCLASS_SCSI, 0);
+			blk_dev = blk_get_devnum_by_uclass_id(UCLASS_SCSI, 1 << abr_get_indicator());
 			if (!blk_dev) {
 				printf("Get SCSI device failed\n");
 				ret = -1;
