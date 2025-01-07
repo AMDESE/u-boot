@@ -171,7 +171,7 @@ static int ast_vga_probe(struct udevice *dev)
 		writel(val, &priv->scu->vga_func_ctrl);
 
 		// vga link init
-		writel(0x00030008, priv->vga_cpu_base + 0x10);
+		writel(0x00030009, priv->vga_cpu_base + 0x10);
 		val = 0x10000000 | dac_src;
 		writel(val, priv->vga_cpu_base + 0x50);
 		writel(0x00100010, priv->vga_cpu_base + 0x44);
