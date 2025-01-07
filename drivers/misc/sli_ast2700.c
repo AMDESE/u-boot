@@ -105,6 +105,11 @@ struct sli_data {
 #define SLIM_COARSE_D_END		16
 #define SLIM_FINE_MARGIN		5
 
+#define SCU1_SCRATCH31_SLI0_READY	BIT(0)
+#define SCU1_SCRATCH31_SLI_SKIP_CALI	BIT(1)	/* skip calibration */
+#define SCU0_SCRATCH31_SLI1_READY	BIT(0)
+#define AHBC_MAX_TIMEOUT		0x1ff
+
 static void sli_clear_interrupt_status(uintptr_t base)
 {
 	writel(0xfffff, (void *)base + SLI_INTR_STATUS);
@@ -473,10 +478,9 @@ int ast2700_sli1_probe(struct udevice *dev)
 		data->flags |= SLI_FLAG_AST2700A0;
 
 	/* Return if SLI had been calibrated */
-	reg_val = readl((void *)data->die1.slih + SLI_CTRL_III);
-	reg_val = FIELD_GET(SLI_CLK_SEL, reg_val);
-	if (reg_val) {
-		debug("SLI has been initialized\n");
+	reg_val = readl((void *)&scu->scratch[31]);
+	if (reg_val & SCU1_SCRATCH31_SLI_SKIP_CALI) {
+		debug("SLI1 has been initialized\n");
 		return 0;
 	}
 
@@ -548,10 +552,6 @@ int ast2700_sli1_probe(struct udevice *dev)
 	return 0;
 }
 
-#define SCU1_SCRATCH31_SLI0_READY	BIT(0)
-#define SCU0_SCRATCH31_SLI1_READY	BIT(0)
-#define AHBC_MAX_TIMEOUT		0x1ff
-
 int ast2700_sli0_probe(struct udevice *dev)
 {
 	struct ast2700_scu0 *scu0;
@@ -587,7 +587,13 @@ int ast2700_sli0_probe(struct udevice *dev)
 		return 0;
 
 	if (IS_ENABLED(CONFIG_SLI_TARGET_PHYCLK_25MHZ)) {
-		printf("AST2700 SLI0 ready, 25MHz\n");
+		debug("AST2700 SLI0 ready, 25MHz\n");
+		return 0;
+	}
+
+	reg_val = readl((void *)&scu1->scratch[31]);
+	if (reg_val & SCU1_SCRATCH31_SLI_SKIP_CALI) {
+		printf("SLI0 has been initialized\n");
 		return 0;
 	}
 
@@ -621,6 +627,9 @@ int ast2700_sli0_probe(struct udevice *dev)
 		writel(AHBC_MAX_TIMEOUT, (void *)ASPEED_AHBC0_BASE + 0x0b4);
 		writel(AHBC_MAX_TIMEOUT, (void *)ASPEED_AHBC0_BASE + 0x0f4);
 		debug("SLI0 calibration completed\n");
+
+		setbits_le32((void *)&scu1->scratch[31],
+			     SCU1_SCRATCH31_SLI_SKIP_CALI);
 		return 0;
 	}
 
