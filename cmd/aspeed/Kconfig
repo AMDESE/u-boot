@@ -26,13 +26,6 @@ config AST2700_CMD_OTP
 	  OTP regions.
 	  It also needs Aspeed OTP driver model to support it.
 
-config AST2700_CMD_FLASH_STRAP
-	bool "ASPEED Flash Strap"
-	depends on DM_SPI_FLASH || SPI_FLASH
-	default n
-	help
-	  Enable AST2700 flash strap operation.
-
 config AST2700_CMD_LTPI_V2
 	bool "ASPEED LTPI V2 command"
 	depends on ASPEED_AST2700
