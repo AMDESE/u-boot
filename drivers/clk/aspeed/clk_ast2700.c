@@ -25,7 +25,8 @@ DECLARE_GLOBAL_DATA_PTR;
 #define RGMII_DEFAULT_CLK_SRC	SCU1_CLK_HPLL
 
 /* MAC Clock Delay settings */
-#define MAC01_DEF_DELAY_1G		0x00C70C73
+#define MAC01_DEF_DELAY_1G_A0		0x00CF4D75
+#define MAC01_DEF_DELAY_1G_A1		0x00C70C73
 #define MAC01_DEF_DELAY_100M		0x00410410
 #define MAC01_DEF_DELAY_10M		0x00410410
 
@@ -896,7 +897,10 @@ static int ast2700_clk1_init(struct udevice *dev)
 	int ret = 0;
 	u32 reg[3];
 
-	reg[0] = MAC01_DEF_DELAY_1G;
+	if (scu->chip_id1 & SCU_HW_REVISION_ID)
+		reg[0] = MAC01_DEF_DELAY_1G_A1;
+	else
+		reg[0] = MAC01_DEF_DELAY_1G_A0;
 	reg[1] = MAC01_DEF_DELAY_100M;
 	reg[2] = MAC01_DEF_DELAY_10M;
 
