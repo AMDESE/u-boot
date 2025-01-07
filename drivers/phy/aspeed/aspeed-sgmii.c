@@ -66,7 +66,7 @@ static int aspeed_sgmii_phy_init(struct phy *phy)
 	writel(reg, sgmii->regs + SGMII_CFG);
 
 	writel(SGMII_PCTL_TX_DEEMPH_3_5DB, sgmii->regs + SGMII_PHY_PIPE_CTL);
-	reg = SGMII_MODE_USE_LOCAL_CONFIG | SGMII_MODE_ENABLE;
+	reg = SGMII_MODE_ENABLE;
 	writel(reg, sgmii->regs + SGMII_MODE);
 
 	return 0;
