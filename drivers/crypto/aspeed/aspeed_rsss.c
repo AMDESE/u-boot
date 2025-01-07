@@ -94,46 +94,22 @@ static void aspeed_rsa_mode_switch(struct aspeed_rsss *rsss,
 	}
 }
 
-static int aspeed_rsa_self_test(struct aspeed_rsss *rsss)
-{
-	struct aspeed_engine_rsa *rsa_engine = &rsss->rsa_engine;
-	uint32_t pattern = 0xbeef;
-
-	/* Set sram access control - cpu */
-	aspeed_rsa_mode_switch(rsss, ASPEED_RSSS_RSA_AHB_CPU_MODE);
-
-	/* Write rsa sram test - 1 */
-	writel(pattern, rsa_engine->sram_exp);
-	if (readl(rsa_engine->sram_exp) != pattern)
-		return -ENXIO;
-
-	/* Write rsa sram test - 2 */
-	writel(0x0, rsa_engine->sram_exp);
-	if (readl(rsa_engine->sram_exp))
-		return -ENXIO;
-
-	return 0;
-}
-
 static int aspeed_rsa_init(struct udevice *dev, struct aspeed_rsss *rsss)
 {
 	if (!dev || !rsss)
 		return -EINVAL;
 
 	/* Get rsa engine address */
-	rsss->base = devfdt_get_addr_index(dev, 0);
+	rsss->base = devfdt_get_addr_index_ptr(dev, 0);
 
 	/* Init rsa engine sw structure */
 	rsss->rsa_engine.mode = ASPEED_RSSS_RSA_AHB_CPU_MODE;
-	rsss->rsa_engine.sram_exp = (void *)rsss->base + SRAM_OFFSET_EXP;
-	rsss->rsa_engine.sram_mod = (void *)rsss->base + SRAM_OFFSET_MOD;
-	rsss->rsa_engine.sram_data = (void *)rsss->base + SRAM_OFFSET_DATA;
+	rsss->rsa_engine.sram_exp = rsss->base + SRAM_OFFSET_EXP;
+	rsss->rsa_engine.sram_mod = rsss->base + SRAM_OFFSET_MOD;
+	rsss->rsa_engine.sram_data = rsss->base + SRAM_OFFSET_DATA;
 
 	/* Enable RSSS RSA interrupt */
 	setbits_le32(rsss->base + ASPEED_RSSS_INT_EN, RSA_INT_EN);
-
-	if (aspeed_rsa_self_test(rsss))
-		return -ENXIO;
 
 	return 0;
 }

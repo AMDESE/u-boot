@@ -24,7 +24,7 @@ struct aspeed_engine_rsa {
 };
 
 struct aspeed_rsss {
-	phys_addr_t base;
+	void __iomem *base;
 	struct clk clk;
 	struct reset_ctl rst;
 	struct aspeed_engine_rsa rsa_engine;
