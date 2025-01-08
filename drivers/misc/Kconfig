@@ -31,7 +31,13 @@ config SPL_MISC
 
 config ASPEED_VBIOS
 	bool "Aspeed VBIOS driver"
-	depends on ARCH_ASPEED
+	depends on MISC
+	help
+	  Select this to enable VBIOS driver
+
+config SPL_ASPEED_VBIOS
+	bool "Aspeed VBIOS driver in SPL"
+	depends on SPL_MISC
 	help
 	  Select this to enable VBIOS driver
 
