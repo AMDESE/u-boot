@@ -56,6 +56,10 @@
 			bootph-all;
 		};
 
+		vbios: vbios@0 {
+			bootph-all;
+		};
+
 		display_port: dp@12c0a000 {
 			bootph-all;
 		};

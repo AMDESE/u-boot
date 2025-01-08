@@ -160,6 +160,10 @@
 	status = "okay";
 };
 
+&vbios {
+	status = "okay";
+};
+
 #if BINMAN_SYMS_OK
 &binman {
 	bootph-all;
