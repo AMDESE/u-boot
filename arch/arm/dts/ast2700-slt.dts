@@ -206,7 +206,7 @@
 };
 
 &sdc {
-	status = "okay";
+	status = "disabled";
 	sdhci_hs200; /* enable sdr104 */
 
 	vcc_sdio: vcc-sdio {
