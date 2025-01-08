@@ -477,15 +477,16 @@ int ast2700_sli1_probe(struct udevice *dev)
 	if (FIELD_GET(SCU_CPU_REVISION_ID_HW, reg_val) == 0)
 		data->flags |= SLI_FLAG_AST2700A0;
 
-	/* Return if SLI had been calibrated */
-	reg_val = readl((void *)&scu->scratch[31]);
-	if (reg_val & SCU1_SCRATCH31_SLI_SKIP_CALI) {
-		debug("SLI1 has been initialized\n");
-		return 0;
-	}
-
-	/* AST2700A0 workaround for 25MHz */
 	if (data->flags & SLI_FLAG_AST2700A0) {
+		/* Return if SLI had been calibrated */
+		reg_val = readl((void *)data->die1.slih + SLI_CTRL_III);
+		reg_val = FIELD_GET(SLI_CLK_SEL, reg_val);
+		if (reg_val) {
+			debug("SLI has been initialized\n");
+			return 0;
+		}
+
+		/* AST2700A0 workaround for 25MHz */
 		reg_val = SLI_RX_PHY_LAH_SEL_NEG | SLI_TRANS_EN | SLI_CLEAR_BUS;
 		writel(reg_val, (void *)data->die1.slih + SLI_CTRL_I);
 		writel(reg_val, (void *)data->die1.slim + SLI_CTRL_I);
@@ -501,24 +502,33 @@ int ast2700_sli1_probe(struct udevice *dev)
 		if (data->die0.phy_clk_freq == SLI_PHYCLK_800M ||
 		    data->die0.phy_clk_freq == SLI_PHYCLK_788M)
 			data->flags |= SLI_FLAG_RX_LAH_NEG_IO_SLIM;
+	} else {
+		/* Return if SLI had been calibrated */
+		reg_val = readl((void *)&scu->scratch[31]);
+		if (reg_val & SCU1_SCRATCH31_SLI_SKIP_CALI) {
+			debug("SLI1 has been initialized\n");
+			return 0;
+		}
 	}
 
 	if (IS_ENABLED(CONFIG_SLI_TARGET_PHYCLK_25MHZ))
 		return 0;
 
-	/* Disable AHBC timeout before calibration */
-	writel(0, (void *)ASPEED_AHBC1_BASE + 0x034);
-	writel(0, (void *)ASPEED_AHBC1_BASE + 0x074);
-	writel(0, (void *)ASPEED_AHBC1_BASE + 0x0b4);
-	writel(0, (void *)ASPEED_AHBC1_BASE + 0x0f4);
-	writel(0, (void *)ASPEED_AHBC1_BASE + 0x134);
-	writel(0, (void *)ASPEED_AHBC1_BASE + 0x174);
-	writel(0, (void *)ASPEED_AHBC1_BASE + 0x1b4);
-	writel(0, (void *)ASPEED_AHBC1_BASE + 0x1f4);
-	writel(0, (void *)ASPEED_AHBC0_BASE + 0x034);
-	writel(0, (void *)ASPEED_AHBC0_BASE + 0x074);
-	writel(0, (void *)ASPEED_AHBC0_BASE + 0x0b4);
-	writel(0, (void *)ASPEED_AHBC0_BASE + 0x0f4);
+	if (!(data->flags & SLI_FLAG_AST2700A0)) {
+		/* Disable AHBC timeout before calibration */
+		writel(0, (void *)ASPEED_AHBC1_BASE + 0x034);
+		writel(0, (void *)ASPEED_AHBC1_BASE + 0x074);
+		writel(0, (void *)ASPEED_AHBC1_BASE + 0x0b4);
+		writel(0, (void *)ASPEED_AHBC1_BASE + 0x0f4);
+		writel(0, (void *)ASPEED_AHBC1_BASE + 0x134);
+		writel(0, (void *)ASPEED_AHBC1_BASE + 0x174);
+		writel(0, (void *)ASPEED_AHBC1_BASE + 0x1b4);
+		writel(0, (void *)ASPEED_AHBC1_BASE + 0x1f4);
+		writel(0, (void *)ASPEED_AHBC0_BASE + 0x034);
+		writel(0, (void *)ASPEED_AHBC0_BASE + 0x074);
+		writel(0, (void *)ASPEED_AHBC0_BASE + 0x0b4);
+		writel(0, (void *)ASPEED_AHBC0_BASE + 0x0f4);
+	}
 
 	/* Speed up engine clock before adjusting PHY TX clock and delay */
 	reg_val = FIELD_PREP(SLI_CLK_SEL, data->die1.eng_clk_freq);
