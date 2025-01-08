@@ -4,7 +4,6 @@
  */
 
 #include <dm.h>
-#include <asm/arch-aspeed/pci_ast2700.h>
 #include <asm/arch-aspeed/scu_ast2700.h>
 #include <asm/arch-aspeed/spi.h>
 #include <asm/global_data.h>
