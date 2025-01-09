@@ -25,8 +25,8 @@ struct ast_vga_priv {
 	struct sdramc_regs *ram;
 	void __iomem *e2m0_base;
 	void __iomem *e2m1_base;
-	void __iomem *vga_cpu_base;
-	void __iomem *vga_io_base;
+	void __iomem *vgal_cpu_base;
+	void __iomem *vgal_io_base;
 	struct clk vga0_clk;
 	struct clk vga1_clk;
 	struct clk dac_clk;
@@ -119,8 +119,9 @@ static int ast_vga_probe(struct udevice *dev)
 		return 0;
 	}
 
-	// Use d0clk/d1clk which generated from hpll for vga0/1
-	setbits_le32(&priv->scu->clk_sel3, BIT(13) | BIT(12));
+	// Use d0clk/d1clk which generated from hpll for vga0/1 after A0
+	if (FIELD_GET(SCU_CPU_REVISION_ID_HW, priv->scu->chip_id1) != 0)
+		setbits_le32(&priv->scu->clk_sel3, BIT(13) | BIT(12));
 
 	if (is_pcie0_enable) {
 		ret = clk_enable(&priv->vga0_clk);
@@ -171,14 +172,14 @@ static int ast_vga_probe(struct udevice *dev)
 		writel(val, &priv->scu->vga_func_ctrl);
 
 		// vga link init
-		writel(0x00030009, priv->vga_cpu_base + 0x10);
+		writel(0x00030009, priv->vgal_cpu_base + 0x10);
 		val = 0x10000000 | dac_src;
-		writel(val, priv->vga_cpu_base + 0x50);
-		writel(0x00100010, priv->vga_cpu_base + 0x44);
-		writel(0x00030009, priv->vga_cpu_base + 0x110);
-		writel(0x00030009, priv->vga_io_base + 0x10);
-		writel(0x00230009, priv->vga_io_base + 0x110);
-		writel(0x00100010, priv->vga_io_base + 0x144);
+		writel(val, priv->vgal_cpu_base + 0x50);
+		writel(0x00100010, priv->vgal_cpu_base + 0x44);
+		writel(0x00030009, priv->vgal_cpu_base + 0x110);
+		writel(0x00030009, priv->vgal_io_base + 0x10);
+		writel(0x00230009, priv->vgal_io_base + 0x110);
+		writel(0x00100010, priv->vgal_io_base + 0x144);
 	}
 
 	return 0;
@@ -218,14 +219,14 @@ static int ast_vga_of_to_plat(struct udevice *dev)
 		return -ENOMEM;
 	}
 
-	priv->vga_cpu_base = dev_read_addr_index_ptr(dev, 4);
-	if (!priv->vga_cpu_base) {
+	priv->vgal_cpu_base = dev_read_addr_index_ptr(dev, 4);
+	if (!priv->vgal_cpu_base) {
 		dev_err(dev, "get vgalink cpu reg failed\n");
 		return -ENOMEM;
 	}
 
-	priv->vga_io_base = dev_read_addr_index_ptr(dev, 5);
-	if (!priv->vga_io_base) {
+	priv->vgal_io_base = dev_read_addr_index_ptr(dev, 5);
+	if (!priv->vgal_io_base) {
 		dev_err(dev, "get vgalink io reg failed\n");
 		return -ENOMEM;
 	}
