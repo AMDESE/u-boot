@@ -39,6 +39,11 @@
 			no-map;
 		};
 
+		pcie2_mmbi0_memory: pcie2-mmbi0-memory@a3e00000 {
+			reg = <0xa3e00000 0x200000>;
+			no-map;
+		};
+
 		espi1_mmbi_memory: espi-mmbi-memory@a4000000 {
 			reg = <0xa4000000 0x4000000>;
 			no-map;
