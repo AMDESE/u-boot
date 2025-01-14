@@ -54,8 +54,10 @@ enum otp_status {
 
 #define ID0_AST2700A0			0x06000003
 #define ID1_AST2700A0			0x06000003
-#define ID0_AST2700A1			0x06010003
-#define ID1_AST2700A1			0x06010003
+#define ID0_AST2750A1			0x06010003
+#define ID1_AST2750A1			0x06010003
+#define ID0_AST2700A1			0x06010103
+#define ID1_AST2700A1			0x06010103
 
 #define SOC_AST2700A0			8
 #define SOC_AST2700A1			9
@@ -250,7 +252,8 @@ static u32 chip_version(void)
 	if (revid0 == ID0_AST2700A0 && revid1 == ID1_AST2700A0) {
 		/* AST2700-A0 */
 		return OTP_AST2700_A0;
-	} else if (revid0 == ID0_AST2700A1 && revid1 == ID1_AST2700A1) {
+	} else if ((revid0 == ID0_AST2700A1 && revid1 == ID1_AST2700A1) ||
+		   (revid0 == ID0_AST2750A1 && revid1 == ID1_AST2750A1)) {
 		/* AST2700-A1 */
 		return OTP_AST2700_A1;
 	}
@@ -1027,17 +1030,17 @@ static void otp_print_strap_ext_info(void)
 	}
 }
 
-static int otp_patch_prog(u32 addr, u32 offset, u32 size)
+static int otp_patch_prog(u64 addr, u32 offset, u32 size)
 {
 	int ret = 0;
 	u32 val;
 
-	printf("%s: addr:0x%x, offset:0x%x, size:0x%x\n", __func__,
+	printf("%s: addr:0x%llx, offset:0x%x, size:0x%x\n", __func__,
 	       addr, offset, size);
 
 	for (int i = 0; i < size / 2; i++) {
 		val = readl((uintptr_t)addr + i * 4);
-		printf("read 0x%x = 0x%x..., prog into OTP addr 0x%x\n",
+		printf("read 0x%llx = 0x%x..., prog into OTP addr 0x%x\n",
 		       addr + i * 4, val, offset + i * 2);
 		ret += otp_prog(offset + i * 2, val & GENMASK(15, 0));
 		ret += otp_prog(offset + i * 2 + 1, (val >> 16) & GENMASK(15, 0));
@@ -2031,7 +2034,7 @@ static int do_otppatch(struct cmd_tbl *cmdtp, int flag, int argc, char *const ar
 		offset = simple_strtoul(argv[2], NULL, 16);
 		size = simple_strtoul(argv[3], NULL, 16);
 
-		ret = otp_patch_prog((u32)addr, offset, (u32)size);
+		ret = otp_patch_prog((u64)addr, offset, (u32)size);
 
 	} else if (!strcmp(argv[0], "enable")) {
 		offset = simple_strtoul(argv[2], NULL, 16);
