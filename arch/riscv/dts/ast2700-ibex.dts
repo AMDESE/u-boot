@@ -19,7 +19,32 @@
 		#size-cells = <1>;
 		bootph-all;
 
-		espi_mmbi_memory: espi-mmbi-memory@a8000000 {
+		bmc_dev0_memory: bmc-dev0-memory@a3800000 {
+			reg = <0xa3800000 0x100000>;
+			no-map;
+		};
+
+		bmc_dev1_memory: bmc-dev1-memory@a3900000 {
+			reg = <0xa3900000 0x100000>;
+			no-map;
+		};
+
+		pcie0_mmbi0_memory: pcie0-mmbi0-memory@a3a00000 {
+			reg = <0xa3a00000 0x200000>;
+			no-map;
+		};
+
+		pcie1_mmbi4_memory: pcie1-mmbi4-memory@a3c00000 {
+			reg = <0xa3c00000 0x200000>;
+			no-map;
+		};
+
+		espi1_mmbi_memory: espi-mmbi-memory@a4000000 {
+			reg = <0xa4000000 0x4000000>;
+			no-map;
+		};
+
+		espi0_mmbi_memory: espi-mmbi-memory@a8000000 {
 			reg = <0xa8000000 0x4000000>;
 			no-map;
 		};
