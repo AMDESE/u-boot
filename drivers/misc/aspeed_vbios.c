@@ -283,13 +283,13 @@ static int aspeed_vbios_of_to_plat(struct udevice *dev)
 		return -ENOMEM;
 	}
 #else
-	vbios->e2m0_ctl_base = (void *)devfdt_get_addr_index(dev, 1);
+	vbios->e2m0_ctl_base = (void *)devfdt_get_addr_index(dev, 0);
 	if (IS_ERR(vbios->e2m0_ctl_base)) {
 		dev_err(dev, "can't allocate e2m0_ctl\n");
 		return PTR_ERR(vbios->e2m0_ctl_base);
 	}
 
-	vbios->e2m1_ctl_base = (void *)devfdt_get_addr_index(dev, 2);
+	vbios->e2m1_ctl_base = (void *)devfdt_get_addr_index(dev, 1);
 	if (IS_ERR(vbios->e2m1_ctl_base)) {
 		dev_err(dev, "can't allocate e2m1_ctl\n");
 		return PTR_ERR(vbios->e2m1_ctl_base);
