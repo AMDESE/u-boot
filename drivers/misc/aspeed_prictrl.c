@@ -382,9 +382,6 @@ static int prictrl_master_mapping(const struct udevice *dev)
 	/* IO die master mapping */
 	ret |= prictrl_list_set_group(cfg, &cfg->master[0]);
 
-	/* No permission master mappin */
-	ret |= prictrl_list_set_group(cfg, &cfg->master[6]);
-
 	/* Lock all setting */
 	ret |= prictrl_list_lock_group(cfg, &cfg->master[0]);
 	ret |= prictrl_list_lock_group(cfg, &cfg->master[1]);
@@ -513,11 +510,11 @@ static struct prictrl_list_cfg master_list[] = {
 				C_M_SSP_S_USER, C_M_SSP_S_PRI),
 	[2] = DEFINE_MASTER_DEV(PRICTRL_CPU_DIE, TSP_GROUP, C_M_TSP_S_USER,
 				C_M_TSP_S_PRI),
-	[3] = DEFINE_MASTER_DEV(PRICTRL_CPU_DIE, S_CA35_GROUP, C_M_CPU_S_PRI),
-	[4] = DEFINE_MASTER_DEV(PRICTRL_CPU_DIE, NS_CA35_GROUP, C_M_CPU_NS_PRI),
-	[5] = DEFINE_MASTER_DEV(PRICTRL_CPU_DIE, DP_MCU_GROUP, C_M_DP_MCU),
-	[6] = DEFINE_MASTER_DEV(PRICTRL_CPU_DIE, NO_PERM_GROUP, C_M_CPU_S_USER,
+	[3] = DEFINE_MASTER_DEV(PRICTRL_CPU_DIE, S_CA35_GROUP, C_M_CPU_S_PRI,
+				C_M_CPU_S_USER),
+	[4] = DEFINE_MASTER_DEV(PRICTRL_CPU_DIE, NS_CA35_GROUP, C_M_CPU_NS_PRI,
 				C_M_CPU_NS_USER),
+	[5] = DEFINE_MASTER_DEV(PRICTRL_CPU_DIE, DP_MCU_GROUP, C_M_DP_MCU),
 };
 
 static struct prictrl_list_cfg client_list[] = {
