@@ -145,7 +145,7 @@ static int aspeed_dp_probe(struct udevice *dev)
 	val = readl(dp->scu_base + scu_offset);
 	is_mcu_stop = ((val & BIT(13)) == 0);
 
-	dev_dbg(dev, "%s(dev=%p) scu offset(%#x)\n", __func__, dev, scu_offset);
+	dev_dbg(dev, "scu offset(%x) is_stop(%d)\n", scu_offset, is_mcu_stop);
 
 #ifdef CONFIG_RISCV
 	fmc_hdr_get_prebuilt(PBT_DP_FW, &fw_ofst, &fw_size, NULL);
