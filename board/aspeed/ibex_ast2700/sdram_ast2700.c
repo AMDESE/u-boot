@@ -747,6 +747,13 @@ int dram_init(void)
 	writel(0x99, (void *)0x12c00308);
 	writel(0x8c, (void *)0x12c00300);
 
+	/* raise u2 A1/A2 priority */
+	writel(0x9900, (void *)0x12c00288);
+	writel(0x8c, (void *)0x12c00280);
+
+	/* raise vga priority */
+	writel(0x999, (void *)0x12c00308);
+
 out:
 	sdramc->info.base = 0x80000000;
 	sdramc->info.size = 0x40000000;
