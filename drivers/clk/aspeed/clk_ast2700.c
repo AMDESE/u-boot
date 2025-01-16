@@ -870,10 +870,10 @@ static void ast2700_init_rmii_clk(struct ast2700_scu1 *scu)
 
 static void ast2700_init_spi(struct ast2700_scu1 *scu)
 {
-	writel(scu->io_driving8 | 0x00000fff, &scu->io_driving8);	/* fwspi driving */
-	writel(scu->io_driving3 | 0x00000fff, &scu->io_driving3);	/* spi0 driving */
-	writel(scu->io_driving3 | 0x0fff0000, &scu->io_driving3);	/* spi1 driving */
-	writel(scu->io_driving3 | 0x00000fff, &scu->io_driving4);	/* spi2 driving */
+	writel(scu->io_driving8 | 0x00000aaa, &scu->io_driving8);	/* fwspi driving */
+	writel(scu->io_driving3 | 0x00000aaa, &scu->io_driving3);	/* spi0 driving */
+	writel(scu->io_driving3 | 0x0aaa0000, &scu->io_driving3);	/* spi1 driving */
+	writel(scu->io_driving3 | 0x00000aaa, &scu->io_driving4);	/* spi2 driving */
 }
 
 #define SCU1_CLK_I3C_DIV_MASK	GENMASK(25, 23)
