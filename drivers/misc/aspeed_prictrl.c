@@ -497,8 +497,6 @@ static int aspeed_prictrl_probe(struct udevice *dev)
 
 	prictrl_hw_deinit();
 
-	printf("Privilege control init done.\n");
-
 	return 0;
 }
 
