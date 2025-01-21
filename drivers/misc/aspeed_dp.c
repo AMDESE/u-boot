@@ -134,11 +134,7 @@ static int aspeed_dp_probe(struct udevice *dev)
 	u32 mcu_ctrl, val, scu_offset;
 	bool is_mcu_stop = false;
 #ifndef CONFIG_RISCV
-	int i;
 	u32 fw[0x1000];
-#else
-	u32 fw_ofst;
-	u32 fw_size;
 #endif
 
 	scu_offset = _get_scu_offset(dev);
@@ -146,16 +142,6 @@ static int aspeed_dp_probe(struct udevice *dev)
 	is_mcu_stop = ((val & BIT(13)) == 0);
 
 	dev_dbg(dev, "scu offset(%x) is_stop(%d)\n", scu_offset, is_mcu_stop);
-
-#ifdef CONFIG_RISCV
-	fmc_hdr_get_prebuilt(PBT_DP_FW, &fw_ofst, &fw_size, NULL);
-#else
-	ret = dev_read_u32_array(dev, "aspeed,dp-fw", fw, ARRAY_SIZE(fw));
-	if (ret) {
-		dev_err(dev, "Can't get dp-firmware, err(%d)\n", ret);
-		return ret;
-	}
-#endif // CONFIG_RISCV
 
 	ret = reset_get_by_index(dev, 0, &dp_reset_ctl);
 	if (ret) {
@@ -217,12 +203,25 @@ static int aspeed_dp_probe(struct udevice *dev)
 		writel(mcu_ctrl, dp->mcuc_base + MCU_CTRL);
 
 #ifdef CONFIG_RISCV
-		stor_copy((u32 *)fw_ofst, (u32 *)dp->mcui_base, fw_size);
+		ret = fmc_load_image(PBT_DP_FW, (u32 *)dp->mcui_base);
+		if (ret) {
+			dev_err(dev, "Can't get dp-firmware, err(%d)\n", ret);
+			reset_assert(&dp_reset_ctl);
+			reset_assert(&dpmcu_reset_ctrl);
+			return ret;
+		}
 #else
-		for (i = 0; i < ARRAY_SIZE(fw); i++)
-			writel(fw[i], dp->mcui_base + (i * 4));
-#endif // CONFIG_RISCV
+		ret = dev_read_u32_array(dev, "aspeed,dp-fw", fw, ARRAY_SIZE(fw));
+		if (ret) {
+			dev_err(dev, "Can't get dp-firmware, err(%d)\n", ret);
+			reset_assert(&dp_reset_ctl);
+			reset_assert(&dpmcu_reset_ctrl);
+			return ret;
+		}
 
+		for (int i = 0; i < ARRAY_SIZE(fw); i++)
+			writel(fw[i], dp->mcui_base + (i * 4));
+#endif
 		/* DPMCU */
 		/* clear display format and enable region */
 		writel(0, dp->mcud_base + 0x0de0);
