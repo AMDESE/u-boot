@@ -218,7 +218,7 @@
 
 	ast2700-u-boot-spl {
 		bootph-all;
-		filename = "ast2700-ibex-spl.bin";
+		filename = "ast2700a0-ibex-spl.bin";
 		pad-byte = <0x00>;
 
 //		pre-load {
