@@ -82,5 +82,6 @@ struct fmc_hdr_v2 {
 } __packed;
 
 int fmc_hdr_get_prebuilt(uint32_t type, uint32_t *ofst, uint32_t *size, uint8_t *dgst);
+int fmc_load_image(uint32_t type, u32 *src);
 
 #endif
