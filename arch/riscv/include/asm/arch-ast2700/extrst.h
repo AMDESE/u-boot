@@ -11,12 +11,12 @@
 #include <asm/arch/platform.h>
 #include <linux/types.h>
 
-#define SCU0_EXTRST_MASK_1_VAL	0x0203e779
+#define SCU0_EXTRST_MASK_1_VAL	0x8207e771
 #define SCU0_EXTRST_MASK_2_VAL	0x000003f6
 
 #define SCU1_EXTRST_MASK_1_VAL	0x000093ec
-#define SCU1_EXTRST_MASK_2_VAL	0x00303801
-#define SCU1_EXTRST_MASK_3_VAL	0x00020000
+#define SCU1_EXTRST_MASK_2_VAL	0x40303801
+#define SCU1_EXTRST_MASK_3_VAL	0x003e0000
 
 int extrst_mask_init(void);
 
