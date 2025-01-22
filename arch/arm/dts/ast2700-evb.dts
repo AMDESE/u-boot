@@ -142,6 +142,27 @@
 	pinctrl-0 = <&pinctrl_rgmii1_default>;
 };
 
+#if 0
+&mdio2 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	ethphy2: ethernet-phy@0 {
+		reg = <31>;
+	};
+};
+
+&sgmii {
+	status = "okay";
+};
+
+&mac2 {
+	status = "okay";
+	phy-mode = "sgmii";
+	phy-handle = <&ethphy2>;
+};
+#endif
+
 &fmc {
 	status = "okay";
 	pinctrl-names = "default";
