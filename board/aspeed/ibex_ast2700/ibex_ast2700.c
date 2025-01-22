@@ -80,6 +80,45 @@ struct init_callback {
 	int (*init_cb)(void);
 };
 
+static int sli1_init(void)
+{
+	struct udevice *dev;
+	int err;
+
+	/* sli1 */
+	err = uclass_get_device_by_name(UCLASS_MISC, "sli@14c1e000", &dev);
+	if (err && err != -ENODEV)
+		printf("Get sli1 udevice Failed %d.\n", err);
+
+	return err;
+}
+
+static int sli0_init(void)
+{
+	struct udevice *dev;
+	int err;
+
+	/* sli0 */
+	err = uclass_get_device_by_name(UCLASS_MISC, "sli@12c17000", &dev);
+	if (err && err != -ENODEV)
+		printf("Get sli0 udevice Failed %d.\n", err);
+
+	return err;
+}
+
+static int dp_init(void)
+{
+	struct udevice *dev;
+	int err;
+
+	/* dp */
+	err = uclass_get_device_by_name(UCLASS_MISC, "dp@12c0a000", &dev);
+	if (err && err != -ENODEV)
+		printf("Get dp udevice Failed %d.\n", err);
+
+	return err;
+}
+
 static int pci_init(void)
 {
 	int nodeoffset;
@@ -144,6 +183,9 @@ struct init_callback board_init_seq[] = {
 	{"EXTRST",	extrst_mask_init},
 	{"LTPI",	ltpi_init},
 	{"STOR",	stor_init},
+	{"SLI1",	sli1_init},
+	{"DP",		dp_init},
+	{"SLI0",	sli0_init},
 	{"DRAM",	dram_init},
 	{"PCI",		pci_init},
 };
@@ -163,21 +205,6 @@ int spl_board_init_f(void)
 	err = uclass_get_device_by_name(UCLASS_CLK, "clock-controller@14c02200", &dev);
 	if (err && err != -ENODEV)
 		printf("Get soc1 clk udevice Failed %d.\n", err);
-
-	/* sli1 */
-	err = uclass_get_device_by_name(UCLASS_MISC, "sli@14c1e000", &dev);
-	if (err && err != -ENODEV)
-		printf("Get sli1 udevice Failed %d.\n", err);
-
-	/* dp */
-	err = uclass_get_device_by_name(UCLASS_MISC, "dp@12c0a000", &dev);
-	if (err && err != -ENODEV)
-		printf("Get dp udevice Failed %d.\n", err);
-
-	/* sli0 */
-	err = uclass_get_device_by_name(UCLASS_MISC, "sli@12c17000", &dev);
-	if (err && err != -ENODEV)
-		printf("Get sli0 udevice Failed %d.\n", err);
 
 	for (i = 0; i < ARRAY_SIZE(board_init_seq); i++) {
 
