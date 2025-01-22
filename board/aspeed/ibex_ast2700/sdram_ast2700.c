@@ -690,6 +690,35 @@ static int sdramc_ecc_enable(struct sdramc *sdramc)
 	return err;
 }
 
+void sdramc_qos_init(struct sdramc *sdramc)
+{
+	/* raise SLI write/read priority */
+	writel(QOS_SLI_LEVEL(10),
+	       (void *)&sdramc->regs->port[4].write_qos);
+	writel(QOS_SLI_LEVEL(9),
+	       (void *)&sdramc->regs->port[4].read_qos);
+	writel(DRAMC_PORT_CFG_RDQOS_EN | DRAMC_PORT_CFG_WRQOS_EN | DEFAULT_RDQOS_LEVEL,
+	       (void *)&sdramc->regs->port[4].cfg);
+
+	/* raise usb 2.0 B1/B2, vga1 priority */
+	writel(QOS_USB2_B1_LEVEL(9) | QOS_USB2_B2_LEVEL(9) | QOS_VGA1_CR_LEVEL(9),
+	       (void *)&sdramc->regs->port[2].read_qos);
+	writel(DRAMC_PORT_CFG_RDQOS_EN | DRAMC_PORT_CFG_WRQOS_EN | DEFAULT_RDQOS_LEVEL,
+	       (void *)&sdramc->regs->port[2].cfg);
+
+	/* raise vga2 priority */
+	writel(QOS_VGA2_CR_LEVEL(9),
+	       (void *)&sdramc->regs->port[3].read_qos);
+	writel(DRAMC_PORT_CFG_RDQOS_EN | DRAMC_PORT_CFG_WRQOS_EN | DEFAULT_RDQOS_LEVEL,
+	       (void *)&sdramc->regs->port[3].cfg);
+
+	/* raise u2 A1/A2 priority */
+	writel(QOS_USB2_A1_LEVEL(9) | QOS_USB2_A2_LEVEL(9),
+	       (void *)&sdramc->regs->port[1].read_qos);
+	writel(DRAMC_PORT_CFG_RDQOS_EN | DRAMC_PORT_CFG_WRQOS_EN | DEFAULT_RDQOS_LEVEL,
+	       (void *)&sdramc->regs->port[1].cfg);
+}
+
 int dram_init(void)
 {
 	struct sdramc sdramc[1];
@@ -735,24 +764,10 @@ int dram_init(void)
 		return err;
 	}
 
+	sdramc_qos_init(sdramc);
+
 	debug("%s is successfully initialized\n", ac->desc);
 	sdramc_set_flag(DRAMC_INIT_DONE);
-
-	/* raise SLI write priority */
-	writel(0xa000, (void *)0x12c00410);
-	writel(0x9000, (void *)0x12c00408);
-	writel(0x8c, (void *)0x12c00400);
-
-	/* raise usb 2.0 B1/B2 priority */
-	writel(0x99, (void *)0x12c00308);
-	writel(0x8c, (void *)0x12c00300);
-
-	/* raise u2 A1/A2 priority */
-	writel(0x9900, (void *)0x12c00288);
-	writel(0x8c, (void *)0x12c00280);
-
-	/* raise vga priority */
-	writel(0x999, (void *)0x12c00308);
 
 out:
 	sdramc->info.base = 0x80000000;

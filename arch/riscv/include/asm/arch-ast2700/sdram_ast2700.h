@@ -217,6 +217,60 @@
 #define BIST_PMODE_CRC				(3)
 #define BIST_BMODE_RW_SWITCH			(3)
 
+/* offset 0x288 */
+#define DRAMC_PORT1_VE_HIGH_SHIFT		(0)
+#define DRAMC_PORT1_VE_LOW_SHIFT		(1)
+#define DRAMC_PORT1_USB2_A1_SHIFT		(2)
+#define DRAMC_PORT1_USB2_A2_SHIFT		(3)
+#define DRAMC_PORT1_E2M_SHIFT			(4)
+#define DRAMC_PORT1_MCTP_SHIFT			(5)
+#define DRAMC_PORT1_H2M_SHIFT			(6)
+#define DRAMC_PORT1_HMAC_SHIFT			(7)
+
+#define QOS_USB2_A1_LEVEL(x)			((x) << (DRAMC_PORT1_USB2_A1_SHIFT * 4))
+#define QOS_USB2_A2_LEVEL(x)			((x) << (DRAMC_PORT1_USB2_A2_SHIFT * 4))
+
+/* offset 0x310 */
+#define DRAMC_PORT2_USB2_B1_SHIFT		(0)
+#define DRAMC_PORT2_USB2_B2_SHIFT		(1)
+#define DRAMC_PORT2_VGA1_CR_SHIFT		(2)
+#define DRAMC_PORT2_VGA1_LE_SHIFT		(3)
+#define DRAMC_PORT2_TSP_INST_SHIFT		(4)
+#define DRAMC_PORT2_VIDEO_SHIFT			(5)
+#define DRAMC_PORT2_MCTP8_SHIFT			(6)
+#define DRAMC_PORT2_UHCI_SHIFT			(7)
+
+#define QOS_USB2_B1_LEVEL(x)			((x) << (DRAMC_PORT2_USB2_B1_SHIFT * 4))
+#define QOS_USB2_B2_LEVEL(x)			((x) << (DRAMC_PORT2_USB2_B2_SHIFT * 4))
+#define QOS_VGA1_CR_LEVEL(x)			((x) << (DRAMC_PORT2_VGA1_CR_SHIFT * 4))
+
+/* offset 0x380 */
+#define DRAMC_PORT_CFG_RDQOS_EN			BIT(2)
+#define DRAMC_PORT_CFG_WRQOS_EN			BIT(3)
+#define DRAMC_PORT_CFG_RDQOS_LVL_MASK		GENMASK(7, 4)
+#define DRAMC_PORT_CFG_RDQOS_LVL_SHIFT		(4)
+
+/* offset 0x388 */
+#define DRAMC_PORT3_USB3_A1_SHIFT		(0)
+#define DRAMC_PORT3_USB3_B1_SHIFT		(1)
+#define DRAMC_PORT3_SHA3_SHIFT			(2)
+#define DRAMC_PORT3_VGA2_CR_SHIFT		(3)
+#define DRAMC_PORT3_VGA2_LE_SHIFT		(4)
+#define DRAMC_PORT3_TSP_SHIFT			(5)
+#define DRAMC_PORT3_E2M1_SHIFT			(6)
+#define DRAMC_PORT3_GFX_SHIFT			(7)
+
+#define QOS_VGA2_CR_LEVEL(x)			((x) << (DRAMC_PORT3_VGA2_CR_SHIFT * 4))
+
+/* offset 0x400 */
+#define DRAMC_PORT4_XDMA_SHIFT			(0)
+#define DRAMC_PORT4_SDIO_SHIFT			(1)
+#define DRAMC_PORT4_SLI_SHIFT			(3)
+
+#define QOS_SLI_LEVEL(x)			((x) << (DRAMC_PORT4_SLI_SHIFT * 4))
+
+#define DEFAULT_RDQOS_LEVEL			(8 << DRAMC_PORT_CFG_RDQOS_LVL_SHIFT)
+
 struct sdramc {
 	struct ram_info info;
 	struct sdramc_regs *regs;
@@ -230,13 +284,18 @@ struct sdramc_port {
 	u32 cfg;
 	u32 timeout;
 	u32 read_qos;
+	u32 resvd0;
 	u32 write_qos;
+	u32 resvd1[3];
 	u32 monitor_config;
 	u32 monitor_limit;
 	u32 monitor_timer;
+	u32 resvd2;
 	u32 monitor_status;
 	u32 bandwidth_log;
+	u32 resvd3[2];
 	u32 intf_monitor[3];
+	u32 resvd4[13];
 };
 
 struct sdramc_protect {
@@ -313,7 +372,7 @@ struct sdramc_regs {
 	u32 gfmcfg;			/* 0x100 */
 	u32 gfm0ctl;
 	u32 gfm1ctl;
-	u32 reserved3[0xf8];
+	u32 reserved3[0x3d];
 	struct sdramc_port port[6];	/* 0x200 */
 	struct sdramc_protect region[16];/* 0x600 */
 };
