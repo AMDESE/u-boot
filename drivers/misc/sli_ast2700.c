@@ -78,6 +78,7 @@
 	  (SLI_INTR_RX_ERR | SLI_INTR_RX_NACK | SLI_INTR_RX_DISCONN)
 
 #define SLIM_MARB_FUNC_I		0x60
+#define   SLIM_SLI_MARB_CLR		BIT(4)
 #define   SLIM_SLI_MARB_RR		BIT(0)
 
 struct sli_config {
@@ -640,6 +641,10 @@ int ast2700_sli0_probe(struct udevice *dev)
 
 		setbits_le32((void *)&scu1->scratch[31],
 			     SCU1_SCRATCH31_SLI_SKIP_CALI);
+
+		/* Reset SLIM MARB before using the SLIM */
+		setbits_le32(sli1_regs + SLIM_REG_OFFSET + SLIM_MARB_FUNC_I, SLIM_SLI_MARB_CLR);
+
 		return 0;
 	}
 
