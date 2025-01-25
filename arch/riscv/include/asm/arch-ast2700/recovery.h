@@ -15,5 +15,6 @@
 bool is_recovery(void);
 int aspeed_spl_ddr_image_ymodem_load(struct train_bin dwc_train[][2], int ddr4,
 				     int i_mem, const int train2D);
+int aspeed_spl_recovery_load_dp(u32 addr);
 
 #endif

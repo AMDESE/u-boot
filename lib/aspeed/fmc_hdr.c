@@ -3,9 +3,10 @@
  * Copyright (c) Aspeed Technology Inc.
  */
 
+#include <asm/arch/recovery.h>
+#include <asm/arch/stor_ast2700.h>
 #include <asm/io.h>
 #include <asm/sections.h>
-#include <asm/arch/stor_ast2700.h>
 #include <aspeed/fmc_hdr.h>
 #include <errno.h>
 #include <spl.h>
@@ -131,6 +132,13 @@ int fmc_load_image(uint32_t type, u32 *dest)
 	int ret = 0;
 	u32 fw_ofst;
 	u32 fw_size;
+
+	if (is_recovery()) {
+		if (type == PBT_DP_FW)
+			return aspeed_spl_recovery_load_dp((u32)dest);
+
+		return -1;
+	}
 
 	ret = fmc_hdr_get_prebuilt(type, &fw_ofst, &fw_size, NULL);
 	if (ret)
