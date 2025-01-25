@@ -126,7 +126,7 @@ int fmc_hdr_get_prebuilt(uint32_t type, uint32_t *ofst, uint32_t *size, uint8_t 
 	return -ENOENT;
 }
 
-int fmc_load_image(uint32_t type, u32 *src)
+int fmc_load_image(uint32_t type, u32 *dest)
 {
 	int ret = 0;
 	u32 fw_ofst;
@@ -135,7 +135,7 @@ int fmc_load_image(uint32_t type, u32 *src)
 	ret = fmc_hdr_get_prebuilt(type, &fw_ofst, &fw_size, NULL);
 	if (ret)
 		return ret;
-	ret = stor_copy((u32 *)fw_ofst, src, fw_size);
+	ret = stor_copy((u32 *)fw_ofst, dest, fw_size);
 
 	return ret;
 }
