@@ -186,6 +186,33 @@ int get_cia_ser_num(const uint8_t* fru_buf, char* chassis_ser_num)
 	return csn_len;
 }
 
+
+int get_csn_last4(const char* str, char* buf, size_t buf_len)
+{
+	int pos_min = 0;
+	int pos_max = 0;
+	int cur_pos = 0;
+	int c=0;
+	pos_max=strlen(str);
+
+	/* Trim leading, trailing whitespaces */
+	while(isspace(*(str+pos_min))) pos_min++;
+	while(isspace(*(str+pos_max-1))) pos_max--;
+	/* extract from end */
+	cur_pos = pos_max - MIN_CSN_UNIQ_STR_LEN;
+	while (cur_pos <= pos_max)
+	{
+		buf[c] = *(str+cur_pos);
+		c++;
+		cur_pos++;
+	}
+	buf[MIN_CSN_UNIQ_STR_LEN]='\0';
+	if (strlen(buf) >= MIN_CSN_UNIQ_STR_LEN)
+		return cur_pos;
+	else
+		return -1;
+}
+
 int get_csn_uniq_str(const char* str, char delim, char* buf, size_t buf_len)
 {
 	int pos = 0;
@@ -277,10 +304,10 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 		/* strip out last uniq string and convert to hostname */
 		if (get_cia_ser_num(hpm_eeprom_buf, chassis_ser_num) > 0) {
 			printf("Chassis Serial Number: %s\n", chassis_ser_num);
-			if(get_csn_uniq_str(chassis_ser_num, HYPHEN_DELIM, hpm_csn_uniq_str, sizeof hpm_csn_uniq_str) > 0)
+			if(get_csn_last4(chassis_ser_num, hpm_csn_uniq_str, sizeof hpm_csn_uniq_str) > 0)
 				printf("Unique ID: %s\n",hpm_csn_uniq_str);
 			if (strlen(hpm_csn_uniq_str) > 0)
-				memcpy(mac_str, hpm_csn_uniq_str + HYPHEN_DELIM_SIZE, strlen(hpm_csn_uniq_str)-HYPHEN_DELIM_SIZE);
+				memcpy(mac_str, hpm_csn_uniq_str, strlen(hpm_csn_uniq_str));
 		}
 		else /* read mac address from SCM eeprom */
 			bin2hex(mac_str, scm_eeprom_buf + LAST_2B_MAC0_ADDR, LAST_2B_MAC0_LEN);
