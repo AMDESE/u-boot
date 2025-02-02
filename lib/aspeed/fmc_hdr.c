@@ -134,10 +134,18 @@ int fmc_load_image(uint32_t type, u32 *dest)
 	u32 fw_size;
 
 	if (is_recovery()) {
-		if (type == PBT_DP_FW)
-			return aspeed_spl_recovery_load_dp((u32)dest);
+		if (type == PBT_DP_FW) {
+			ret = aspeed_spl_recovery_load_dp(ASPEED_SRAM_BASE);
+			if (ret < 0)
+				return ret;
 
-		return -1;
+			/* security check should be added here */
+
+			memcpy((void *)dest, (void *)ASPEED_SRAM_BASE, ret);
+			ret = 0;
+		}
+
+		return ret;
 	}
 
 	ret = fmc_hdr_get_prebuilt(type, &fw_ofst, &fw_size, NULL);

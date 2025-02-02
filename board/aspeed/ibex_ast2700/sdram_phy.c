@@ -269,6 +269,7 @@ void dwc_ddrphy_phyinit_userCustom_J_enterMissionMode(struct sdramc *sdramc)
 int dwc_ddrphy_phyinit_userCustom_D_loadIMEM(const int train2D)
 {
 	u32 imem_base = DWC_PHY_IMEM_OFFSET;
+	u32 recovery_buf_addr = ASPEED_SRAM_BASE;
 	int type;
 	int ret = 0;
 
@@ -277,11 +278,19 @@ int dwc_ddrphy_phyinit_userCustom_D_loadIMEM(const int train2D)
 	type = is_ddr4();
 
 	if (is_recovery()) {
-		aspeed_spl_ddr_image_ymodem_load(dwc_train, type,
-						 1, train2D);
+		ret = aspeed_spl_recovery_ddr_image(recovery_buf_addr, type,
+						    DDR_I_MEM, train2D);
+		if (ret < 0)
+			return ret;
+
+		/* ddr image should be verified here */
+
 		memcpy((void *)(DRAMC_PHY_BASE + 2 * imem_base),
-		       (void *)dwc_train[type][train2D].imem_base,
-		       dwc_train[type][train2D].imem_len);
+		       (void *)recovery_buf_addr, ret);
+
+		dwc_train[type][train2D].imem_base = recovery_buf_addr;
+		dwc_train[type][train2D].imem_len = ret;
+
 		return ret;
 	}
 
@@ -295,6 +304,7 @@ int dwc_ddrphy_phyinit_userCustom_D_loadIMEM(const int train2D)
 int dwc_ddrphy_phyinit_userCustom_F_loadDMEM(const int pState, const int train2D)
 {
 	u32 dmem_base = DWC_PHY_DMEM_OFFSET;
+	u32 recovery_buf_addr = ASPEED_SRAM_BASE + SPL_RECOVERY_IMAGE_MAX_SZ;
 	int type;
 	int ret = 0;
 
@@ -303,11 +313,20 @@ int dwc_ddrphy_phyinit_userCustom_F_loadDMEM(const int pState, const int train2D
 	type = is_ddr4();
 
 	if (is_recovery()) {
-		aspeed_spl_ddr_image_ymodem_load(dwc_train, type,
-						 0, train2D);
+		ret = aspeed_spl_recovery_ddr_image(recovery_buf_addr, type,
+						    DDR_D_MEM, train2D);
+
+		if (ret < 0)
+			return ret;
+
+		/* ddr image should be verified here */
+
 		memcpy((void *)(DRAMC_PHY_BASE + 2 * dmem_base),
-		       (void *)dwc_train[type][train2D].dmem_base,
-		       dwc_train[type][train2D].dmem_len);
+		       (void *)recovery_buf_addr, ret);
+
+		dwc_train[type][train2D].dmem_base = recovery_buf_addr;
+		dwc_train[type][train2D].dmem_len = ret;
+
 		return ret;
 	}
 
