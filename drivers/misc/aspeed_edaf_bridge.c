@@ -20,6 +20,7 @@
 #define ESPI_CHN3_CTL			0x400
 #define   ESPI_CHN3_SW_READY		BIT(5)
 
+#define EDAF_BDGE_CFG			0x0
 #define EDAF_BDGE_CBASE			0x20
 #define EDAF_BDGE_MBASE			0x24
 #define EDAF_BDGE_CMD_READ		0x40
@@ -88,6 +89,12 @@ static int aspeed_edaf_bridge_probe(struct udevice *dev)
 	}
 	cfg |= SCU1_HOST_CONF_EDAF_EN;
 	writel(cfg, scu_regs + SCU1_HOST_CONF_2);
+
+	if (ofnode_read_bool(node, "edaf-ddr-mode")) {
+		cfg = readl(edaf_bridge_regs + EDAF_BDGE_CFG);
+		cfg &= ~BIT(0);
+		writel(cfg, edaf_bridge_regs + EDAF_BDGE_CFG);
+	}
 
 	rc = ofnode_read_u64(node, "ctl-base", &cbase);
 	if (!rc) {
