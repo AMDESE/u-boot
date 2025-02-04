@@ -560,6 +560,11 @@ int ast2700_sli1_probe(struct udevice *dev)
 	sli_calibrate_mbus_delay(data);
 
 	debug("SLI DS @ %dMHz init done\n", phyclk_lookup[data->die0.phy_clk_freq]);
+
+	/* Clear remote SLI controller */
+	sli_clear(data->die0.slih, SLI_CLEAR_BUS);
+	sli_clear(data->die0.slim, SLI_CLEAR_BUS);
+
 	return 0;
 }
 
