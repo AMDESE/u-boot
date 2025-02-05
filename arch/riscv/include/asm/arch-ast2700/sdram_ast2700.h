@@ -48,6 +48,10 @@
 #define DRAMC_IRQSTA_MR_DONE			BIT(1)
 #define DRAMC_IRQSTA_PHY_INIT_DONE		BIT(0)
 
+/* offset 0x10 */
+#define DRAMC_MCFG_ECC_EN			BIT(6)
+#define DRAMC_MCFG_PGM_EN			BIT(5)
+
 /* offset 0x14 */
 #define DRAMC_MCTL_WB_SOFT_RESET		BIT(24)
 #define DRAMC_MCTL_PHY_CLK_DIS			BIT(18)
@@ -278,6 +282,8 @@ struct sdramc {
 	void __iomem *phy_setting;
 	void __iomem *phy_status;
 	ulong clock_rate;
+	u32 ecc_size;
+	u32 aes_size;
 };
 
 struct sdramc_port {
@@ -446,5 +452,4 @@ struct train_bin {
 void fpga_phy_init(struct sdramc *sdramc);
 void dwc_phy_init(struct sdramc *sdramc);
 bool is_ddr4(void);
-int dram_init(void);//struct udevice *dev)
 #endif

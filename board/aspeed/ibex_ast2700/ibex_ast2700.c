@@ -191,6 +191,18 @@ static int prictrl_init(void)
 	return err;
 }
 
+int dram_init(void)
+{
+	struct udevice *dev;
+	int err;
+
+	err = uclass_get_device_by_name(UCLASS_RAM, "sdrammc@12c00000", &dev);
+	if (err && err != -ENODEV)
+		printf("Get sdrammc udevice Failed %d.\n", err);
+
+	return err;
+}
+
 struct init_callback board_init_seq[] = {
 	{"WDT",		wdt_init},
 	{"EXTRST",	extrst_mask_init},

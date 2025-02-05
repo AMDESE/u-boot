@@ -18,7 +18,8 @@
 #include <time.h>
 
 #define SCU_CPU_REG                     0x12c02000
-#define SCU_CPU_SOC1_SCRATCH            (SCU_CPU_REG + 0x900)
+#define SCU_CPU_VGA0_SCRATCH            (SCU_CPU_REG + 0x900)
+#define SCU_CPU_VGA1_SCRATCH            (SCU_CPU_REG + 0x910)
 
 #define SCU_IO_REG                      0x14c02000
 #define SCU_IO_HWSTRAP1                 (SCU_IO_REG + 0x010)
@@ -26,6 +27,11 @@
 
 #define DRAMC_BASE			(0x12c00000)
 #define DRAMC_PHY_BASE			(0x13000000)
+#define dwc_ddrphy_apb_wr(addr, value)		(*(volatile unsigned short *)(DRAMC_PHY_BASE + 2 * (addr)) = (unsigned short)value)
+#define dwc_ddrphy_apb_rd(addr)			(*(volatile unsigned short *)(DRAMC_PHY_BASE + 2 * (addr)))
+
+#define dwc_ddrphy_apb_wr_32b(addr, value)	(*((volatile unsigned int *)(DRAMC_PHY_BASE + 2 * (addr))) = (unsigned int)value)
+#define dwc_ddrphy_apb_rd_32b(addr)		(*(volatile unsigned int *)(DRAMC_PHY_BASE + 2 * (addr)))
 
 /* offset 0x04 */
 #define DRAMC_IRQSTA_PWRCTL_ERR			BIT(16)
@@ -41,6 +47,10 @@
 #define DRAMC_IRQSTA_OVERSZ_ERR			BIT(2)
 #define DRAMC_IRQSTA_MR_DONE			BIT(1)
 #define DRAMC_IRQSTA_PHY_INIT_DONE		BIT(0)
+
+/* offset 0x10 */
+#define DRAMC_MCFG_ECC_EN			BIT(6)
+#define DRAMC_MCFG_PGM_EN			BIT(5)
 
 /* offset 0x14 */
 #define DRAMC_MCTL_WB_SOFT_RESET		BIT(24)
@@ -211,6 +221,60 @@
 #define BIST_PMODE_CRC				(3)
 #define BIST_BMODE_RW_SWITCH			(3)
 
+/* offset 0x288 */
+#define DRAMC_PORT1_VE_HIGH_SHIFT		(0)
+#define DRAMC_PORT1_VE_LOW_SHIFT		(1)
+#define DRAMC_PORT1_USB2_A1_SHIFT		(2)
+#define DRAMC_PORT1_USB2_A2_SHIFT		(3)
+#define DRAMC_PORT1_E2M_SHIFT			(4)
+#define DRAMC_PORT1_MCTP_SHIFT			(5)
+#define DRAMC_PORT1_H2M_SHIFT			(6)
+#define DRAMC_PORT1_HMAC_SHIFT			(7)
+
+#define QOS_USB2_A1_LEVEL(x)			((x) << (DRAMC_PORT1_USB2_A1_SHIFT * 4))
+#define QOS_USB2_A2_LEVEL(x)			((x) << (DRAMC_PORT1_USB2_A2_SHIFT * 4))
+
+/* offset 0x310 */
+#define DRAMC_PORT2_USB2_B1_SHIFT		(0)
+#define DRAMC_PORT2_USB2_B2_SHIFT		(1)
+#define DRAMC_PORT2_VGA1_CR_SHIFT		(2)
+#define DRAMC_PORT2_VGA1_LE_SHIFT		(3)
+#define DRAMC_PORT2_TSP_INST_SHIFT		(4)
+#define DRAMC_PORT2_VIDEO_SHIFT			(5)
+#define DRAMC_PORT2_MCTP8_SHIFT			(6)
+#define DRAMC_PORT2_UHCI_SHIFT			(7)
+
+#define QOS_USB2_B1_LEVEL(x)			((x) << (DRAMC_PORT2_USB2_B1_SHIFT * 4))
+#define QOS_USB2_B2_LEVEL(x)			((x) << (DRAMC_PORT2_USB2_B2_SHIFT * 4))
+#define QOS_VGA1_CR_LEVEL(x)			((x) << (DRAMC_PORT2_VGA1_CR_SHIFT * 4))
+
+/* offset 0x380 */
+#define DRAMC_PORT_CFG_RDQOS_EN			BIT(2)
+#define DRAMC_PORT_CFG_WRQOS_EN			BIT(3)
+#define DRAMC_PORT_CFG_RDQOS_LVL_MASK		GENMASK(7, 4)
+#define DRAMC_PORT_CFG_RDQOS_LVL_SHIFT		(4)
+
+/* offset 0x388 */
+#define DRAMC_PORT3_USB3_A1_SHIFT		(0)
+#define DRAMC_PORT3_USB3_B1_SHIFT		(1)
+#define DRAMC_PORT3_SHA3_SHIFT			(2)
+#define DRAMC_PORT3_VGA2_CR_SHIFT		(3)
+#define DRAMC_PORT3_VGA2_LE_SHIFT		(4)
+#define DRAMC_PORT3_TSP_SHIFT			(5)
+#define DRAMC_PORT3_E2M1_SHIFT			(6)
+#define DRAMC_PORT3_GFX_SHIFT			(7)
+
+#define QOS_VGA2_CR_LEVEL(x)			((x) << (DRAMC_PORT3_VGA2_CR_SHIFT * 4))
+
+/* offset 0x400 */
+#define DRAMC_PORT4_XDMA_SHIFT			(0)
+#define DRAMC_PORT4_SDIO_SHIFT			(1)
+#define DRAMC_PORT4_SLI_SHIFT			(3)
+
+#define QOS_SLI_LEVEL(x)			((x) << (DRAMC_PORT4_SLI_SHIFT * 4))
+
+#define DEFAULT_RDQOS_LEVEL			(8 << DRAMC_PORT_CFG_RDQOS_LVL_SHIFT)
+
 struct sdramc {
 	struct ram_info info;
 	struct sdramc_regs *regs;
@@ -218,19 +282,26 @@ struct sdramc {
 	void __iomem *phy_setting;
 	void __iomem *phy_status;
 	ulong clock_rate;
+	u32 ecc_size;
+	u32 aes_size;
 };
 
 struct sdramc_port {
 	u32 cfg;
 	u32 timeout;
 	u32 read_qos;
+	u32 resvd0;
 	u32 write_qos;
+	u32 resvd1[3];
 	u32 monitor_config;
 	u32 monitor_limit;
 	u32 monitor_timer;
+	u32 resvd2;
 	u32 monitor_status;
 	u32 bandwidth_log;
+	u32 resvd3[2];
 	u32 intf_monitor[3];
+	u32 resvd4[13];
 };
 
 struct sdramc_protect {
@@ -284,12 +355,12 @@ struct sdramc_regs {
 	u32 ecc_test_control;		/* offset 0x80 */
 	u32 ecc_test_status;		/* offset 0x84 */
 	u32 arbctl;			/* offset 0x88 */
-	u32 enc_configuration;		/* offset 0x8c */
+	u32 enccfg;			/* offset 0x8c */
 	u32 protect_lock_set;		/* offset 0x90 */
 	u32 protect_lock_status;	/* offset 0x94 */
 	u32 protect_lock_reset;		/* offset 0x98 */
-	u32 enc_min_address;		/* offset 0x9c */
-	u32 enc_max_address;		/* offset 0xa0 */
+	u32 enc_min_addr;		/* offset 0x9c */
+	u32 enc_max_addr;		/* offset 0xa0 */
 	u32 enc_key[4];			/* offset 0xa4~0xb0 */
 	u32 enc_iv[3];			/* offset 0xb4~0xbc */
 	u32 bistcfg;			/* offset 0xc0 */
@@ -307,7 +378,7 @@ struct sdramc_regs {
 	u32 gfmcfg;			/* 0x100 */
 	u32 gfm0ctl;
 	u32 gfm1ctl;
-	u32 reserved3[0xf8];
+	u32 reserved3[0x3d];
 	struct sdramc_port port[6];	/* 0x200 */
 	struct sdramc_protect region[16];/* 0x600 */
 };
@@ -371,8 +442,15 @@ struct sdramc_ac_timing {
 	u32 t_zq;
 };
 
+struct train_bin {
+	u32 imem_base;
+	u32 imem_len;
+	u32 dmem_base;
+	u32 dmem_len;
+};
+
 void fpga_phy_init(struct sdramc *sdramc);
 void dwc_phy_init(struct sdramc *sdramc);
 bool is_ddr4(void);
-int dram_init(void);//struct udevice *dev)
+//int dram_init(void);//struct udevice *dev)
 #endif
