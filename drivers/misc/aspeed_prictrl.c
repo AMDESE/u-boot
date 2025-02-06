@@ -426,60 +426,23 @@ static int prictrl_client_setting(const struct udevice *dev)
 	return ret;
 }
 
-static int prictrl_hw_init(void)
+static int prictrl_hw_init(struct udevice *dev)
 {
-	/* The polling instruction of CPU core 0 ~ 3 */
-	writel(0x14000000, (void *)ASPEED_CPU_SMP_EP0);
+	const uint32_t magic = 0x7F7F7F7E;
+	uint32_t init_val[64] = { 0 };
+	struct prictrl_aspeed_config *cfg = dev_get_priv(dev);
 
-	/* core 0 ~ 3 jump to polling instruction */
-	writel(ASPEED_CPU_SMP_EP0 >> 4, (void *)ASPEED_CPU_CA35_RVBAR0);
-	writel(ASPEED_CPU_SMP_EP0 >> 4, (void *)ASPEED_CPU_CA35_RVBAR1);
-	writel(ASPEED_CPU_SMP_EP0 >> 4, (void *)ASPEED_CPU_CA35_RVBAR2);
-	writel(ASPEED_CPU_SMP_EP0 >> 4, (void *)ASPEED_CPU_CA35_RVBAR3);
+	/* Check whether privilege control is ready */
+	writel(magic, (void *)cfg->cpu_base);
+	if (readl((void *)cfg->cpu_base) != magic)
+		return -EAGAIN;
 
-	/* Init core 0 ~ 3 and privilege control */
-	writel(0x1, (void *)ASPEED_CPU_CA35_REL);
-
-	return 0;
-}
-
-static int prictrl_hw_deinit(void)
-{
-	uint32_t polling_count = 10000;
-	uint32_t wdt_mask[5] = { 0 };
-
-	/* Backup wdt mask setting */
-	wdt_mask[0] = readl(PRICTRL_WDT_RESET_MASK_1);
-	wdt_mask[1] = readl(PRICTRL_WDT_RESET_MASK_2);
-	wdt_mask[2] = readl(PRICTRL_WDT_RESET_MASK_3);
-	wdt_mask[3] = readl(PRICTRL_WDT_RESET_MASK_4);
-	wdt_mask[4] = readl(PRICTRL_WDT_RESET_MASK_5);
-
-	/* Config only reset ca35 core 0 ~ 3 */
-	writel(0x1, PRICTRL_WDT_RESET_MASK_1);
-	writel(0x0, PRICTRL_WDT_RESET_MASK_2);
-	writel(0x0, PRICTRL_WDT_RESET_MASK_3);
-	writel(0x0, PRICTRL_WDT_RESET_MASK_4);
-	writel(0x0, PRICTRL_WDT_RESET_MASK_5);
-
-	/* Re-Init ca35 core 0 ~ 3 */
-	writel(0x10, PRICTRL_WDT_RELOAD_VALUE);
-	writel(0x4755, PRICTRL_WDT_RESTART);
-	writel(0x13, PRICTRL_WDT_CONTROL);
-
-	/* Polling timeout status and clear wdt timeout status */
-	while (polling_count-- &&
-	       (readl(PRICTRL_WDT_TIMEOUT_STAT) & BIT(0)) == 0)
-		;
-	setbits_le32(PRICTRL_WDT_CLR_TIMEOUT_STAT, BIT(0));
-
-	/* Waiting 1ms for reset event down before restoring wdt mask setting */
-	mdelay(1);
-	writel(wdt_mask[0], PRICTRL_WDT_RESET_MASK_1);
-	writel(wdt_mask[1], PRICTRL_WDT_RESET_MASK_2);
-	writel(wdt_mask[2], PRICTRL_WDT_RESET_MASK_3);
-	writel(wdt_mask[3], PRICTRL_WDT_RESET_MASK_4);
-	writel(wdt_mask[4], PRICTRL_WDT_RESET_MASK_5);
+	/* Initialize privilege control cpu die configruation register */
+	memset(init_val, (PRICTRL_GROUP_DEFAULT | PRICTRL_RST), sizeof(init_val));
+	memcpy_toio((void *)cfg->cpu_base, init_val, sizeof(init_val));
+	memcpy_toio((void *)(cfg->cpu_base + 0x100), init_val, sizeof(init_val));
+	memcpy_toio((void *)(cfg->cpu_base + 0x200), init_val, sizeof(init_val));
+	memcpy_toio((void *)(cfg->cpu_base + 0x300), init_val, sizeof(init_val));
 
 	return 0;
 }
@@ -491,7 +454,9 @@ static int aspeed_prictrl_probe(struct udevice *dev)
 	if (!dev)
 		return -EINVAL;
 
-	prictrl_hw_init();
+	ret = prictrl_hw_init(dev);
+	if (ret)
+		return -EAGAIN;
 
 	ret = prictrl_master_mapping(dev);
 	if (ret)
@@ -500,8 +465,6 @@ static int aspeed_prictrl_probe(struct udevice *dev)
 	ret = prictrl_client_setting(dev);
 	if (ret)
 		printf("Client group setting fail(%d).\n", ret);
-
-	prictrl_hw_deinit();
 
 	return 0;
 }

@@ -42,7 +42,7 @@ int misc_init(void)
 	/* Loop over all MISC uclass drivers */
 	while (1) {
 		ret = uclass_get_device(UCLASS_MISC, i++, &dev);
-		if (ret)
+		if (ret == -ENODEV)
 			break;
 	}
 
@@ -178,6 +178,19 @@ static int pci_init(void)
 	return 0;
 }
 
+static int prictrl_init(void)
+{
+	struct udevice *dev;
+	int err;
+
+	/* privilege control init */
+	err = uclass_get_device_by_name(UCLASS_MISC, "prictrl@12140000", &dev);
+	if (err && err != -ENODEV)
+		printf("Get privilege control udevice Failed %d.\n", err);
+
+	return err;
+}
+
 struct init_callback board_init_seq[] = {
 	{"WDT",		wdt_init},
 	{"EXTRST",	extrst_mask_init},
@@ -195,11 +208,6 @@ int spl_board_init_f(void)
 	struct udevice *dev;
 	int err;
 	int i;
-
-	/* prictrl initial for setting permission */
-	err = uclass_get_device_by_name(UCLASS_MISC, "prictrl@12140000", &dev);
-	if (err && err != -ENODEV)
-		printf("Get prictrl udevice Failed %d.\n", err);
 
 	/* scu1 initial for driving and clk*/
 	err = uclass_get_device_by_name(UCLASS_CLK, "clock-controller@14c02200", &dev);
@@ -302,6 +310,9 @@ void spl_board_prepare_for_boot(void)
 
 	/* release CA35 reset */
 	writel(0x1, (void *)ASPEED_CPU_CA35_REL);
+
+	/* Enable privilege control */
+	prictrl_init();
 
 	/* release SSP reset */
 	if (has_sspfw)

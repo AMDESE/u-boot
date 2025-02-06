@@ -6,8 +6,6 @@
 #ifndef __PRICTRL_ASPEED_H_
 #define __PRICTRL_ASPEED_H_
 
-#include <asm/arch/platform.h>
-
 /* Privilege control util definition */
 #define PRICTRL_NARG(...) PRICTRL_NARG_(__VA_ARGS__, PRICTRL_RSEQ_N())
 #define PRICTRL_NARG_(...) PRICTRL_ARG_N(__VA_ARGS__)
@@ -27,18 +25,6 @@
 /* Privilege control register definition */
 #define PRICTRL_READ_OFFSET (0x100)
 #define PRICTRL_CLIENT_OFFSET (0x200)
-#define PRICTRL_WDT_BASE (ASPEED_WDT_BASE + 0x380)
-#define PRICTRL_WDT_COUNTER ((void *)PRICTRL_WDT_BASE)
-#define PRICTRL_WDT_RELOAD_VALUE ((void *)PRICTRL_WDT_BASE + 0x04)
-#define PRICTRL_WDT_RESTART ((void *)PRICTRL_WDT_BASE + 0x08)
-#define PRICTRL_WDT_CONTROL ((void *)PRICTRL_WDT_BASE + 0x0C)
-#define PRICTRL_WDT_TIMEOUT_STAT ((void *)PRICTRL_WDT_BASE + 0x10)
-#define PRICTRL_WDT_CLR_TIMEOUT_STAT ((void *)PRICTRL_WDT_BASE + 0x14)
-#define PRICTRL_WDT_RESET_MASK_1 ((void *)PRICTRL_WDT_BASE + 0x1C)
-#define PRICTRL_WDT_RESET_MASK_2 ((void *)PRICTRL_WDT_BASE + 0x20)
-#define PRICTRL_WDT_RESET_MASK_3 ((void *)PRICTRL_WDT_BASE + 0x24)
-#define PRICTRL_WDT_RESET_MASK_4 ((void *)PRICTRL_WDT_BASE + 0x28)
-#define PRICTRL_WDT_RESET_MASK_5 ((void *)PRICTRL_WDT_BASE + 0x2C)
 
 /* Privilege control register attribute definition */
 #define PRICTRL_FIELD_SIZE_IN_BITS (8)
@@ -59,6 +45,9 @@
 #define PRICTRL_GROUP_DEFAULT GENMASK(5, 0)
 #define PRICTRL_CONF_VAL(_value, _field) \
 	((_value) << ((_field) * PRICTRL_FIELD_SIZE_IN_BITS))
+
+/* Privilege control reset definition */
+#define PRICTRL_RST BIT(6)
 
 /* Privilege control lock definition */
 #define PRICTRL_NO_LOCK (0)
