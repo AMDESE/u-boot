@@ -34,6 +34,13 @@
 		#size-cells = <1>;
 		ranges;
 
+		sdrammc: sdrammc@12c00000 {
+			compatible = "aspeed,ast2700-sdrammc";
+			reg = <0x12c00000 0x3000>;
+			clocks = <&soc0_clk SCU0_CLK_MPLL>;
+			resets = <&soc0_rst SCU0_RESET_SDRAM>;
+		};
+
 		rsss: rsss@12080000 {
 			compatible = "aspeed,ast2700-rsss";
 			reg = <0x12080000 0x1000>;

@@ -111,6 +111,20 @@
 	};
 };
 
+&sdrammc {
+	status = "okay";
+#if 0
+	/*
+	 * Example of dram ECC enable
+	 * The max ECC size = ((Capacity - VGA size) * 8) / 9;
+	 */
+	ecc-enable;
+	ecc-size = <0x30000000>;
+	aes-enable;
+	aes-size = <0x30000000>;
+#endif
+};
+
 &uart12 {
 	status = "okay";
 	clock-frequency = <1846153>;
