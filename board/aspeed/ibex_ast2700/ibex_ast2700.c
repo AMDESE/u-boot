@@ -30,6 +30,7 @@
 DECLARE_GLOBAL_DATA_PTR;
 
 static bool ibex_boot2fw;
+static bool has_pspfw;
 static bool has_sspfw;
 static bool has_tspfw;
 
@@ -291,6 +292,7 @@ void board_fit_image_post_process(const void *fit, int node, void **p_image, siz
 
 	switch (os) {
 	case IH_OS_ARM_TRUSTED_FIRMWARE:
+		has_pspfw = true;
 		writel(ep_arm >> 4, (void *)ASPEED_CPU_CA35_RVBAR0);
 		writel(ep_arm >> 4, (void *)ASPEED_CPU_CA35_RVBAR1);
 		writel(ep_arm >> 4, (void *)ASPEED_CPU_CA35_RVBAR2);
@@ -315,13 +317,15 @@ void spl_board_prepare_for_boot(void)
 	if (IS_ENABLED(CONFIG_ASPEED_UFS))
 		writel(1, (void *)ASPEED_UFS_PATH_AXI);
 
-	/* clean up secondary entries */
-	writeq(0x0, (void *)ASPEED_CPU_SMP_EP1);
-	writeq(0x0, (void *)ASPEED_CPU_SMP_EP2);
-	writeq(0x0, (void *)ASPEED_CPU_SMP_EP3);
+	if (has_pspfw) {
+		/* clean up secondary entries */
+		writeq(0x0, (void *)ASPEED_CPU_SMP_EP1);
+		writeq(0x0, (void *)ASPEED_CPU_SMP_EP2);
+		writeq(0x0, (void *)ASPEED_CPU_SMP_EP3);
 
-	/* release CA35 reset */
-	writel(0x1, (void *)ASPEED_CPU_CA35_REL);
+		/* release CA35 reset */
+		writel(0x1, (void *)ASPEED_CPU_CA35_REL);
+	}
 
 	/* Enable privilege control */
 	prictrl_init();

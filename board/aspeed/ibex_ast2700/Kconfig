@@ -52,6 +52,17 @@ config EXTRST_MASK_DEFAULT_INIT
 	bool "Initialize EXTRST mask value"
 	default n
 
+config ASPEED_EXPORT_LOADER
+	bool "Enable export loader"
+	default n
+
+config EXPORT_SYMBOL_SIZE
+	hex "Maximum size of export symbol section size"
+	default 0x0
+	depends on ASPEED_EXPORT_LOADER
+	help
+	  Specifies the maximum length of the export symbol section.
+
 choice
 	prompt "AST2700 DDR target date rate"
 	default ASPEED_DDR_3200

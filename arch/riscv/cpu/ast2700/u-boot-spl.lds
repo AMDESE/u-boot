@@ -6,7 +6,8 @@
  *
  * and arch/mips/cpu/u-boot-spl.lds.
  */
-MEMORY { .spl_mem : ORIGIN = IMAGE_TEXT_BASE, LENGTH = IMAGE_MAX_SIZE }
+MEMORY { .spl_mem : ORIGIN = IMAGE_TEXT_BASE, LENGTH = IMAGE_MAX_SIZE - CONFIG_EXPORT_SYMBOL_SIZE }
+MEMORY { .exp_mem : ORIGIN = IMAGE_TEXT_BASE + IMAGE_MAX_SIZE - CONFIG_EXPORT_SYMBOL_SIZE, LENGTH = CONFIG_EXPORT_SYMBOL_SIZE }
 MEMORY { .bss_mem : ORIGIN = CONFIG_SPL_BSS_START_ADDR, \
 		    LENGTH = CONFIG_SPL_BSS_MAX_SIZE }
 
@@ -44,6 +45,13 @@ SECTIONS
 		KEEP(*(SORT(.binman_sym*)));
 		__binman_sym_end = .;
 	} > .spl_mem
+
+	. = ALIGN(4);
+	.export_sym : {
+		_expport_sym_start = .;
+		KEEP(*(.export_sym*));
+		. = ALIGN(4);
+	} > .exp_mem
 
 	__image_copy_end = .;
 	_end = .;
