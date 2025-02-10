@@ -9,15 +9,16 @@
 #include <env_internal.h>
 #include <malloc.h>
 
-#define ASPEED_IO_SCU_BASE		0x14c02000
+#define ASPEED_IO_SCU_BASE	0x14c02000
 
-#define SCU_SPI_ABR_REG			(ASPEED_IO_SCU_BASE + 0x030)
-#define SPI_ABR_MODE			BIT(29)
-#define SPI_ABR_EN			BIT(0)
+#define SCU_SPI_ABR_REG		(ASPEED_IO_SCU_BASE + 0x030)
+#define SPI_ABR_MODE		BIT(29)
+#define SPI_AUX_EN		BIT(16)
+#define SPI_ABR_EN		BIT(0)
 
-#define WDTA_BASE			0x14c37400
-#define WDT_ABR_CTRL			(WDTA_BASE + 0x04c)
-#define WDT_ABR_INDICATOR		BIT(1)
+#define WDTA_BASE		0x14c37400
+#define WDT_ABR_CTRL		(WDTA_BASE + 0x04c)
+#define WDT_ABR_INDICATOR	BIT(1)
 
 bool spi_abr_enabled(void)
 {
@@ -26,6 +27,15 @@ bool spi_abr_enabled(void)
 	abr_val = readl((void *)SCU_SPI_ABR_REG) & SPI_ABR_EN;
 
 	return (abr_val != 0) ? true : false;
+}
+
+bool spi_aux_bit_enabled(void)
+{
+	u32 spi_aux;
+
+	spi_aux = readl((void *)SCU_SPI_ABR_REG) & SPI_AUX_EN;
+
+	return (spi_aux != 0) ? true : false;
 }
 
 u32 spi_get_abr_indictor(void)
@@ -98,7 +108,7 @@ u32 spi_get_flash_sz_strap(void)
 
 u32 aspeed_spi_abr_offset(void)
 {
-	if (!spi_abr_enabled())
+	if (!spi_abr_enabled() && !spi_aux_bit_enabled())
 		return 0;
 
 	/* no need for dual flash ABR */
