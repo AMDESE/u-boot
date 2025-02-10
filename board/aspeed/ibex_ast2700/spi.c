@@ -8,6 +8,15 @@
 #include <asm/io.h>
 #include <common.h>
 
+bool spi_aux_bit_enabled(void)
+{
+	u32 spi_aux;
+
+	spi_aux = readl((void *)ABR_REG) & SPI_AUX_EN;
+
+	return (spi_aux != 0) ? true : false;
+}
+
 enum spi_abr_mode get_spi_flash_abr_mode(void)
 {
 	u32 abr_mode;
@@ -71,7 +80,7 @@ u32 aspeed_spi_abr_offset(void)
 {
 	u32 flash_sz_strap;
 
-	if (!abr_enabled())
+	if (!abr_enabled() && !spi_aux_bit_enabled())
 		return 0;
 
 	/* no need for dual flash ABR */

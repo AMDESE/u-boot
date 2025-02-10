@@ -20,6 +20,7 @@
 #define DMA_RAM_ADDR			(ASPEED_FMC_REG_BASE + 0x088)
 #define DMA_LEN				(ASPEED_FMC_REG_BASE + 0x08C)
 
+#define SPI_AUX_EN			BIT(16)
 #define SPI_DMA_DONE			BIT(11)
 #define DMA_ENABLE			BIT(0)
 
