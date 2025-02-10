@@ -927,7 +927,7 @@ static int ltpi_get_link_partner(struct ltpi_priv *ltpi)
 
 static void ltpi_show_status(struct ltpi_priv *ltpi)
 {
-	int speed, ret, i;
+	int speed, ret;
 	uint32_t phy_mode, clk_select;
 	char modes[9][8] = { "OFF", "SDR", "DDR", "NA",	   "CDR_LO",
 			     "NA",  "NA",  "NA",  "CDR_HI" };
@@ -942,14 +942,14 @@ static void ltpi_show_status(struct ltpi_priv *ltpi)
 			     readl((void *)ltpi->phy_base + LTPI_PHY_CTRL));
 	clk_select = FIELD_GET(REG_LTPI_PLL_SELECT,
 			       readl((void *)ltpi->phy_base + LTPI_PLL_CTRL));
-	if (phy_mode == LTPI_PHY_MODE_SDR) {
-		for (i = 0; i < 13; i++)
-			if (clk_select == ltpi_clk_lookup_sdr[i].clk_sel)
-				speed = ltpi_clk_lookup_sdr[i].freq;
+
+	/* AST2700 LTPI clock can only be LPLL or CLKIN 25M */
+	if (clk_select == REG_LTPI_PLL_LPLL) {
+		int pll_id = ltpi->index ? SCU_PLL_ID_IO_L1PLL : SCU_PLL_ID_IO_L0PLL;
+
+		speed = scu_get_pll_freq(pll_id) / 1000000;
 	} else {
-		for (i = 0; i < 13; i++)
-			if (clk_select == ltpi_clk_lookup_ddr[i].clk_sel)
-				speed = ltpi_clk_lookup_ddr[i].freq;
+		speed = 25;
 	}
 
 	printf("LTPI%d:\n"
