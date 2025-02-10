@@ -40,5 +40,8 @@ enum spi_abr_mode {
 u32 aspeed_spi_abr_offset(void);
 bool spi_abr_enabled(void);
 void spi_bootarg_config(void);
+bool spi_aux_bit_enabled(void);
+u32 spi_get_flash_sz_strap(void);
+u32 spi_ext_abr_signal(void);
 
 #endif

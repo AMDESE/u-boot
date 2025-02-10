@@ -3,21 +3,26 @@
  * Copyright (c) Aspeed Technology Inc.
  */
 
+#include <asm/arch/platform.h>
 #include <asm/arch-aspeed/spi.h>
 #include <asm/io.h>
 #include <env.h>
 #include <env_internal.h>
 #include <malloc.h>
 
-#define ASPEED_IO_SCU_BASE	0x14c02000
-
 #define SCU_SPI_ABR_REG		(ASPEED_IO_SCU_BASE + 0x030)
 #define SPI_ABR_MODE		BIT(29)
 #define SPI_AUX_EN		BIT(16)
 #define SPI_ABR_EN		BIT(0)
 
-#define WDTA_BASE		0x14c37400
-#define WDT_ABR_CTRL		(WDTA_BASE + 0x04c)
+#define SCU1_PINMUX_GRP_P	(ASPEED_IO_SCU_BASE + 0x43c)
+#define   SCU1_PINMUX_PIN7	GENMASK(31, 28)
+
+#define GPIOP7_REG		(ASPEED_IO_GPIO_BASE + 0x37c)
+#define GPIO_DATA_IN		BIT(13)
+#define GPIO_DIRECT		BIT(1)
+
+#define WDT_ABR_CTRL		(ASPEED_WDTA_BASE + 0x04c)
 #define WDT_ABR_INDICATOR	BIT(1)
 
 bool spi_abr_enabled(void)
@@ -36,6 +41,23 @@ bool spi_aux_bit_enabled(void)
 	spi_aux = readl((void *)SCU_SPI_ABR_REG) & SPI_AUX_EN;
 
 	return (spi_aux != 0) ? true : false;
+}
+
+u32 spi_ext_abr_signal(void)
+{
+	uint32_t reg;
+
+	/* force to change to GPIO mode */
+	reg = readl(SCU1_PINMUX_GRP_P);
+	reg &= ~(SCU1_PINMUX_PIN7);
+	writel(reg, SCU1_PINMUX_GRP_P);
+
+	/* input direction */
+	reg = readl(GPIOP7_REG);
+	reg &= ~(GPIO_DIRECT);
+	writel(reg, GPIOP7_REG);
+
+	return !!(readl(GPIOP7_REG) & GPIO_DATA_IN);
 }
 
 u32 spi_get_abr_indictor(void)

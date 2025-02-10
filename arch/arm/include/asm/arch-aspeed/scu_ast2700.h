@@ -506,5 +506,8 @@ struct ast2700_scu1 {
 	uint32_t io_driving8;	/* 0x4e0 */
 };
 
+void aspeed_print_2nd_wdt_mode(void);
+void aspeed_print_fmc_aux_ctrl(void);
+
 #endif
 #endif

@@ -7,6 +7,7 @@
 #include <command.h>
 #include <asm/io.h>
 #include <asm/arch/platform.h>
+#include <asm/arch/scu_ast2700.h>
 
 /* SoC mapping Table */
 #define SOC_ID(str, rev) { .name = str, .rev_id = rev, }
@@ -104,6 +105,8 @@ int print_cpuinfo(void)
 {
 	ast2700_print_soc_id();
 	ast2700_print_sysrst_info();
+	aspeed_print_2nd_wdt_mode();
+	aspeed_print_fmc_aux_ctrl();
 
 	return 0;
 }
