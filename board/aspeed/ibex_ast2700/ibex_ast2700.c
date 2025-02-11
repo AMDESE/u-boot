@@ -111,6 +111,32 @@ static int dp_init(void)
 {
 	struct udevice *dev;
 	int err;
+	int nodeoffset;
+	ofnode node;
+	struct ast2700_scu0 *scu;
+
+	/* find the offset of compatible node */
+	nodeoffset = fdt_node_offset_by_compatible(gd->fdt_blob, -1,
+						   "aspeed,ast2700-scu0");
+	if (nodeoffset < 0) {
+		printf("%s: failed to get aspeed,ast2700-scu0\n", __func__);
+		return -ENODEV;
+	}
+
+	/* get ast2700-scu0 node */
+	node = offset_to_ofnode(nodeoffset);
+
+	scu = (struct ast2700_scu0 *)ofnode_get_addr(node);
+	if (IS_ERR_OR_NULL(scu)) {
+		printf("%s: cannot get SYSCON address pointer\n", __func__);
+		return PTR_ERR(scu);
+	}
+
+	// leave works to u-boot
+	if (FIELD_GET(SCU_CPU_REVISION_ID_HW, scu->chip_id1) == 0) {
+		debug("%s: Do nothing in A0\n", __func__);
+		return 0;
+	}
 
 	/* dp */
 	err = uclass_get_device_by_name(UCLASS_MISC, "dp@12c0a000", &dev);
