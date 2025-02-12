@@ -70,7 +70,8 @@
 /* SoC1 SCU Register */
 #define SCU_IO_HWSTRAP_UFS			BIT(23)
 #define SCU_IO_HWSTRAP_EMMC			BIT(11)
-#define SCU_IO_HWSTRAP_SCM			BIT(3)
+#define SCU_IO_HWSTRAP_LTPI0_EN			BIT(3)
+#define SCU_IO_HWSTRAP_LTPI1_EN			BIT(1)
 
 /* CLK information */
 #define CLKIN_25M 25000000UL

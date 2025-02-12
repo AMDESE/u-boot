@@ -21,7 +21,7 @@ int ltpi_init(void)
 {
 	uint32_t reg;
 
-	if (!(readl((void *)ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_SCM))
+	if (!(readl((void *)ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_LTPI0_EN))
 		return 0;
 
 	reg = readl((void *)ASPEED_LTPI0_BASE + LTPI_LINK_MANAGE_ST);
