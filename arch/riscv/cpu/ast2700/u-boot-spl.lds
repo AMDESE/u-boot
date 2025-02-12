@@ -46,13 +46,14 @@ SECTIONS
 		__binman_sym_end = .;
 	} > .spl_mem
 
+#ifdef CONFIG_EXPORT_SYMBOL_SIZE
 	. = ALIGN(4);
 	.export_sym : {
 		_expport_sym_start = .;
 		KEEP(*(.export_sym*));
 		. = ALIGN(4);
 	} > .exp_mem
-
+#endif
 	__image_copy_end = .;
 	_end = .;
 	_image_binary_end = .;
