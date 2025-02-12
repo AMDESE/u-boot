@@ -212,6 +212,14 @@
 	status = "okay";
 };
 
+&ltpi0 {
+	status = "okay";
+};
+
+&ltpi1 {
+	status = "okay";
+};
+
 #if BINMAN_SYMS_OK
 &binman {
 	bootph-all;

@@ -224,6 +224,22 @@
 			status = "disabled";
 		};
 
+		ltpi0: ltpi@14c34000 {
+			compatible = "aspeed,ast2700-ltpi";
+			reg = <0x14c34000 0x400>;
+			aspeed,scu1 = <&syscon1>;
+			index = <0>;
+			status = "disabled";
+		};
+
+		ltpi1: ltpi@14c35000 {
+			compatible = "aspeed,ast2700-ltpi";
+			reg = <0x14c35000 0x400>;
+			aspeed,scu1 = <&syscon1>;
+			index = <1>;
+			status = "disabled";
+		};
+
 		edaf_bridge0: edaf-bridge@14c38000 {
 			compatible = "aspeed,ast2700-edaf-bridge";
 			reg = <0x14c38000 0x200>;

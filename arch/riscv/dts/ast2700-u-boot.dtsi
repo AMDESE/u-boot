@@ -96,6 +96,14 @@
 			bootph-all;
 		};
 
+		ltpi0: ltpi@14c34000 {
+			bootph-all;
+		};
+
+		ltpi1: ltpi@14c35000 {
+			bootph-all;
+		};
+
 		edaf_bridge0: edaf-bridge@14c38000 {
 			bootph-all;
 		};
