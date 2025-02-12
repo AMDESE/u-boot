@@ -757,4 +757,12 @@ config SPL_PRIVILEGE_CTRL
 	  This option enables privilege control for aspeed
 	  board isolation.
 
+config SPL_LTPI_AST2700
+	bool "Enable AST2700 LTPI essential configuration"
+	depends on SPL_MISC
+	depends on TARGET_ASPEED_AST2700
+	default y
+	help
+	  This option enables AST2700 LTPI essential configuration.
+
 endmenu
