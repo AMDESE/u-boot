@@ -16,7 +16,6 @@
 #include <asm/arch/pci_ast2700.h>
 #include <asm/arch/scu_ast2700.h>
 #include <asm/arch/sli_ast2700.h>
-#include <asm/arch/ltpi_ast2700.h>
 #include <asm/arch/sdram_ast2700.h>
 #include <asm/arch/stor_ast2700.h>
 #include <asm/arch/wdt.h>
@@ -233,7 +232,6 @@ int dram_init(void)
 struct init_callback board_init_seq[] = {
 	{"WDT",		wdt_init},
 	{"EXTRST",	extrst_mask_init},
-	{"LTPI",	ltpi_init},
 	{"STOR",	stor_init},
 	{"SLI1",	sli1_init},
 	{"DP",		dp_init},
