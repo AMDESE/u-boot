@@ -130,9 +130,6 @@ u32 spi_get_flash_sz_strap(void)
 
 u32 aspeed_spi_abr_offset(void)
 {
-	if (!spi_abr_enabled() && !spi_aux_bit_enabled())
-		return 0;
-
 	/* no need for dual flash ABR */
 	if (get_spi_flash_abr_mode() == DUAL_FLASH_ABR)
 		return 0;
@@ -153,8 +150,8 @@ void spi_bootarg_config(void)
 	env_set_hex("fdtspiaddr",
 		    CONFIG_SPI_KERNEL_FIT_ADDR + aspeed_spi_abr_offset());
 
-	if (spi_abr_enabled() &&
-	    get_spi_flash_abr_mode() == SINGLE_FLASH_ABR) {
+	if (get_spi_flash_abr_mode() == SINGLE_FLASH_ABR &&
+	    (spi_abr_enabled() || spi_aux_bit_enabled())) {
 		bootargs = env_get("bootargs");
 		if (!bootargs) {
 			printf("fail to get bootargs!\n");
