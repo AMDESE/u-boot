@@ -980,6 +980,18 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 	ltpi_data[0].link_speed_frm_rx_cnt = 0;
 	ltpi_data[1].link_speed_frm_rx_cnt = 0;
 
+	ltpi_data[0].index = 0;
+	ltpi_data[0].base = LTPI_REG;
+	ltpi_data[0].phy_base = ltpi_data[0].base + 0x200;
+	ltpi_data[0].top_base = ltpi_data[0].base + 0x800;
+	ltpi_data[0].gpio_base = ltpi_data[0].base + 0xc00;
+
+	ltpi_data[1].index = 1;
+	ltpi_data[1].base = LTPI_REG + 0x1000;
+	ltpi_data[1].phy_base = ltpi_data[1].base + 0x200;
+	ltpi_data[1].top_base = ltpi_data[1].base + 0x800;
+	ltpi_data[1].gpio_base = ltpi_data[1].base + 0xc00;
+
 	getopt_init_state(&gs);
 	while ((opt = getopt(&gs, argc, argv, "l:m:i:t:d:c:r:sh")) > 0) {
 		switch (opt) {
