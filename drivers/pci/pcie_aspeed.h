@@ -38,7 +38,43 @@
 #define PCIE_RC_INTB_ISR		BIT(1)
 #define PCIE_RC_INTA_ISR		BIT(0)
 
-struct aspeed_h2x_reg {
+/* AST2700 H2X */
+#define H2X_BRIDGE_EN			BIT(0)
+#define H2X_BRIDGE_DIRECT_EN		BIT(1)
+#define CFGE_TX_IDLE			BIT(0)
+#define CFGE_RX_BUSY			BIT(1)
+#define CFGI_TLP_FIRE			BIT(0)
+#define CFGE_TLP_FIRE			BIT(0)
+
+/* AST2700 PEHR */
+#define PEHR_VID_DID		0x00
+#define PEHR_MISC_58		0x58
+#define LOCAL_SCALE_SUP			BIT(0)
+#define PEHR_MISC_5C		0x5C
+#define PEHR_MISC_60		0x60
+#define PORT_TPYE			GENMASK(7, 4)
+#define PORT_TYPE_ROOT			BIT(2)
+#define PEHR_MISC_70		0x70
+#define PEHR_MISC_78		0x78
+
+/* AST2700 SCU */
+#define SCU_60			0x60
+#define RC_E2M_PATH_EN			BIT(0)
+#define RC_H2XS_PATH_EN			BIT(16)
+#define RC_H2XD_PATH_EN			BIT(17)
+#define RC_H2XX_PATH_EN			BIT(18)
+#define RC_UPSTREAM_MEM_EN		BIT(19)
+#define SCU_64			0x64
+#define SCU_70			0x70
+#define SCU_78			0x78
+
+/* TLP configuration type 0 and type 1 */
+#define CRG_READ_FMTTYPE(type)		(0x04000000 | (type << 24))
+#define CRG_WRITE_FMTTYPE(type)		(0x44000000 | (type << 24))
+#define CRG_PAYLOAD_SIZE		0x01 /* 1 DWORD */
+#define TLP_COMP_STATUS(s)		(((s) >> 13) & 7)
+
+struct ast2600_h2x_reg {
 	u32 h2x_reg00;
 	u32 h2x_reg04;
 	u32 h2x_reg08;
@@ -103,6 +139,40 @@ struct aspeed_h2x_reg {
 	u32 h2x_regf4;
 	u32 h2x_regf8;
 	u32 h2x_rc_h_tx_tag;	//0xFC
+};
+
+struct ast2700_h2x_reg {
+	u32 h2x_ctrl;			// 0x00
+	u32 h2x_reg04;
+	u32 h2x_int_sts;		// 0x08
+	u32 h2x_reg0C;
+	u32 h2x_reg10;
+	u32 h2x_reg14;
+	u32 h2x_reg18;
+	u32 h2x_reg1C;
+	u32 h2x_cfgi_tlp;		// 0x20
+	u32 h2x_cfgi_wdata;		// 0x24
+	u32 h2x_cfgi_ctrl;		// 0x28
+	u32 h2x_cfgi_rdata;		// 0x2C
+	u32 h2x_cfge_tlp1;		// 0x30
+	u32 h2x_cfge_tlpn;		// 0x34
+	u32 h2x_cfge_ctrl;		// 0x38
+	u32 h2x_cfge_data;		// 0x3C
+	u32 h2x_reg40;
+	u32 h2x_reg44;
+	u32 h2x_reg48;
+	u32 h2x_reg4C;
+	u32 h2x_reg50;
+	u32 h2x_reg54;
+	u32 h2x_reg58;
+	u32 h2x_reg5C;
+	u32 h2x_reg60;
+	u32 h2x_reg64;
+	u32 h2x_reg68;
+	u32 h2x_reg6C;
+	u32 h2x_reg70;
+	u32 h2x_reg74;
+	u32 h2x_remap_direct;		// 0x78
 };
 
 struct aspeed_rc_bridge {
