@@ -563,7 +563,7 @@ int ast2700_sli1_probe(struct udevice *dev)
 
 	/* Clear remote SLI controller */
 	sli_clear(data->die0.slih, SLI_CLEAR_BUS);
-	sli_clear(data->die0.slim, SLI_CLEAR_BUS);
+	sli_wait_suspend(data->die0.slih);
 
 	return 0;
 }
