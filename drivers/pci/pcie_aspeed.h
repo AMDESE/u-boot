@@ -48,6 +48,7 @@
 
 /* AST2700 PEHR */
 #define PEHR_VID_DID		0x00
+#define PEHR_CLASS		0x04
 #define PEHR_MISC_58		0x58
 #define LOCAL_SCALE_SUP			BIT(0)
 #define PEHR_MISC_5C		0x5C

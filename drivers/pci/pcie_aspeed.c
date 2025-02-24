@@ -40,6 +40,8 @@ struct pcie_aspeed {
 	struct regmap *pciephy;
 	struct regmap *device;
 	u8 tx_tag;
+
+	u32 root_bus;
 };
 
 static u8 txTag;
@@ -359,12 +361,15 @@ static void pcie_ast2700_read_config(const struct udevice *pbus, pci_dev_t bdf, 
 	u32 func = PCI_FUNC(bdf);
 	int ret;
 
-	if (bus == 0 && (dev != 0 || func != 0)) {
+	if (pcie->root_bus == -1)
+		pcie->root_bus = bus;
+
+	if (bus == pcie->root_bus && (dev != 0 || func != 0)) {
 		*valuep = pci_get_ff(size);
 		return;
 	}
 
-	if (bus == 0) {
+	if (bus == pcie->root_bus) {
 		/* Internal access to bridge */
 		writel(0xF << 16 | (offset & ~3), &h2x_reg->h2x_cfgi_tlp);
 		writel(CFGI_TLP_FIRE, &h2x_reg->h2x_cfgi_ctrl);
@@ -374,13 +379,8 @@ static void pcie_ast2700_read_config(const struct udevice *pbus, pci_dev_t bdf, 
 
 		pcie->tx_tag %= 0xF;
 
-		/* bus range:
-		 * CPU Node 0 = 0x00 - 0x3F
-		 * CPU Node 1 = 0x40 - 0x7F
-		 * IO         = 0x80 - 0xFF
-		 * The first bus on echo RC must send header with type 0.
-		 */
-		type = ((bus & 0x3F) == 1) ? PCI_HEADER_TYPE_NORMAL : PCI_HEADER_TYPE_BRIDGE;
+		type = (bus == (pcie->root_bus + 1)) ? PCI_HEADER_TYPE_NORMAL :
+						       PCI_HEADER_TYPE_BRIDGE;
 
 		/* Prepare TLP */
 		writel(CRG_READ_FMTTYPE(type) | CRG_PAYLOAD_SIZE, &h2x_reg->h2x_cfge_tlp1);
@@ -432,7 +432,10 @@ static void pcie_ast2700_write_config(struct udevice *pbus, pci_dev_t bdf, uint 
 	u8 byte_en;
 	int ret;
 
-	if (bus == 0 && (dev != 0 || func != 0))
+	if (pcie->root_bus == -1)
+		pcie->root_bus = bus;
+
+	if (bus == pcie->root_bus && (dev != 0 || func != 0))
 		return;
 
 	switch (size) {
@@ -449,7 +452,7 @@ static void pcie_ast2700_write_config(struct udevice *pbus, pci_dev_t bdf, uint 
 		break;
 	}
 
-	if (bus == 0) {
+	if (bus == pcie->root_bus) {
 		/* Internal access to bridge */
 		writel(0x100000 | byte_en << 16 | (offset & ~3), &h2x_reg->h2x_cfgi_tlp);
 		writel(value, &h2x_reg->h2x_cfgi_wdata);
@@ -459,13 +462,8 @@ static void pcie_ast2700_write_config(struct udevice *pbus, pci_dev_t bdf, uint 
 
 		pcie->tx_tag %= 0xF;
 
-		/* bus range:
-		 * CPU Node 0 = 0x00 - 0x3F
-		 * CPU Node 1 = 0x40 - 0x7F
-		 * IO         = 0x80 - 0xFF
-		 * The first bus on echo RC must send header with type 0.
-		 */
-		type = ((bus & 0x3F) == 1) ? PCI_HEADER_TYPE_NORMAL : PCI_HEADER_TYPE_BRIDGE;
+		type = (bus == (pcie->root_bus + 1)) ? PCI_HEADER_TYPE_NORMAL :
+						       PCI_HEADER_TYPE_BRIDGE;
 
 		/* Prepare TLP */
 		writel(CRG_WRITE_FMTTYPE(type) | CRG_PAYLOAD_SIZE, &h2x_reg->h2x_cfge_tlp1);
@@ -641,10 +639,13 @@ int pcie_ast2700_setup(struct udevice *dev)
 	struct pcie_aspeed *pcie = (struct pcie_aspeed *)dev_get_priv(dev);
 	struct ast2700_h2x_reg *h2x_reg = pcie->h2x_reg_27;
 	struct reset_ctl h2xrst, perst, perst_oe;
+	struct regmap *scu1_perst;
 	u32 cfg_val;
 	int ret = 0;
 
 	pcie->tx_tag = 0;
+
+	pcie->domain = dev_read_u32_default(dev, "linux,pci-domain", 0);
 
 	ret = reset_get_by_name(dev, "h2x", &h2xrst);
 	if (ret) {
@@ -652,16 +653,26 @@ int pcie_ast2700_setup(struct udevice *dev)
 		return ret;
 	}
 
-	ret = reset_get_by_name(dev, "perst", &perst);
-	if (ret) {
-		printf("%s(): Failed to get perst reset\n", __func__);
-		return ret;
-	}
+	if (pcie->domain == 2) {
+		/* SCU1 RC */
+		scu1_perst = syscon_regmap_lookup_by_phandle(dev, "perst");
+		if (IS_ERR(scu1_perst)) {
+			printf("can't allocate scu1 perst\n");
+			return PTR_ERR(scu1_perst);
+		}
+	} else {
+		/* SCU0 RC */
+		ret = reset_get_by_name(dev, "perst", &perst);
+		if (ret) {
+			printf("%s(): Failed to get perst reset\n", __func__);
+			return ret;
+		}
 
-	ret = reset_get_by_name(dev, "perst_oe", &perst_oe);
-	if (ret) {
-		printf("%s(): Failed to get perst output enable\n", __func__);
-		return ret;
+		ret = reset_get_by_name(dev, "perst_oe", &perst_oe);
+		if (ret) {
+			printf("%s(): Failed to get perst output enable\n", __func__);
+			return ret;
+		}
 	}
 
 	pcie->pciephy = syscon_regmap_lookup_by_phandle(dev, "pciephy");
@@ -676,14 +687,18 @@ int pcie_ast2700_setup(struct udevice *dev)
 		return PTR_ERR(pcie->device);
 	}
 
-	pcie->domain = dev_read_u32_default(dev, "linux,pci-domain", 0);
-
 	/* Set perst to output enable by reset function */
-	reset_assert(&perst_oe);
-	mdelay(10);
-	reset_assert(&perst);
+	if (pcie->domain == 2) {
+		/* Set perst to output and assert perst */
+		regmap_write(scu1_perst, 0, 0x02);
+	} else {
+		reset_assert(&perst_oe);
+		mdelay(10);
+		reset_assert(&perst);
+	}
 
 	regmap_write(pcie->pciephy, PEHR_VID_DID, 0x11501a02);
+	regmap_write(pcie->pciephy, PEHR_CLASS, PCI_CLASS_BRIDGE_PCI_NORMAL << 8 | 0x27);
 	regmap_write(pcie->pciephy, PEHR_MISC_70, 0xa00c0);
 	regmap_write(pcie->pciephy, PEHR_MISC_78, 0x80030);
 	regmap_write(pcie->pciephy, PEHR_MISC_58, LOCAL_SCALE_SUP);
@@ -717,8 +732,15 @@ int pcie_ast2700_setup(struct udevice *dev)
 	 */
 	writel(0x60000000 + (0x20000000 * pcie->domain), &h2x_reg->h2x_remap_direct);
 
-	reset_deassert(&perst);
+	if (pcie->domain == 2)
+		/* Set perst to output and deassert perst */
+		regmap_write(scu1_perst, 0, 0x03);
+	else
+		reset_deassert(&perst);
 	mdelay(1000);
+
+	/* Init root */
+	pcie->root_bus = -1;
 
 	return 0;
 }
