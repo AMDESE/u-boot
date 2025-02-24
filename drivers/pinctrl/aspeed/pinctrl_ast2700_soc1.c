@@ -279,6 +279,10 @@ static struct ast2700_soc1_sig_desc mac2_link[] = {
 	{ 0x68, GENMASK(6, 4), BIT(6) },
 };
 
+static struct ast2700_soc1_sig_desc pcie2_perst[] = {
+	{ 0x40, GENMASK(2, 0), 2 },
+};
+
 static const struct aspeed_group_config ast2700_soc1_groups[] = {
 	{ "ESPI1", ARRAY_SIZE(espi1_link), espi1_link },
 	{ "SD", ARRAY_SIZE(sdio_link), sdio_link },
@@ -331,6 +335,7 @@ static const struct aspeed_group_config ast2700_soc1_groups[] = {
 	{ "MAC0LINK", ARRAY_SIZE(mac0_link), mac0_link },
 	{ "MAC1LINK", ARRAY_SIZE(mac1_link), mac1_link },
 	{ "MAC2LINK", ARRAY_SIZE(mac2_link), mac2_link },
+	{ "PCIE2PERST", ARRAY_SIZE(pcie2_perst), pcie2_perst },
 };
 
 static int ast2700_soc1_pinctrl_get_groups_count(struct udevice *dev)
