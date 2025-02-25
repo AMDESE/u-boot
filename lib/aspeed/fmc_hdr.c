@@ -126,33 +126,3 @@ int fmc_hdr_get_prebuilt(uint32_t type, uint32_t *ofst, uint32_t *size, uint8_t 
 
 	return -ENOENT;
 }
-
-int fmc_load_image(uint32_t type, u32 *dest)
-{
-	int ret = 0;
-	u32 fw_ofst;
-	u32 fw_size;
-
-	if (is_recovery()) {
-		if (type == PBT_DP_FW) {
-			ret = aspeed_spl_recovery_load_dp(ASPEED_SRAM_BASE);
-			if (ret < 0)
-				return ret;
-
-			/* security check should be added here */
-
-			memcpy((void *)dest, (void *)ASPEED_SRAM_BASE, ret);
-			ret = 0;
-		}
-
-		return ret;
-	}
-
-	ret = fmc_hdr_get_prebuilt(type, &fw_ofst, &fw_size, NULL);
-	if (ret)
-		return ret;
-	ret = stor_copy((u32 *)fw_ofst, dest, fw_size);
-
-	return ret;
-}
-
