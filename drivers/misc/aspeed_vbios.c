@@ -16,10 +16,9 @@
 #include <asm/io.h>
 
 #ifdef CONFIG_RISCV
-#include <aspeed/fmc_hdr.h>
+#include <ast_loader.h>
 #include <asm/arch/platform.h>
 #include <asm/arch/scu_ast2700.h>
-#include <asm/arch/stor_ast2700.h>
 #else
 #include "ast_vbios.h"
 #endif
@@ -63,8 +62,6 @@ static int aspeed_vbios_probe(struct udevice *dev)
 	u32 vbios_mem_base_add = 0;
 	struct fdt_resource res;
 #ifdef CONFIG_RISCV
-	u32 vbios_ofst;
-	u32 vbios_size;
 	u32 arm_dram_base = ASPEED_DRAM_BASE >> 1;
 #else
 	u32 vbios_x64_size;
@@ -97,7 +94,7 @@ static int aspeed_vbios_probe(struct udevice *dev)
 	}
 
 #ifdef CONFIG_RISCV
-	fmc_hdr_get_prebuilt(PBT_UEFI_X64_AST2700, &vbios_ofst, &vbios_size, NULL);
+	//fmc_hdr_get_prebuilt(PBT_UEFI_X64_AST2700, &vbios_ofst, &vbios_size, NULL);
 #else
 	/* get x64 and arm bios length */
 	vbios_x64_size = sizeof(uefi2000);
@@ -123,7 +120,7 @@ static int aspeed_vbios_probe(struct udevice *dev)
 		memset((u32 *)vbios->vbios0_base, 0x0, 0x10000);
 
 #ifdef CONFIG_RISCV
-		stor_copy((u32 *)vbios_ofst, (u32 *)vbios->vbios0_base, vbios_size);
+		ast_loader_load_image(PBT_UEFI_X64_AST2700, (u32 *)vbios->vbios0_base);
 
 		/* Remove riscv Dram base */
 		vbios_mem_base &= ~(ASPEED_DRAM_BASE);
@@ -206,7 +203,7 @@ static int aspeed_vbios_probe(struct udevice *dev)
 		/* Initial memory region and copy vbios into it */
 		memset((u32 *)vbios->vbios1_base, 0x0, 0x10000);
 #ifdef CONFIG_RISCV
-		stor_copy((u32 *)vbios_ofst, vbios->vbios1_base, vbios_size);
+		ast_loader_load_image(PBT_UEFI_X64_AST2700, (u32 *)vbios->vbios1_base);
 
 		/* Remove riscv Dram base */
 		vbios_mem_base &= ~(ASPEED_DRAM_BASE);

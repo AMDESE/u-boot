@@ -17,8 +17,7 @@
 #include <linux/delay.h>
 
 #ifdef CONFIG_RISCV
-#include <aspeed/fmc_hdr.h>
-#include <asm/arch/stor_ast2700.h>
+#include <ast_loader.h>
 #endif
 
 #define MCU_CTRL                        0x00e0
@@ -203,7 +202,7 @@ static int aspeed_dp_probe(struct udevice *dev)
 		writel(mcu_ctrl, dp->mcuc_base + MCU_CTRL);
 
 #ifdef CONFIG_RISCV
-		ret = fmc_load_image(PBT_DP_FW, (u32 *)dp->mcui_base);
+		ret = ast_loader_load_image(PBT_DP_FW, (u32 *)dp->mcui_base);
 		if (ret) {
 			dev_err(dev, "Can't get dp-firmware, err(%d)\n", ret);
 			reset_assert(&dp_reset_ctl);

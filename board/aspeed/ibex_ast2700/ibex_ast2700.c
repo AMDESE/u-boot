@@ -17,7 +17,6 @@
 #include <asm/arch/scu_ast2700.h>
 #include <asm/arch/sli_ast2700.h>
 #include <asm/arch/sdram_ast2700.h>
-#include <asm/arch/stor_ast2700.h>
 #include <asm/arch/wdt.h>
 #include <asm/arch/ssp_tsp_ast2700.h>
 #include <linux/bitfield.h>
@@ -25,6 +24,7 @@
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/delay.h>
+#include <ast_loader.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -232,7 +232,7 @@ int dram_init(void)
 struct init_callback board_init_seq[] = {
 	{"WDT",		wdt_init},
 	{"EXTRST",	extrst_mask_init},
-	{"STOR",	stor_init},
+	{"STOR",	ast_loader_init},
 	{"SLI1",	sli1_init},
 	{"DP",		dp_init},
 	{"SLI0",	sli0_init},

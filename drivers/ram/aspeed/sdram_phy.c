@@ -2,9 +2,8 @@
 #include <binman_sym.h>
 #include <spl.h>
 #include <asm/arch/sdram_ast2700.h>
-#include <asm/arch/stor_ast2700.h>
 #include <asm/arch/recovery.h>
-#include <aspeed/fmc_hdr.h>
+#include <ast_loader.h>
 
 #define DWC_PHY_IMEM_OFFSET	(0x50000)
 #define DWC_PHY_DMEM_OFFSET	(0x58000)
@@ -269,7 +268,7 @@ void dwc_ddrphy_phyinit_userCustom_J_enterMissionMode(struct sdramc *sdramc)
 int dwc_ddrphy_phyinit_userCustom_D_loadIMEM(const int train2D)
 {
 	u32 imem_base = DWC_PHY_IMEM_OFFSET;
-	u32 recovery_buf_addr = ASPEED_SRAM_BASE;
+	int fw;
 	int type;
 	int ret = 0;
 
@@ -277,26 +276,8 @@ int dwc_ddrphy_phyinit_userCustom_D_loadIMEM(const int train2D)
 
 	type = is_ddr4();
 
-	if (is_recovery()) {
-		ret = aspeed_spl_recovery_ddr_image(recovery_buf_addr, type,
-						    DDR_I_MEM, train2D);
-		if (ret < 0)
-			return ret;
-
-		/* ddr image should be verified here */
-
-		memcpy((void *)(DRAMC_PHY_BASE + 2 * imem_base),
-		       (void *)recovery_buf_addr, ret);
-
-		dwc_train[type][train2D].imem_base = recovery_buf_addr;
-		dwc_train[type][train2D].imem_len = ret;
-
-		return ret;
-	}
-
-	stor_copy((u32 *)dwc_train[type][train2D].imem_base,
-		  (u32 *)(DRAMC_PHY_BASE + 2 * imem_base),
-		  dwc_train[type][train2D].imem_len);
+	fw = (type ? (train2D ? PBT_DDR4_2D_PMU_TRAIN_IMEM : PBT_DDR4_PMU_TRAIN_IMEM) : PBT_DDR5_PMU_TRAIN_IMEM);
+	ret = ast_loader_load_image(fw, (u32 *)(DRAMC_PHY_BASE + 2 * imem_base));
 
 	return ret;
 }
@@ -304,7 +285,7 @@ int dwc_ddrphy_phyinit_userCustom_D_loadIMEM(const int train2D)
 int dwc_ddrphy_phyinit_userCustom_F_loadDMEM(const int pState, const int train2D)
 {
 	u32 dmem_base = DWC_PHY_DMEM_OFFSET;
-	u32 recovery_buf_addr = ASPEED_SRAM_BASE + SPL_RECOVERY_IMAGE_MAX_SZ;
+	int fw;
 	int type;
 	int ret = 0;
 
@@ -312,27 +293,8 @@ int dwc_ddrphy_phyinit_userCustom_F_loadDMEM(const int pState, const int train2D
 
 	type = is_ddr4();
 
-	if (is_recovery()) {
-		ret = aspeed_spl_recovery_ddr_image(recovery_buf_addr, type,
-						    DDR_D_MEM, train2D);
-
-		if (ret < 0)
-			return ret;
-
-		/* ddr image should be verified here */
-
-		memcpy((void *)(DRAMC_PHY_BASE + 2 * dmem_base),
-		       (void *)recovery_buf_addr, ret);
-
-		dwc_train[type][train2D].dmem_base = recovery_buf_addr;
-		dwc_train[type][train2D].dmem_len = ret;
-
-		return ret;
-	}
-
-	stor_copy((u32 *)dwc_train[type][train2D].dmem_base,
-		  (u32 *)(DRAMC_PHY_BASE + 2 * dmem_base),
-		  dwc_train[type][train2D].dmem_len);
+	fw = (type ? (train2D ? PBT_DDR4_2D_PMU_TRAIN_DMEM : PBT_DDR4_PMU_TRAIN_DMEM) : PBT_DDR5_PMU_TRAIN_DMEM);
+	ret = ast_loader_load_image(fw, (u32 *)(DRAMC_PHY_BASE + 2 * dmem_base));
 
 	return ret;
 }
