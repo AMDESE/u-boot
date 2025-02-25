@@ -9,6 +9,32 @@
 		bootph-all;
 	};
 
+	ast_loader {
+		bootph-all;
+
+		bootspi {
+			bootph-all;
+		};
+		bootmmc {
+			bootph-all;
+		};
+		bootufs {
+			bootph-all;
+		};
+		bootuart {
+			bootph-all;
+		};
+		booti2c {
+			bootph-all;
+		};
+		booti3c {
+			bootph-all;
+		};
+		bootusb {
+			bootph-all;
+		};
+	};
+
 	soc0: soc@12000000 {
 		bootph-all;
 

@@ -28,6 +28,38 @@
 		reg = <0x80000000 0x80000000>;
 	};
 
+	ast_loader {
+		compatible = "aspeed,ast_loader";
+
+		bootspi: bootspi {
+			compatible = "aspeed,bootspi";
+		};
+
+		bootmmc: bootmmc {
+			compatible = "aspeed,bootmmc";
+		};
+
+		bootufs: bootufs {
+			compatible = "aspeed,bootufs";
+		};
+
+		bootuart: bootuart {
+			compatible = "aspeed,bootuart";
+		};
+
+		booti2c: booti2c {
+			compatible = "aspeed,booti2c";
+		};
+
+		booti3c: booti3c {
+			compatible = "aspeed,booti3c";
+		};
+
+		bootusb: bootusb {
+			compatible = "aspeed,bootusb";
+		};
+	};
+
 	soc0: soc@12000000 {
 		compatible = "aspeed,soc0","simple-bus";
 		#address-cells = <1>;
