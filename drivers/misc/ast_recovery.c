@@ -72,8 +72,7 @@ int recovery_init(struct udevice *dev)
 		printf("booti3c_init\n");
 		//err = booti3c_init(&boot_dev);
 	} else if (bootmode == BOOT_UART) {
-		printf("bootuart_init\n");
-		//err = bootuart_init(&boot_dev);
+		err = bootuart_init(&boot_dev);
 	} else {
 		return -ENODEV;
 	}
