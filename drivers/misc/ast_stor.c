@@ -55,8 +55,7 @@ int stor_init(struct udevice *dev)
 	bootmode = ast->bootmode;
 
 	if (bootmode == BOOT_SPI) {
-		printf("bootspi_init\n");
-		//err = bootspi_init(&boot_dev);
+		err = bootspi_init(&boot_dev);
 	} else if (bootmode == BOOT_EMMC) {
 		printf("bootmmc_init\n");
 		//err = bootmmc_init(&boot_dev);
