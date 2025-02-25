@@ -24,6 +24,11 @@ int extrst_mask_init(void)
 		writel(SCU1_EXTRST_MASK_1_VAL, (void *)(ASPEED_IO_SCU_BASE + 0x2F0));
 		writel(SCU1_EXTRST_MASK_2_VAL, (void *)(ASPEED_IO_SCU_BASE + 0x2F4));
 		writel(SCU1_EXTRST_MASK_3_VAL, (void *)(ASPEED_IO_SCU_BASE + 0x2F8));
+
+		if (readl((void *)ASPEED_IO_HW_STRAP1) & BIT(3)) {
+			reg = readl((void *)(ASPEED_IO_SCU_BASE + 0x2F4)) | BIT(1);
+			writel(reg, (void *)(ASPEED_IO_SCU_BASE + 0x2F4));
+		}
 	}
 
 	return 0;
