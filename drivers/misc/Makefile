@@ -97,3 +97,4 @@ obj-$(CONFIG_SPL_SLI_AST2700) += sli_ast2700.o
 obj-$(CONFIG_SPL_PRIVILEGE_CTRL) += aspeed_prictrl.o
 obj-$(CONFIG_SPL_LTPI_AST2700) += ltpi_ast2700.o
 obj-$(CONFIG_TARGET_ASPEED_AST2700) += ast_loader.o ast_stor.o ast_recovery.o ast_spi.o ast_mmc.o ast_uart.o ast_i3c.o
+obj-$(CONFIG_SPL_ASPEED_UFS) += ast_ufs.o

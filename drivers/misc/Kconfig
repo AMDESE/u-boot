@@ -765,4 +765,10 @@ config SPL_LTPI_AST2700
 	help
 	  This option enables AST2700 LTPI essential configuration.
 
+config SPL_ASPEED_UFS
+	bool "Enable ASPEED boot ufs driver in SPL"
+	depends on SPL_MISC
+	help
+	  Select this to enable boot ufs driver
+
 endmenu

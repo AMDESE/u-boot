@@ -167,8 +167,7 @@ int stor_init(struct udevice *dev)
 	} else if (bootmode == BOOT_EMMC) {
 		err = bootmmc_init(&boot_dev);
 	} else if (bootmode == BOOT_UFS) {
-		printf("bootufs_init\n");
-		//err = bootufs_init(&boot_dev);
+		err = uclass_get_device_by_name(UCLASS_MISC, "bootufs", &boot_dev);
 	} else {
 		return -ENODEV;
 	}
