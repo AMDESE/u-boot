@@ -14,6 +14,20 @@
 		reg = <0x80000000 0x40000000>;
 	};
 
+	ast_loader {
+		status = "okay";
+
+		bootspi {
+			status = "okay";
+		};
+		bootmmc {
+			status = "okay";
+		};
+		bootuart {
+			status = "okay";
+		};
+	};
+
 	reserved-memory {
 		#address-cells = <1>;
 		#size-cells = <1>;
