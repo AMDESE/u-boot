@@ -44,6 +44,9 @@ struct ast_loader {
 	enum boot_mode_t bootmode;
 
 	int (*load)(struct udevice *dev, u32 type, u32 *dst, u32 *len);
+	int (*verify)(u32 type, u32 *message, u32 len);
+
+	int rev_id;
 };
 
 struct stor_ops {

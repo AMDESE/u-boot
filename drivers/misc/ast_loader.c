@@ -66,25 +66,6 @@ static enum boot_mode_t get_boot_mode(void)
 	}
 }
 
-static int ast_loader_probe(struct udevice *dev)
-{
-	struct ast_loader *ast = dev_get_priv(dev);
-	int err;
-
-	ast->bootmode = get_boot_mode();
-
-	err = stor_init(dev);
-	if (err == -ENODEV)
-		err = recovery_init(dev);
-
-	if (err)
-		return err;
-
-	ast->dev = dev;
-
-	return err;
-}
-
 static int ast_loader_verify(u32 type, u32 *message, u32 len)
 {
 	struct fmc_hdr_v2 *hdr = (struct fmc_hdr_v2 *)(_start - sizeof(struct fmc_hdr_v2));
@@ -102,6 +83,27 @@ static int ast_loader_verify(u32 type, u32 *message, u32 len)
 	}
 
 	err = memcmp(hash, hdr->body.pbs[type - 1].dgst, sizeof(hash));
+
+	return err;
+}
+
+static int ast_loader_probe(struct udevice *dev)
+{
+	struct ast_loader *ast = dev_get_priv(dev);
+	int err;
+
+	ast->bootmode = get_boot_mode();
+
+	err = stor_init(dev);
+	if (err == -ENODEV)
+		err = recovery_init(dev);
+
+	if (err)
+		return err;
+
+	ast->dev = dev;
+	ast->rev_id = !!(readl((void *)ASPEED_IO_REVISION_ID) & CHIP_AST2700A1_ID_MASK);
+	ast->verify = (ast->rev_id) ? ast_loader_verify : NULL;
 
 	return err;
 }
@@ -128,10 +130,12 @@ int ast_loader_load_image(u32 type, u32 *dst)
 			return err;
 	}
 
-	err = ast_loader_verify(type, tmp_buf, len);
-	if (err) {
-		printf("Digest verify fail, err=%d\n", err);
-		return err;
+	if (ast->verify) {
+		err = ast->verify(type, tmp_buf, len);
+		if (err) {
+			printf("Digest verify fail, err=%d\n", err);
+			return err;
+		}
 	}
 
 	memcpy(dst, tmp_buf, len);
