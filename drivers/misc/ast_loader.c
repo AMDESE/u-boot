@@ -114,7 +114,7 @@ int ast_loader_load_image(u32 type, u32 *dst)
 	struct udevice *dev;
 	u32 len;
 	int err;
-	u32 *tmp_buf = (u32 *)ASPEED_SRAM_BASE;
+	u32 *tmp_buf;
 
 	err = uclass_get_device_by_name(UCLASS_MISC, "ast_loader", &dev);
 	if (err && err != -ENODEV) {
@@ -123,6 +123,8 @@ int ast_loader_load_image(u32 type, u32 *dst)
 	}
 
 	ast = dev_get_priv(dev);
+
+	tmp_buf = ast->rev_id ? (u32 *)ASPEED_SRAM_BASE : dst;
 
 	if (ast->load) {
 		err = ast->load(dev, type, tmp_buf, &len);
