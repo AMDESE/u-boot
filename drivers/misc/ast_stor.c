@@ -53,15 +53,10 @@ static int stor_load(struct udevice *dev, u32 type, u32 *dst, u32 *len)
 			return err;
 
 	} else {
-		struct train_bin dwc_train[DRAM_TYPE_MAX][2] = {
-			{{0, 0, 0, 0}, {0, 0, 0, 0}},
-			{{0, 0, 0, 0}, {0, 0, 0, 0}},
-		};
-
 		u32 ctx_start, imem_start, dmem_start, imem_2d_start, dmem_2d_start;
 		u32 imem_len, dmem_len, imem_2d_len, dmem_2d_len;
 		u32 ddr5_imem, ddr5_imem_len, ddr5_dmem, ddr5_dmem_len;
-		u32 base = CONFIG_SPL_TEXT_BASE;
+		u32 base = 0;
 
 		imem_start = binman_sym(u32, ddr4_1d_imem_fw, image_pos);
 		imem_len = binman_sym(u32, ddr4_1d_imem_fw, size);
@@ -77,6 +72,7 @@ static int stor_load(struct udevice *dev, u32 type, u32 *dst, u32 *len)
 		ddr5_dmem_len = binman_sym(u32, ddr5_dmem_fw, size);
 
 		if (BINMAN_SYMS_OK) {
+			base = CONFIG_SPL_TEXT_BASE;
 			ctx_start = binman_sym(u32, u_boot_spl_ddr, image_pos);
 			imem_start = binman_sym(u32, ddr4_1d_imem_fw, image_pos);
 			imem_len = binman_sym(u32, ddr4_1d_imem_fw, size);
@@ -90,50 +86,39 @@ static int stor_load(struct udevice *dev, u32 type, u32 *dst, u32 *len)
 			ddr5_imem_len = binman_sym(u32, ddr5_imem_fw, size);
 			ddr5_dmem = binman_sym(u32, ddr5_dmem_fw, image_pos);
 			ddr5_dmem_len = binman_sym(u32, ddr5_dmem_fw, size);
-
-			// ddr5
-			dwc_train[0][0].imem_base = ddr5_imem - base;
-			dwc_train[0][0].imem_len = ddr5_imem_len;
-			dwc_train[0][0].dmem_base = ddr5_dmem - base;
-			dwc_train[0][0].dmem_len = ddr5_dmem_len;
-
-			// ddr4 1d
-			dwc_train[1][0].imem_base = imem_start - base;
-			dwc_train[1][0].imem_len = imem_len;
-			dwc_train[1][0].dmem_base = dmem_start - base;
-			dwc_train[1][0].dmem_len = dmem_len;
-
-			// ddr4 2d
-			dwc_train[1][1].imem_base = imem_2d_start - base;
-			dwc_train[1][1].imem_len = imem_2d_len;
-			dwc_train[1][1].dmem_base = dmem_2d_start - base;
-			dwc_train[1][1].dmem_len = dmem_2d_len;
+		} else {
+			fmc_hdr_get_prebuilt(PBT_DDR4_PMU_TRAIN_IMEM, &imem_start, &imem_len, NULL);
+			fmc_hdr_get_prebuilt(PBT_DDR4_PMU_TRAIN_DMEM, &dmem_start, &dmem_len, NULL);
+			fmc_hdr_get_prebuilt(PBT_DDR4_2D_PMU_TRAIN_IMEM, &imem_2d_start, &imem_2d_len, NULL);
+			fmc_hdr_get_prebuilt(PBT_DDR4_2D_PMU_TRAIN_DMEM, &dmem_2d_start, &dmem_2d_len, NULL);
+			fmc_hdr_get_prebuilt(PBT_DDR5_PMU_TRAIN_IMEM, &ddr5_imem, &ddr5_imem_len, NULL);
+			fmc_hdr_get_prebuilt(PBT_DDR5_PMU_TRAIN_DMEM, &ddr5_dmem, &ddr5_dmem_len, NULL);
 		}
 
 		switch (type) {
 		case PBT_DDR4_PMU_TRAIN_IMEM:
-			ofst = dwc_train[1][0].imem_base;
-			sz = dwc_train[1][0].imem_len;
+			ofst = imem_start - base;
+			sz = imem_len;
 		break;
 		case PBT_DDR4_PMU_TRAIN_DMEM:
-			ofst = dwc_train[1][0].dmem_base;
-			sz = dwc_train[1][0].dmem_len;
+			ofst = dmem_start - base;
+			sz = dmem_len;
 		break;
 		case PBT_DDR4_2D_PMU_TRAIN_IMEM:
-			ofst = dwc_train[1][1].imem_base;
-			sz = dwc_train[1][1].imem_len;
+			ofst = imem_2d_start - base;
+			sz = imem_2d_len;
 		break;
 		case PBT_DDR4_2D_PMU_TRAIN_DMEM:
-			ofst = dwc_train[1][1].dmem_base;
-			sz = dwc_train[1][1].dmem_len;
+			ofst = dmem_2d_start - base;
+			sz = dmem_2d_len;
 		break;
 		case PBT_DDR5_PMU_TRAIN_IMEM:
-			ofst = dwc_train[0][0].imem_base;
-			sz = dwc_train[0][0].imem_len;
+			ofst = ddr5_imem - base;
+			sz = ddr5_imem_len;
 		break;
 		case PBT_DDR5_PMU_TRAIN_DMEM:
-			ofst = dwc_train[0][0].dmem_base;
-			sz = dwc_train[0][0].dmem_len;
+			ofst = ddr5_dmem - base;
+			sz = ddr5_dmem_len;
 		break;
 		default:
 			printf("Unsupport type!!!!!!\n");
