@@ -771,4 +771,10 @@ config SPL_ASPEED_UFS
 	help
 	  Select this to enable boot ufs driver
 
+config SPL_ASPEED_I3C
+	bool "Enable ASPEED boot i3c driver in SPL"
+	depends on SPL_MISC
+	help
+	  Select this to enable boot i3c driver
+
 endmenu
