@@ -38,8 +38,6 @@ enum spi_abr_mode {
 	SINGLE_FLASH_ABR,
 };
 
-int spi_init(void);
-int spi_load_image(u32 *src, u32 *dest, u32 len);
 u32 aspeed_spi_abr_offset(void);
 
 #endif
