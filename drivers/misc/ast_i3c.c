@@ -28,7 +28,7 @@ static int i3c_init(struct udevice *dev)
 	return 0;
 }
 
-static int i3c_copy(struct udevice *dev, u32 *dst, u32 *src, u32 len)
+static int i3c_load(struct udevice *dev, u32 *dst, u32 *len)
 {
 	return 0;
 }
@@ -40,7 +40,7 @@ static const struct udevice_id booti3c_ids[] = {
 
 static struct ast_loader_ops booti3c_ops = {
 	.init = i3c_init,
-	.copy = i3c_copy,
+	.load = i3c_load,
 };
 
 U_BOOT_DRIVER(booti3c) = {
