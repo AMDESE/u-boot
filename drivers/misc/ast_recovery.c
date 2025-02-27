@@ -62,19 +62,16 @@ int recovery_init(struct udevice *dev)
 
 	bootmode = ast->bootmode;
 
-	if (bootmode == BOOT_USB) {
-		printf("bootusb_init\n");
-		//err = bootusb_init(&boot_dev);
-	} else if (bootmode == BOOT_I2C) {
-		printf("booti2c_init\n");
-		//err = booti2c_init();
-	} else if (bootmode == BOOT_I3C) {
-		err = booti3c_init(&boot_dev);
-	} else if (bootmode == BOOT_UART) {
-		err = bootuart_init(&boot_dev);
-	} else {
+	if (bootmode == BOOT_USB)
+		err = uclass_get_device_by_name(UCLASS_MISC, "bootusb", &boot_dev);
+	else if (bootmode == BOOT_I2C)
+		err = uclass_get_device_by_name(UCLASS_MISC, "booti2c", &boot_dev);
+	else if (bootmode == BOOT_I3C)
+		err = uclass_get_device_by_name(UCLASS_MISC, "booti3c", &boot_dev);
+	else if (bootmode == BOOT_UART)
+		err = uclass_get_device_by_name(UCLASS_MISC, "bootuart", &boot_dev);
+	else
 		return -ENODEV;
-	}
 
 	if (err && err != -ENODEV) {
 		printf("Get recovery udevice Failed %d.\n", err);

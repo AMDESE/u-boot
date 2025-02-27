@@ -83,17 +83,6 @@ static int uart_load(struct udevice *dev, u32 *dst, u32 *len)
 	return 0;
 }
 
-int bootuart_init(struct udevice **dev)
-{
-	int err;
-
-	err = uclass_get_device_by_name(UCLASS_MISC, "bootuart", dev);
-	if (err && err != -ENODEV)
-		printf("Get bootuart udevice Failed %d.\n", err);
-
-	return err;
-}
-
 static const struct udevice_id bootuart_ids[] = {
 	{ .compatible = "aspeed,bootuart" },
 	{ }

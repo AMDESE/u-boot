@@ -162,15 +162,14 @@ int stor_init(struct udevice *dev)
 
 	bootmode = ast->bootmode;
 
-	if (bootmode == BOOT_SPI) {
-		err = bootspi_init(&boot_dev);
-	} else if (bootmode == BOOT_EMMC) {
-		err = bootmmc_init(&boot_dev);
-	} else if (bootmode == BOOT_UFS) {
+	if (bootmode == BOOT_SPI)
+		err = uclass_get_device_by_name(UCLASS_MISC, "bootspi", &boot_dev);
+	else if (bootmode == BOOT_EMMC)
+		err = uclass_get_device_by_name(UCLASS_MISC, "bootmmc", &boot_dev);
+	else if (bootmode == BOOT_UFS)
 		err = uclass_get_device_by_name(UCLASS_MISC, "bootufs", &boot_dev);
-	} else {
+	else
 		return -ENODEV;
-	}
 
 	if (err && err != -ENODEV) {
 		printf("Get stor udevice Failed %d.\n", err);

@@ -99,17 +99,6 @@ static int mmc_copy(struct udevice *dev, u32 *dst, u32 *src, u32 len)
 	return 0;
 }
 
-int bootmmc_init(struct udevice **dev)
-{
-	int err;
-
-	err = uclass_get_device_by_name(UCLASS_MISC, "bootmmc", dev);
-	if (err && err != -ENODEV)
-		printf("Get bootmmc udevice Failed %d.\n", err);
-
-	return err;
-}
-
 static const struct udevice_id bootmmc_ids[] = {
 	{ .compatible = "aspeed,bootmmc" },
 	{ }

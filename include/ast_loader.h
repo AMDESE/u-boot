@@ -57,11 +57,6 @@ struct stor_ops {
 int ast_loader_load_image(u32 type, u32 *dst);
 int ast_loader_init(void);
 
-int bootspi_init(struct udevice **dev);
-int bootmmc_init(struct udevice **dev);
-int booti3c_init(struct udevice **dev);
-int bootuart_init(struct udevice **dev);
-
 int stor_init(struct udevice *dev);
 int recovery_init(struct udevice *dev);
 #endif
