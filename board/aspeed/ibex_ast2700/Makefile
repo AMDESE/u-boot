@@ -1,7 +1,5 @@
 obj-$(CONFIG_TARGET_ASPEED_AST2700) += ibex_ast2700.o   \
 					spi.o           \
-					recovery.o      \
-					recovery_uart.o \
 					pll.o           \
 					wdt.o           \
 					abr.o           \

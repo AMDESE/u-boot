@@ -3,8 +3,6 @@
  * Copyright (c) Aspeed Technology Inc.
  */
 
-#include <asm/arch/recovery.h>
-#include <asm/arch/stor_ast2700.h>
 #include <asm/io.h>
 #include <asm/sections.h>
 #include <aspeed/fmc_hdr.h>
