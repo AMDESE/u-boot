@@ -15,6 +15,7 @@
 #include <asm/io.h>
 #include <linux/bitfield.h>
 #include <linux/delay.h>
+#include <spl.h>
 
 #include <image.h>
 #include <u-boot/hash-checksum.h>
@@ -34,7 +35,7 @@
 #define   SCU1_HWSTRAP1_RECOVERY_I2C		BIT(27)
 #define   SCU1_HWSTRAP1_RECOVERY_USB		BIT(26)
 
-static enum boot_mode_t get_boot_mode(void)
+int ast_get_boot_mode(void)
 {
 	u32 dis, strap;
 
@@ -46,23 +47,23 @@ static enum boot_mode_t get_boot_mode(void)
 		/* check if recovery is enabled by hwstrap */
 		if (strap & SCU1_HWSTRAP1_EN_RECOVERY_BOOT) {
 			if ((strap & SCU1_HWSTRAP1_RECOVERY_INTERFACE) == SCU1_HWSTRAP1_RECOVERY_USB)
-				return BOOT_USB;
+				return BOOT_DEVICE_USB;
 			else if ((strap & SCU1_HWSTRAP1_RECOVERY_INTERFACE) == SCU1_HWSTRAP1_RECOVERY_I2C)
-				return BOOT_I2C;
+				return BOOT_DEVICE_I2C;
 			else if ((strap & SCU1_HWSTRAP1_RECOVERY_INTERFACE) == SCU1_HWSTRAP1_RECOVERY_I3C)
-				return BOOT_I3C;
+				return BOOT_DEVICE_I3C;
 			else
-				return BOOT_UART;
+				return BOOT_DEVICE_UART;
 		}
 	}
 
 	if (strap & SCU_IO_HWSTRAP_EMMC) {
 		if (strap & SCU_IO_HWSTRAP_UFS)
-			return BOOT_UFS;
+			return BOOT_DEVICE_SATA;
 		else
-			return BOOT_EMMC;
+			return BOOT_DEVICE_MMC1;
 	} else {
-		return BOOT_SPI;
+		return BOOT_DEVICE_RAM;
 	}
 }
 
@@ -92,7 +93,7 @@ static int ast_loader_probe(struct udevice *dev)
 	struct ast_loader *ast = dev_get_priv(dev);
 	int err;
 
-	ast->bootmode = get_boot_mode();
+	ast->bootmode = ast_get_boot_mode();
 
 	err = stor_init(dev);
 	if (err == -ENODEV)

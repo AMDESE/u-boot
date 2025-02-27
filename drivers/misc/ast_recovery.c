@@ -15,6 +15,7 @@
 #include <asm/io.h>
 #include <linux/bitfield.h>
 #include <linux/delay.h>
+#include <spl.h>
 #include <ast_loader.h>
 
 struct recovery_info {
@@ -57,18 +58,18 @@ int recovery_init(struct udevice *dev)
 	struct ast_loader *ast = dev_get_priv(dev);
 	struct ast_loader_ops *ops;
 	struct udevice *boot_dev = NULL;
-	enum boot_mode_t bootmode;
+	int bootmode;
 	int err = -ENODEV;
 
 	bootmode = ast->bootmode;
 
-	if (bootmode == BOOT_USB)
+	if (bootmode == BOOT_DEVICE_USB)
 		err = uclass_get_device_by_name(UCLASS_MISC, "bootusb", &boot_dev);
-	else if (bootmode == BOOT_I2C)
+	else if (bootmode == BOOT_DEVICE_I2C)
 		err = uclass_get_device_by_name(UCLASS_MISC, "booti2c", &boot_dev);
-	else if (bootmode == BOOT_I3C)
+	else if (bootmode == BOOT_DEVICE_I3C)
 		err = uclass_get_device_by_name(UCLASS_MISC, "booti3c", &boot_dev);
-	else if (bootmode == BOOT_UART)
+	else if (bootmode == BOOT_DEVICE_UART)
 		err = uclass_get_device_by_name(UCLASS_MISC, "bootuart", &boot_dev);
 	else
 		return -ENODEV;

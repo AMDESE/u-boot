@@ -19,6 +19,7 @@
 #include <asm/arch/platform.h>
 #include <asm/arch/sdram_ast2700.h>
 #include <binman_sym.h>
+#include <spl.h>
 #include <ast_loader.h>
 
 binman_sym_declare(u32, u_boot_spl_ddr, image_pos);
@@ -142,16 +143,16 @@ int stor_init(struct udevice *dev)
 	struct ast_loader *ast = dev_get_priv(dev);
 	struct ast_loader_ops *ops;
 	struct udevice *boot_dev = NULL;
-	enum boot_mode_t bootmode;
+	int bootmode;
 	int err = -ENODEV;
 
 	bootmode = ast->bootmode;
 
-	if (bootmode == BOOT_SPI)
+	if (bootmode == BOOT_DEVICE_RAM)
 		err = uclass_get_device_by_name(UCLASS_MISC, "bootspi", &boot_dev);
-	else if (bootmode == BOOT_EMMC)
+	else if (bootmode == BOOT_DEVICE_MMC1)
 		err = uclass_get_device_by_name(UCLASS_MISC, "bootmmc", &boot_dev);
-	else if (bootmode == BOOT_UFS)
+	else if (bootmode == BOOT_DEVICE_SATA)
 		err = uclass_get_device_by_name(UCLASS_MISC, "bootufs", &boot_dev);
 	else
 		return -ENODEV;

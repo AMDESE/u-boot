@@ -8,17 +8,6 @@
 
 #include <aspeed/fmc_hdr.h>
 
-enum boot_mode_t {
-	BOOT_SPI = 0,
-	BOOT_EMMC,
-	BOOT_UFS,
-	BOOT_USB,
-	BOOT_I2C,
-	BOOT_I3C,
-	BOOT_UART,
-	BOOT_TYPE,
-};
-
 #define IS_RECOVERY(n) ((n) > BOOT_UFS)
 
 #define ast_loader_get_ops(dev) \
@@ -41,7 +30,7 @@ struct ast_loader {
 
 	struct ast_loader_ops *ops;
 
-	enum boot_mode_t bootmode;
+	int bootmode;
 
 	int (*load)(struct udevice *dev, u32 type, u32 *dst, u32 *len);
 	int (*verify)(u32 type, u32 *message, u32 len);
@@ -54,6 +43,7 @@ struct stor_ops {
 	int (*copy)(struct udevice *dev, u32 *dst, u32 *src, u32 len);
 };
 
+int ast_get_boot_mode(void);
 int ast_loader_load_image(u32 type, u32 *dst);
 int ast_loader_init(void);
 

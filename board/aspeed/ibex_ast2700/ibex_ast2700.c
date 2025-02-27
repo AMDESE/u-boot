@@ -63,16 +63,7 @@ int board_late_init(void)
 
 u32 spl_boot_device(void)
 {
-	if (is_recovery())
-		return BOOT_DEVICE_UART;
-	else if ((readl((void *)ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_EMMC)) {
-		if (readl((void *)ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_UFS)
-			return BOOT_DEVICE_SATA;
-
-		return BOOT_DEVICE_MMC1;
-	}
-	else
-		return BOOT_DEVICE_RAM;
+	return ast_get_boot_mode();
 }
 
 struct init_callback {
