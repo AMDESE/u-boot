@@ -17,6 +17,7 @@
 #include <dt-bindings/clock/ast2700-clock.h>
 #include <asm/arch/sdram_ast2700.h>
 #include <asm/arch/scu_ast2700.h>
+#include <asm/arch/platform.h>
 
 #define DRAMC_UNLOCK_KEY		0x1688a8a8
 #define DRAMC_VIDEO_UNLOCK_KEY		0x00440003
@@ -25,7 +26,18 @@
 #define SCU_CPU_VGA0_SCRATCH            (SCU_CPU_REG + 0x900)
 #define SCU_CPU_VGA1_SCRATCH            (SCU_CPU_REG + 0x910)
 
+#define SCU_IO_HWSTRAP1			(ASPEED_IO_SCU_BASE + 0x010)
+#define IO_HWSTRAP1_DRAM_TYPE		BIT(10)
+#define SCU_IO_MCU0_CTRL		(ASPEED_IO_SCU_BASE + 0x110)
+#define SCU_MCU0_MAP1_MASK		GENMASK(22, 16)
+#define SCU_MCU0_MAP1_SHIFT		BIT(16)
+
 #define RFC 880
+
+struct ddr_capacity {
+	size_t size;
+	int rfc[2];
+};
 
 struct sdramc_ac_timing ac_table[] = {
 	/* DDR4 1600 */
@@ -729,6 +741,47 @@ static void sdramc_qos_init(struct sdramc *sdramc)
 	       (void *)&sdramc->regs->port[1].cfg);
 }
 
+static int sdramc_size_detect(struct sdramc *sdramc)
+{
+	struct sdramc_regs *regs = sdramc->regs;
+	struct ddr_capacity ram_size[] = {
+		{0x40,	{208, 256}}, // 256MB
+		{0x40,	{208, 416}}, // 512MB
+		{0x40,	{208, 560}}, // 1GB
+		{0x44,	{472, 880}}, // 2GB
+		{0x48,	{656, 880}}, // 4GB
+		{0x50,	{880, 880}}, // 8GB
+		};
+	u32 val;
+	int sz, ddr4;
+	u32 pattern = 0xdeadbeef;
+	void *test_addr = (void *)0xc0000000;
+	void *start_addr = (void *)0x80000000;
+
+	/* temparaly detect between 1GB and 2GB. */
+	writel(pattern, test_addr);
+
+	if (readl(start_addr) != pattern)
+		sz = SDRAM_SIZE_2GB;
+	else
+		sz = SDRAM_SIZE_1GB;
+
+	/* re-configure ram size to dramc. */
+	val = readl(&regs->mcfg);
+	val &= ~(0x7 << 2);
+	writel(val | (sz << 2), &regs->mcfg);
+
+	ddr4 = is_ddr4();
+
+	/* update rfc in ac_timing5 register. */
+	val = readl(&regs->actime5);
+	val &= ~(0x3ff);
+	val |= (ram_size[sz].rfc[ddr4] >> 1);
+	writel(val, &regs->actime5);
+
+	return 0;
+}
+
 static int sdram_init(struct udevice *dev)
 {
 	struct sdramc *sdramc = (struct sdramc *)dev_get_priv(dev);
@@ -772,6 +825,10 @@ static int sdram_init(struct udevice *dev)
 		printf("%s bist is failed\n", ac->desc);
 		return err;
 	}
+
+	/* a1 get size in the spl */
+	if (!!(readl((void *)ASPEED_IO_REVISION_ID) & CHIP_AST2700A1_ID_MASK))
+		sdramc_size_detect(sdramc);
 
 	sdramc_qos_init(sdramc);
 
@@ -842,15 +899,6 @@ static size_t ast2700_sdrammc_get_vga_mem_size(struct sdramc *sdramc)
 	return vga_ram_size[vga_sz_sel] * dual;
 }
 
-struct ddr_capacity {
-	size_t size;
-	int rfc[2];
-};
-
-#define SCU_IO_REG			0x14c02000
-#define SCU_IO_HWSTRAP1			(SCU_IO_REG + 0x010)
-#define IO_HWSTRAP1_DRAM_TYPE		BIT(10)
-
 static int ast2700_sdrammc_calc_size(struct sdramc *sdramc)
 {
 	struct ast2700_scu1 *scu;
@@ -868,6 +916,14 @@ static int ast2700_sdrammc_calc_size(struct sdramc *sdramc)
 	int sz, ddr4;
 	int nodeoffset;
 	ofnode node;
+
+	/* a1 size already get in the spl */
+	if (!!(readl((void *)ASPEED_IO_REVISION_ID) & CHIP_AST2700A1_ID_MASK)) {
+		sz = (readl(&regs->mcfg) >> 2) & 0x7;
+		sdramc->info.base = CFG_SYS_SDRAM_BASE;
+		sdramc->info.size = ram_size[sz].size - ast2700_sdrammc_get_vga_mem_size(sdramc);
+		return 0;
+	}
 
 	/* find the offset of compatible node */
 	nodeoffset = fdt_node_offset_by_compatible(gd->fdt_blob, -1,

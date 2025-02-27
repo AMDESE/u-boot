@@ -21,10 +21,6 @@
 #define SCU_CPU_VGA0_SCRATCH            (SCU_CPU_REG + 0x900)
 #define SCU_CPU_VGA1_SCRATCH            (SCU_CPU_REG + 0x910)
 
-#define SCU_IO_REG                      0x14c02000
-#define SCU_IO_HWSTRAP1                 (SCU_IO_REG + 0x010)
-#define IO_HWSTRAP1_DRAM_TYPE           BIT(10)
-
 #define DRAMC_BASE			(0x12c00000)
 #define DRAMC_PHY_BASE			(0x13000000)
 #define dwc_ddrphy_apb_wr(addr, value)		(*(volatile unsigned short *)(DRAMC_PHY_BASE + 2 * (addr)) = (unsigned short)value)
