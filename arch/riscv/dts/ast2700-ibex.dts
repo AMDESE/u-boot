@@ -145,9 +145,9 @@
 	 * The max ECC size = ((Capacity - VGA size) * 8) / 9;
 	 */
 	ecc-enable;
-	ecc-size = <0x30000000>;
+	ecc-size = <0x38000000>;
 	aes-enable;
-	aes-size = <0x30000000>;
+	aes-size = <0x38000000>;
 #endif
 };
 
