@@ -17,6 +17,7 @@
 #include <linux/delay.h>
 
 #include <asm/arch/platform.h>
+#include <asm/arch/abr.h>
 #include <blk.h>
 #include <ast_loader.h>
 
@@ -48,7 +49,7 @@ static int mmc_init(struct udevice *dev)
 
 	bd = dev_get_uclass_plat(udev);
 
-	err = blk_dselect_hwpart(bd, 1);//1 << abr_get_indicator());
+	err = blk_dselect_hwpart(bd, 1 << abr_get_indicator());
 	if (err) {
 		printf("%s: blk_dselect_hwpart fail\n", __func__);
 		return err;
