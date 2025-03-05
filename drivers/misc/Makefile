@@ -100,3 +100,4 @@ obj-$(CONFIG_TARGET_ASPEED_AST2700) += ast_loader.o ast_stor.o ast_recovery.o as
 obj-$(CONFIG_SPL_ASPEED_I3C) += ast_i3c.o
 obj-$(CONFIG_SPL_ASPEED_UFS) += ast_ufs.o
 obj-$(CONFIG_SPL_ASPEED_USB) += ast_usb.o
+obj-$(CONFIG_SPL_ASPEED_I2C) += ast_i2c.o

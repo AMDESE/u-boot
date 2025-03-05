@@ -783,4 +783,10 @@ config SPL_ASPEED_USB
 	help
 	  Select this to enable boot usb recovery
 
+config SPL_ASPEED_I2C
+	bool "Enable ASPEED boot i2c driver in SPL"
+	depends on SPL_MISC
+	help
+	  Select this to enable boot i2c recovery
+
 endmenu
