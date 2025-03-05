@@ -171,6 +171,7 @@ static void __maybe_unused sli_set_ahb_rx_delay_single(uintptr_t base, int index
 	uint32_t mask = SLIH_PAD_DLY_RX0 << offset;
 
 	clrsetbits_le32(base + SLI_CTRL_III, mask, d << offset);
+	readl((void *)base + SLI_CTRL_III);
 	udelay(8);
 }
 
@@ -180,6 +181,7 @@ static void sli_set_ahb_rx_delay(uintptr_t base, int d0, int d1)
 
 	value = FIELD_PREP(SLIH_PAD_DLY_RX1, d1) | FIELD_PREP(SLIH_PAD_DLY_RX0, d0);
 	clrsetbits_le32(base + SLI_CTRL_III, SLIH_PAD_DLY_RX1 | SLIH_PAD_DLY_RX0, value);
+	readl((void *)base + SLI_CTRL_III);
 	udelay(8);
 }
 
@@ -232,6 +234,7 @@ static void sli_set_mbus_rx_delay_single(uintptr_t base, int index, int d)
 	uint32_t mask = SLIM_PAD_DLY_RX0 << offset;
 
 	clrsetbits_le32(base + SLI_CTRL_III, mask, d << offset);
+	readl((void *)base + SLI_CTRL_III);
 	udelay(8);
 }
 
@@ -243,6 +246,7 @@ static void sli_set_mbus_rx_delay(uintptr_t base, int d0, int d1, int d2, int d3
 	set = FIELD_PREP(SLIM_PAD_DLY_RX3, d3) | FIELD_PREP(SLIM_PAD_DLY_RX2, d2) |
 	      FIELD_PREP(SLIM_PAD_DLY_RX1, d1) | FIELD_PREP(SLIM_PAD_DLY_RX0, d0);
 	clrsetbits_le32(base + SLI_CTRL_III, clr, set);
+	readl((void *)base + SLI_CTRL_III);
 	udelay(8);
 }
 
