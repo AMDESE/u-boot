@@ -172,6 +172,12 @@ struct ltpi_priv {
 
 	/* Advertise timeout in us */
 	int ad_timeout;
+
+	/* Start time to listen LINK_DETECT frame */
+	uint64_t t_link_detect;
+
+	/* Timeout to get operational state, in tick */
+	uint64_t op_timeout;
 };
 
 static struct ltpi_priv ltpi_data[2];
@@ -622,6 +628,24 @@ static int ltpi_set_operational_clk(struct ltpi_priv *ltpi, uint16_t speed_cap)
 	return target_speed;
 }
 
+static int ltpi_optimeout_init(struct ltpi_priv *ltpi)
+{
+	ltpi->t_link_detect = get_ticks();
+
+	return 0;
+}
+
+static int ltpi_optimeout_query(struct ltpi_priv *ltpi)
+{
+	if (ltpi->op_timeout == 0)
+		return 0;
+
+	if ((get_ticks() - ltpi->t_link_detect) > ltpi->op_timeout)
+		return 1;
+
+	return 0;
+}
+
 static void ltpi_scm_init(struct ltpi_priv *ltpi)
 {
 	int ret, target_speed;
@@ -635,6 +659,8 @@ static void ltpi_scm_init(struct ltpi_priv *ltpi)
 		return;
 	}
 
+	ltpi_optimeout_init(ltpi);
+
 	/* LTPI initialization is required, start link training phase */
 	do {
 		ltpi_do_link_training(ltpi);
@@ -643,7 +669,7 @@ static void ltpi_scm_init(struct ltpi_priv *ltpi)
 			if (ret == LTPI_ERR_NONE)
 				break;
 
-			if (ctrlc()) {
+			if (ctrlc() || ltpi_optimeout_query(ltpi)) {
 				ltpi_log_exit(ltpi, LTPI_SYND_EXTRST_LINK_TRAINING);
 				goto ltpi_scm_exit;
 			}
@@ -673,7 +699,7 @@ static void ltpi_scm_init(struct ltpi_priv *ltpi)
 		if (readl((void *)ltpi->base + LTPI_LINK_ST) & REG_LTPI_FRM_CRC_ERR)
 			ltpi->bootstage->errno |= LTPI_STATUS_HAS_CRC_ERR;
 
-		if (ctrlc()) {
+		if (ctrlc() || ltpi_optimeout_query(ltpi)) {
 			ltpi_log_exit(ltpi, LTPI_SYND_EXTRST_LINK_CONFIG);
 			goto ltpi_scm_exit;
 		}
@@ -965,6 +991,7 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 {
 	struct rom_context rc;
 	struct getopt_state gs;
+	struct bootstage_t sts;
 	uint32_t pin_strap;
 	int opt, speed = 0, mode = 0;
 	char *endp;
@@ -979,6 +1006,8 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 	ltpi_data[1].crc_format = 0x0;
 	ltpi_data[0].link_speed_frm_rx_cnt = 0;
 	ltpi_data[1].link_speed_frm_rx_cnt = 0;
+	ltpi_data[0].op_timeout = 0;
+	ltpi_data[1].op_timeout = 0;
 
 	ltpi_data[0].index = 0;
 	ltpi_data[0].base = LTPI_REG;
@@ -993,7 +1022,7 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 	ltpi_data[1].gpio_base = ltpi_data[1].base + 0xc00;
 
 	getopt_init_state(&gs);
-	while ((opt = getopt(&gs, argc, argv, "l:m:i:t:d:c:r:sh")) > 0) {
+	while ((opt = getopt(&gs, argc, argv, "l:m:i:t:T:d:c:r:sh")) > 0) {
 		switch (opt) {
 		case 'l':
 			speed = simple_strtoul(gs.arg, &endp, 16);
@@ -1008,6 +1037,10 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 		case 't':
 			ltpi_data[0].ad_timeout = simple_strtoul(gs.arg, &endp, 0);
 			ltpi_data[1].ad_timeout = ltpi_data[0].ad_timeout;
+			break;
+		case 'T':
+			ltpi_data[0].op_timeout = usec2ticks(simple_strtoul(gs.arg, &endp, 0));
+			ltpi_data[1].op_timeout = ltpi_data[0].op_timeout;
 			break;
 		case 'd':
 			ltpi_data[0].io_driving = simple_strtoul(gs.arg, &endp, 0);
@@ -1046,7 +1079,7 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 	ltpi_data[1].otp_speed_cap = LTPI_SP_CAP_ASPEED_SUPPORTED & ~speed;
 	ltpi_data[1].otp_ddr_dis = !!(speed & LTPI_SP_CAP_DDR);
 
-	ltpi_init(&rc);
+	sts = ltpi_init(&rc);
 
 	if (pin_strap & SCU1_HWSTRAP1_LTPI0_EN) {
 		uint32_t reg;
@@ -1073,6 +1106,9 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 		ltpi_show_status(&ltpi_data[1]);
 	}
 
+	if (sts.errno & LTPI_STATUS_EXIT)
+		return CMD_RET_FAILURE;
+
 	return CMD_RET_SUCCESS;
 }
 
@@ -1087,6 +1123,7 @@ static char ltpi_help_text[] = {
 	"-c <crc format>, 0=default 1=\n"
 	"-r <rx link-speed count in AD-align>, default 0\n"
 	"-s, Display current link status\n"
+	"-T <timeout to get to the operational state in us>, 0=wait forever, default 0\n"
 };
 
 U_BOOT_CMD(ltpi, 11, 0, do_ltpi, "ASPEED LTPI commands", ltpi_help_text);
