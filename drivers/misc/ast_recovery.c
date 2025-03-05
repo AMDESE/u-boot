@@ -25,14 +25,14 @@ struct recovery_info {
 
 struct recovery_info message[] = {
 	{PBT_END_MARK,			"\n"},
-	{PBT_DDR4_PMU_TRAIN_IMEM,	"Please send \"ddr4_pmu_train_imem.bin\" through Ymodem.\n"},
-	{PBT_DDR4_PMU_TRAIN_DMEM,	"Please send \"ddr4_pmu_train_dmem.bin\" through Ymodem.\n"},
-	{PBT_DDR4_2D_PMU_TRAIN_IMEM,	"Please send \"ddr4_2d_pmu_train_imem.bin\" through Ymodem.\n"},
-	{PBT_DDR4_2D_PMU_TRAIN_DMEM,	"Please send \"ddr4_2d_pmu_train_dmem.bin\" through Ymodem.\n"},
-	{PBT_DDR5_PMU_TRAIN_IMEM,	"Please send \"ddr5_pmu_train_imem.bin\" through Ymodem.\n"},
-	{PBT_DDR5_PMU_TRAIN_DMEM,	"Please send \"ddr5_pmu_train_dmem.bin\" through Ymodem.\n"},
-	{PBT_DP_FW,			"Please send \"dp_fw.bin\" through Ymodem.\n"},
-	{PBT_UEFI_X64_AST2700,		"Please send \"uefi_x64_ast2700.bin\" through Ymodem.\n"},
+	{PBT_DDR4_PMU_TRAIN_IMEM,	"Please send \"ddr4_pmu_train_imem.bin\" through recovery interface.\n"},
+	{PBT_DDR4_PMU_TRAIN_DMEM,	"Please send \"ddr4_pmu_train_dmem.bin\" through recovery interface.\n"},
+	{PBT_DDR4_2D_PMU_TRAIN_IMEM,	"Please send \"ddr4_2d_pmu_train_imem.bin\" through recovery interface.\n"},
+	{PBT_DDR4_2D_PMU_TRAIN_DMEM,	"Please send \"ddr4_2d_pmu_train_dmem.bin\" through recovery interface.\n"},
+	{PBT_DDR5_PMU_TRAIN_IMEM,	"Please send \"ddr5_pmu_train_imem.bin\" through recovery interface.\n"},
+	{PBT_DDR5_PMU_TRAIN_DMEM,	"Please send \"ddr5_pmu_train_dmem.bin\" through recovery interface.\n"},
+	{PBT_DP_FW,			"Please send \"dp_fw.bin\" through recovery interface.\n"},
+	{PBT_UEFI_X64_AST2700,		"Please send \"uefi_x64_ast2700.bin\" through recovery interface.\n"},
 };
 
 static int recovery_load(struct udevice *dev, u32 type, u32 *dst, u32 *len)
