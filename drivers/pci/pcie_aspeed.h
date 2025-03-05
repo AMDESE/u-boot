@@ -171,7 +171,7 @@ struct ast2700_h2x_reg {
 	u32 h2x_reg64;
 	u32 h2x_reg68;
 	u32 h2x_reg6C;
-	u32 h2x_reg70;
+	u32 h2x_prefetch_addr;
 	u32 h2x_reg74;
 	u32 h2x_remap_direct;		// 0x78
 };
