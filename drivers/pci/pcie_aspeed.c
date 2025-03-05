@@ -732,6 +732,9 @@ int pcie_ast2700_setup(struct udevice *dev)
 	 */
 	writel(0x60000000 + (0x20000000 * pcie->domain), &h2x_reg->h2x_remap_direct);
 
+	/* Prepare for 64-bit BAR pref */
+	writel(0x3, &h2x_reg->h2x_prefetch_addr);
+
 	if (pcie->domain == 2)
 		/* Set perst to output and deassert perst */
 		regmap_write(scu1_perst, 0, 0x03);
