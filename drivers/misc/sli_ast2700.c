@@ -92,6 +92,7 @@ struct sli_config {
 struct sli_data {
 	struct sli_config die0;	/* CPU die */
 	struct sli_config die1;	/* IO die */
+	struct ast2700_scu1 *scu1;
 
 #define SLI_FLAG_AST2700A0		BIT(0)
 #define SLI_FLAG_RX_LAH_NEG_IO_SLIH	BIT(1)
@@ -250,6 +251,27 @@ static void sli_set_mbus_rx_delay(uintptr_t base, int d0, int d1, int d2, int d3
 	udelay(8);
 }
 
+static int sli_log_mbus_pad_delay(struct sli_data *data, int index, int first, int last)
+{
+	uintptr_t addr;
+	uint32_t bit_offset;
+
+	if (index > 1)
+		addr = (uintptr_t)&data->scu1->scratch[29];
+	else
+		addr = (uintptr_t)&data->scu1->scratch[28];
+
+	if (index & 1)
+		bit_offset = 16;
+	else
+		bit_offset = 0;
+
+	clrsetbits_le32(addr, 0xffff << bit_offset,
+			(last << (bit_offset + 8)) | (first << bit_offset));
+
+	return 0;
+}
+
 static int sli_calibrate_mbus_pad_delay(struct sli_data *data, int index, int begin, int end)
 {
 	int d;
@@ -287,6 +309,7 @@ static int sli_calibrate_mbus_pad_delay(struct sli_data *data, int index, int be
 		d = (d_first_pass + d_last_pass) >> 1;
 
 	debug("IOD SLIM[%d] DS win: {%d, %d} -> select %d\n", index, d_first_pass, d_last_pass, d);
+	sli_log_mbus_pad_delay(data, index, d_first_pass, d_last_pass);
 
 	return d;
 }
@@ -429,7 +452,6 @@ int ast2700_sli1_probe(struct udevice *dev)
 {
 	struct sli_data ast2700_sli_data[1];
 	struct sli_data *data = ast2700_sli_data;
-	struct ast2700_scu1 *scu;
 	ofnode node;
 	uint32_t sli1_regs, sli0_regs, scu1_regs;
 	uint32_t reg_val;
@@ -477,8 +499,8 @@ int ast2700_sli1_probe(struct udevice *dev)
 	data->die1.phy_clk_freq = SLI_PHYCLK_25M;
 	data->flags = 0;
 
-	scu = (struct ast2700_scu1 *)scu1_regs;
-	reg_val = readl((void *)&scu->chip_id1);
+	data->scu1 = (struct ast2700_scu1 *)scu1_regs;
+	reg_val = readl((void *)&data->scu1->chip_id1);
 	if (FIELD_GET(SCU_CPU_REVISION_ID_HW, reg_val) == 0)
 		data->flags |= SLI_FLAG_AST2700A0;
 
@@ -509,7 +531,7 @@ int ast2700_sli1_probe(struct udevice *dev)
 			data->flags |= SLI_FLAG_RX_LAH_NEG_IO_SLIM;
 	} else {
 		/* Return if SLI had been calibrated */
-		reg_val = readl((void *)&scu->scratch[31]);
+		reg_val = readl((void *)&data->scu1->scratch[31]);
 		if (reg_val & SCU1_SCRATCH31_SLI_SKIP_CALI) {
 			debug("SLI1 has been initialized\n");
 			return 0;
