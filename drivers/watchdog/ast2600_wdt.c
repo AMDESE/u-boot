@@ -10,11 +10,39 @@
 #include <wdt.h>
 #include <asm/io.h>
 #include <asm/arch/wdt_ast2600.h>
+#include <linux/delay.h>
 #include <linux/err.h>
+
+struct aspeed_wdt_data {
+	void (*wdt_writel)(u32 val, void __iomem *addr);
+};
 
 struct ast2600_wdt_priv {
 	struct ast2600_wdt *regs;
+	struct aspeed_wdt_data *data;
 };
+
+static void wdt_writel_normal(u32 val, void __iomem *addr);
+static void wdt_writel_delay(u32 val, void __iomem *addr);
+
+static const struct aspeed_wdt_data ast2600_wdt_data = {
+	.wdt_writel = wdt_writel_normal,
+};
+
+static const struct aspeed_wdt_data ast2700_wdt_data = {
+	.wdt_writel = wdt_writel_delay,
+};
+
+static void wdt_writel_normal(u32 val, void __iomem *addr)
+{
+	writel(val, addr);
+}
+
+static void wdt_writel_delay(u32 val, void __iomem *addr)
+{
+	writel(val, addr);
+	udelay(5);
+}
 
 static int ast2600_wdt_start(struct udevice *dev, u64 timeout_ms, ulong flags)
 {
@@ -22,9 +50,9 @@ static int ast2600_wdt_start(struct udevice *dev, u64 timeout_ms, ulong flags)
 	struct ast2600_wdt *wdt = priv->regs;
 
 	/* WDT counts in the 1MHz frequency, namely 1us */
-	writel((u32)(timeout_ms * 1000), &wdt->counter_reload_val);
-	writel(WDT_COUNTER_RESTART_VAL, &wdt->counter_restart);
-	writel(WDT_CTRL_EN | WDT_CTRL_RESET, &wdt->ctrl);
+	priv->data->wdt_writel((u32)(timeout_ms * 1000), &wdt->counter_reload_val);
+	priv->data->wdt_writel(WDT_COUNTER_RESTART_VAL, &wdt->counter_restart);
+	priv->data->wdt_writel(WDT_CTRL_EN | WDT_CTRL_RESET, &wdt->ctrl);
 
 	return 0;
 }
@@ -44,7 +72,7 @@ static int ast2600_wdt_reset(struct udevice *dev)
 	struct ast2600_wdt_priv *priv = dev_get_priv(dev);
 	struct ast2600_wdt *wdt = priv->regs;
 
-	writel(WDT_COUNTER_RESTART_VAL, &wdt->counter_restart);
+	priv->data->wdt_writel(WDT_COUNTER_RESTART_VAL, &wdt->counter_restart);
 
 	return 0;
 }
@@ -84,13 +112,17 @@ static const struct wdt_ops ast2600_wdt_ops = {
 };
 
 static const struct udevice_id ast2600_wdt_ids[] = {
-	{ .compatible = "aspeed,ast2600-wdt" },
-	{ .compatible = "aspeed,ast2700-wdt" },
+	{ .compatible = "aspeed,ast2600-wdt", .data = (ulong)&ast2600_wdt_data },
+	{ .compatible = "aspeed,ast2700-wdt", .data = (ulong)&ast2700_wdt_data },
 	{ }
 };
 
 static int ast2600_wdt_probe(struct udevice *dev)
 {
+	struct ast2600_wdt_priv *priv = dev_get_priv(dev);
+
+	priv->data = (struct aspeed_wdt_data *)dev_get_driver_data(dev);
+
 	debug("%s() wdt%u\n", __func__, dev_seq(dev));
 	ast2600_wdt_stop(dev);
 
