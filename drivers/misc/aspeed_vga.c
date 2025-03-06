@@ -41,7 +41,7 @@ static u32 _ast_get_e2m_addr(struct sdramc_regs *ram, u8 node)
 	val = (ram->reserved3[0] >> (node * 16)) & 0xffff;
 	// e2m memory accessing address[36:24] will be replaced as
 	// map_addr[31:20]
-	val = (val << 20) | (ASPEED_DRAM_BASE >> 4);
+	val = (val << 20) | 0x40000000;
 
 	return val;
 }
