@@ -106,10 +106,54 @@ static int do_ufs_init(struct cmd_tbl *cmdtp, int flag,
 	return CMD_RET_SUCCESS;
 }
 
+static int do_ufs_read_desc(struct cmd_tbl *cmdtp, int flag,
+			    int argc, char *const argv[])
+{
+	struct udevice *dev;
+	struct ufs_hba *hba;
+	int ret;
+	int buff_len;
+	u8 desc_buf[0x16 + 8 * 0x1A], i;
+
+	if (strcmp(argv[0], "read"))
+		return CMD_RET_FAILURE;
+
+	ret = uclass_get_device(UCLASS_SCSI, 0, &dev);
+	if (ret == -ENODEV) {
+		printf("No udevice get!\n");
+		return CMD_RET_FAILURE;
+	}
+
+	hba = dev_get_uclass_priv(dev->parent);
+
+	ret = ufshcd_map_desc_id_to_length(hba, QUERY_DESC_IDN_CONFIGURATION, &buff_len);
+
+	if (!strcmp(argv[1], "conf")) {
+		ret = ufshcd_query_descriptor_retry(hba, UPIU_QUERY_OPCODE_READ_DESC,
+						    QUERY_DESC_IDN_CONFIGURATION, 0, 0, desc_buf,
+						    &buff_len);
+	} else if (!strcmp(argv[1], "geom")) {
+		ret = ufshcd_query_descriptor_retry(hba, UPIU_QUERY_OPCODE_READ_DESC,
+						    7, 0, 0, desc_buf,
+						    &buff_len);
+	} else {
+		return CMD_RET_FAILURE;
+	}
+
+	if (ret)
+		printf("read desc fail!!!\n");
+
+	for (i = 0; i < buff_len; i++)
+		printf("desc[%d]=0x%x\n", i, desc_buf[i]);
+
+	return 0;
+}
+
 static struct cmd_tbl cmd_ufs[] = {
 	U_BOOT_CMD_MKENT(init, 2, 0, do_ufs_init, "", ""),
 	U_BOOT_CMD_MKENT(create, 4, 0, do_ufs_create, "", ""),
 	U_BOOT_CMD_MKENT(delete, 3, 0, do_ufs_create, "", ""),
+	U_BOOT_CMD_MKENT(read, 2, 0, do_ufs_read_desc, "", ""),
 	U_BOOT_CMD_MKENT(list, 1, 0, do_ufs_create, "", ""),
 };
 
@@ -135,14 +179,15 @@ U_BOOT_CMD(ufs, 5, 1, do_ufs,
 	   "init [dev] - init UFS subsystem\n"
 	   "ufs create [boot|lun] [lun] [size] - create UFS LUN\n"
 	   "ufs delete [boot|lun] [lun] - Delete UFS LUN\n"
+	   "ufs read [conf|geom] - read conf|geometry descriptor\n"
 	   "ufs list - List UFS LUN\n"
-	   "ex. ufs create lun 0 10000 : Create lun 0 with size 1GB.\n"
-	   "	ufs create boot 1 1000000 : Create boot lun 1 with size 4MB.\n"
-	   "				    LUN 1 is default set to Boot LU A.\n"
-	   "	ufs create boot 2 100000 : Create boot lun 2 with size 16GB.\n"
-	   "				   Others are set to Boot LU B.\n"
-	   "	ufs create lun 3 10000000 : Create lun 3 with size 64MB.\n"
-	   "	ufs delete boot 2 : Delete boot lun 2.\n"
-	   "	ufs delete lun 0 : Delete lun 0.\n"
-	   "	ufs list.\n"
+	   "EX: ufs create lun 0 10000 : Create lun 0 with size 1GB.\n"
+	   "    ufs create boot 1 1000000 : Create boot lun 1 with size 4MB.\n"
+	   "                                LUN 1 is default set to Boot LU A.\n"
+	   "    ufs create boot 2 100000 : Create boot lun 2 with size 16GB.\n"
+	   "                               Others are set to Boot LU B.\n"
+	   "    ufs create lun 3 10000000 : Create lun 3 with size 64MB.\n"
+	   "    ufs delete boot 2 : Delete boot lun 2.\n"
+	   "    ufs delete lun 0 : Delete lun 0.\n"
+	   "    ufs list.\n"
 );
