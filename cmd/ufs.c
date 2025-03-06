@@ -67,7 +67,7 @@ static int do_ufs_create(struct cmd_tbl *cmdtp, int flag,
 	else
 		desc_buf[0x16 + lun * 0x1A + 1] = 0;
 	desc_buf[0x16 + lun * 0x1A + 4] = size & 0xff;
-	desc_buf[0x16 + lun * 0x1A + 5] = (size & 0xff) >> 8;
+	desc_buf[0x16 + lun * 0x1A + 5] = (size & 0xff00) >> 8;
 	desc_buf[0x16 + lun * 0x1A + 6] = (size & 0xff0000) >> 16;
 	desc_buf[0x16 + lun * 0x1A + 7] = (size & 0xff000000) >> 24;
 
