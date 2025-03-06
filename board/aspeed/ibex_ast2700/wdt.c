@@ -7,6 +7,13 @@
 #include <asm/arch/wdt.h>
 #include <asm/io.h>
 #include <common.h>
+#include <linux/delay.h>
+
+static void wdt_writel(u32 val, void __iomem *addr)
+{
+	writel(val, addr);
+	udelay(5);
+}
 
 int wdt_init(void)
 {
@@ -20,36 +27,36 @@ int wdt_init(void)
 		for (idx = 0; idx < 8; idx++) {
 			wdt_base_addr = ASPEED_WDT_BASE + idx * 0x80;
 			/* SoC reset mask */
-			writel(0x8207e771, (void *)(wdt_base_addr + WDT_RST_MASK_1));
-			writel(0x000003f6, (void *)(wdt_base_addr + WDT_RST_MASK_2));
-			writel(0x000093ec, (void *)(wdt_base_addr + WDT_RST_MASK_3));
-			writel(0x40303803, (void *)(wdt_base_addr + WDT_RST_MASK_4));
-			writel(0x003e0000, (void *)(wdt_base_addr + WDT_RST_MASK_5));
+			wdt_writel(0x8207e771, (void *)(wdt_base_addr + WDT_RST_MASK_1));
+			wdt_writel(0x000003f6, (void *)(wdt_base_addr + WDT_RST_MASK_2));
+			wdt_writel(0x000093ec, (void *)(wdt_base_addr + WDT_RST_MASK_3));
+			wdt_writel(0x40303803, (void *)(wdt_base_addr + WDT_RST_MASK_4));
+			wdt_writel(0x003e0000, (void *)(wdt_base_addr + WDT_RST_MASK_5));
 
 			/* SW reset mask */
-			writel(0x8207e771, (void *)(wdt_base_addr + WDT_SW_RST_MASK_1));
-			writel(0x000003f6, (void *)(wdt_base_addr + WDT_SW_RST_MASK_2));
-			writel(0x000093ec, (void *)(wdt_base_addr + WDT_SW_RST_MASK_3));
-			writel(0x40303803, (void *)(wdt_base_addr + WDT_SW_RST_MASK_4));
-			writel(0x003e0000, (void *)(wdt_base_addr + WDT_SW_RST_MASK_5));
+			wdt_writel(0x8207e771, (void *)(wdt_base_addr + WDT_SW_RST_MASK_1));
+			wdt_writel(0x000003f6, (void *)(wdt_base_addr + WDT_SW_RST_MASK_2));
+			wdt_writel(0x000093ec, (void *)(wdt_base_addr + WDT_SW_RST_MASK_3));
+			wdt_writel(0x40303803, (void *)(wdt_base_addr + WDT_SW_RST_MASK_4));
+			wdt_writel(0x003e0000, (void *)(wdt_base_addr + WDT_SW_RST_MASK_5));
 		}
 	} else {
 		/* ast2700a0 */
 		for (idx = 0; idx < 8; idx++) {
 			wdt_base_addr = ASPEED_WDT_BASE + idx * 0x80;
 			/* SoC reset mask */
-			writel(0x00030421, (void *)(wdt_base_addr + WDT_RST_MASK_1));
-			writel(0x00000036, (void *)(wdt_base_addr + WDT_RST_MASK_2));
-			writel(0x000093ec, (void *)(wdt_base_addr + WDT_RST_MASK_3));
-			writel(0x01303803, (void *)(wdt_base_addr + WDT_RST_MASK_4));
-			writel(0x00000000, (void *)(wdt_base_addr + WDT_RST_MASK_5));
+			wdt_writel(0x00030421, (void *)(wdt_base_addr + WDT_RST_MASK_1));
+			wdt_writel(0x00000036, (void *)(wdt_base_addr + WDT_RST_MASK_2));
+			wdt_writel(0x000093ec, (void *)(wdt_base_addr + WDT_RST_MASK_3));
+			wdt_writel(0x01303803, (void *)(wdt_base_addr + WDT_RST_MASK_4));
+			wdt_writel(0x00000000, (void *)(wdt_base_addr + WDT_RST_MASK_5));
 
 			/* SW reset mask */
-			writel(0x00030421, (void *)(wdt_base_addr + WDT_SW_RST_MASK_1));
-			writel(0x00000036, (void *)(wdt_base_addr + WDT_SW_RST_MASK_2));
-			writel(0x000093ec, (void *)(wdt_base_addr + WDT_SW_RST_MASK_3));
-			writel(0x01303803, (void *)(wdt_base_addr + WDT_SW_RST_MASK_4));
-			writel(0x00000000, (void *)(wdt_base_addr + WDT_SW_RST_MASK_5));
+			wdt_writel(0x00030421, (void *)(wdt_base_addr + WDT_SW_RST_MASK_1));
+			wdt_writel(0x00000036, (void *)(wdt_base_addr + WDT_SW_RST_MASK_2));
+			wdt_writel(0x000093ec, (void *)(wdt_base_addr + WDT_SW_RST_MASK_3));
+			wdt_writel(0x01303803, (void *)(wdt_base_addr + WDT_SW_RST_MASK_4));
+			wdt_writel(0x00000000, (void *)(wdt_base_addr + WDT_SW_RST_MASK_5));
 		}
 	}
 
