@@ -115,6 +115,7 @@ enum env_location {
 	ENVL_REMOTE,
 	ENVL_SPI_FLASH,
 	ENVL_UBI,
+	ENVL_UFS,
 	ENVL_NOWHERE,
 
 	ENVL_COUNT,

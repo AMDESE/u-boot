@@ -450,6 +450,13 @@ config ENV_IS_IN_UBI
 	  the environment in.  This will enable redundant environments in UBI.
 	  It is assumed that both volumes are in the same MTD partition.
 
+config ENV_IS_IN_UFS
+	bool "Environment in an UFS disk"
+	help
+	  Define this if you have an UFS device which you want to use for the
+	  environment.
+
+
 config SYS_REDUNDAND_ENVIRONMENT
 	bool "Enable redundant environment support"
 	help
