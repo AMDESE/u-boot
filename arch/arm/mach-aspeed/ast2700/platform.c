@@ -23,10 +23,14 @@ enum env_location env_get_location(enum env_operation op, int prio)
 	if (IS_ENABLED(CONFIG_ENV_IS_NOWHERE)) {
 		env_loc = ENVL_NOWHERE;
 	} else {
-		if ((readl(ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_EMMC))
-			env_loc =  ENVL_MMC;
-		else
+		if ((readl(ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_EMMC)) {
+			if ((readl(ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_UFS))
+				env_loc =  ENVL_UFS;
+			else
+				env_loc =  ENVL_MMC;
+		} else {
 			env_loc =  ENVL_SPI_FLASH;
+		}
 	}
 
 	return env_loc;
@@ -36,7 +40,10 @@ int arch_misc_init(void)
 {
 	if (IS_ENABLED(CONFIG_ARCH_MISC_INIT)) {
 		if ((readl(ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_EMMC)) {
-			env_set("boot_device", "mmc");
+			if ((readl(ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_UFS))
+				env_set("boot_device", "ufs");
+			else
+				env_set("boot_device", "mmc");
 		} else {
 			env_set("boot_device", "spi");
 			spi_bootarg_config();
