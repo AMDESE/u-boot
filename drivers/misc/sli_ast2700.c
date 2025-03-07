@@ -186,6 +186,13 @@ static void sli_set_ahb_rx_delay(uintptr_t base, int d0, int d1)
 	udelay(8);
 }
 
+static int sli_log_ahb_pad_delay(struct sli_data *data, int first, int last)
+{
+	clrsetbits_le32(&data->scu1->scratch[30], 0xffff, ((last & 0xff) << 8) | (first & 0xff));
+
+	return 0;
+}
+
 static void sli_calibrate_ahb_delay(struct sli_data *data)
 {
 	int dc;
@@ -216,6 +223,7 @@ static void sli_calibrate_ahb_delay(struct sli_data *data)
 
 	dc = (d_first_pass + d_last_pass) >> 1;
 	debug("IOD SLIH DS coarse win: {%d, %d} -> select %d\n", d_first_pass, d_last_pass, dc);
+	sli_log_ahb_pad_delay(data, d_first_pass, d_last_pass);
 
 	sli_set_ahb_rx_delay(data->die1.slih, dc, dc);
 
