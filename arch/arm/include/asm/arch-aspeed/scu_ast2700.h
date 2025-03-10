@@ -509,6 +509,7 @@ struct ast2700_scu1 {
 
 void aspeed_print_2nd_wdt_mode(void);
 void aspeed_print_fmc_aux_ctrl(void);
+void aspeed_print_spi_misc_func(void);
 
 #endif
 #endif

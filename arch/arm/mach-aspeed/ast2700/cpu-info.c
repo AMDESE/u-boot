@@ -107,6 +107,7 @@ int print_cpuinfo(void)
 	ast2700_print_sysrst_info();
 	aspeed_print_2nd_wdt_mode();
 	aspeed_print_fmc_aux_ctrl();
+	aspeed_print_spi_misc_func();
 
 	return 0;
 }

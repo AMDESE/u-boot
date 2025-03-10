@@ -101,6 +101,25 @@ void aspeed_print_fmc_aux_ctrl(void)
 	}
 }
 
+void aspeed_print_spi_misc_func(void)
+{
+	struct ast2700_scu1 *scu1 = (struct ast2700_scu1 *)ASPEED_IO_SCU_BASE;
+	u32 scu1_hwstrap1 = readl(&scu1->hwstrap1); /* SCU1_010 */
+	u32 scu1_hwstrap2 = readl(&scu1->hwstrap2); /* SCU1_030 */
+
+	if ((scu1_hwstrap1 & BIT(24)) || (scu1_hwstrap1 & BIT(25)) ||
+	    (scu1_hwstrap2 & BIT(25))) {
+		printf("SPI: force");
+		if (scu1_hwstrap1 & BIT(25))
+			printf(", 4-byte addr mode");
+		if (scu1_hwstrap1 & BIT(24))
+			printf(", wait for ready");
+		if (scu1_hwstrap2 & BIT(25))
+			printf(", check SFDP");
+		printf("\n");
+	}
+}
+
 void aspeed_print_espi_mode(void)
 {
 }
