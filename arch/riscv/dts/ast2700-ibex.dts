@@ -246,6 +246,14 @@
 	status = "okay";
 };
 
+&cptra_sha {
+	status = "okay";
+};
+
+&cptra_ecdsa {
+	status = "okay";
+};
+
 #if BINMAN_SYMS_OK
 &binman {
 	bootph-all;
