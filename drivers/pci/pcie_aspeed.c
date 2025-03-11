@@ -641,6 +641,7 @@ int pcie_ast2700_setup(struct udevice *dev)
 	struct reset_ctl h2xrst, perst, perst_oe;
 	struct regmap *scu1_perst;
 	u32 cfg_val;
+	bool link;
 	int ret = 0;
 
 	pcie->tx_tag = 0;
@@ -744,6 +745,19 @@ int pcie_ast2700_setup(struct udevice *dev)
 
 	/* Init root */
 	pcie->root_bus = -1;
+
+	if (pcie->domain == 2) {
+		regmap_read(pcie->pciephy, PEHR_MISC_344, &cfg_val);
+		link = !!(cfg_val & LINK_STATUS_GEN2);
+	} else {
+		regmap_read(pcie->pciephy, PEHR_MISC_358, &cfg_val);
+		link = !!(cfg_val & LINK_STATUS_GEN4);
+	}
+
+	if (!link) {
+		printf("PCIe Link DOWN");
+		return -ENODEV;
+	}
 
 	return 0;
 }

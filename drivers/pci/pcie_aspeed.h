@@ -57,6 +57,10 @@
 #define PORT_TYPE_ROOT			BIT(2)
 #define PEHR_MISC_70		0x70
 #define PEHR_MISC_78		0x78
+#define PEHR_MISC_344		0x344
+#define LINK_STATUS_GEN2		BIT(18)
+#define PEHR_MISC_358		0x358
+#define LINK_STATUS_GEN4		BIT(8)
 
 /* AST2700 SCU */
 #define SCU_60			0x60
