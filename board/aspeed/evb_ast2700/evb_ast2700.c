@@ -405,6 +405,10 @@ int misc_init_r(void)
 	/* set power-on reset variable */
 	update_por_env();
 
+        run_command("mw 14c02404 0", 0);
+        run_command("gpio clear 10", 0);
+        run_command("ltpi -T 10000000",0);
+
 	return 0;
 err:
 	printf("EEPROM i2c error in %s\n", __func__);
