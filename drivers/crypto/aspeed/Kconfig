@@ -49,3 +49,10 @@ config ASPEED_CPTRA_ECDSA
 
 	  Enabling this allows the use of ECDSA384 signature verification in hardware.
 	  Note that only ECDSA384 is supported by Caliptra.
+
+config SPL_ASPEED_MHMAC
+	bool "Enable DRAM checksum check feature for Aspeed SoCs"
+	depends on TARGET_ASPEED_AST2700
+	help
+	  Select this option to enable a driver for using the HMAC to check the integrity
+	  of DRAM.

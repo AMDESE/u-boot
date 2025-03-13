@@ -101,6 +101,22 @@
 		vga: vga@12c14000 {
 			bootph-all;
 		};
+
+		mhmac: mhmac@12c1f000 {
+			bootph-all;
+			mhmac-region-0 {
+				bootph-all;
+			};
+			mhmac-region-1 {
+				bootph-all;
+			};
+			mhmac-region-2 {
+				bootph-all;
+			};
+			mhmac-region-3 {
+				bootph-all;
+			};
+		};
 	};
 
 	soc1: soc@14000000 {
