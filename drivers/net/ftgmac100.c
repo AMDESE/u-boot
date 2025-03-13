@@ -437,12 +437,6 @@ static int ftgmac100_start(struct udevice *dev)
 		return ret;
 	}
 
-	/* If fixed link, it configures the speed of fixed-link property */
-	if (device_is_compatible(dev, "aspeed,ast2700-mac") &&
-	    priv->phydev->interface == PHY_INTERFACE_MODE_SGMII)
-		if (ofnode_phy_is_fixed_link(dev_ofnode(dev), NULL))
-			generic_phy_set_speed(&priv->sgmii, priv->phydev->speed);
-
 	ret = ftgmac100_phy_adjust_link(priv);
 	if (ret) {
 		dev_err(phydev->dev,  "Could not adjust link\n");
