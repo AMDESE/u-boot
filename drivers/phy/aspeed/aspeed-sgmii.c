@@ -58,43 +58,18 @@ static int aspeed_sgmii_phy_init(struct phy *phy)
 	regmap_write(sgmii->plda_regmap, PLDA_CLK, reg);
 
 	writel(0, sgmii->regs + SGMII_MODE);
-
 	writel(0, sgmii->regs + SGMII_CFG);
-	reg = SGMII_CFG_SW_RESET | SGMII_CFG_PWR_DOWN;
-	writel(reg, sgmii->regs + SGMII_CFG);
-
-	reg = SGMII_CFG_AN_ENABLE;
-	writel(reg, sgmii->regs + SGMII_CFG);
-
+	writel(SGMII_CFG_SW_RESET | SGMII_CFG_PWR_DOWN, sgmii->regs + SGMII_CFG);
+	writel(SGMII_CFG_AN_ENABLE, sgmii->regs + SGMII_CFG);
 	writel(0x0a, sgmii->regs + SGMII_FIFO_DELAY_THREHOLD);
-
 	writel(SGMII_PCTL_TX_DEEMPH_3_5DB, sgmii->regs + SGMII_PHY_PIPE_CTL);
-	reg = SGMII_MODE_ENABLE;
-	writel(reg, sgmii->regs + SGMII_MODE);
-
-	return 0;
-}
-
-static int aspeed_sgmii_phy_set_speed(struct phy *phy, int speed)
-{
-	struct udevice *dev = phy->dev;
-	struct aspeed_sgmii *sgmii = dev_get_priv(dev);
-	u32 reg = 0;
-
-	if (speed == 10)
-		reg |= SGMII_CFG_SPEED_10M;
-	else if (speed == 100)
-		reg |= SGMII_CFG_SPEED_100M;
-	else
-		reg |= SGMII_CFG_SPEED_1G;
-	writel(reg, sgmii->regs + SGMII_CFG);
+	writel(SGMII_MODE_ENABLE, sgmii->regs + SGMII_MODE);
 
 	return 0;
 }
 
 struct phy_ops aspeed_sgmii_phy_ops = {
 	.init = aspeed_sgmii_phy_init,
-	.set_speed = aspeed_sgmii_phy_set_speed,
 };
 
 int aspeed_sgmii_probe(struct udevice *dev)
