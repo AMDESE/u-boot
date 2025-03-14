@@ -128,7 +128,7 @@ static int aspeed_vbios_probe(struct udevice *dev)
 		/* Set VBIOS 64KB into reserved buffer */
 		vbios_e2m_value = (vbios_mem_base >> 4) | 0x05 | arm_dram_base;
 
-		debug("vbios_e2m_value : 0x%x\n", vbios_e2m_value);
+		debug("vbios0_e2m_value : 0x%x\n", vbios_e2m_value);
 
 		writel(vbios_e2m_value, (void *)E2M0_VBIOS_RAM);
 		writel(vbios_e2m_value, &vbios->scu->pci0_misc[11]);
@@ -203,15 +203,18 @@ static int aspeed_vbios_probe(struct udevice *dev)
 		/* Initial memory region and copy vbios into it */
 		memset((u32 *)vbios->vbios1_base, 0x0, 0x10000);
 #ifdef CONFIG_RISCV
-		ast_loader_load_image(PBT_UEFI_X64_AST2700, (u32 *)vbios->vbios1_base);
+		/* If the pcie 0 would not be enabled, the VBIOS need be loaded here*/
+		if (!is_pcie0_enable) {
+			ast_loader_load_image(PBT_UEFI_X64_AST2700, (u32 *)vbios->vbios1_base);
 
-		/* Remove riscv Dram base */
-		vbios_mem_base &= ~(ASPEED_DRAM_BASE);
+			/* Remove riscv Dram base */
+			vbios_mem_base &= ~(ASPEED_DRAM_BASE);
 
-		/* Set VBIOS 64KB into reserved buffer */
-		vbios_e2m_value = (vbios_mem_base >> 4) | 0x05 | arm_dram_base;
+			/* Set VBIOS 64KB into reserved buffer */
+			vbios_e2m_value = (vbios_mem_base >> 4) | 0x05 | arm_dram_base;
+		}
 
-		debug("vbios_e2m_value : 0x%x\n", vbios_e2m_value);
+		debug("vbios1_e2m_value : 0x%x\n", vbios_e2m_value);
 
 		writel(vbios_e2m_value, (void *)E2M1_VBIOS_RAM);
 		writel(vbios_e2m_value, &vbios->scu->pci1_misc[11]);
