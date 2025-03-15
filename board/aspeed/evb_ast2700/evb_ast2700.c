@@ -376,7 +376,7 @@ int misc_init_r(void)
 	}
 	/* set power-on reset variable */
 	update_por_env();
-
+        // set espi strap to low and train ltpi with max of 10 sec
         run_command("mw 14c02404 0", 0);
         run_command("gpio clear 10", 0);
         run_command("ltpi -T 10000000",0);
