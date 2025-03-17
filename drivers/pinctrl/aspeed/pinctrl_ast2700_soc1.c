@@ -220,18 +220,66 @@ static struct ast2700_soc1_sig_desc i2c11[] = {
 };
 
 static struct ast2700_soc1_sig_desc i2c12[] = {
-	{ 0x20, GENMASK(6, 4) | GENMASK(2, 0), BIT(5) | BIT(1) },
+	{ 0x18, GENMASK(14, 12) | GENMASK(6, 4), BIT(14) | BIT(6) },
 };
 
 static struct ast2700_soc1_sig_desc i2c13[] = {
-	{ 0x20, GENMASK(14, 12) | GENMASK(10, 8), BIT(13) | BIT(9) },
+	{ 0x18, GENMASK(22, 20) | GENMASK(18, 16), BIT(22) | BIT(18) },
 };
 
 static struct ast2700_soc1_sig_desc i2c14[] = {
-	{ 0x20, GENMASK(22, 20) | GENMASK(18, 16), BIT(21) | BIT(17) },
+	{ 0x18, GENMASK(30, 28) | GENMASK(26, 24), BIT(30) | BIT(26) },
 };
 
 static struct ast2700_soc1_sig_desc i2c15[] = {
+	{ 0x1c, GENMASK(6, 4) | GENMASK(2, 0), BIT(5) | BIT(1) },
+};
+
+static struct ast2700_soc1_sig_desc di2c0[] = {
+	{ 0x0, GENMASK(6, 4) | GENMASK(2, 0), BIT(6) | BIT(2) },
+};
+
+static struct ast2700_soc1_sig_desc di2c1[] = {
+	{ 0x0, GENMASK(14, 12) | GENMASK(10, 8), BIT(14) | BIT(10) },
+};
+
+static struct ast2700_soc1_sig_desc di2c2[] = {
+	{ 0x0, GENMASK(22, 20) | GENMASK(18, 16), BIT(22) | BIT(18) },
+};
+
+static struct ast2700_soc1_sig_desc di2c3[] = {
+	{ 0x0, GENMASK(30, 28) | GENMASK(26, 24), BIT(30) | BIT(26) },
+};
+
+static struct ast2700_soc1_sig_desc di2c8[] = {
+	{ 0x2c, GENMASK(6, 4) | GENMASK(2, 0), BIT(5) | BIT(1) },
+};
+
+static struct ast2700_soc1_sig_desc di2c9[] = {
+	{ 0x2c, GENMASK(14, 12) | GENMASK(10, 8), BIT(13) | BIT(9) },
+};
+
+static struct ast2700_soc1_sig_desc di2c10[] = {
+	{ 0x2c, GENMASK(22, 20) | GENMASK(18, 16), BIT(21) | BIT(17) },
+};
+
+static struct ast2700_soc1_sig_desc di2c11[] = {
+	{ 0x2c, GENMASK(30, 28) | GENMASK(26, 24), BIT(29) | BIT(25) },
+};
+
+static struct ast2700_soc1_sig_desc di2c12[] = {
+	{ 0x20, GENMASK(6, 4) | GENMASK(2, 0), BIT(5) | BIT(1) },
+};
+
+static struct ast2700_soc1_sig_desc di2c13[] = {
+	{ 0x20, GENMASK(14, 12) | GENMASK(10, 8), BIT(13) | BIT(9) },
+};
+
+static struct ast2700_soc1_sig_desc di2c14[] = {
+	{ 0x20, GENMASK(22, 20) | GENMASK(18, 16), BIT(21) | BIT(17) },
+};
+
+static struct ast2700_soc1_sig_desc di2c15[] = {
 	{ 0x20, GENMASK(30, 28) | GENMASK(26, 24), BIT(29) | BIT(25) },
 };
 
@@ -324,6 +372,18 @@ static const struct aspeed_group_config ast2700_soc1_groups[] = {
 	{ "I2C13", ARRAY_SIZE(i2c13), i2c13 },
 	{ "I2C14", ARRAY_SIZE(i2c14), i2c14 },
 	{ "I2C15", ARRAY_SIZE(i2c15), i2c15 },
+	{ "DI2C0", ARRAY_SIZE(di2c0), di2c0 },
+	{ "DI2C1", ARRAY_SIZE(di2c1), di2c1 },
+	{ "DI2C2", ARRAY_SIZE(di2c2), di2c2 },
+	{ "DI2C3", ARRAY_SIZE(di2c3), di2c3 },
+	{ "DI2C8", ARRAY_SIZE(di2c8), di2c8 },
+	{ "DI2C9", ARRAY_SIZE(di2c9), di2c9 },
+	{ "DI2C10", ARRAY_SIZE(di2c10), di2c10 },
+	{ "DI2C11", ARRAY_SIZE(di2c11), di2c11 },
+	{ "DI2C12", ARRAY_SIZE(di2c12), di2c12 },
+	{ "DI2C13", ARRAY_SIZE(di2c13), di2c13 },
+	{ "DI2C14", ARRAY_SIZE(di2c14), di2c14 },
+	{ "DI2C15", ARRAY_SIZE(di2c15), di2c15 },
 	{ "PWM0", ARRAY_SIZE(pwm0), pwm0 },
 	{ "PWM1", ARRAY_SIZE(pwm1), pwm1 },
 	{ "PWM2", ARRAY_SIZE(pwm2), pwm2 },
