@@ -17,6 +17,7 @@
 #define TSP_MEMORY_NODE		"/reserved-memory/tsp-memory"
 #define ATF_MEMORY_NODE		"/reserved-memory/trusted-firmware-a"
 #define OPTEE_MEMORY_NODE	"/reserved-memory/optee-core"
+#define IPC_SSP_MEMORY_NODE	"/reserved-memory/ipc-ssp-share"
 
 struct mem_info {
 	ulong base;
@@ -73,15 +74,16 @@ int ssp_init(ulong load_addr)
 
 	/*
 	 * SSP Memory Map:
-	 * - 0x0000_0000 - 0x0507_FFFF: ssp_remap2 -> DRAM[load_addr]
-	 * - 0x0508_0000 - 0x1FFF_FFFF: ssp_remap1 -> AHB -> DRAM[0]
+	 * - 0x0000_0000 - 0x0587_FFFF: ssp_remap2 -> DRAM[load_addr]
+	 * - 0x0588_0000 - 0x1FFF_FFFF: ssp_remap1 -> AHB -> DRAM[0]
 	 * - 0x2000_0000 - 0x2000_2000: ssp_remap0 -> TCM (Not used)
 	 *
 	 * The SSP serves as the secure loader for TSP, ATF, OP-TEE, and U-Boot.
 	 * Therefore, their load buffers must be visible to the SSP.
 	 *
 	 * - SSP remap entry #2 (ssp_remap2_base/size) maps the load buffers
-	 *   for SSP, TSP, ATF, and OP-TEE. Ensure these buffers are contiguous.
+	 *   for SSP, TSP, ATF, OP-TEE and IPC share memory. Ensure these buffers
+	 *   are contiguous.
 	 * - SSP remap entry #1 (ssp_remap1_base/size) maps the load buffer
 	 *   for U-Boot at DRAM offset 0x0.
 	 * - SSP remap entry #0 (ssp_remap0_base/size) maps TCM, which is not used.
@@ -93,6 +95,8 @@ int ssp_init(ulong load_addr)
 	info = get_reserved_memory(ATF_MEMORY_NODE);
 	reg_val += info.size;
 	info = get_reserved_memory(OPTEE_MEMORY_NODE);
+	reg_val += info.size;
+	info = get_reserved_memory(IPC_SSP_MEMORY_NODE);
 	reg_val += info.size;
 	writel(reg_val, (void *)&scu->ssp_remap2_size);
 
