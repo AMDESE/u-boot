@@ -198,7 +198,10 @@ static int pci_init(void)
 static int prictrl_init(void)
 {
 	struct udevice *dev;
-	int err;
+	int err = 0;
+
+	if (!has_pspfw)
+		return err;
 
 	/* privilege control init */
 	err = uclass_get_device_by_name(UCLASS_MISC, "prictrl@12140000", &dev);
