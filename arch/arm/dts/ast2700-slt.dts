@@ -47,6 +47,11 @@
 			no-map;
 		};
 
+		ipc_ssp_share: ipc-ssp-share@431080000 {
+			reg = <0x4 0x31080000 0x0 0x800000>;
+			no-map;
+		};
+
 		vbios_base0: vbios-base0@431bb0000 {
 			reg = <0x4 0x31bb0000 0x0 0x10000>;
 			no-map;
