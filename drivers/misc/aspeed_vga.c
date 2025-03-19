@@ -46,24 +46,16 @@ static u32 _ast_get_e2m_addr(struct sdramc_regs *ram, u8 node)
 	return val;
 }
 
-static void _ast_update_e2m(struct ast_vga_priv *priv)
+static void _ast_update_e2m(struct ast_vga_priv *priv, bool is_64vram)
 {
 	u32 val, vram_size;
 	u8 vram_size_cfg;
 	bool is_pcie0_enable = priv->scu->pci0_misc[28] & BIT(0);
 	bool is_pcie1_enable = priv->scu->pci1_misc[28] & BIT(0);
-	bool is_64vram = priv->ram->gfmcfg & BIT(0);
 
 	vram_size_cfg = is_64vram ? 0xf : 0xe;
 	vram_size = 2 << (vram_size_cfg + 10);
 	debug("%s: VRAM size(%x) cfg(%x)\n", __func__, vram_size, vram_size_cfg);
-
-	/* scratch for VGA CRAA[1:0] : 10b: 32Mbytes, 11b: 64Mbytes */
-	setbits_le32(&priv->scu->hwstrap1, BIT(11));
-	if (is_64vram)
-		setbits_le32(&priv->scu->hwstrap1, BIT(10));
-	else
-		setbits_le32(&priv->scu->hwstrap1_clr, BIT(10));
 
 	if (is_pcie0_enable) {
 		debug("pcie0 e2m addr(%x)\n", _ast_get_e2m_addr(priv->ram, 0));
@@ -90,6 +82,7 @@ static int ast_vga_probe(struct udevice *dev)
 	u32 val;
 	bool is_pcie0_enable = priv->scu->pci0_misc[28] & BIT(0);
 	bool is_pcie1_enable = priv->scu->pci1_misc[28] & BIT(0);
+	bool is_64vram = priv->ram->gfmcfg & BIT(0);
 	u8 dac_src = priv->scu->hwstrap1 & BIT(28);
 	u8 dp_src = priv->scu->hwstrap1 & BIT(29);
 	u8 efuse = FIELD_GET(SCU_CPU_REVISION_ID_EFUSE, priv->scu->chip_id1);
@@ -112,12 +105,19 @@ static int ast_vga_probe(struct udevice *dev)
 	debug("%s: ENABLE 0(%d) 1(%d)\n", __func__, is_pcie0_enable, is_pcie1_enable);
 	debug("%s: dac_src(%d) dp_src(%d)\n", __func__, dac_src, dp_src);
 
-	_ast_update_e2m(priv);
+	_ast_update_e2m(priv, is_64vram);
 
-	if (priv->scu->clk_sel3 & BIT(12)) {
+	if (priv->scu->hwstrap1 & BIT(11)) {
 		debug("%s: Skip probe since it has been done.\n", __func__);
 		return 0;
 	}
+
+	/* scratch for VGA CRAA[1:0] : 10b: 32Mbytes, 11b: 64Mbytes */
+	setbits_le32(&priv->scu->hwstrap1, BIT(11));
+	if (is_64vram)
+		setbits_le32(&priv->scu->hwstrap1, BIT(10));
+	else
+		setbits_le32(&priv->scu->hwstrap1_clr, BIT(10));
 
 	// Use d0clk/d1clk which generated from hpll for vga0/1 after A0
 	if (FIELD_GET(SCU_CPU_REVISION_ID_HW, priv->scu->chip_id1) != 0)
