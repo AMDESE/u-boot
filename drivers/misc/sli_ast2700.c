@@ -684,6 +684,10 @@ int ast2700_sli0_probe(struct udevice *dev)
 		/* Reset SLIM MARB before using the SLIM */
 		setbits_le32(sli1_regs + SLIM_REG_OFFSET + SLIM_MARB_FUNC_I, SLIM_SLI_MARB_CLR);
 
+		/* Clear the INTC reset interrupt status. */
+		reg_val = readl((void *)ASPEED_IO_INTC_BASE + 0x14);
+		writel(reg_val, (void *)ASPEED_IO_INTC_BASE + 0x14);
+
 		return 0;
 	}
 
