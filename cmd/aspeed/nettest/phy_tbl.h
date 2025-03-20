@@ -7,6 +7,9 @@ void phy_bcm54616_config(struct phy_s *obj);
 void phy_bcm54616_clear(struct phy_s *obj);
 void phy_bcm5221_config(struct phy_s *obj);
 void phy_an8801_config(struct phy_s *obj);
+void phy_ti_dp83867(struct phy_s *obj);
+void phy_ti_dp83869(struct phy_s *obj);
+void recov_phy_ti(struct phy_s *obj);
 
 struct phy_desc {
 	u16 id1;
@@ -60,4 +63,16 @@ static struct phy_desc phy_lookup_tbl[] = {
 	  .name = "Airoha AN8801R",
 	  .config = phy_an8801_config,
 	  .clear = NULL },
+	{ .id1 = 0x2000,
+	  .id2 = 0xa0f1,
+	  .id2_mask = 0xFFF0,
+	  .name = "TI DP83869",
+	  .config = phy_ti_dp83869,
+	  .clear = recov_phy_ti },
+	{ .id1 = 0x2000,
+	  .id2 = 0xa231,
+	  .id2_mask = 0xFFF0,
+	  .name = "TI DP83867",
+	  .config = phy_ti_dp83867,
+	  .clear = recov_phy_ti },
 };

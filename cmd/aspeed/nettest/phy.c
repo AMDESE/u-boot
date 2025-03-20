@@ -413,3 +413,112 @@ void phy_an8801_config(struct phy_s *obj)
 		}
 	}
 }
+
+uint32_t read_ti(struct mdio_s *mdio, uint32_t offset)
+{
+	aspeed_mdio_write(mdio, mdio->phy_addr, 0xd, 0x1f);
+	aspeed_mdio_write(mdio, mdio->phy_addr, 0xe, offset);
+	aspeed_mdio_write(mdio, mdio->phy_addr, 0xd, 0x401f);
+	return aspeed_mdio_read(mdio, mdio->phy_addr, 0xe);
+}
+
+void write_ti(struct mdio_s *mdio, uint32_t offset, uint16_t data)
+{
+	aspeed_mdio_write(mdio, mdio->phy_addr, 0xd, 0x1f);
+	aspeed_mdio_write(mdio, mdio->phy_addr, 0xe, offset);
+	aspeed_mdio_write(mdio, mdio->phy_addr, 0xd, 0x401f);
+	aspeed_mdio_write(mdio, mdio->phy_addr, 0xe, data);
+}
+
+void phy_ti(struct phy_s *obj)
+{
+	struct mdio_s *mdio = obj->mdio;
+	uint32_t reg;
+
+	if (obj->speed == 1000)
+		aspeed_mdio_write(mdio, mdio->phy_addr, 0, 0x0140);
+	else if (obj->speed == 100)
+		aspeed_mdio_write(mdio, mdio->phy_addr, 0, 0x2100);
+	else
+		aspeed_mdio_write(mdio, mdio->phy_addr, 0, 0x0100);
+
+	reg = aspeed_mdio_read(mdio, mdio->phy_addr, 0x16) & ~GENMASK(5, 0);
+	if (obj->loopback == PHY_LOOPBACK_INT) {
+		/* Digital loopback */
+		reg |= BIT(2);
+	}
+	aspeed_mdio_write(mdio, mdio->phy_addr, 0x16, reg);
+
+	mdelay(500);
+}
+
+void phy_ti_dp83867(struct phy_s *obj)
+{
+	struct mdio_s *mdio = obj->mdio;
+	uint32_t reg, reg_delay;
+
+	// TX/RX internal delay
+	reg = read_ti(mdio, 0x32);
+	reg_delay = read_ti(mdio, 0x86) & ~GENMASK(7, 0);
+	if (obj->phy_mode == PHY_INTERFACE_MODE_RGMII_ID ||
+	    obj->phy_mode == PHY_INTERFACE_MODE_RGMII_RXID) {
+		reg |= BIT(0);
+		// 2ns
+		reg_delay |= 0x7;
+	} else {
+		reg &= ~BIT(0);
+		// 0ns
+		reg_delay |= 0xF;
+	}
+	if (obj->phy_mode == PHY_INTERFACE_MODE_RGMII_ID ||
+	    obj->phy_mode == PHY_INTERFACE_MODE_RGMII_TXID) {
+		reg |= BIT(1);
+		reg_delay |= (0x7 << 4);
+	} else {
+		reg &= ~BIT(1);
+		reg_delay |= (0xF << 4);
+	}
+	write_ti(mdio, 0x32, reg);
+	write_ti(mdio, 0x86, reg_delay);
+
+	phy_ti(obj);
+}
+
+void phy_ti_dp83869(struct phy_s *obj)
+{
+	struct mdio_s *mdio = obj->mdio;
+	uint32_t reg, reg_delay;
+
+	// TX/RX internal delay
+	reg = read_ti(mdio, 0x32);
+	reg_delay = read_ti(mdio, 0x86) & ~GENMASK(7, 0);
+	if (obj->phy_mode == PHY_INTERFACE_MODE_RGMII_ID ||
+	    obj->phy_mode == PHY_INTERFACE_MODE_RGMII_RXID) {
+		reg &= ~BIT(0);
+		reg_delay |= 0x7;
+	} else {
+		reg |= BIT(0);
+		reg_delay |= 0xF;
+	}
+	if (obj->phy_mode == PHY_INTERFACE_MODE_RGMII_ID ||
+	    obj->phy_mode == PHY_INTERFACE_MODE_RGMII_TXID) {
+		reg &= ~BIT(1);
+		reg_delay |= (0x7 << 4);
+	} else {
+		reg |= BIT(1);
+		reg_delay |= (0xF << 4);
+	}
+	write_ti(mdio, 0x32, reg);
+	write_ti(mdio, 0x86, reg_delay);
+
+	phy_ti(obj);
+}
+
+void recov_phy_ti(struct phy_s *obj)
+{
+	struct mdio_s *mdio = obj->mdio;
+	uint32_t reg;
+
+	reg = aspeed_mdio_read(mdio, mdio->phy_addr, 0x16) & ~GENMASK(5, 0);
+	aspeed_mdio_write(mdio, mdio->phy_addr, 0x16, reg);
+}
