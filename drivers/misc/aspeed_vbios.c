@@ -120,7 +120,7 @@ static int aspeed_vbios_probe(struct udevice *dev)
 		memset((u32 *)vbios->vbios0_base, 0x0, 0x10000);
 
 #ifdef CONFIG_RISCV
-		ast_loader_load_image(PBT_UEFI_X64_AST2700, (u32 *)vbios->vbios0_base);
+		ast_loader_load_image(PBT_UEFI_X64_AST2700, (u32 *)vbios->vbios0_base, true);
 
 		/* Remove riscv Dram base */
 		vbios_mem_base &= ~(ASPEED_DRAM_BASE);
@@ -205,7 +205,8 @@ static int aspeed_vbios_probe(struct udevice *dev)
 #ifdef CONFIG_RISCV
 		/* If the pcie 0 would not be enabled, the VBIOS need be loaded here*/
 		if (!is_pcie0_enable) {
-			ast_loader_load_image(PBT_UEFI_X64_AST2700, (u32 *)vbios->vbios1_base);
+			ast_loader_load_image(PBT_UEFI_X64_AST2700, (u32 *)vbios->vbios1_base,
+					      true);
 
 			/* Remove riscv Dram base */
 			vbios_mem_base &= ~(ASPEED_DRAM_BASE);

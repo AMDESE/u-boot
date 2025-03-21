@@ -109,7 +109,7 @@ static int ast_loader_probe(struct udevice *dev)
 	return err;
 }
 
-int ast_loader_load_image(u32 type, u32 *dst)
+int ast_loader_load_image(u32 type, u32 *dst, bool verify)
 {
 	struct ast_loader *ast;
 	struct udevice *dev;
@@ -125,7 +125,7 @@ int ast_loader_load_image(u32 type, u32 *dst)
 
 	ast = dev_get_priv(dev);
 
-	tmp_buf = ast->rev_id ? (u32 *)ASPEED_SRAM_BASE : dst;
+	tmp_buf = (ast->rev_id && verify) ? (u32 *)ASPEED_SRAM_BASE : dst;
 
 	if (ast->load) {
 		err = ast->load(dev, type, tmp_buf, &len);
@@ -133,7 +133,7 @@ int ast_loader_load_image(u32 type, u32 *dst)
 			return err;
 	}
 
-	if (ast->verify) {
+	if (ast->verify && verify) {
 		err = ast->verify(type, tmp_buf, len);
 		if (err) {
 			printf("Digest verify fail, err=%d\n", err);

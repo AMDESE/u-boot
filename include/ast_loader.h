@@ -44,7 +44,7 @@ struct stor_ops {
 };
 
 int ast_get_boot_mode(void);
-int ast_loader_load_image(u32 type, u32 *dst);
+int ast_loader_load_image(u32 type, u32 *dst, bool verify);
 int ast_loader_init(void);
 
 int stor_init(struct udevice *dev);
