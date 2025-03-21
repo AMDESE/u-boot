@@ -1,0 +1,50 @@
+// SPDX-License-Identifier: GPL-2.0+
+
+/dts-v1/;
+
+#include "ast2700-evb.dts"
+
+/ {
+	model = "AST2700 DCSCM";
+};
+
+/* Disable components from ast2700-evb */
+&mac1 {
+	status = "disabled";
+};
+
+&mdio1 {
+	status = "disabled";
+};
+
+&emmc {
+	status = "disabled";
+};
+
+&emmc_controller {
+	status = "disabled";
+};
+
+&sdc {
+	status = "disabled";
+};
+
+&sdhci {
+	status = "disabled";
+};
+
+/* Enable components for ast2700-dcscm */
+/* LM75 */
+&i2c5 {
+	status = "okay";
+};
+
+/* EEPROM */
+&i2c9 {
+	status = "okay";
+};
+
+/* AST2700 A1 i2c10 -> AST1060 i2c0 for PFR mailbox. */
+&i2c10 {
+	status = "okay";
+};
