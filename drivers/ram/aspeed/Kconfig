@@ -1,5 +1,10 @@
 if ASPEED_RAM
 
+config ASPEED_MPU
+	bool "Enable ASPEED MPU"
+	help
+	  Say Y here to enable ASPEED MPU support.
+
 config ASPEED_DDR4_DUALX8
 	bool "Enable Dual X8 DDR4 die"
 	help

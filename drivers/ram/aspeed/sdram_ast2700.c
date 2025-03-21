@@ -782,6 +782,234 @@ static int sdramc_size_detect(struct sdramc *sdramc)
 	return 0;
 }
 
+static void sdramc_get_property(struct udevice *dev)
+{
+	struct sdramc *sdramc = (struct sdramc *)dev_get_priv(dev);
+	uint32_t phandle;
+	ofnode subnode;
+	const char *name;
+	char prop_name[8];
+	u32 protect_start, protect_end;
+	int i, j;
+	int err = 0;
+	int len;
+
+	if (dev_read_bool(dev, "ecc-enable")) {
+		sdramc->ecc_size = dev_read_u32_default(dev, "ecc-size", 0);
+		sdramc_ecc_enable(sdramc);
+	}
+
+	if (dev_read_bool(dev, "aes-enable")) {
+		sdramc->aes_size = dev_read_u32_default(dev, "aes-size", 0);
+		sdramc_aes_enable(sdramc);
+	}
+
+	for (i = 0; i < MAX_MPU_COUNT; i++) {
+		snprintf(prop_name, sizeof(prop_name), "%s%d", MPU_PROP_NAME, i);
+
+		j = sdramc->mpu_cnt;
+
+		if (dev_read_bool(dev, prop_name)) {
+			err = ofnode_read_u32(dev_ofnode(dev), prop_name, &phandle);
+			if (err)
+				continue;
+
+			subnode = ofnode_get_by_phandle(phandle);
+			if (!ofnode_valid(subnode))
+				continue;
+
+			name = ofnode_read_string(subnode, "protect-name");
+
+			if (ofnode_read_u32(subnode, "protect-start", &protect_start) ||
+			    ofnode_read_u32(subnode, "protect-end", &protect_end) ||
+			    !ofnode_read_prop(subnode, "allow", &len) || !len)
+				continue;
+
+			sdramc->mpu[j].start = protect_start;
+			sdramc->mpu[j].end = protect_end;
+			sdramc->mpu[j].allow = (struct mpu_allow *)malloc(len);
+			if (!sdramc->mpu[j].allow)
+				continue;
+
+			ofnode_read_u32_array(subnode, "allow", (u32 *)sdramc->mpu[j].allow, len / sizeof(u32));
+
+			sdramc->mpu[j].allow_cnt = len / sizeof(struct mpu_allow);
+
+			memcpy(sdramc->mpu[j].name, name, strlen(name));
+
+			sdramc->mpu_cnt++;
+		}
+	}
+}
+
+struct mpu_attr {
+	u32 attr;
+	const char *str;
+};
+
+struct mpu_attr attr_info[] = {
+	{S_READWRITE, "_rw"},
+	{S_READONLY, "_ro"},
+	{S_WRITEONLY, "_wo"},
+	{NS_READWRITE, "_nrw"},
+	{NS_READONLY, "_nro"},
+	{NS_WRITEONLY, "_nwo"},
+};
+
+struct mpu_id {
+	int id;
+	const char *str;
+	u8 ofst;
+	u32 mask;
+};
+
+struct mpu_id id_info[] = {
+	{MPU_ID_CA35,	"ca35", 0x00, BIT(4)},
+	{MPU_ID_VE_HI,	"ve_hi", 0x10, BIT(0)},
+	{MPU_ID_VE_LO,	"ve_lo", 0x10, BIT(1)},
+	{MPU_ID_USB_A1, "usb_a1", 0x10, BIT(2)},
+	{MPU_ID_USB_A2, "usb_a2", 0x10, BIT(3)},
+	{MPU_ID_E2M,	"e2m", 0x10, BIT(4)},
+	{MPU_ID_MCTP,	"mctp", 0x10, BIT(5)},
+	{MPU_ID_H2M,	"h2m", 0x10, BIT(6)},
+	{MPU_ID_HMAC,	"hmac", 0x10, BIT(7)},
+	{MPU_ID_USB_B1, "usb_b1", 0x10, BIT(16)},
+	{MPU_ID_USB_B2, "usb_b2", 0x10, BIT(17)},
+	{MPU_ID_VGA1_CR, "vga1_cr", 0x10, BIT(18)},
+	{MPU_ID_VGA1_LE, "vga1_le", 0x10, BIT(19)},
+	{MPU_ID_TSP_INST, "tsp_i", 0x10, BIT(20)},
+	{MPU_ID_VE,	"ve", 0x10, BIT(21)},
+	{MPU_ID_MCTP8,	"mctp8", 0x10, BIT(22)},
+	{MPU_ID_UHCI,	"uhci", 0x10, BIT(23)},
+	{MPU_ID_USB3_A1, "usb3_a1", 0x14, BIT(0)},
+	{MPU_ID_USB3_A2, "usb3_a2", 0x14, BIT(1)},
+	{MPU_ID_SHA3,	"sha3", 0x14, BIT(2)},
+	{MPU_ID_VGA2_CR, "vga2_cr", 0x14, BIT(3)},
+	{MPU_ID_VGA2_LE, "vga2_le", 0x14, BIT(4)},
+	{MPU_ID_TSP_DATA, "tsp_d", 0x14, BIT(5)},
+	{MPU_ID_E2M1,	"e2m1", 0x14, BIT(6)},
+	{MPU_ID_GFX,	"gfx", 0x14, BIT(7)},
+	{MPU_ID_RVAS1,	"rvas1", 0x14, BIT(8)},
+	{MPU_ID_RVAS2,	"rvas2", 0x14, BIT(9)},
+	{MPU_ID_MHMAC,	"mhmac", 0x14, BIT(10)},
+	{MPU_ID_M2D,	"m2d", 0x14, BIT(11)},
+	{MPU_ID_M2D2,	"m2d2", 0x14, BIT(12)},
+	{MPU_ID_SSP_INST, "ssp_i", 0x14, BIT(13)},
+	{MPU_ID_SSP_DATA, "ssp_d", 0x14, BIT(14)},
+	{MPU_ID_XDMA8,	"xdma8", 0x14, BIT(15)},
+	{MPU_ID_XDMA,	"xdma", 0x14, BIT(16)},
+	{MPU_ID_SDIO,	"sdio", 0x14, BIT(17)},
+	{MPU_ID_SLIM,	"slim", 0x14, BIT(19)},
+	{MPU_ID_USBH_A, "usbh_a", 0x14, BIT(24)},
+	{MPU_ID_USBH_B, "usbh_b", 0x14, BIT(25)},
+	{MPU_ID_UFS,	"ufs", 0x14, BIT(26)},
+};
+
+static int sdramc_mpu_init(struct sdramc *sdramc)
+{
+	struct sdramc_regs *regs = sdramc->regs;
+	u32 val;
+	int id, attr;
+	int i;
+	char *name;
+
+	for (i = 0; i < sdramc->mpu_cnt; i++) {
+		/* define mpu range */
+		writel(sdramc->mpu[i].start >> 4, &regs->region[i].start);
+		writel((sdramc->mpu[i].end - 1) >> 4, &regs->region[i].end);
+
+		/* protect from all master by default */
+		writel(0x00000030, &regs->region[i].ctrl);
+		writel(0xffffffff, &regs->region[i].wr_master_0);
+		writel(0xffffffff, &regs->region[i].wr_master_1);
+		writel(0xffffffff, &regs->region[i].rd_master_0);
+		writel(0xffffffff, &regs->region[i].rd_master_1);
+		writel(0x00000000, &regs->region[i].wr_secure_0);
+		writel(0x00000000, &regs->region[i].wr_secure_1);
+		writel(0x00000000, &regs->region[i].rd_secure_0);
+		writel(0x00000000, &regs->region[i].rd_secure_1);
+
+		name = malloc(128);
+		if (!name)
+			return -ENOMEM;
+
+		memset(name, 0, 128);
+
+		/* define mpu policy */
+		for (int j = 0; j < sdramc->mpu[i].allow_cnt; j++) {
+			id = sdramc->mpu[i].allow[j].id;
+			attr = sdramc->mpu[i].allow[j].attr;
+
+			switch (attr) {
+			case S_READWRITE:
+				if (id == MPU_ID_CA35) {
+					writel(0xf0, (void *)&regs->region[i].ctrl);
+					break;
+				}
+				val = readl((u8 *)&regs->region[i].ctrl + id_info[id].ofst);
+				writel(val & ~id_info[id].mask, (u8 *)&regs->region[i].ctrl + id_info[id].ofst);
+				val = readl((u8 *)&regs->region[i].ctrl + id_info[id].ofst + 0x8);
+				writel(val & ~id_info[id].mask, (u8 *)&regs->region[i].ctrl + id_info[id].ofst + 0x8);
+				val = readl((u8 *)&regs->region[i].ctrl + id_info[id].ofst + 0x10);
+				writel(val & ~id_info[id].mask, (u8 *)&regs->region[i].ctrl + id_info[id].ofst + 0x10);
+				val = readl((u8 *)&regs->region[i].ctrl + id_info[id].ofst + 0x18);
+				writel(val & ~id_info[id].mask, (u8 *)&regs->region[i].ctrl + id_info[id].ofst + 0x18);
+				break;
+			case S_READONLY:
+				if (id == MPU_ID_CA35) {
+					writel(0xb0, (void *)&regs->region[i].ctrl);
+					break;
+				}
+				val = readl((u8 *)&regs->region[i].ctrl + id_info[id].ofst + 0x8);
+				writel(val & ~id_info[id].mask, (u8 *)&regs->region[i].ctrl + id_info[id].ofst + 0x8);
+				val = readl((u8 *)&regs->region[i].ctrl + id_info[id].ofst + 0x18);
+				writel(val & ~id_info[id].mask, (u8 *)&regs->region[i].ctrl + id_info[id].ofst + 0x18);
+				break;
+			case S_WRITEONLY:
+				if (id == MPU_ID_CA35) {
+					writel(0x70, (void *)&regs->region[i].ctrl);
+					break;
+				}
+				val = readl((u8 *)&regs->region[i].ctrl + id_info[id].ofst);
+				writel(val & ~id_info[id].mask, (u8 *)&regs->region[i].ctrl + id_info[id].ofst);
+				val = readl((u8 *)&regs->region[i].ctrl + id_info[id].ofst + 0x10);
+				writel(val & ~id_info[id].mask, (u8 *)&regs->region[i].ctrl + id_info[id].ofst + 0x10);
+				break;
+			case NS_READWRITE:
+				if (id == MPU_ID_CA35) {
+					writel(0x00, (void *)&regs->region[i].ctrl);
+					break;
+				}
+				break;
+			case NS_READONLY:
+				break;
+			case NS_WRITEONLY:
+				break;
+			default:
+				break;
+			};
+
+			strcat(name, id_info[id].str);
+			strcat(name, attr_info[attr].str);
+			strcat(name, ",");
+		}
+
+		printf("[mpu-%d:%s:	0x%08x~0x%08x] %s\n", i, sdramc->mpu[i].name, sdramc->mpu[i].start, sdramc->mpu[i].end, name);
+		free(name);
+	}
+
+	return 0;
+}
+
+void sdramc_mpu_enable(struct udevice *dev)
+{
+	struct sdramc *sdramc = (struct sdramc *)dev_get_priv(dev);
+	int i;
+
+	for (i = 0; i < sdramc->mpu_cnt; i++)
+		setbits_le32(&sdramc->regs->region[i].ctrl, DRAMC_MPU_EN);
+}
+
 static int sdram_init(struct udevice *dev)
 {
 	struct sdramc *sdramc = (struct sdramc *)dev_get_priv(dev);
@@ -806,15 +1034,7 @@ static int sdram_init(struct udevice *dev)
 
 	sdramc_enable_refresh(sdramc);
 
-	if (dev_read_bool(dev, "ecc-enable")) {
-		sdramc->ecc_size = dev_read_u32_default(dev, "ecc-size", 0);
-		sdramc_ecc_enable(sdramc);
-	}
-
-	if (dev_read_bool(dev, "aes-enable")) {
-		sdramc->aes_size = dev_read_u32_default(dev, "aes-size", 0);
-		sdramc_aes_enable(sdramc);
-	}
+	sdramc_get_property(dev);
 
 	bistcfg = FIELD_PREP(DRAMC_BISTCFG_PMODE, BIST_PMODE_CRC)
 		| FIELD_PREP(DRAMC_BISTCFG_BMODE, BIST_BMODE_RW_SWITCH)
@@ -827,8 +1047,12 @@ static int sdram_init(struct udevice *dev)
 	}
 
 	/* a1 get size in the spl */
-	if (!!(readl((void *)ASPEED_IO_REVISION_ID) & CHIP_AST2700A1_ID_MASK))
+	if (!!(readl((void *)ASPEED_IO_REVISION_ID) & CHIP_AST2700A1_ID_MASK)) {
 		sdramc_size_detect(sdramc);
+
+		if (IS_ENABLED(CONFIG_SPL_BUILD) && IS_ENABLED(CONFIG_ASPEED_MPU))
+			sdramc_mpu_init(sdramc);
+	}
 
 	sdramc_qos_init(sdramc);
 

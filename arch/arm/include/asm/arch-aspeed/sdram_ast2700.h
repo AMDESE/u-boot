@@ -16,6 +16,7 @@
 #include <linux/kernel.h>
 #include <linux/bitfield.h>
 #include <time.h>
+#include <dt-bindings/soc/ast2700-mpu.h>
 
 #define SCU_CPU_REG                     0x12c02000
 #define SCU_CPU_VGA0_SCRATCH            (SCU_CPU_REG + 0x900)
@@ -267,9 +268,30 @@
 #define DRAMC_PORT4_SDIO_SHIFT			(1)
 #define DRAMC_PORT4_SLI_SHIFT			(3)
 
+/* offset 0x600 */
+#define DRAMC_MPU_EN				BIT(0)
+#define DRAMC_MPU_NS_WRITE			BIT(4)
+#define DRAMC_MPU_NS_READ			BIT(5)
+#define DRAMC_MPU_S_WRITE			BIT(6)
+#define DRAMC_MPU_S_READ			BIT(7)
+
 #define QOS_SLI_LEVEL(x)			((x) << (DRAMC_PORT4_SLI_SHIFT * 4))
 
 #define DEFAULT_RDQOS_LEVEL			(8 << DRAMC_PORT_CFG_RDQOS_LVL_SHIFT)
+
+struct mpu_allow {
+	int id;
+	int attr;
+};
+
+struct mpu_info {
+	int id;
+	char name[8];
+	u32 start;
+	u32 end;
+	struct mpu_allow *allow;
+	int allow_cnt;
+};
 
 struct sdramc {
 	struct ram_info info;
@@ -280,6 +302,9 @@ struct sdramc {
 	ulong clock_rate;
 	u32 ecc_size;
 	u32 aes_size;
+
+	struct mpu_info mpu[MAX_MPU_COUNT];
+	int mpu_cnt;
 };
 
 struct sdramc_port {
@@ -301,10 +326,10 @@ struct sdramc_port {
 };
 
 struct sdramc_protect {
-	u32 control;
-	u32 err_status;
-	u32 lo_addr;
-	u32 hi_addr;
+	u32 ctrl;
+	u32 status;
+	u32 start;
+	u32 end;
 	u32 wr_master_0;
 	u32 wr_master_1;
 	u32 rd_master_0;
@@ -313,6 +338,7 @@ struct sdramc_protect {
 	u32 wr_secure_1;
 	u32 rd_secure_0;
 	u32 rd_secure_1;
+	u32 resvd[4];
 };
 
 struct sdramc_regs {
@@ -376,6 +402,7 @@ struct sdramc_regs {
 	u32 gfm1ctl;
 	u32 reserved3[0x3d];
 	struct sdramc_port port[6];	/* 0x200 */
+	u32 reserved4[64];
 	struct sdramc_protect region[16];/* 0x600 */
 };
 
@@ -448,5 +475,5 @@ struct train_bin {
 void fpga_phy_init(struct sdramc *sdramc);
 void dwc_phy_init(struct sdramc *sdramc);
 bool is_ddr4(void);
-//int dram_init(void);//struct udevice *dev)
+void sdramc_mpu_enable(struct udevice *dev);
 #endif
