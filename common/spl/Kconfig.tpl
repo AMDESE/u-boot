@@ -291,6 +291,12 @@ config TPL_SPI_FLASH_SUPPORT
 	  Enable support for using SPI flash in TPL. See SPL_SPI_FLASH_SUPPORT
 	  for details.
 
+config TPL_ASPEED_LOADER_SUPPORT
+	bool "Support ASPEED Loader drivers"
+	help
+	  Enable support for using ASPEED Loader in TPL. See SPL_ASPEED_I3C_SUPPORT
+	  for details.
+
 config TPL_SPI_FLASH_TINY
 	bool "Enable low footprint TPL SPI Flash support"
 	depends on TPL_SPI_FLASH_SUPPORT && !SPI_FLASH_BAR

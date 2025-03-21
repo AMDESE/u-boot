@@ -25,14 +25,16 @@ struct recovery_info {
 
 struct recovery_info message[] = {
 	{PBT_END_MARK,			"\n"},
-	{PBT_DDR4_PMU_TRAIN_IMEM,	"Please send \"ddr4_pmu_train_imem.bin\" through recovery interface.\n"},
-	{PBT_DDR4_PMU_TRAIN_DMEM,	"Please send \"ddr4_pmu_train_dmem.bin\" through recovery interface.\n"},
-	{PBT_DDR4_2D_PMU_TRAIN_IMEM,	"Please send \"ddr4_2d_pmu_train_imem.bin\" through recovery interface.\n"},
-	{PBT_DDR4_2D_PMU_TRAIN_DMEM,	"Please send \"ddr4_2d_pmu_train_dmem.bin\" through recovery interface.\n"},
-	{PBT_DDR5_PMU_TRAIN_IMEM,	"Please send \"ddr5_pmu_train_imem.bin\" through recovery interface.\n"},
-	{PBT_DDR5_PMU_TRAIN_DMEM,	"Please send \"ddr5_pmu_train_dmem.bin\" through recovery interface.\n"},
-	{PBT_DP_FW,			"Please send \"dp_fw.bin\" through recovery interface.\n"},
-	{PBT_UEFI_X64_AST2700,		"Please send \"uefi_x64_ast2700.bin\" through recovery interface.\n"},
+	{PBT_DDR4_PMU_TRAIN_IMEM,	"ddr4_pmu_train_imem.bin"},
+	{PBT_DDR4_PMU_TRAIN_DMEM,	"ddr4_pmu_train_dmem.bin"},
+	{PBT_DDR4_2D_PMU_TRAIN_IMEM,	"ddr4_2d_pmu_train_imem.bin"},
+	{PBT_DDR4_2D_PMU_TRAIN_DMEM,	"ddr4_2d_pmu_train_dmem.bin"},
+	{PBT_DDR5_PMU_TRAIN_IMEM,	"ddr5_pmu_train_imem.bin"},
+	{PBT_DDR5_PMU_TRAIN_DMEM,	"ddr5_pmu_train_dmem.bin"},
+	{PBT_DP_FW,			"dp_fw.bin"},
+	{PBT_UEFI_X64_AST2700,		"uefi_x64_ast2700.bin"},
+	{PBT_FIT_HEADER,		"u-boot-fit-header.bin"},
+	{PBT_FIT,			"u-boot.bin"},
 };
 
 static int recovery_load(struct udevice *dev, u32 type, u32 *dst, u32 *len)
@@ -42,7 +44,7 @@ static int recovery_load(struct udevice *dev, u32 type, u32 *dst, u32 *len)
 	u32 sz;
 	int err;
 
-	printf("%s", message[type].msg);
+	printf("Please send \"%s\" through recovery interface.\n", message[type].msg);
 
 	ops = ast_loader_get_ops(ast->boot_dev);
 	if (ops && ops->load)

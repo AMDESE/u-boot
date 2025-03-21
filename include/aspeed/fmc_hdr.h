@@ -21,6 +21,8 @@ enum prebuilt_type {
 	PBT_DDR5_PMU_TRAIN_DMEM,
 	PBT_DP_FW,
 	PBT_UEFI_X64_AST2700,
+	PBT_FIT_HEADER,
+	PBT_FIT,
 
 	PBT_NUM
 };

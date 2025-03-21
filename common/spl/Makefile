@@ -15,6 +15,7 @@ obj-$(CONFIG_$(SPL_TPL_)LEGACY_IMAGE_FORMAT) += spl_legacy.o
 obj-$(CONFIG_$(SPL_TPL_)NOR_SUPPORT) += spl_nor.o
 obj-$(CONFIG_$(SPL_TPL_)XIP_SUPPORT) += spl_xip.o
 obj-$(CONFIG_$(SPL_TPL_)YMODEM_SUPPORT) += spl_ymodem.o
+obj-$(CONFIG_$(SPL_TPL_)ASPEED_LOADER_SUPPORT) += spl_ast_loader.o
 ifndef CONFIG_SPL_UBI
 obj-$(CONFIG_$(SPL_TPL_)NAND_SUPPORT) += spl_nand.o
 obj-$(CONFIG_$(SPL_TPL_)ONENAND_SUPPORT) += spl_onenand.o
