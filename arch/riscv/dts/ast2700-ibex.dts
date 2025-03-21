@@ -136,6 +136,73 @@
 			reg = <0xb1bf0000 0x10000>;
 			no-map;
 		};
+
+		ca35_s: ca35-s {
+			bootph-all;
+			protect-name = "ca35-s";
+			protect-start = <0x30000000>;
+			protect-end = <0x31080000>;
+			allow = <MPU_ID_CA35 S_READWRITE>,
+				<MPU_ID_SLIM S_READWRITE>;
+		};
+
+		ssp: ssp {
+			bootph-all;
+			protect-name = "ssp";
+			protect-start = <0x2c000000>;
+			protect-end = <0x2d000000>;
+			allow = <MPU_ID_SSP_INST S_READONLY>,
+				<MPU_ID_SSP_DATA S_READWRITE>;
+		};
+
+		/* ipc: ssp <=> ibex_fw (bootmcu) */
+		share_1: share-1 {
+			bootph-all;
+			protect-name = "share-1";
+			protect-start = <0x2d000000>;
+			protect-end = <0x2e000000>;
+			allow = <MPU_ID_SSP_DATA S_READWRITE>,
+				<MPU_ID_SLIM S_READWRITE>;
+		};
+
+		tsp: tsp {
+			bootph-all;
+			protect-name = "tsp";
+			protect-start = <0x2e000000>;
+			protect-end = <0x30000000>;
+			allow = <MPU_ID_TSP_INST S_READONLY>,
+				<MPU_ID_TSP_DATA S_READWRITE>,
+				<MPU_ID_SLIM S_READWRITE>;
+		};
+
+		/* ipc: ssp <=> optee (ca35_s) */
+		share_2: share-2 {
+			bootph-all;
+			protect-name = "share-2";
+			protect-start = <0x31080000>;
+			protect-end = <0x31480000>;
+			allow = <MPU_ID_SSP_DATA S_READWRITE>,
+				<MPU_ID_CA35 S_READWRITE>;
+		};
+
+		/* ipc: ssp <=> linux (ca35_ns) */
+		share_3: share-3 {
+			bootph-all;
+			protect-name = "share-3";
+			protect-start = <0x31480000>;
+			protect-end = <0x31880000>;
+			allow = <MPU_ID_SSP_DATA S_READWRITE>,
+				<MPU_ID_CA35 NS_READWRITE>;
+		};
+
+		vb: v-bios {
+			bootph-all;
+			protect-name = "v-bios";
+			protect-start = <0x31bb0000>;
+			protect-end = <0x31bd0000>;
+			allow = <MPU_ID_E2M S_READONLY>,
+				<MPU_ID_E2M1 S_READONLY>;
+		};
 	};
 
 	binman: binman {
@@ -155,6 +222,14 @@
 	aes-enable;
 	aes-size = <0x38000000>;
 #endif
+
+	mpu-0 = <&ca35_s>;
+	mpu-1 = <&ssp>;
+	mpu-2 = <&tsp>;
+	mpu-3 = <&share_1>;
+	mpu-4 = <&share_2>;
+	mpu-5 = <&share_3>;
+	mpu-6 = <&vb>;
 };
 
 &uart12 {

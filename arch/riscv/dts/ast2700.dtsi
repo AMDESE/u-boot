@@ -4,6 +4,7 @@
 #include <dt-bindings/clock/ast2700-clock.h>
 #include <dt-bindings/reset/ast2700-reset.h>
 #include <dt-bindings/soc/ast2700-prictrl.h>
+#include <dt-bindings/soc/ast2700-mpu.h>
 
 / {
 	model = "Aspeed AST2700 BootMCU";
