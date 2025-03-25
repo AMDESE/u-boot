@@ -88,7 +88,6 @@ int net_enable_sgmii_pin(void)
 #if defined(ASPEED_AST2700)
 	/* PCIE/SGMII MUX */
 	writel(0x00000001, AST_IO_SCU_BASE + 0x47c);
-	writel(0x0000012B, AST_IO_PLDA1_BASE + 0x268);
 #endif
 	return 0;
 }
@@ -562,10 +561,7 @@ int netdiag_func(int argc, char *const argv[])
 		mac_obj->is_sgmii = 1;
 		parm->interface = PHY_INTERFACE_MODE_SGMII;
 		parm->speed = 1000;
-		if (parm->control == NETDIAG_CTRL_LOOPBACK_MAC) {
-			netdiag_cli_usage();
-			return FAIL_PARAMETER_INVALID;
-		}
+		parm->loop = 1;
 	}
 #endif
 
@@ -636,7 +632,7 @@ int netdiag_func(int argc, char *const argv[])
 	config_clock();
 	mac_obj->is_rgmii =
 		(mac_obj->phy->phy_mode == PHY_INTERFACE_MODE_RMII) ? 0 : 1;
-	if (mac_obj->is_sgmii && parm->control != NETDIAG_CTRL_LOOPBACK_MII)
+	if (mac_obj->is_sgmii)
 		net_enable_sgmii_pin();
 	else if (mac_obj->is_rgmii)
 		net_enable_rgmii_pin(mac_obj->device->dev_id - ASPEED_DEV_MAC0);
@@ -690,7 +686,7 @@ int netdiag_func(int argc, char *const argv[])
 			break;
 
 		if (has_error && parm->mode == MODE_MARGIN)
-			printf("\nnetdiag FAIL: margin not enough\n");
+			printf("\nnetdiag FAIL\n");
 		else
 			printf("\nnetdiag PASS\n");
 		break;

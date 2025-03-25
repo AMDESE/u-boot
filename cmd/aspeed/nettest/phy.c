@@ -198,6 +198,35 @@ void phy_rtl8211f_config(struct phy_s *obj)
 	u32 reg, mask;
 	u32 physr = SR_DUPLEX | SR_LINK;
 
+	if (obj->phy_mode == PHY_INTERFACE_MODE_SGMII) {
+		if (obj->loopback == PHY_LOOPBACK_OFF) {
+			return;
+		} else if (obj->loopback == PHY_LOOPBACK_EXT) {
+			aspeed_mdio_write(mdio, mdio->phy_addr, PHY_EPAGSR, 0xa43);
+			aspeed_mdio_write(mdio, mdio->phy_addr, PHY_BMCR, 0x8000);
+			mdelay(200);
+			aspeed_mdio_write(mdio, mdio->phy_addr, PHY_BMCR, 0x0140);
+			aspeed_mdio_write(mdio, mdio->phy_addr, PHY_CR1, 0x2d18);
+			mdelay(200);
+			aspeed_mdio_write(mdio, mdio->phy_addr, PHY_EPAGSR, 0);
+		} else {
+			aspeed_mdio_write(mdio, mdio->phy_addr, PHY_EPAGSR, 0);
+			aspeed_mdio_write(mdio, mdio->phy_addr, PHY_BMCR, 0x8000);
+			mdelay(200);
+			aspeed_mdio_write(mdio, mdio->phy_addr, PHY_BMCR, 0x4140);
+			mdelay(200);
+		}
+		aspeed_mdio_write(mdio, mdio->phy_addr, PHY_EPAGSR, 0xdcf);
+		(void)aspeed_mdio_read(mdio, mdio->phy_addr, 21);
+		(void)aspeed_mdio_read(mdio, mdio->phy_addr, 21);
+		(void)aspeed_mdio_read(mdio, mdio->phy_addr, 22);
+		(void)aspeed_mdio_read(mdio, mdio->phy_addr, 22);
+		aspeed_mdio_write(mdio, mdio->phy_addr, PHY_EPAGSR, 0);
+		(void)aspeed_mdio_read(mdio, mdio->phy_addr, PHY_BMSR);
+		(void)aspeed_mdio_read(mdio, mdio->phy_addr, PHY_BMSR);
+		return;
+	}
+
 	phy_reset(obj);
 	phy_default_config(obj);
 

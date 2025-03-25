@@ -4,6 +4,7 @@
  */
 #include "platform.h"
 #include "internal.h"
+#include "phy.h"
 
 #define log_warn			printf
 
@@ -112,10 +113,17 @@
 #define   SPEED_100		BIT(4)
 #define   SPEED_10		0
 #define   FIFO			BIT(0)
+#define SGMII_LOCAL_CFG			0x18
+#define   L_SPEED_1000		BIT(3)
+#define   L_SPEED_100		BIT(2)
+#define   L_SPEED_10		0
+#define   L_DUPLEX_F		BIT(1)
+#define   L_LINK_UP		BIT(0)
 #define SGMII_PHY_PIPE_CTL		0x20
 #define   TX_DEEMPH_3_5DB	BIT(6)
 #define SGMII_PHY_PIPE_ST		0x24
 #define   PIPE_PHY_ST		BIT(0)
+#define SGMII_FIFO_DELAY_THREHOLD	0x28
 #define SGMII_MODE			0x30
 #define   LOCAL_CONF		BIT(2)
 #define   PHY_SIDE		BIT(1)
@@ -190,10 +198,21 @@ int aspeed_mac_init_rx_desc(struct mac_s *obj)
 void aspeed_mac_set_sgmii(struct mac_s *obj)
 {
 #if defined(ASPEED_AST2700)
+	writel(0x0000012B, AST_IO_PLDA1_BASE + 0x268);
 	writel(0, AST_SGMII_BASE + SGMII_MODE);
+	writel(0, AST_SGMII_BASE + SGMII_CFG);
 	writel(RESET | POWER_DOWN, AST_SGMII_BASE + SGMII_CFG);
-	writel(SPEED_1000, AST_SGMII_BASE + SGMII_CFG);
-	writel(LOCAL_CONF | ENABLE, AST_SGMII_BASE + SGMII_MODE);
+	writel(AN_ENABLE, AST_SGMII_BASE + SGMII_CFG);
+	if (obj->phy->speed == 1000)
+		writel(0x5, AST_SGMII_BASE + SGMII_FIFO_DELAY_THREHOLD);
+	else
+		writel(0xa, AST_SGMII_BASE + SGMII_FIFO_DELAY_THREHOLD);
+	writel(TX_DEEMPH_3_5DB, AST_SGMII_BASE + SGMII_PHY_PIPE_CTL);
+	writel(ENABLE, AST_SGMII_BASE + SGMII_MODE);
+	if (obj->phy->phy_mode != PHY_LOOPBACK_OFF) {
+		mdelay(500);
+		phy_init(obj->phy);
+	}
 #endif
 }
 
