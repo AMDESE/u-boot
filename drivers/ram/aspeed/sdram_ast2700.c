@@ -847,62 +847,11 @@ struct mpu_attr {
 	const char *str;
 };
 
-struct mpu_attr attr_info[] = {
-	{S_READWRITE, "_rw"},
-	{S_READONLY, "_ro"},
-	{S_WRITEONLY, "_wo"},
-	{NS_READWRITE, "_nrw"},
-	{NS_READONLY, "_nro"},
-	{NS_WRITEONLY, "_nwo"},
-};
-
 struct mpu_id {
 	int id;
 	const char *str;
 	u8 ofst;
 	u32 mask;
-};
-
-struct mpu_id id_info[] = {
-	{MPU_ID_CA35,	"ca35", 0x00, BIT(4)},
-	{MPU_ID_VE_HI,	"ve_hi", 0x10, BIT(0)},
-	{MPU_ID_VE_LO,	"ve_lo", 0x10, BIT(1)},
-	{MPU_ID_USB_A1, "usb_a1", 0x10, BIT(2)},
-	{MPU_ID_USB_A2, "usb_a2", 0x10, BIT(3)},
-	{MPU_ID_E2M,	"e2m", 0x10, BIT(4)},
-	{MPU_ID_MCTP,	"mctp", 0x10, BIT(5)},
-	{MPU_ID_H2M,	"h2m", 0x10, BIT(6)},
-	{MPU_ID_HMAC,	"hmac", 0x10, BIT(7)},
-	{MPU_ID_USB_B1, "usb_b1", 0x10, BIT(16)},
-	{MPU_ID_USB_B2, "usb_b2", 0x10, BIT(17)},
-	{MPU_ID_VGA1_CR, "vga1_cr", 0x10, BIT(18)},
-	{MPU_ID_VGA1_LE, "vga1_le", 0x10, BIT(19)},
-	{MPU_ID_TSP_INST, "tsp_i", 0x10, BIT(20)},
-	{MPU_ID_VE,	"ve", 0x10, BIT(21)},
-	{MPU_ID_MCTP8,	"mctp8", 0x10, BIT(22)},
-	{MPU_ID_UHCI,	"uhci", 0x10, BIT(23)},
-	{MPU_ID_USB3_A1, "usb3_a1", 0x14, BIT(0)},
-	{MPU_ID_USB3_A2, "usb3_a2", 0x14, BIT(1)},
-	{MPU_ID_SHA3,	"sha3", 0x14, BIT(2)},
-	{MPU_ID_VGA2_CR, "vga2_cr", 0x14, BIT(3)},
-	{MPU_ID_VGA2_LE, "vga2_le", 0x14, BIT(4)},
-	{MPU_ID_TSP_DATA, "tsp_d", 0x14, BIT(5)},
-	{MPU_ID_E2M1,	"e2m1", 0x14, BIT(6)},
-	{MPU_ID_GFX,	"gfx", 0x14, BIT(7)},
-	{MPU_ID_RVAS1,	"rvas1", 0x14, BIT(8)},
-	{MPU_ID_RVAS2,	"rvas2", 0x14, BIT(9)},
-	{MPU_ID_MHMAC,	"mhmac", 0x14, BIT(10)},
-	{MPU_ID_M2D,	"m2d", 0x14, BIT(11)},
-	{MPU_ID_M2D2,	"m2d2", 0x14, BIT(12)},
-	{MPU_ID_SSP_INST, "ssp_i", 0x14, BIT(13)},
-	{MPU_ID_SSP_DATA, "ssp_d", 0x14, BIT(14)},
-	{MPU_ID_XDMA8,	"xdma8", 0x14, BIT(15)},
-	{MPU_ID_XDMA,	"xdma", 0x14, BIT(16)},
-	{MPU_ID_SDIO,	"sdio", 0x14, BIT(17)},
-	{MPU_ID_SLIM,	"slim", 0x14, BIT(19)},
-	{MPU_ID_USBH_A, "usbh_a", 0x14, BIT(24)},
-	{MPU_ID_USBH_B, "usbh_b", 0x14, BIT(25)},
-	{MPU_ID_UFS,	"ufs", 0x14, BIT(26)},
 };
 
 static int sdramc_mpu_init(struct sdramc *sdramc)
@@ -912,6 +861,56 @@ static int sdramc_mpu_init(struct sdramc *sdramc)
 	int id, attr;
 	int i;
 	char *name;
+	struct mpu_attr attr_info[] = {
+		{S_READWRITE, "_rw"},
+		{S_READONLY, "_ro"},
+		{S_WRITEONLY, "_wo"},
+		{NS_READWRITE, "_nrw"},
+		{NS_READONLY, "_nro"},
+		{NS_WRITEONLY, "_nwo"},
+	};
+
+	struct mpu_id id_info[] = {
+		{MPU_ID_CA35,	"ca35", 0x00, BIT(4)},
+		{MPU_ID_VE_HI,	"ve_hi", 0x10, BIT(0)},
+		{MPU_ID_VE_LO,	"ve_lo", 0x10, BIT(1)},
+		{MPU_ID_USB_A1, "usb_a1", 0x10, BIT(2)},
+		{MPU_ID_USB_A2, "usb_a2", 0x10, BIT(3)},
+		{MPU_ID_E2M,	"e2m", 0x10, BIT(4)},
+		{MPU_ID_MCTP,	"mctp", 0x10, BIT(5)},
+		{MPU_ID_H2M,	"h2m", 0x10, BIT(6)},
+		{MPU_ID_HMAC,	"hmac", 0x10, BIT(7)},
+		{MPU_ID_USB_B1, "usb_b1", 0x10, BIT(16)},
+		{MPU_ID_USB_B2, "usb_b2", 0x10, BIT(17)},
+		{MPU_ID_VGA1_CR, "vga1_cr", 0x10, BIT(18)},
+		{MPU_ID_VGA1_LE, "vga1_le", 0x10, BIT(19)},
+		{MPU_ID_TSP_INST, "tsp_i", 0x10, BIT(20)},
+		{MPU_ID_VE,	"ve", 0x10, BIT(21)},
+		{MPU_ID_MCTP8,	"mctp8", 0x10, BIT(22)},
+		{MPU_ID_UHCI,	"uhci", 0x10, BIT(23)},
+		{MPU_ID_USB3_A1, "usb3_a1", 0x14, BIT(0)},
+		{MPU_ID_USB3_A2, "usb3_a2", 0x14, BIT(1)},
+		{MPU_ID_SHA3,	"sha3", 0x14, BIT(2)},
+		{MPU_ID_VGA2_CR, "vga2_cr", 0x14, BIT(3)},
+		{MPU_ID_VGA2_LE, "vga2_le", 0x14, BIT(4)},
+		{MPU_ID_TSP_DATA, "tsp_d", 0x14, BIT(5)},
+		{MPU_ID_E2M1,	"e2m1", 0x14, BIT(6)},
+		{MPU_ID_GFX,	"gfx", 0x14, BIT(7)},
+		{MPU_ID_RVAS1,	"rvas1", 0x14, BIT(8)},
+		{MPU_ID_RVAS2,	"rvas2", 0x14, BIT(9)},
+		{MPU_ID_MHMAC,	"mhmac", 0x14, BIT(10)},
+		{MPU_ID_M2D,	"m2d", 0x14, BIT(11)},
+		{MPU_ID_M2D2,	"m2d2", 0x14, BIT(12)},
+		{MPU_ID_SSP_INST, "ssp_i", 0x14, BIT(13)},
+		{MPU_ID_SSP_DATA, "ssp_d", 0x14, BIT(14)},
+		{MPU_ID_XDMA8,	"xdma8", 0x14, BIT(15)},
+		{MPU_ID_XDMA,	"xdma", 0x14, BIT(16)},
+		{MPU_ID_SDIO,	"sdio", 0x14, BIT(17)},
+		{MPU_ID_SLIM,	"slim", 0x14, BIT(19)},
+		{MPU_ID_USBH_A, "usbh_a", 0x14, BIT(24)},
+		{MPU_ID_USBH_B, "usbh_b", 0x14, BIT(25)},
+		{MPU_ID_UFS,	"ufs", 0x14, BIT(26)},
+	};
 
 	for (i = 0; i < sdramc->mpu_cnt; i++) {
 		/* define mpu range */
@@ -1034,7 +1033,8 @@ static int sdram_init(struct udevice *dev)
 
 	sdramc_enable_refresh(sdramc);
 
-	sdramc_get_property(dev);
+	if (IS_ENABLED(CONFIG_SPL_BUILD) && IS_ENABLED(CONFIG_ASPEED_MPU))
+		sdramc_get_property(dev);
 
 	bistcfg = FIELD_PREP(DRAMC_BISTCFG_PMODE, BIST_PMODE_CRC)
 		| FIELD_PREP(DRAMC_BISTCFG_BMODE, BIST_BMODE_RW_SWITCH)
