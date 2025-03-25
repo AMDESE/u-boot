@@ -6,6 +6,8 @@
 #include "ast2700-u-boot.dtsi"
 #include <dt-bindings/net/ti-dp83867.h>
 
+#define PCIE2_RC 1	// 1: RC, 0: SGMII
+
 / {
 	model = "AST2700 EVB";
 	compatible = "aspeed,ast2700-evb", "aspeed,ast2700";
@@ -151,7 +153,11 @@
 	pinctrl-0 = <&pinctrl_rgmii1_default>;
 };
 
-#if 0
+#if PCIE2_RC
+&pcie2 {
+	status = "okay";
+};
+#else
 &mdio2 {
 	status = "okay";
 	#address-cells = <1>;
