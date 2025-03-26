@@ -474,7 +474,6 @@ static void ltpi_do_link_training(struct ltpi_priv *ltpi)
 	 * = (ad_timeout in us * 1000)ns / 40ns = ad_timeout * 25
 	 */
 	writel(ltpi->ad_timeout * 25, (void *)ltpi->base + LTPI_LINK_MANAGE_CTRL1);
-	printf("[%08x] %08x\n", (u32)ltpi->base + LTPI_LINK_MANAGE_CTRL1, readl((void *)ltpi->base + LTPI_LINK_MANAGE_CTRL1));
 
 	/* Set the clock source to the base frequency 25MHz */
 	ltpi_phy_set_clksel(ltpi, REG_LTPI_PLL_25M, false);
@@ -655,6 +654,27 @@ static int ltpi_optimeout_query(struct ltpi_priv *ltpi)
 	return 0;
 }
 
+static void ltpi_dump(struct ltpi_priv *ltpi)
+{
+	int i;
+
+	for (i = 0; i < 0x250; i += 4) {
+		if (i % 16 == 0)
+			printf("\n[%08x] ", (uint32_t)ltpi->base + i);
+
+		printf("%08x ", readl((void *)ltpi->base + i));
+	}
+	printf("\n");
+
+	for (i = 0; i < 0x30; i += 4) {
+		if (i % 16 == 0)
+			printf("\n[%08x] ", (uint32_t)ltpi->top_base + i);
+
+		printf("%08x ", readl((void *)ltpi->top_base + i));
+	}
+	printf("\n");
+}
+
 static void ltpi_scm_init(struct ltpi_priv *ltpi)
 {
 	int ret, target_speed;
@@ -678,7 +698,14 @@ static void ltpi_scm_init(struct ltpi_priv *ltpi)
 			if (ret == LTPI_ERR_NONE)
 				break;
 
-			if (ctrlc() || ltpi_optimeout_query(ltpi)) {
+			if (ctrlc()) {
+				printf("LTPI: User terminated while waiting for PLL set state\n");
+				ltpi_log_exit(ltpi, LTPI_SYND_USER_TERMINATE);
+				goto ltpi_scm_exit;
+			}
+
+			if (ltpi_optimeout_query(ltpi)) {
+				printf("LTPI: Timeout while waiting for PLL set state\n");
 				ltpi_log_exit(ltpi, LTPI_SYND_EXTRST_LINK_TRAINING);
 				goto ltpi_scm_exit;
 			}
@@ -708,7 +735,14 @@ static void ltpi_scm_init(struct ltpi_priv *ltpi)
 		if (readl((void *)ltpi->base + LTPI_LINK_ST) & REG_LTPI_FRM_CRC_ERR)
 			ltpi->bootstage->errno |= LTPI_STATUS_HAS_CRC_ERR;
 
-		if (ctrlc() || ltpi_optimeout_query(ltpi)) {
+		if (ctrlc()) {
+			printf("LTPI: User terminated while waiting for operational state\n");
+			ltpi_log_exit(ltpi, LTPI_SYND_USER_TERMINATE);
+			goto ltpi_scm_exit;
+		}
+
+		if (ltpi_optimeout_query(ltpi)) {
+			printf("LTPI: Timeout while waiting for operational state\n");
 			ltpi_log_exit(ltpi, LTPI_SYND_EXTRST_LINK_CONFIG);
 			goto ltpi_scm_exit;
 		}
@@ -721,11 +755,16 @@ static void ltpi_scm_init(struct ltpi_priv *ltpi)
 			ltpi->phy_speed_cap |= LTPI_SP_CAP_25M;
 
 		ltpi_log_restart(ltpi, LTPI_SYND_WAIT_OP_TO);
+		printf("LTPI: Failed to enter operational state within %dus, restarting link\n",
+		       ltpi->ad_timeout);
+		ltpi_dump(ltpi);
 	} while (1);
 
 	return;
 
 ltpi_scm_exit:
+	printf("LTPI: Exiting initialization\n");
+	ltpi_dump(ltpi);
 	ltpi_reset(ltpi);
 }
 
