@@ -711,13 +711,13 @@ static void ltpi_scm_init(struct ltpi_priv *ltpi)
 				break;
 
 			if (ctrlc()) {
-				printf("LTPI: User terminated while waiting for PLL set state\n");
+				printf("User terminated for waiting PLL set state\n");
 				ltpi_log_exit(ltpi, LTPI_SYND_USER_TERMINATE);
 				goto ltpi_scm_exit;
 			}
 
 			if (ltpi_optimeout_query(ltpi)) {
-				printf("LTPI: Timeout while waiting for PLL set state\n");
+				printf("Timeout waiting for PLL set state\n");
 				ltpi_log_exit(ltpi, LTPI_SYND_EXTRST_LINK_TRAINING);
 				goto ltpi_scm_exit;
 			}
@@ -748,13 +748,13 @@ static void ltpi_scm_init(struct ltpi_priv *ltpi)
 			ltpi->bootstage->errno |= LTPI_STATUS_HAS_CRC_ERR;
 
 		if (ctrlc()) {
-			printf("LTPI: User terminated while waiting for operational state\n");
+			printf("User terminated for waiting operational state\n");
 			ltpi_log_exit(ltpi, LTPI_SYND_USER_TERMINATE);
 			goto ltpi_scm_exit;
 		}
 
 		if (ltpi_optimeout_query(ltpi)) {
-			printf("LTPI: Timeout while waiting for operational state\n");
+			printf("Timeout waiting for operational state\n");
 			ltpi_log_exit(ltpi, LTPI_SYND_EXTRST_LINK_CONFIG);
 			goto ltpi_scm_exit;
 		}
@@ -768,7 +768,7 @@ static void ltpi_scm_init(struct ltpi_priv *ltpi)
 			ltpi->phy_speed_cap |= LTPI_SP_CAP_25M;
 
 		ltpi_log_restart(ltpi, LTPI_SYND_WAIT_OP_TO);
-		printf("LTPI: Failed to enter operational state within %dus, restarting link\n",
+		printf("LTPI Failed to enter operational state within %dus, restarting link\n",
 		       ltpi->ad_timeout);
 		ltpi_dump(ltpi);
 	} while (1);
@@ -776,7 +776,7 @@ static void ltpi_scm_init(struct ltpi_priv *ltpi)
 	return;
 
 ltpi_scm_exit:
-	printf("LTPI: Exiting initialization\n");
+	printf("Exit LTPI initialization\n");
 	ltpi_dump(ltpi);
 	ltpi_reset(ltpi);
 }
