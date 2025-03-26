@@ -223,6 +223,10 @@
 	aes-size = <0x38000000>;
 #endif
 
+#if 0
+	/*
+	 * Example of memory protection unit
+	 */
 	mpu-0 = <&ca35_s>;
 	mpu-1 = <&ssp>;
 	mpu-2 = <&tsp>;
@@ -230,6 +234,7 @@
 	mpu-4 = <&share_2>;
 	mpu-5 = <&share_3>;
 	mpu-6 = <&vb>;
+#endif
 };
 
 &uart12 {
