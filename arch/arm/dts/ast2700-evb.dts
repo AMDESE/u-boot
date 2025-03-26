@@ -163,7 +163,7 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 	ethphy2: ethernet-phy@0 {
-		reg = <31>;
+		reg = <0>;
 	};
 };
 
