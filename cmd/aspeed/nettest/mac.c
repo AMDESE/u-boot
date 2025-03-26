@@ -211,6 +211,7 @@ void aspeed_mac_set_sgmii(struct mac_s *obj)
 	writel(ENABLE, AST_SGMII_BASE + SGMII_MODE);
 	if (obj->phy->phy_mode != PHY_LOOPBACK_OFF) {
 		mdelay(500);
+		net_enable_mdio_pin(obj->phy->mdio->device->dev_id - ASPEED_DEV_MDIO0);
 		phy_init(obj->phy);
 	}
 #endif

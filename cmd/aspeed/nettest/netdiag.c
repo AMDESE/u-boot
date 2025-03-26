@@ -668,7 +668,7 @@ int netdiag_func(int argc, char *const argv[])
 		has_error = nettest_test(&test_obj);
 
 		if (has_error && parm->mode == MODE_MARGIN)
-			printf("\nnetdiag FAIL: margin not enough\n");
+			printf("\nnetdiag FAIL\n");
 		else
 			printf("\nnetdiag PASS\n");
 

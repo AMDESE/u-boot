@@ -202,18 +202,42 @@ void phy_rtl8211f_config(struct phy_s *obj)
 		if (obj->loopback == PHY_LOOPBACK_OFF) {
 			return;
 		} else if (obj->loopback == PHY_LOOPBACK_EXT) {
-			aspeed_mdio_write(mdio, mdio->phy_addr, PHY_EPAGSR, 0xa43);
-			aspeed_mdio_write(mdio, mdio->phy_addr, PHY_BMCR, 0x8000);
-			mdelay(200);
-			aspeed_mdio_write(mdio, mdio->phy_addr, PHY_BMCR, 0x0140);
-			aspeed_mdio_write(mdio, mdio->phy_addr, PHY_CR1, 0x2d18);
-			mdelay(200);
-			aspeed_mdio_write(mdio, mdio->phy_addr, PHY_EPAGSR, 0);
+			switch (obj->speed) {
+			case 100:
+				aspeed_mdio_write(mdio, mdio->phy_addr, PHY_EPAGSR, 0);
+				aspeed_mdio_write(mdio, mdio->phy_addr, PHY_BMCR, 0x2100);
+				break;
+			case 10:
+				aspeed_mdio_write(mdio, mdio->phy_addr, PHY_EPAGSR, 0);
+				aspeed_mdio_write(mdio, mdio->phy_addr, PHY_BMCR, 0x0100);
+				break;
+			case 1000:
+			default:
+				aspeed_mdio_write(mdio, mdio->phy_addr, PHY_EPAGSR, 0xa43);
+				aspeed_mdio_write(mdio, mdio->phy_addr, PHY_BMCR, 0x8000);
+				mdelay(200);
+				aspeed_mdio_write(mdio, mdio->phy_addr, PHY_BMCR, 0x0140);
+				aspeed_mdio_write(mdio, mdio->phy_addr, PHY_CR1, 0x2d18);
+				aspeed_mdio_write(mdio, mdio->phy_addr, PHY_EPAGSR, 0);
+				mdelay(200);
+				break;
+			}
 		} else {
 			aspeed_mdio_write(mdio, mdio->phy_addr, PHY_EPAGSR, 0);
 			aspeed_mdio_write(mdio, mdio->phy_addr, PHY_BMCR, 0x8000);
 			mdelay(200);
-			aspeed_mdio_write(mdio, mdio->phy_addr, PHY_BMCR, 0x4140);
+			switch (obj->speed) {
+			case 100:
+				aspeed_mdio_write(mdio, mdio->phy_addr, PHY_BMCR, 0x6000);
+				break;
+			case 10:
+				aspeed_mdio_write(mdio, mdio->phy_addr, PHY_BMCR, 0x4000);
+				break;
+			case 1000:
+			default:
+				aspeed_mdio_write(mdio, mdio->phy_addr, PHY_BMCR, 0x4040);
+				break;
+			}
 			mdelay(200);
 		}
 		aspeed_mdio_write(mdio, mdio->phy_addr, PHY_EPAGSR, 0xdcf);
