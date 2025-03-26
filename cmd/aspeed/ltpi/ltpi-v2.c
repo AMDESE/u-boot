@@ -646,6 +646,27 @@ static int ltpi_optimeout_query(struct ltpi_priv *ltpi)
 	return 0;
 }
 
+static void ltpi_dump(struct ltpi_priv *ltpi)
+{
+	int i;
+
+	for (i = 0; i < 0x250; i += 4) {
+		if (i % 16 == 0)
+			printf("\n[%08x] ", (uint32_t)ltpi->base + i);
+
+		printf("%08x ", readl((void *)ltpi->base + i));
+	}
+	printf("\n");
+
+	for (i = 0; i < 0x30; i += 4) {
+		if (i % 16 == 0)
+			printf("\n[%08x] ", (uint32_t)ltpi->top_base + i);
+
+		printf("%08x ", readl((void *)ltpi->top_base + i));
+	}
+	printf("\n");
+}
+
 static void ltpi_scm_init(struct ltpi_priv *ltpi)
 {
 	int ret, target_speed;
@@ -669,7 +690,14 @@ static void ltpi_scm_init(struct ltpi_priv *ltpi)
 			if (ret == LTPI_ERR_NONE)
 				break;
 
-			if (ctrlc() || ltpi_optimeout_query(ltpi)) {
+			if (ctrlc()) {
+				printf("User terminated for waiting PLL set state\n");
+				ltpi_log_exit(ltpi, LTPI_SYND_USER_TERMINATE);
+				goto ltpi_scm_exit;
+			}
+
+			if (ltpi_optimeout_query(ltpi)) {
+				printf("Timeout waiting for PLL set state\n");
 				ltpi_log_exit(ltpi, LTPI_SYND_EXTRST_LINK_TRAINING);
 				goto ltpi_scm_exit;
 			}
@@ -699,7 +727,14 @@ static void ltpi_scm_init(struct ltpi_priv *ltpi)
 		if (readl((void *)ltpi->base + LTPI_LINK_ST) & REG_LTPI_FRM_CRC_ERR)
 			ltpi->bootstage->errno |= LTPI_STATUS_HAS_CRC_ERR;
 
-		if (ctrlc() || ltpi_optimeout_query(ltpi)) {
+		if (ctrlc()) {
+			printf("User terminated for waiting operational state\n");
+			ltpi_log_exit(ltpi, LTPI_SYND_USER_TERMINATE);
+			goto ltpi_scm_exit;
+		}
+
+		if (ltpi_optimeout_query(ltpi)) {
+			printf("Timeout waiting for operational state\n");
 			ltpi_log_exit(ltpi, LTPI_SYND_EXTRST_LINK_CONFIG);
 			goto ltpi_scm_exit;
 		}
@@ -712,11 +747,15 @@ static void ltpi_scm_init(struct ltpi_priv *ltpi)
 			ltpi->phy_speed_cap |= BIT(0);
 
 		ltpi_log_restart(ltpi, LTPI_SYND_WAIT_OP_TO);
+		printf("LTPI restart due to timeout waiting for operational state\n");
+		ltpi_dump(ltpi);
 	} while (1);
 
 	return;
 
 ltpi_scm_exit:
+	printf("Exit LTPI initialization\n");
+	ltpi_dump(ltpi);
 	ltpi_reset(ltpi);
 }
 
