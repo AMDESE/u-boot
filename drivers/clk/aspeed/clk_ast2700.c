@@ -56,6 +56,13 @@ DECLARE_GLOBAL_DATA_PTR;
 #define MAC_CLK_100M_10M_OUTPUT_DELAY_2		GENMASK(11, 6)
 #define MAC_CLK_100M_10M_OUTPUT_DELAY_1		GENMASK(5, 0)
 
+/*
+ * SCU Clock Policy Setting
+ */
+#define SCU_GET_SEC1_VAL(_grp) (((_grp) + 1) & BIT(0))
+#define SCU_GET_SEC2_VAL(_grp) ((((_grp) + 1) & BIT(1)) >> 1)
+#define SCU_GET_SEC3_VAL(_grp) ((((_grp) + 1) & BIT(2)) >> 2)
+
 struct mac_delay_config {
 	u32 tx_delay_1000;
 	u32 rx_delay_1000;
@@ -67,9 +74,26 @@ struct mac_delay_config {
 
 typedef int (*ast2700_clk_init_fn)(struct udevice *dev);
 
+enum {
+	SCU_SEC_PSP_GROUP = 0,
+	SCU_SSP_GROUP,
+	SCU_PSP_GROUP,
+	SCU_TSP_GROUP,
+	SCU_PSP_SSP_GROUP,
+	SCU_SSP_TSP_GROUP,
+	SCU_BOOTMCU_GROUP,
+	SCU_END_GROUP,
+};
+
+struct ast2700_clk_policy {
+	u32 clk_num;
+	u32 *clk_list;
+};
+
 struct ast2700_clk_priv {
 	void __iomem *reg;
 	ast2700_clk_init_fn init;
+	struct ast2700_clk_policy scu_policy[SCU_END_GROUP];
 };
 
 static u32 ast2700_soc1_get_pll_rate(struct ast2700_scu1 *scu, int pll_idx)
@@ -759,6 +783,48 @@ struct clk_ops ast2700_soc0_clk_ops = {
 	.enable = ast2700_soc0_clk_enable,
 };
 
+#define SCU1_SEC1_CLK_LOCK_MASK GENMASK(23, 21)
+#define SCU1_SEC2_CLK_LOCK_MASK GENMASK(31, 29)
+static int
+ast2700_soc1_policy(struct ast2700_scu1 *scu, struct ast2700_clk_policy *policy)
+{
+	u32 grp = 0;
+	u32 clk_id = 0;
+	u32 clk_bank = 0;
+	u32 clk_idx = 0;
+	u32 sec_reg[2][3] = {0};
+
+	for (grp = SCU_SEC_PSP_GROUP; grp < SCU_END_GROUP; grp++) {
+		for (clk_idx = 0; clk_idx < policy[grp].clk_num; clk_idx++) {
+			clk_id = policy[grp].clk_list[clk_idx] % 32;
+			clk_bank = policy[grp].clk_list[clk_idx] / 32;
+
+			if (clk_bank >= ARRAY_SIZE(sec_reg))
+				continue;
+
+			if ((sec_reg[clk_bank][0] & BIT(clk_id)) != 0 ||
+			    (sec_reg[clk_bank][1] & BIT(clk_id)) != 0 ||
+			    (sec_reg[clk_bank][2] & BIT(clk_id)) != 0) {
+				pr_err("Error: duplicated policy set (%d, %d)\n", clk_id, grp);
+			} else {
+				sec_reg[clk_bank][0] |= SCU_GET_SEC1_VAL(grp) ? BIT(clk_id) : 0;
+				sec_reg[clk_bank][1] |= SCU_GET_SEC2_VAL(grp) ? BIT(clk_id) : 0;
+				sec_reg[clk_bank][2] |= SCU_GET_SEC3_VAL(grp) ? BIT(clk_id) : 0;
+			}
+		}
+	}
+
+	writel(sec_reg[0][0], &scu->clkgate_secure11);
+	writel(sec_reg[0][1], &scu->clkgate_secure12);
+	writel(sec_reg[0][2], &scu->clkgate_secure13);
+	writel(sec_reg[1][0], &scu->clkgate_secure21);
+	writel(sec_reg[1][1], &scu->clkgate_secure22);
+	writel(sec_reg[1][2], &scu->clkgate_secure23);
+	writel(SCU1_SEC1_CLK_LOCK_MASK | SCU1_SEC2_CLK_LOCK_MASK, &scu->write_prot5);
+
+	return 0;
+}
+
 static void ast2700_init_mac_clk(struct ast2700_scu1 *scu)
 {
 	u32 src_clk = ast2700_soc1_get_pll_rate(scu, SCU1_CLK_HPLL);
@@ -889,10 +955,23 @@ static void ast2700_init_i3c_clk(struct ast2700_scu1 *scu)
 	writel(reg_284, &scu->clk_sel2);
 }
 
+#define SCU1_CLK_SEL1_LOCK_MASK GENMASK(14, 0) | BIT(18) | BIT(21) | \
+				BIT(25) | BIT(29)
+#define SCU1_CLK_SEL2_LOCK_MASK BIT(0) | BIT(3) | BIT(8) | BIT(12) | \
+				GENMASK(20, 15) | BIT(23)
+static int ast2700_soc1_lock(struct ast2700_scu1 *scu)
+{
+	writel(SCU1_CLK_SEL1_LOCK_MASK, &scu->clk_sel1_lock);
+	writel(SCU1_CLK_SEL2_LOCK_MASK, &scu->clk_sel2_lock);
+
+	return 0;
+}
+
 static int ast2700_clk1_init(struct udevice *dev)
 {
 	struct ast2700_clk_priv *priv = dev_get_priv(dev);
 	struct ast2700_scu1 *scu = (struct ast2700_scu1 *)priv->reg;
+	struct ast2700_clk_policy *policy = priv->scu_policy;
 	struct mac_delay_config mac1_cfg, mac2_cfg;
 	int ret = 0;
 	u32 reg[3];
@@ -949,6 +1028,57 @@ static int ast2700_clk1_init(struct udevice *dev)
 	ast2700_init_sdclk(scu);
 	ast2700_init_i3c_clk(scu);
 
+	/* Clock policy setting, only executed at spl stage */
+	if (IS_ENABLED(CONFIG_SPL_CLK)) {
+		ast2700_soc1_policy(scu, policy);
+		ast2700_soc1_lock(scu);
+	}
+
+	return 0;
+}
+
+#define SCU0_SEC_CLK_LOCK_MASK GENMASK(23, 21)
+static int
+ast2700_soc0_policy(struct ast2700_scu0 *scu, struct ast2700_clk_policy *policy)
+{
+	u32 grp = 0;
+	u32 clk_id = 0;
+	u32 clk_idx = 0;
+	u32 sec_reg[3] = {0};
+
+	for (grp = SCU_SEC_PSP_GROUP; grp < SCU_END_GROUP; grp++) {
+		for (clk_idx = 0; clk_idx < policy[grp].clk_num; clk_idx++) {
+			clk_id = policy[grp].clk_list[clk_idx];
+
+			if ((sec_reg[0] & BIT(clk_id)) != 0 ||
+			    (sec_reg[1] & BIT(clk_id)) != 0 ||
+			    (sec_reg[2] & BIT(clk_id)) != 0) {
+				pr_err("Error: duplicated policy set (%d, %d)\n", clk_id, grp);
+			} else {
+				sec_reg[0] |= SCU_GET_SEC1_VAL(grp) ? BIT(clk_id) : 0;
+				sec_reg[1] |= SCU_GET_SEC2_VAL(grp) ? BIT(clk_id) : 0;
+				sec_reg[2] |= SCU_GET_SEC3_VAL(grp) ? BIT(clk_id) : 0;
+			}
+		}
+	}
+
+	writel(sec_reg[0], &scu->clkgate_secure1);
+	writel(sec_reg[1], &scu->clkgate_secure2);
+	writel(sec_reg[2], &scu->clkgate_secure3);
+	writel(SCU0_SEC_CLK_LOCK_MASK, &scu->write_prot4);
+
+	return 0;
+}
+
+#define SCU0_CLK_SEL1_LOCK_MASK GENMASK(15, 0)
+#define SCU0_CLK_SEL2_LOCK_MASK GENMASK(12, 0)
+#define SCU0_CLK_SEL3_LOCK_MASK GENMASK(1, 0)
+static int ast2700_soc0_lock(struct ast2700_scu0 *scu)
+{
+	writel(SCU0_CLK_SEL1_LOCK_MASK, &scu->clk_sel1_lock);
+	writel(SCU0_CLK_SEL2_LOCK_MASK, &scu->clk_sel2_lock);
+	writel(SCU0_CLK_SEL3_LOCK_MASK, &scu->clk_sel3_lock);
+
 	return 0;
 }
 
@@ -956,9 +1086,44 @@ static int ast2700_clk0_init(struct udevice *dev)
 {
 	struct ast2700_clk_priv *priv = dev_get_priv(dev);
 	struct ast2700_scu0 *scu = (struct ast2700_scu0 *)priv->reg;
+	struct ast2700_clk_policy *policy = priv->scu_policy;
 
 	ast2700_emmc_init(scu);
 	ast2700_mphy_clk_init(scu);
+
+	/* Clock policy setting, only executed at spl stage */
+	if (IS_ENABLED(CONFIG_SPL_CLK)) {
+		ast2700_soc0_policy(scu, policy);
+		ast2700_soc0_lock(scu);
+	}
+
+	return 0;
+}
+
+static int ast2700_of_to_plat(struct udevice *dev)
+{
+	static const char * const prop[] = {"sec-psp", "ssp", "psp", "tsp",
+					    "psp-ssp", "ssp-tsp", "bmcu"};
+	int i = 0;
+	int rc = 0;
+	struct ast2700_clk_priv *priv = dev_get_priv(dev);
+	struct ast2700_clk_policy *policy = &priv->scu_policy[0];
+
+	for (i = SCU_SEC_PSP_GROUP; i < SCU_END_GROUP; i++) {
+		rc = dev_read_size(dev, prop[i]);
+		policy[i].clk_num = rc > 0 ? rc / sizeof(u32) : 0;
+		policy[i].clk_list = malloc(policy[i].clk_num * sizeof(u32));
+
+		if (!policy[i].clk_num)
+			continue;
+
+		if (!policy[i].clk_list)
+			return -ENOMEM;
+
+		if (dev_read_u32_array(dev, prop[i], policy[i].clk_list,
+				       policy[i].clk_num))
+			return -ENODEV;
+	}
 
 	return 0;
 }
@@ -1000,6 +1165,7 @@ U_BOOT_DRIVER(aspeed_ast2700_soc1_clk) = {
 	.priv_auto = sizeof(struct ast2700_clk_priv),
 	.ops = &ast2700_soc1_clk_ops,
 	.probe = ast2700_clk_probe,
+	.of_to_plat = ast2700_of_to_plat,
 	.bind = ast2700_clk_bind,
 };
 
@@ -1015,5 +1181,6 @@ U_BOOT_DRIVER(aspeed_ast2700_soc0_clk) = {
 	.priv_auto = sizeof(struct ast2700_clk_priv),
 	.ops = &ast2700_soc0_clk_ops,
 	.probe = ast2700_clk_probe,
+	.of_to_plat = ast2700_of_to_plat,
 	.bind = ast2700_clk_bind,
 };

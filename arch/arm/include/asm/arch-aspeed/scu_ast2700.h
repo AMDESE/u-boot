@@ -337,6 +337,12 @@ struct ast2700_scu0 {
 	uint32_t rsv_0x9dc[9];		/* 0x9DC ~ 0x9FC */
 	uint32_t pci0_misc[32];		/* 0xA00 ~ 0xA7C */
 	uint32_t pci1_misc[32];		/* 0xA80 ~ 0xAFC */
+	uint32_t rsv_0xb00[192];	/* 0xB00 ~ 0xDFC */
+	uint32_t write_prot0;		/* 0xE00 */
+	uint32_t write_prot1;		/* 0xE04 */
+	uint32_t write_prot2;		/* 0xE08 */
+	uint32_t write_prot3;		/* 0xE0C */
+	uint32_t write_prot4;		/* 0xE10 */
 };
 
 struct ast2700_scu1 {
@@ -417,21 +423,18 @@ struct ast2700_scu1 {
 	uint32_t clkgate_secure21;		/* 0x274 */
 	uint32_t clkgate_secure22;		/* 0x278 */
 	uint32_t clkgate_secure23;		/* 0x27c */
-	uint32_t clk_sel1;		/* 0x280 */
-	uint32_t clk_sel2;		/* 0x284 */
-	uint32_t rsv_0x288[2];		/* 0x288 */
-	uint32_t clk_sel1_lock;		/* 0x290 */
-	uint32_t clk_sel2_lock;		/* 0x294 */
-	uint32_t rsv_0x298[2];		/* 0x298 */
-	uint32_t clk_sel1_secure1;		/* 0x2a0 */
-	uint32_t clk_sel1_secure2;		/* 0x2a4 */
-	uint32_t rsv_0x2a8[2];		/* 0x2a8 */
-	uint32_t clk_sel2_secure1;		/* 0x2b0 */
-	uint32_t clk_sel2_secure2;		/* 0x2b4 */
-	uint32_t rsv_0x2b8[2];		/* 0x2b8 */
-	uint32_t clk_sel3_secure1;		/* 0x2c0 */
-	uint32_t clk_sel3_secure2;		/* 0x2c4 */
-	uint32_t rsv_0x2c8[10];		/* 0x2c8 */
+	uint32_t clk_sel1;			/* 0x280 */
+	uint32_t clk_sel2;			/* 0x284 */
+	uint32_t rsv_0x288[6];		/* 0x288 */
+	uint32_t clk_sel1_lock;		/* 0x2a0 */
+	uint32_t clk_sel1_secure1;		/* 0x2a4 */
+	uint32_t clk_sel1_secure2;		/* 0x2a8 */
+	uint32_t clk_sel1_secure3;		/* 0x2ac */
+	uint32_t clk_sel2_lock;		/* 0x2b0 */
+	uint32_t clk_sel2_secure1;		/* 0x2b4 */
+	uint32_t clk_sel2_secure2;		/* 0x2b8 */
+	uint32_t clk_sel2_secure3;		/* 0x2bc */
+	uint32_t rsv_0x2c0[12];		/* 0x2c0 */
 	uint32_t extrst_sel1;		/* 0x2f0 */
 	uint32_t extrst_sel2;		/* 0x2f4 */
 	uint32_t rsv_0x2f8[2];		/* 0x2f8 */
@@ -505,6 +508,12 @@ struct ast2700_scu1 {
 	uint32_t io_driving6;	/* 0x4d8 */
 	uint32_t io_driving7;	/* 0x4dc */
 	uint32_t io_driving8;	/* 0x4e0 */
+	uint32_t rsv_0xb00[583];	/* 0x4e4 ~ 0xdfc */
+	uint32_t write_prot1;		/* 0xe00 */
+	uint32_t write_prot2;		/* 0xe04 */
+	uint32_t write_prot3;		/* 0xe08 */
+	uint32_t write_prot4;		/* 0xe0c */
+	uint32_t write_prot5;		/* 0xe10 */
 };
 
 void aspeed_print_2nd_wdt_mode(void);

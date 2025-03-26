@@ -246,6 +246,26 @@
 	status = "okay";
 };
 
+&soc0_clk {
+	psp = <>;
+	sec-psp = <>;
+	ssp = <>;
+	tsp = <>;
+	psp-ssp = <>;
+	ssp-tsp = <>;
+	bmcu = <>;
+};
+
+&soc1_clk {
+	psp = <>;
+	sec-psp = <>;
+	ssp = <>;
+	tsp = <>;
+	psp-ssp = <>;
+	ssp-tsp = <>;
+	bmcu = <>;
+};
+
 &rsss {
 	status = "okay";
 };
