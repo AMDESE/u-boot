@@ -30,6 +30,7 @@
 #define LTPI_SYND_EXTRST_LINK_TRAINING		4	/* EXTRST deasserted during link training */
 #define LTPI_SYND_EXTRST_LINK_CONFIG		5	/* EXTRST deasserted during link configuration */
 #define LTPI_SYND_SOC_RECOVERY			6	/* Exit due to SOC recovery */
+#define LTPI_SYND_USER_TERMINATE		7	/* Exit due to user terminate */
 
 /* LTPI wait state return code */
 #define LTPI_ERR_NONE				0x00
