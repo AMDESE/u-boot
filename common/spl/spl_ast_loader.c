@@ -62,3 +62,4 @@ static int spl_ast_loader_load_image(struct spl_image_info *spl_image,
 
 SPL_LOAD_IMAGE_METHOD("I3C", 0, BOOT_DEVICE_I3C, spl_ast_loader_load_image);
 SPL_LOAD_IMAGE_METHOD("I2C", 0, BOOT_DEVICE_I2C, spl_ast_loader_load_image);
+SPL_LOAD_IMAGE_METHOD("USB", 0, BOOT_DEVICE_USB, spl_ast_loader_load_image);
