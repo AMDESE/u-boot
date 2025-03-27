@@ -50,6 +50,11 @@
 #define ASPEED_SYS_SCRATCH_7FC 0x12C027FC
 #define SYS_SRST		BIT(0)
 
+/* LTPI */
+#define LTPI_TRAIN_RETRY	(5)
+#define ADVRT_TIMEOUT_US_1_1	"100000"// 100ms LTPI spec 1.1
+#define ADVRT_TIMEOUT_US_1_0	"1000"	// 1ms LTPI spec 1.0
+
 /* SP7 HPM boards */
 #define MARLEY_1        0x79
 #define MARLEY_2        0x7A
@@ -325,6 +330,36 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 	return 0;
 }
 
+void mount_safs_spi_mux()
+{
+	printf("configuring gpios for eDAF ...\n");
+	/* mount P0 BIOS SPI */
+	run_command("gpio set 169", 0); //GPIO V1
+	run_command("gpio set 170", 0); //GPIO V2
+	printf("configuring gpios for eDAF ...Done\n");
+}
+
+void train_ltpi(int retry)
+{
+        // set espi GPIO strap to low and train ltpi
+        run_command("mw 14c02404 0", 0);
+        run_command("gpio clear 10", 0);
+        if(run_command("ltpi -t " ADVRT_TIMEOUT_US_1_1, 0) != 0)
+	{
+		for (int i=0; i<retry; i++)
+		{
+			if(run_command("ltpi -t "ADVRT_TIMEOUT_US_1_1 ,0) == 0)
+			{
+				printf("LTPI link configured, proceeding to boot...\n");
+				break;
+			}
+			else
+			{
+				printf("Retrying Link training...\n");
+			}
+		}
+	}
+}
 void update_por_env(void)
 {
 	const char *s;
@@ -403,10 +438,12 @@ int misc_init_r(void)
 	}
 	/* set power-on reset variable */
 	update_por_env();
-        // set espi strap to low and train ltpi with max of 10 sec
-        run_command("mw 14c02404 0", 0);
-        run_command("gpio clear 10", 0);
-        run_command("ltpi -T 10000000",0);
+
+	/* apply safs */
+	mount_safs_spi_mux();
+
+	/* enable ltpi strap and train link */
+	train_ltpi(LTPI_TRAIN_RETRY);
 
 	return 0;
 err:
