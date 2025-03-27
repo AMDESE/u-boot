@@ -709,7 +709,7 @@ static void ltpi_scm_init(struct ltpi_priv *ltpi)
 
 		/* the lowest speed 25M should always be supported */
 		if (ltpi->phy_speed_cap == 0)
-			ltpi->phy_speed_cap |= BIT(0);
+			ltpi->phy_speed_cap |= LTPI_SP_CAP_25M;
 
 		ltpi_log_restart(ltpi, LTPI_SYND_WAIT_OP_TO);
 	} while (1);

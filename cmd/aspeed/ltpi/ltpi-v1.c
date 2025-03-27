@@ -528,7 +528,7 @@ static void ltpi_scm_normal_mode_training(struct ltpi_priv *ltpi)
 
 		/* the lowest speed 25M should always be supported */
 		if (ltpi->phy_speed_cap == 0)
-			ltpi->phy_speed_cap |= BIT(0);
+			ltpi->phy_speed_cap |= LTPI_SP_CAP_25M;
 
 		if (ctrlc()) {
 			printf("Abort\n");
@@ -614,7 +614,7 @@ static void ltpi_scm_cdr_mode_training(struct ltpi_priv *ltpi)
 
 		/* the lowest speed 25M should always be supported */
 		if (ltpi->phy_speed_cap == 0)
-			ltpi->phy_speed_cap |= BIT(0);
+			ltpi->phy_speed_cap |= LTPI_SP_CAP_25M;
 
 		if (ctrlc()) {
 			printf("Abort\n");
