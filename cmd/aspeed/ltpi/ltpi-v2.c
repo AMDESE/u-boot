@@ -365,7 +365,7 @@ static int ltpi_wait_state_op(struct ltpi_priv *ltpi)
 
 	return ltpi_poll_link_mng_state(ltpi, LTPI_LINK_MNG_ST_OP,
 					LTPI_LINK_MNG_ST_DETECT_ALIGN,
-					ADVERTISE_TIMEOUT_US);
+					ltpi->ad_timeout);
 }
 
 static int ltpi_set_lvds_io_driving(struct ltpi_priv *ltpi, int driving)
@@ -466,6 +466,15 @@ static void ltpi_do_link_training(struct ltpi_priv *ltpi)
 	clrsetbits_le32((void *)ltpi->base + LTPI_LINK_MANAGE_CTRL0,
 			REG_LTPI_RX_LINK_SP_FRM_NUM,
 			FIELD_PREP(REG_LTPI_RX_LINK_SP_FRM_NUM, ltpi->link_speed_frm_rx_cnt));
+
+	/*
+	 * ad_timeout in us = ad_timeout in clock cycles * period of 25MHz
+	 * ad_timeout in clock cycles
+	 * = ad_timeout in us / period of 25MHz
+	 * = (ad_timeout in us * 1000)ns / 40ns = ad_timeout * 25
+	 */
+	writel(ltpi->ad_timeout * 25, (void *)ltpi->base + LTPI_LINK_MANAGE_CTRL1);
+	printf("[%08x] %08x\n", (u32)ltpi->base + LTPI_LINK_MANAGE_CTRL1, readl((void *)ltpi->base + LTPI_LINK_MANAGE_CTRL1));
 
 	/* Set the clock source to the base frequency 25MHz */
 	ltpi_phy_set_clksel(ltpi, REG_LTPI_PLL_25M, false);
