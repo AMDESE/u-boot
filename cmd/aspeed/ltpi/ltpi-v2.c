@@ -1106,6 +1106,9 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 		ltpi_show_status(&ltpi_data[1]);
 	}
 
+	if (sts.syndrome == LTPI_SYND_OK_ALREADY_INIT)
+		return CMD_RET_SUCCESS;
+
 	if (sts.errno & LTPI_STATUS_EXIT)
 		return CMD_RET_FAILURE;
 
