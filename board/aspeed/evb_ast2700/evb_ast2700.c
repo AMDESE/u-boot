@@ -10,6 +10,7 @@
 #include <hexdump.h>
 #include <errno.h>
 #include <asm/io.h>
+#include <linux/bitfield.h>
 
 #define SCM_EEPROM_I2C_BUS    (7)
 #define HPM_EEPROM_I2C_BUS    (8)
@@ -47,13 +48,26 @@
 #define ENV_ETH2_ADDR          "eth2addr"
 
 /* Sys Scratch reg that holds sys_rst info, refer cpu-info.c */
-#define ASPEED_SYS_SCRATCH_7FC 0x12C027FC
-#define SYS_SRST		BIT(0)
+#define ASPEED_SYS_SCRATCH_7FC    0x12C027FC
+#define SYS_SRST                  BIT(0)
+#define SCU_CPU_REVISION_ID_HW    GENMASK(23, 16)
+#define ASPEED_CPU_REVISION_ID    0x12C02000
+#define SCU_CPU_REVISION_ID_EFUSE GENMASK(15, 8)
+#define SOC_REV_AST2700A0         0x0
+#define SOC_REV_AST2700A1         0x1
 
 /* LTPI */
-#define LTPI_TRAIN_RETRY	(5)
-#define ADVRT_TIMEOUT_US_1_1	"100000"// 100ms LTPI spec 1.1
-#define ADVRT_TIMEOUT_US_1_0	"1000"	// 1ms LTPI spec 1.0
+#define LTPI_TRAIN_RETRY       (10)
+// 100ms LTPI spec 1.1
+#define ADVRT_TIMEOUT_US_1_1   "100000"
+// 1ms LTPI spec 1.0
+#define ADVRT_TIMEOUT_US_1_0   "1000"
+// 3x advt timeout for FPGA to move to LDFA state
+#define OP_TIMEOUT_US          "300000"
+
+#define HCC_TYPE_UNKNOWN 0
+#define HCC_TYPE_1       1
+#define HCC_TYPE_2       2
 
 /* SP7 HPM boards */
 #define MARLEY_1        0x79
@@ -77,6 +91,8 @@
 #define ZAMBIA          0x8B
 #define ZIMBABWE        0x8C
 #define ZANZIBAR        0x8D
+
+static u8 hcc_type;
 
 int set_mac_addresses(const u8 *eeprom_buf)
 {
@@ -110,7 +126,7 @@ int set_mac_addresses(const u8 *eeprom_buf)
 	return 0;
 }
 
-int get_platform_name( const u8 board_id, char* platname)
+int get_platform_name( const u8 board_id, char* platname, u8 *hcc_type)
 {
 	int ret = 0;
 	switch (board_id) {
@@ -118,51 +134,65 @@ int get_platform_name( const u8 board_id, char* platname)
 		case CONGO_2:
 		case CONGO_3:
 			strcpy(platname, "congo");
+			*hcc_type = HCC_TYPE_1;
 			break;
 		case MOROCCO_1:
 		case MOROCCO_2:
 		case MOROCCO_3:
 			strcpy(platname, "morocco");
+			*hcc_type = HCC_TYPE_2;
 			break;
 		case MARLEY_1:
 		case MARLEY_2:
 		case MARLEY_3:
 			strcpy(platname, "marley");
+			*hcc_type = HCC_TYPE_1;
 			break;
 		case MOJANDA_1:
 		case MOJANDA_2:
 		case MOJANDA_3:
 			strcpy(platname, "mojanda");
+			*hcc_type = HCC_TYPE_2;
 			break;
 		case KENYA:
 			strcpy(platname, "kenya");
+			*hcc_type = HCC_TYPE_1;
 			break;
 		case NIGERIA:
 			strcpy(platname, "nigeria");
+			*hcc_type = HCC_TYPE_2;
 			break;
 		case GHANA:
 			strcpy(platname, "ghana");
+			*hcc_type = HCC_TYPE_2;
 			break;
 		case SENEGAL_SLT:
 			strcpy(platname, "senegal");
+			*hcc_type = HCC_TYPE_1;
 			break;
 		case SAHARA:
 			strcpy(platname, "sahara");
+			*hcc_type = HCC_TYPE_1;
 			break;
 		case MALAWI:
 			strcpy(platname, "malawi");
+			*hcc_type = HCC_TYPE_2;
 			break;
 		case ZAMBIA:
 			strcpy(platname, "zambia");
+			*hcc_type = HCC_TYPE_1;
 			break;
 		case ZIMBABWE:
 			strcpy(platname, "zimbabwe");
+			*hcc_type = HCC_TYPE_1;
 			break;
 		case ZANZIBAR:
 			strcpy(platname, "zanzibar");
+			*hcc_type = HCC_TYPE_1;
 			break;
 		default:
 			strcpy(platname, "sp7");
+			*hcc_type = HCC_TYPE_UNKNOWN;
 			ret = -1;
 	}
 	return ret;
@@ -262,7 +292,7 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 	board_rev = *(hpm_eeprom_buf + hpm_mrc + HPM_BRD_REV_OFFSET);
 
 	/* HPM board name */
-	if (get_platform_name(board_id, &plat_name) == 0) {
+	if (get_platform_name(board_id, &plat_name, &hcc_type) == 0) {
 		/* HPM board FDT config */
 		if(!env_get(ENV_BOARD_FIT_CONF)) {
 			snprintf(board_conf_name, sizeof(board_conf_name),"#conf-aspeed-bmc-amd-%s.dtb", plat_name);
@@ -344,11 +374,11 @@ void train_ltpi(int retry)
         // set espi GPIO strap to low and train ltpi
         run_command("mw 14c02404 0", 0);
         run_command("gpio clear 10", 0);
-        if(run_command("ltpi -t " ADVRT_TIMEOUT_US_1_1, 0) != 0)
+        if(run_command("ltpi -T " OP_TIMEOUT_US " -t " ADVRT_TIMEOUT_US_1_1, 0) != 0)
 	{
 		for (int i=0; i<retry; i++)
 		{
-			if(run_command("ltpi -t "ADVRT_TIMEOUT_US_1_1 ,0) == 0)
+			if(run_command("ltpi -T " OP_TIMEOUT_US " -t "ADVRT_TIMEOUT_US_1_1 ,0) == 0)
 			{
 				printf("LTPI link configured, proceeding to boot...\n");
 				break;
@@ -372,6 +402,24 @@ void update_por_env(void)
 	else
 		env_set("por_rst", "false");
 	env_save();
+}
+
+int get_scm_hcc_type(void)
+{
+	int cpu_info = readl(ASPEED_CPU_REVISION_ID);
+	int soc_rev = FIELD_GET(SCU_CPU_REVISION_ID_HW, cpu_info);
+	printf("SoC Rev: %x\n", soc_rev);
+
+	u8 efuse = FIELD_GET(SCU_CPU_REVISION_ID_EFUSE, cpu_info);
+	if(efuse == 0) {
+		printf("SCM Type 2\n");
+		return HCC_TYPE_2;
+	}
+	else if (efuse == 1) {
+		printf("SCM Type 1\n");
+		return HCC_TYPE_1;
+	}
+	return HCC_TYPE_UNKNOWN;
 }
 
 int misc_init_r(void)
@@ -439,11 +487,23 @@ int misc_init_r(void)
 	/* set power-on reset variable */
 	update_por_env();
 
-	/* apply safs */
-	mount_safs_spi_mux();
+	/* get_scm_type */
+	if(get_scm_hcc_type() != hcc_type)
+	{
+		run_command("mw 14c02404 0", 0);
+		/* incompatible HPM connected */
+		/* turn on MGMT_FAULT_LED */
+		run_command("gpio set 12", 0);
+		printf("\n\n\nINVALID HPM CIRCUIT TYPE DETECTED!!!\n\n\n");
+	}
+	else
+	{
+		/* apply safs */
+		mount_safs_spi_mux();
 
-	/* enable ltpi strap and train link */
-	train_ltpi(LTPI_TRAIN_RETRY);
+		/* enable ltpi strap and train link */
+		train_ltpi(LTPI_TRAIN_RETRY);
+	}
 
 	return 0;
 err:
