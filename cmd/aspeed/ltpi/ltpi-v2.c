@@ -81,7 +81,7 @@
 #define   SCU1_OTPCFG30_LTPI0_DDR_DIS		BIT(15)
 #define   SCU1_OTPCFG30_LTPI0_SPEED_CAPA_DIS	GENMASK(14, 0)
 
-#define ADVERTISE_TIMEOUT_US			105000 /* 105 ms */
+#define ADVERTISE_TIMEOUT_US			300000 /* 300 ms */
 
 struct bootstage_t {
 	uint8_t errno;
@@ -422,7 +422,8 @@ void bootstage_epilogue(struct bootstage_t sts)
 
 static void ltpi_log_exit(struct ltpi_priv *ltpi, int reason)
 {
-	ltpi->bootstage->errno |= LTPI_STATUS_EXIT;
+	if (reason != LTPI_SYND_OK_ALREADY_INIT)
+		ltpi->bootstage->errno |= LTPI_STATUS_EXIT;
 	ltpi->bootstage->syndrome = reason;
 }
 
