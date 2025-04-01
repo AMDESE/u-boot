@@ -48,7 +48,16 @@
 
 /* Sys Scratch reg that holds sys_rst info, refer cpu-info.c */
 #define ASPEED_SYS_SCRATCH_7FC 0x12C027FC
-#define SYS_SRST		BIT(0)
+#define SYS_SRST               BIT(0)
+
+/* LTPI */
+#define LTPI_TRAIN_RETRY       (10)
+// 100ms for LTPI spec 1.1
+#define ADVRT_TIMEOUT_US_1_1   "100000"
+// 1ms for LTPI spec 1.0
+#define ADVRT_TIMEOUT_US_1_0   "1000"
+// 3x advt timeout for FPGA to move to LDFA state
+#define OP_TIMEOUT_US          "300000"
 
 /* SP7 HPM boards */
 #define MARLEY_1        0x79
@@ -325,6 +334,42 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 	return 0;
 }
 
+void configure_safs_spi_mux()
+{
+	printf("configuring gpios for eDAF ...\n");
+	/* remote P0 BIOS SPI */
+	run_command("gpio set 169", 0); //GPIO V1
+	run_command("gpio set 170", 0); //GPIO V2
+	printf("configuring gpios for eDAF ...Done\n");
+}
+
+void train_ltpi(int retry)
+{
+	int i=0;
+	// set espi GPIO strap to low
+	// this reconfigures pin from SCM_GPO to GPIO mode.
+	run_command("mw 14c02404 55000055", 0);
+	run_command("gpio clear 10", 0);
+
+	/* start LTPI with operational and advertise timeouts */
+	if(run_command("ltpi -T " OP_TIMEOUT_US " -t " ADVRT_TIMEOUT_US_1_1, 0) != 0)
+	{
+		for (i=0; i<retry; i++)
+		{
+			if(run_command("ltpi -T " OP_TIMEOUT_US " -t "ADVRT_TIMEOUT_US_1_1 ,0) == 0)
+			{
+				printf("LTPI link configured, proceeding to boot...\n");
+				break;
+			}
+			else
+			{
+				printf("Retrying Link training...\n");
+			}
+		}
+		if (i >= retry)
+			printf("LTPI failed to train, collect register dump!!!\n");
+	}
+}
 void update_por_env(void)
 {
 	const char *s;
@@ -401,8 +446,15 @@ int misc_init_r(void)
 	{
 		printf("Loading %s\n", env_get(ENV_BOARD_FIT_CONF));
 	}
+
 	/* set power-on reset variable */
 	update_por_env();
+
+	/* configure spi mux for safs */
+	configure_safs_spi_mux();
+
+	/* enable ltpi strap and train link */
+	train_ltpi(LTPI_TRAIN_RETRY);
 
 	return 0;
 err:
