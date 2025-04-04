@@ -23,6 +23,8 @@
 #define MAC2_ADDR_OFFSET     (32)
 #define LAST_2B_MAC0_ADDR    (20)
 #define LAST_2B_MAC0_LEN      (2)
+#define SCM_BOM_VARIANT_OFF  (79) // QSPI or eSPI variant
+#define ESPI_VARIANT_BIT      (1)
 
 #define FRU_MRC_HDR_OFFSET    (5)
 #define MRC_HDR_AREA_START    (8)
@@ -334,13 +336,20 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 	return 0;
 }
 
-void configure_safs_spi_mux()
+void configure_safs_spi_mux(const u8 *eeprom_buf)
 {
-	printf("configuring gpios for eDAF ...\n");
-	/* remote P0 BIOS SPI */
-	run_command("gpio set 169", 0); //GPIO V1
-	run_command("gpio set 170", 0); //GPIO V2
-	printf("configuring gpios for eDAF ...Done\n");
+	if ( *(eeprom_buf + SCM_BOM_VARIANT_OFF) & ESPI_VARIANT_BIT) {
+		printf("eSPI variant SCM board detected\n");
+
+		//TODO: Move to FGPA based mode selection
+		printf("configuring gpios for eDAF ...\n");
+		/* remote P0 BIOS SPI */
+		run_command("gpio set 169", 0); //GPIO V1
+		run_command("gpio set 170", 0); //GPIO V2
+		printf("configuring gpios for eDAF ...Done\n");
+	}
+	else
+		printf("QSPI variant SCM board detected\n");
 }
 
 void train_ltpi(int retry)
@@ -451,7 +460,7 @@ int misc_init_r(void)
 	update_por_env();
 
 	/* configure spi mux for safs */
-	configure_safs_spi_mux();
+	configure_safs_spi_mux(&scm_eeprom_buf);
 
 	/* enable ltpi strap and train link */
 	train_ltpi(LTPI_TRAIN_RETRY);
