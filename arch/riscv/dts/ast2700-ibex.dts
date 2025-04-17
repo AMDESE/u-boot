@@ -266,6 +266,26 @@
 	bmcu = <>;
 };
 
+&soc0_rst {
+	psp = <>;
+	sec-psp = <>;
+	ssp = <>;
+	tsp = <>;
+	psp-ssp = <>;
+	ssp-tsp = <>;
+	bmcu = <>;
+};
+
+&soc1_rst {
+	psp = <>;
+	sec-psp = <>;
+	ssp = <>;
+	tsp = <>;
+	psp-ssp = <>;
+	ssp-tsp = <>;
+	bmcu = <>;
+};
+
 &rsss {
 	status = "okay";
 };

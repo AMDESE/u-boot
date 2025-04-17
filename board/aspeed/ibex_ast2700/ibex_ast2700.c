@@ -17,6 +17,7 @@
 #include <asm/arch/scu_ast2700.h>
 #include <asm/arch/sli_ast2700.h>
 #include <asm/arch/sdram_ast2700.h>
+#include <asm/arch/sys_policy.h>
 #include <asm/arch/wdt.h>
 #include <asm/arch/ssp_tsp_ast2700.h>
 #include <linux/bitfield.h>
@@ -224,6 +225,7 @@ int dram_init(void)
 }
 
 struct init_callback board_init_seq[] = {
+	{"POLICY",	sys_policy_init},
 	{"WDT",		wdt_init},
 	{"EXTRST",	extrst_mask_init},
 	{"STOR",	ast_loader_init},
