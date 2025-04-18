@@ -39,14 +39,14 @@ enum {
 };
 
 struct sys_policy {
-	const int uclass_id;
 	const char *name;
-	const int max_id;
 	struct udevice *dev;
+	const enum uclass_id uclass_id;
 	void __iomem *base;
-	int (*reg_bank)[SYS_POLICY_SEC_REG_MAX_NUM];
 	int num;
-	int *list;
+	const uint32_t max_id;
+	uint32_t *list;
+	uint32_t (*reg_bank)[SYS_POLICY_SEC_REG_MAX_NUM];
 	int (*init_policy)(struct sys_policy *ctrl, int grp);
 	int (*load_policy)(struct sys_policy *ctrl, int grp);
 	int (*apply_policy)(struct sys_policy *ctrl);
@@ -57,7 +57,7 @@ struct sys_policy {
  ******************************************************************************/
 static int sys_policy_load_rst_policy(struct sys_policy *rst_ctrl, int grp)
 {
-	int(*reg)[3] = ((int(*)[3])rst_ctrl->reg_bank);
+	uint32_t(*reg)[3] = ((uint32_t(*)[3])rst_ctrl->reg_bank);
 	uint32_t rst_bank = 0;
 	uint32_t rst_bit = 0;
 	uint32_t i = 0;
@@ -96,7 +96,7 @@ static int sys_policy_load_rst_policy(struct sys_policy *rst_ctrl, int grp)
 
 static int sys_policy_apply_rst_policy(struct sys_policy *rst_ctrl)
 {
-	int(*reg)[3] = ((int(*)[3])rst_ctrl->reg_bank);
+	uint32_t(*reg)[3] = ((uint32_t(*)[3])rst_ctrl->reg_bank);
 
 	if (!reg)
 		return -EINVAL;
@@ -127,7 +127,7 @@ static int sys_policy_apply_rst_policy(struct sys_policy *rst_ctrl)
  ******************************************************************************/
 static int sys_policy_init_policy(struct sys_policy *ctrl, int grp)
 {
-	static const char *const prop[] = { "sec-psp", "ssp",	  "psp", "tsp",
+	static const char *const prop[] = { "sec-psp", "ssp", "psp", "tsp",
 						"psp-ssp", "ssp-tsp", "bmcu" };
 
 	if (!ctrl->list)
@@ -176,7 +176,7 @@ static int sys_policy_config_dev(struct sys_policy *ctrl)
 	for (grp = SCU_SEC_PSP_GROUP; grp <= SCU_BOOTMCU_GROUP; grp++) {
 		/* To reduce the memory usage, use a temporary buffer */
 		ctrl->list = policy_list;
-		ctrl->reg_bank = (int(*)[SYS_POLICY_SEC_REG_MAX_NUM])reg;
+		ctrl->reg_bank = (uint32_t(*)[SYS_POLICY_SEC_REG_MAX_NUM])reg;
 
 		ret = ctrl->init_policy(ctrl, grp);
 		if (ret) {
