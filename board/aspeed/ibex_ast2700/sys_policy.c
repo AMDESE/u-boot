@@ -9,6 +9,7 @@
 #include <asm/io.h>
 #include <dm/read.h>
 #include <dm/uclass-id.h>
+#include <dt-bindings/clock/ast2700-clock.h>
 #include <dt-bindings/reset/ast2700-reset.h>
 #include <linux/errno.h>
 
@@ -18,6 +19,8 @@
 #define SYS_POLICY_SEC_REG_MAX_NUM (3)
 
 #define SYS_POLICY_RESET_LOCK (GENMASK(15, 13) | GENMASK(7, 5))
+#define SYS_POLICY_CLK0_LOCK (GENMASK(23, 21))
+#define SYS_POLICY_CLK1_LOCK (GENMASK(23, 21) | GENMASK(31, 29))
 
 enum {
 	SCU_SEC_PSP_GROUP = 0,
@@ -53,38 +56,49 @@ struct sys_policy {
 };
 
 /******************************************************************************
- *                       Aspeed Reset Policy Callback                         *
+ *                       Aspeed Clock Policy Callback                         *
  ******************************************************************************/
-static int sys_policy_load_rst_policy(struct sys_policy *rst_ctrl, int grp)
+static int sys_policy_apply_clk0_policy(struct sys_policy *clk_ctrl)
 {
-	uint32_t(*reg)[3] = ((uint32_t(*)[3])rst_ctrl->reg_bank);
-	uint32_t rst_bank = 0;
-	uint32_t rst_bit = 0;
-	uint32_t i = 0;
+	uint32_t(*reg)[3] = ((uint32_t(*)[3])clk_ctrl->reg_bank);
 
 	if (!reg)
 		return -EINVAL;
 
-	for (i = 0; i < rst_ctrl->num; i++) {
-		rst_bank = rst_ctrl->list[i] / 32;
-		rst_bit = rst_ctrl->list[i] % 32;
+	/* Set clock 0 security policy*/
+	writel(reg[0][0], clk_ctrl->base + 0x14);
+	writel(reg[0][1], clk_ctrl->base + 0x18);
+	writel(reg[0][2], clk_ctrl->base + 0x1C);
 
-		if (rst_ctrl->list[i] > rst_ctrl->max_id ||
-		    rst_bank >= SYS_POLICY_SEC_BANK_MAX_NUM) {
-			/* Check if the reset number is bigger than max number */
-			printf("Err: invalid policy (%d, %d)\n", rst_ctrl->list[i], grp);
-		} else if ((reg[rst_bank][0] & BIT(rst_bit)) != 0 ||
-			   (reg[rst_bank][1] & BIT(rst_bit)) != 0 ||
-			   (reg[rst_bank][2] & BIT(rst_bit)) != 0) {
-			/* Check if the reset policy is set */
-			printf("Err: duplicated policy (%d, %d)\n", rst_ctrl->list[i], grp);
-		} else {
-			/* Set reset security policy */
-			reg[rst_bank][0] |= SYS_POLICY_SEC_VAL(0, grp) ? BIT(rst_bit) : 0;
-			reg[rst_bank][1] |= SYS_POLICY_SEC_VAL(1, grp) ? BIT(rst_bit) : 0;
-			reg[rst_bank][2] |= SYS_POLICY_SEC_VAL(2, grp) ? BIT(rst_bit) : 0;
-		}
-	}
+	/* Set clock 0 write protection */
+	writel(SYS_POLICY_CLK0_LOCK, clk_ctrl->base + 0xBD0);
+
+#ifdef SYS_POLICY_DEBUG
+	printf("Dbg: 0x%08x 0x%08x 0x%08x\n", reg[0][0], reg[0][1], reg[0][2]);
+#endif
+
+	return 0;
+}
+
+static int sys_policy_apply_clk1_policy(struct sys_policy *clk_ctrl)
+{
+	uint32_t(*reg)[3] = ((uint32_t(*)[3])clk_ctrl->reg_bank);
+
+	if (!reg)
+		return -EINVAL;
+
+	/* Set clock 1 ctrl 0 security policy */
+	writel(reg[0][0], clk_ctrl->base + 0x14);
+	writel(reg[0][1], clk_ctrl->base + 0x18);
+	writel(reg[0][2], clk_ctrl->base + 0x1C);
+
+	/* Set clock 1 ctrl 1 security policy */
+	writel(reg[1][0], clk_ctrl->base + 0x34);
+	writel(reg[1][1], clk_ctrl->base + 0x38);
+	writel(reg[1][2], clk_ctrl->base + 0x3C);
+
+	/* Set clock 1 write protection */
+	writel(SYS_POLICY_CLK1_LOCK, clk_ctrl->base + 0xBD0);
 
 #ifdef SYS_POLICY_DEBUG
 	printf("Dbg: 0x%08x 0x%08x 0x%08x\n", reg[0][0], reg[0][1], reg[0][2]);
@@ -94,6 +108,9 @@ static int sys_policy_load_rst_policy(struct sys_policy *rst_ctrl, int grp)
 	return 0;
 }
 
+/******************************************************************************
+ *                       Aspeed Reset Policy Callback                         *
+ ******************************************************************************/
 static int sys_policy_apply_rst_policy(struct sys_policy *rst_ctrl)
 {
 	uint32_t(*reg)[3] = ((uint32_t(*)[3])rst_ctrl->reg_bank);
@@ -101,12 +118,12 @@ static int sys_policy_apply_rst_policy(struct sys_policy *rst_ctrl)
 	if (!reg)
 		return -EINVAL;
 
-	/* Set reset 0 security policy*/
+	/* Set reset 0 security policy */
 	writel(reg[0][0], rst_ctrl->base + 0x14);
 	writel(reg[0][1], rst_ctrl->base + 0x18);
 	writel(reg[0][2], rst_ctrl->base + 0x1C);
 
-	/* Set reset 1 security policy*/
+	/* Set reset 1 security policy */
 	writel(reg[1][0], rst_ctrl->base + 0x34);
 	writel(reg[1][1], rst_ctrl->base + 0x38);
 	writel(reg[1][2], rst_ctrl->base + 0x3C);
@@ -123,7 +140,7 @@ static int sys_policy_apply_rst_policy(struct sys_policy *rst_ctrl)
 }
 
 /******************************************************************************
- *                        Aspeed System Policy Flow                           *
+ *                          Aspeed System Policy                              *
  ******************************************************************************/
 static int sys_policy_init_policy(struct sys_policy *ctrl, int grp)
 {
@@ -143,6 +160,45 @@ static int sys_policy_init_policy(struct sys_policy *ctrl, int grp)
 #ifdef SYS_POLICY_DEBUG
 	print_hex_dump(prop[grp], DUMP_PREFIX_NONE, 16, 1, ctrl->list,
 		       ctrl->num * sizeof(uint32_t), false);
+#endif
+
+	return 0;
+}
+
+static int sys_policy_load_policy(struct sys_policy *ctrl, int grp)
+{
+	uint32_t(*reg)[3] = ((uint32_t(*)[3])ctrl->reg_bank);
+	uint32_t rst_bank = 0;
+	uint32_t rst_bit = 0;
+	uint32_t i = 0;
+
+	if (!reg)
+		return -EINVAL;
+
+	for (i = 0; i < ctrl->num; i++) {
+		rst_bank = ctrl->list[i] / 32;
+		rst_bit = ctrl->list[i] % 32;
+
+		if (ctrl->list[i] > ctrl->max_id ||
+		    rst_bank >= SYS_POLICY_SEC_BANK_MAX_NUM) {
+			/* Check if the reset number is bigger than max number */
+			printf("Err: invalid policy (%d, %d)\n", ctrl->list[i], grp);
+		} else if ((reg[rst_bank][0] & BIT(rst_bit)) != 0 ||
+			   (reg[rst_bank][1] & BIT(rst_bit)) != 0 ||
+			   (reg[rst_bank][2] & BIT(rst_bit)) != 0) {
+			/* Check if the reset policy is set */
+			printf("Err: duplicated policy (%d, %d)\n", ctrl->list[i], grp);
+		} else {
+			/* Set reset security policy */
+			reg[rst_bank][0] |= SYS_POLICY_SEC_VAL(0, grp) ? BIT(rst_bit) : 0;
+			reg[rst_bank][1] |= SYS_POLICY_SEC_VAL(1, grp) ? BIT(rst_bit) : 0;
+			reg[rst_bank][2] |= SYS_POLICY_SEC_VAL(2, grp) ? BIT(rst_bit) : 0;
+		}
+	}
+
+#ifdef SYS_POLICY_DEBUG
+	printf("Dbg: 0x%08x 0x%08x 0x%08x\n", reg[0][0], reg[0][1], reg[0][2]);
+	printf("Dbg: 0x%08x 0x%08x 0x%08x\n", reg[1][0], reg[1][1], reg[1][2]);
 #endif
 
 	return 0;
@@ -220,7 +276,7 @@ static struct sys_policy policy_ctrl[] = {
 		.max_id = SCU0_RESET_VLINK,
 		.name = "reset-controller@12c02200",
 		.init_policy = sys_policy_init_policy,
-		.load_policy = sys_policy_load_rst_policy,
+		.load_policy = sys_policy_load_policy,
 		.apply_policy = sys_policy_apply_rst_policy,
 	},
 	[SYS_POLICY_SOC1_RST] = {
@@ -228,8 +284,24 @@ static struct sys_policy policy_ctrl[] = {
 		.max_id = SCU1_RESET_I3CDMA,
 		.name = "reset-controller@14c02200",
 		.init_policy = sys_policy_init_policy,
-		.load_policy = sys_policy_load_rst_policy,
+		.load_policy = sys_policy_load_policy,
 		.apply_policy = sys_policy_apply_rst_policy,
+	},
+	[SYS_POLICY_SOC0_CLK] = {
+		.uclass_id = UCLASS_CLK,
+		.max_id = SCU0_CLK_GATE_RVAS1CLK,
+		.name = "clock-controller@12c02200",
+		.init_policy = sys_policy_init_policy,
+		.load_policy = sys_policy_load_policy,
+		.apply_policy = sys_policy_apply_clk0_policy,
+	},
+	[SYS_POLICY_SOC1_CLK] = {
+		.uclass_id = UCLASS_CLK,
+		.max_id = SCU1_CLK_GATE_LTPI1TXCLK,
+		.name = "clock-controller@14c02200",
+		.init_policy = sys_policy_init_policy,
+		.load_policy = sys_policy_load_policy,
+		.apply_policy = sys_policy_apply_clk1_policy,
 	},
 };
 
@@ -239,6 +311,8 @@ int sys_policy_init(void)
 
 	ret |= sys_policy_enable(&policy_ctrl[SYS_POLICY_SOC0_RST]);
 	ret |= sys_policy_enable(&policy_ctrl[SYS_POLICY_SOC1_RST]);
+	ret |= sys_policy_enable(&policy_ctrl[SYS_POLICY_SOC0_CLK]);
+	ret |= sys_policy_enable(&policy_ctrl[SYS_POLICY_SOC1_CLK]);
 
 	return ret;
 }
