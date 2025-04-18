@@ -22,6 +22,14 @@
 #define SYS_POLICY_CLK0_LOCK (GENMASK(23, 21))
 #define SYS_POLICY_CLK1_LOCK (GENMASK(23, 21) | GENMASK(31, 29))
 
+#define SYS_POLICY_CLK0_SEL1_LOCK GENMASK(15, 0)
+#define SYS_POLICY_CLK0_SEL2_LOCK GENMASK(12, 0)
+#define SYS_POLICY_CLK0_SEL3_LOCK GENMASK(1, 0)
+#define SYS_POLICY_CLK1_SEL1_LOCK (GENMASK(14, 0) | BIT(18) | BIT(21) | \
+				   BIT(25) | BIT(29))
+#define SYS_POLICY_CLK1_SEL2_LOCK (BIT(0) | BIT(3) | BIT(8) | BIT(12) | \
+				   GENMASK(20, 15) | BIT(23))
+
 enum {
 	SCU_SEC_PSP_GROUP = 0,
 	SCU_SSP_GROUP,
@@ -54,6 +62,37 @@ struct sys_policy {
 	int (*load_policy)(struct sys_policy *ctrl, int grp);
 	int (*apply_policy)(struct sys_policy *ctrl);
 };
+
+/******************************************************************************
+ *                       Aspeed Reset Policy Callback                         *
+ ******************************************************************************/
+static int sys_policy_apply_rst_policy(struct sys_policy *rst_ctrl)
+{
+	uint32_t(*reg)[3] = ((uint32_t(*)[3])rst_ctrl->reg_bank);
+
+	if (!reg)
+		return -EINVAL;
+
+	/* Set reset 0 security policy */
+	writel(reg[0][0], rst_ctrl->base + 0x14);
+	writel(reg[0][1], rst_ctrl->base + 0x18);
+	writel(reg[0][2], rst_ctrl->base + 0x1C);
+
+	/* Set reset 1 security policy */
+	writel(reg[1][0], rst_ctrl->base + 0x34);
+	writel(reg[1][1], rst_ctrl->base + 0x38);
+	writel(reg[1][2], rst_ctrl->base + 0x3C);
+
+	/* Set reset 0/1 write protection */
+	writel(SYS_POLICY_RESET_LOCK, rst_ctrl->base + 0xC10);
+
+#ifdef SYS_POLICY_DEBUG
+	printf("Dbg: 0x%08x 0x%08x 0x%08x\n", reg[0][0], reg[0][1], reg[0][2]);
+	printf("Dbg: 0x%08x 0x%08x 0x%08x\n", reg[1][0], reg[1][1], reg[1][2]);
+#endif
+
+	return 0;
+}
 
 /******************************************************************************
  *                       Aspeed Clock Policy Callback                         *
@@ -109,32 +148,21 @@ static int sys_policy_apply_clk1_policy(struct sys_policy *clk_ctrl)
 }
 
 /******************************************************************************
- *                       Aspeed Reset Policy Callback                         *
+ *                      Aspeed Clock Sel Lock Callback                        *
  ******************************************************************************/
-static int sys_policy_apply_rst_policy(struct sys_policy *rst_ctrl)
+static int sys_policy_apply_clk0_sel_lock(struct sys_policy *clk_ctrl)
 {
-	uint32_t(*reg)[3] = ((uint32_t(*)[3])rst_ctrl->reg_bank);
+	writel(SYS_POLICY_CLK0_SEL1_LOCK, clk_ctrl->base + 0x50);
+	writel(SYS_POLICY_CLK0_SEL2_LOCK, clk_ctrl->base + 0x54);
+	writel(SYS_POLICY_CLK0_SEL3_LOCK, clk_ctrl->base + 0x58);
 
-	if (!reg)
-		return -EINVAL;
+	return 0;
+}
 
-	/* Set reset 0 security policy */
-	writel(reg[0][0], rst_ctrl->base + 0x14);
-	writel(reg[0][1], rst_ctrl->base + 0x18);
-	writel(reg[0][2], rst_ctrl->base + 0x1C);
-
-	/* Set reset 1 security policy */
-	writel(reg[1][0], rst_ctrl->base + 0x34);
-	writel(reg[1][1], rst_ctrl->base + 0x38);
-	writel(reg[1][2], rst_ctrl->base + 0x3C);
-
-	/* Set reset 0/1 write protection */
-	writel(SYS_POLICY_RESET_LOCK, rst_ctrl->base + 0xC10);
-
-#ifdef SYS_POLICY_DEBUG
-	printf("Dbg: 0x%08x 0x%08x 0x%08x\n", reg[0][0], reg[0][1], reg[0][2]);
-	printf("Dbg: 0x%08x 0x%08x 0x%08x\n", reg[1][0], reg[1][1], reg[1][2]);
-#endif
+static int sys_policy_apply_clk1_sel_lock(struct sys_policy *clk_ctrl)
+{
+	writel(SYS_POLICY_CLK1_SEL1_LOCK, clk_ctrl->base + 0x60);
+	writel(SYS_POLICY_CLK1_SEL2_LOCK, clk_ctrl->base + 0x70);
 
 	return 0;
 }
@@ -234,13 +262,13 @@ static int sys_policy_config_dev(struct sys_policy *ctrl)
 		ctrl->list = policy_list;
 		ctrl->reg_bank = (uint32_t(*)[SYS_POLICY_SEC_REG_MAX_NUM])reg;
 
-		ret = ctrl->init_policy(ctrl, grp);
+		ret = ctrl->init_policy ? ctrl->init_policy(ctrl, grp) : 0;
 		if (ret) {
 			printf("Err: init %s:%d policy failed.\n", ctrl->name, grp);
 			return ret;
 		}
 
-		ret = ctrl->load_policy(ctrl, grp);
+		ret = ctrl->load_policy ? ctrl->load_policy(ctrl, grp) : 0;
 		if (ret) {
 			printf("Err: load %s:%d policy failed.\n", ctrl->name, grp);
 			return ret;
@@ -303,6 +331,20 @@ static struct sys_policy policy_ctrl[] = {
 		.load_policy = sys_policy_load_policy,
 		.apply_policy = sys_policy_apply_clk1_policy,
 	},
+	[SYS_POLICY_SOC0_CLK_SEL] = {
+		.uclass_id = UCLASS_CLK,
+		.name = "clock-controller@12c02200",
+		.init_policy = NULL,
+		.load_policy = NULL,
+		.apply_policy = sys_policy_apply_clk0_sel_lock,
+	},
+	[SYS_POLICY_SOC1_CLK_SEL] = {
+		.uclass_id = UCLASS_CLK,
+		.name = "clock-controller@14c02200",
+		.init_policy = NULL,
+		.load_policy = NULL,
+		.apply_policy = sys_policy_apply_clk1_sel_lock,
+	},
 };
 
 int sys_policy_init(void)
@@ -313,6 +355,8 @@ int sys_policy_init(void)
 	ret |= sys_policy_enable(&policy_ctrl[SYS_POLICY_SOC1_RST]);
 	ret |= sys_policy_enable(&policy_ctrl[SYS_POLICY_SOC0_CLK]);
 	ret |= sys_policy_enable(&policy_ctrl[SYS_POLICY_SOC1_CLK]);
+	ret |= sys_policy_enable(&policy_ctrl[SYS_POLICY_SOC0_CLK_SEL]);
+	ret |= sys_policy_enable(&policy_ctrl[SYS_POLICY_SOC1_CLK_SEL]);
 
 	return ret;
 }
