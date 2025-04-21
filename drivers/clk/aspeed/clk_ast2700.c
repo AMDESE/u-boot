@@ -679,6 +679,15 @@ static void ast2700_emmc_init(struct ast2700_scu0 *scu)
 	writel(clksrc1, &scu->clk_sel1);
 }
 
+static void ast2700_vga_clk_init(struct ast2700_scu0 *scu)
+{
+	if ((scu->chip_id1 & SCU_HW_REVISION_ID) == 0)
+		return;
+
+	// Use d0clk/d1clk which generated from hpll for vga0/1 after A0
+	setbits_le32(&scu->clk_sel3, BIT(13) | BIT(12));
+}
+
 static u32 ast2700_soc0_get_uartclk_rate(struct ast2700_scu0 *scu)
 {
 	u32 clksel2 = readl(&scu->clk_sel2);
@@ -959,6 +968,7 @@ static int ast2700_clk0_init(struct udevice *dev)
 
 	ast2700_emmc_init(scu);
 	ast2700_mphy_clk_init(scu);
+	ast2700_vga_clk_init(scu);
 
 	return 0;
 }

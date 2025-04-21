@@ -119,10 +119,6 @@ static int ast_vga_probe(struct udevice *dev)
 	else
 		setbits_le32(&priv->scu->hwstrap1_clr, BIT(10));
 
-	// Use d0clk/d1clk which generated from hpll for vga0/1 after A0
-	if (FIELD_GET(SCU_CPU_REVISION_ID_HW, priv->scu->chip_id1) != 0)
-		setbits_le32(&priv->scu->clk_sel3, BIT(13) | BIT(12));
-
 	if (is_pcie0_enable) {
 		ret = clk_enable(&priv->vga0_clk);
 		if (ret) {
