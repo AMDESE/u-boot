@@ -45,6 +45,7 @@
 #define ENV_BOARD_FIT_CONF   "board_conf"
 #define ENV_BOARD_ID           "board_id"
 #define ENV_BOARD_REV         "board_rev"
+#define ENV_DT_NAME              "dtname"
 #define ENV_ETH_ADDR            "ethaddr"
 #define ENV_ETH1_ADDR          "eth1addr"
 #define ENV_ETH2_ADDR          "eth2addr"
@@ -62,28 +63,64 @@
 // 3x advt timeout for FPGA to move to LDFA state
 #define OP_TIMEOUT_US          "300000"
 
-/* SP7 HPM boards */
-#define MARLEY_1        0x79
-#define MARLEY_2        0x7A
-#define MARLEY_3        0x7B
-#define MOJANDA_1       0x7C
-#define MOJANDA_2       0x7E
-#define MOJANDA_3       0x7F
-#define CONGO_1         0x80
-#define CONGO_2         0x81
-#define CONGO_3         0x86
-#define MOROCCO_1       0x82
-#define MOROCCO_2       0x83
-#define MOROCCO_3       0x87
-#define KENYA           0x84
-#define NIGERIA         0x85
-#define GHANA           0x8E
-#define SENEGAL_SLT     0x88
-#define SAHARA          0x89
-#define MALAWI          0x8A
-#define ZAMBIA          0x8B
-#define ZIMBABWE        0x8C
-#define ZANZIBAR        0x8D
+/* SP7 Circuit Type */
+typedef enum {
+	HCC_TYPE_1 = 0x01,
+	HCC_TYPE_2 = 0x02,
+	AMD_TYPE_SLT_1P = 0x03,
+	AMD_TYPE_SLT_2P = 0x04,
+	AMD_TYPE_2x1_P0 = 0x05,
+	AMD_TYPE_2x1_P1 = 0x06,
+} BoardType;
+
+/* SP7 Board info */
+typedef struct {
+	const char *name;
+	int id;
+	BoardType type;
+} BoardInfo;
+
+/* SP7 HPM boards (ordered by id)*/
+const BoardInfo boards[] = {
+	{"marley", 0x79, HCC_TYPE_2},
+	{"marley", 0x7A, HCC_TYPE_2},
+	{"marley", 0x7B, HCC_TYPE_2},
+	{"mojanda", 0x7C, HCC_TYPE_2},
+	{"mojanda", 0x7D, HCC_TYPE_2},
+	{"mojanda", 0x7E, HCC_TYPE_2},
+	{"congo", 0x80, HCC_TYPE_1},
+	{"congo", 0x81, HCC_TYPE_1},
+	{"morocco", 0x82, HCC_TYPE_2},
+	{"morocco", 0x83, HCC_TYPE_2},
+	{"kenya", 0x84, HCC_TYPE_1},
+	{"nigeria", 0x85, HCC_TYPE_2},
+	{"congo", 0x86, HCC_TYPE_1},
+	{"morocco", 0x87, HCC_TYPE_2},
+	{"senegal", 0x88, AMD_TYPE_SLT_1P},
+	{"sahara", 0x89, AMD_TYPE_SLT_1P},
+	{"malawi", 0x8A, AMD_TYPE_SLT_2P},
+	{"zambia", 0x8B, AMD_TYPE_SLT_1P},
+	{"zimbabwe", 0x8C, AMD_TYPE_SLT_1P},
+	{"zanzibar", 0x8D, AMD_TYPE_SLT_1P},
+	{"ghana", 0x8E, HCC_TYPE_2},
+	{"morocco", 0x8F, HCC_TYPE_2},
+	{"morocco", 0x90, HCC_TYPE_2},
+	{"nigeria", 0x91, HCC_TYPE_2},
+	{"nigeria", 0x92, HCC_TYPE_2},
+	{"ghana", 0x93, HCC_TYPE_2},
+	{"ghana", 0x94, HCC_TYPE_2},
+	{"malawi", 0x95, AMD_TYPE_SLT_2P},
+	{"malawi", 0x96, AMD_TYPE_SLT_2P},
+	{"nigeria", 0x97, HCC_TYPE_2},
+	{"nigeria", 0x98, HCC_TYPE_2},
+	{"nigeria", 0x99, HCC_TYPE_2},
+	{"morocco", 0x9A, HCC_TYPE_2},
+	{"morocco", 0x9B, HCC_TYPE_2},
+	{"morocco", 0x9C, HCC_TYPE_2},
+	{"morocco", 0x9D, HCC_TYPE_2},
+	{"zaire", 0x9E, AMD_TYPE_SLT_1P},
+	{"marrakesh", 0xB0, AMD_TYPE_SLT_1P}
+};
 
 int set_mac_addresses(const u8 *eeprom_buf)
 {
@@ -117,60 +154,38 @@ int set_mac_addresses(const u8 *eeprom_buf)
 	return 0;
 }
 
-int get_platform_name( const u8 board_id, char* platname)
+int get_platform_name( const u8 board_id, char* platname, char* dtsname)
 {
-	int ret = 0;
-	switch (board_id) {
-		case CONGO_1:
-		case CONGO_2:
-		case CONGO_3:
-			strcpy(platname, "congo");
+	int ret = -1;
+	int i = 0;
+	int brd_count;
+
+	if ((dtsname == NULL || platname == NULL))
+		return ret;
+
+	/* Get name string from BoardInfo structure based on id */
+	brd_count = sizeof(boards) / sizeof(boards[0]);
+	for (i = 0; i < brd_count; i++) {
+		if (boards[i].id == board_id) {
+			/* fill board name */
+			strlcpy(platname, boards[i].name, sizeof(platname));
+			/* use 1P/2P default devicetrees for SLT boards */
+			if (boards[i].type == AMD_TYPE_SLT_1P) {
+				strlcpy(dtsname, "congo", sizeof(dtsname));
+			} else if (boards[i].type == AMD_TYPE_SLT_2P) {
+				strlcpy(dtsname, "morocco", sizeof(dtsname));
+			} else {
+				strlcpy(dtsname, boards[i].name, sizeof(dtsname));
+			}
+			ret = 0;
 			break;
-		case MOROCCO_1:
-		case MOROCCO_2:
-		case MOROCCO_3:
-			strcpy(platname, "morocco");
-			break;
-		case MARLEY_1:
-		case MARLEY_2:
-		case MARLEY_3:
-			strcpy(platname, "marley");
-			break;
-		case MOJANDA_1:
-		case MOJANDA_2:
-		case MOJANDA_3:
-			strcpy(platname, "mojanda");
-			break;
-		case KENYA:
-			strcpy(platname, "kenya");
-			break;
-		case NIGERIA:
-			strcpy(platname, "nigeria");
-			break;
-		case GHANA:
-			strcpy(platname, "ghana");
-			break;
-		case SENEGAL_SLT:
-			strcpy(platname, "senegal");
-			break;
-		case SAHARA:
-			strcpy(platname, "sahara");
-			break;
-		case MALAWI:
-			strcpy(platname, "malawi");
-			break;
-		case ZAMBIA:
-			strcpy(platname, "zambia");
-			break;
-		case ZIMBABWE:
-			strcpy(platname, "zimbabwe");
-			break;
-		case ZANZIBAR:
-			strcpy(platname, "zanzibar");
-			break;
-		default:
-			strcpy(platname, "sp7");
-			ret = -1;
+		}
+	}
+	if (ret == -1)
+	{
+		strlcpy(platname, "sp7", sizeof(platname));
+		strlcpy(dtsname, "congo", sizeof(dtsname));
+		ret = -1;
 	}
 	return ret;
 }
@@ -254,6 +269,7 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 	char *old_bootargs = NULL;
 	char new_bootargs [STR_BUF_LEN] = {0};
 	char plat_name [STR_BUF_LEN] = {0};
+	char dts_name [STR_BUF_LEN] = {0};
 	char board_conf_name[STR_BUF_LEN] = {0};
 	char board_id_str[STR_BUF_LEN] = {0};
 	char board_rev_str[STR_BUF_LEN] = {0};
@@ -269,16 +285,23 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 	board_rev = *(hpm_eeprom_buf + hpm_mrc + HPM_BRD_REV_OFFSET);
 
 	/* HPM board name */
-	if (get_platform_name(board_id, &plat_name) == 0) {
+	if (get_platform_name(board_id, plat_name, dts_name) == 0) {
 		/* HPM board FDT config */
 		if(!env_get(ENV_BOARD_FIT_CONF)) {
-			snprintf(board_conf_name, sizeof(board_conf_name),"#conf-aspeed-bmc-amd-%s.dtb", plat_name);
+			snprintf(board_conf_name, sizeof(board_conf_name),"#conf-aspeed-bmc-amd-%s.dtb", dts_name);
 			env_set(ENV_BOARD_FIT_CONF, board_conf_name);
 			printf("Saving Board FDT config: %s\n", board_conf_name);
 			env_save();
 		}
 		else
 			printf("HPM EEPROM not programmed\nLoading first DTB config\n");
+
+		/* Export dt name, defaults to congo */
+		if(!env_get(ENV_DT_NAME)) {
+			env_set(ENV_DT_NAME, dts_name);
+			printf("Saving DT name: %s\n", dts_name);
+			env_save();
+		}
 	}
 
 	/* HPM board env variables for linux apps */
@@ -325,7 +348,7 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 			bin2hex(mac_str, scm_eeprom_buf + LAST_2B_MAC0_ADDR, LAST_2B_MAC0_LEN);
 		/* update bootargs with new hostname */
 		old_bootargs = env_get(ENV_BOOTARGS);
-		if  ( !(strstr(old_bootargs, "systemd.hostname")) ) {
+		if  (old_bootargs && !(strstr(old_bootargs, "systemd.hostname")) ) {
 			/* Hostname to pass to systemd-networking */
 			snprintf(new_hostname, sizeof(new_hostname), "systemd.hostname=%s-%s", plat_name, mac_str);
 			snprintf(new_bootargs, sizeof(new_bootargs),"%s %s",old_bootargs,new_hostname);
@@ -394,46 +417,67 @@ void update_por_env(void)
 	env_save();
 }
 
-int misc_init_r(void)
+int read_eeprom_buffers(u8 *scm_eeprom_buf, u8 *hpm_eeprom_buf)
 {
-	/* Read the FRU EEPROM and store in buffer */
-	u8 scm_eeprom_buf [EEPROM_BUF_LEN] = {0};
-	u8 hpm_eeprom_buf [EEPROM_BUF_LEN] = {0};
-
 	struct udevice *idev, *ibus;
 	int ret;
-	uchar enetaddr[MAC_ADDR_LEN] = {0};
 
 	ret = uclass_get_device_by_seq(UCLASS_I2C, SCM_EEPROM_I2C_BUS, &ibus);
 	if (ret)
-		goto err;
+		return ret;
 	ret = dm_i2c_probe(ibus, EEPROM_DEV_ADDR, 0, &idev);
 	if (ret)
-		goto err;
+		return ret;
 
 	ret = i2c_set_chip_offset_len(idev, SCM_EEPROM_OFF_LEN);
 	if (ret)
-		goto err;
+		return ret;
 
-	if (dm_i2c_read(idev, 0, &scm_eeprom_buf, sizeof scm_eeprom_buf)) {
+	if (dm_i2c_read(idev, 0, scm_eeprom_buf, EEPROM_BUF_LEN)) {
 		printf("\nSCM EEPROM read failed!\n");
-		goto err;
+		return -1;
 	}
 
 	ret = uclass_get_device_by_seq(UCLASS_I2C, HPM_EEPROM_I2C_BUS, &ibus);
 	if (ret)
-		goto err;
+		return ret;
 
 	ret = dm_i2c_probe(ibus, EEPROM_DEV_ADDR, 0, &idev);
 	if (ret)
-		goto err;
+		return ret;
 
 	ret = i2c_set_chip_offset_len(idev, HPM_EEPROM_OFF_LEN);
 	if (ret)
-		goto err;
+		return ret;
 
-	if (dm_i2c_read(idev, 0, &hpm_eeprom_buf, sizeof hpm_eeprom_buf)) {
+	if (dm_i2c_read(idev, 0, hpm_eeprom_buf, EEPROM_BUF_LEN)) {
 		printf("\nHPM EEPROM read failed!\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+int misc_init_r(void)
+{
+	int ret;
+
+	/* Read the FRU EEPROM and store in buffer */
+	u8 scm_eeprom_buf [EEPROM_BUF_LEN] = {0};
+	u8 hpm_eeprom_buf [EEPROM_BUF_LEN] = {0};
+
+	uchar enetaddr[MAC_ADDR_LEN] = {0};
+
+	/* Read the SCM and HPM EEPROMs */
+	ret = read_eeprom_buffers(scm_eeprom_buf, hpm_eeprom_buf);
+	if (ret) {
+		printf("EEPROM read failed!\n");
+		goto err;
+	}
+
+	/* check if SCM EEPROM is programmed */
+	if (scm_eeprom_buf[0] == 0xFF) {
+		printf("EEPROM not programmed\n");
 		goto err;
 	}
 
@@ -451,12 +495,17 @@ int misc_init_r(void)
 		}
 	}
 
+	/* check if HPM EEPROM is programmed */
+	if (hpm_eeprom_buf[0] == 0xFF) {
+		printf("HPM EEPROM not programmed\n");
+		goto err;
+	}
+
 	/* set Hostname, board id,rev and fdt config from HPM EEPROM */
 	if (set_board_info(&scm_eeprom_buf, &hpm_eeprom_buf) == 0)
 	{
 		printf("Loading %s\n", env_get(ENV_BOARD_FIT_CONF));
 	}
-
 	/* set power-on reset variable */
 	update_por_env();
 
