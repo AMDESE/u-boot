@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0+
-#include "sdram_ast2700.h"
+#include <asm/arch/sdram_ast2700.h>
 
 #define SCU_CPU_PINMUX1                 (SCU_CPU_REG + 0x400)
 
