@@ -692,7 +692,13 @@ static int ftgmac100_probe(struct udevice *dev)
 			dev_err(dev, "Unable to get sgmii");
 			goto out;
 		}
-		generic_phy_init(&priv->sgmii);
+		if (ofnode_phy_is_fixed_link(dev_ofnode(dev), NULL)) {
+			struct fixed_link *link = priv->phydev->priv;
+
+			generic_phy_set_speed(&priv->sgmii, link->link_speed);
+		} else {
+			generic_phy_init(&priv->sgmii);
+		}
 	}
 
 out:
