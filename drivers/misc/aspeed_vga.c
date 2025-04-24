@@ -46,12 +46,11 @@ static u32 _ast_get_e2m_addr(struct sdramc_regs *ram, u8 node)
 	return val;
 }
 
-static void _ast_update_e2m(struct ast_vga_priv *priv, bool is_64vram)
+static void _ast_update_e2m(struct ast_vga_priv *priv, bool is_64vram,
+			    bool is_pcie0_enable, bool is_pcie1_enable)
 {
 	u32 val, vram_size;
 	u8 vram_size_cfg;
-	bool is_pcie0_enable = priv->scu->pci0_misc[28] & BIT(0);
-	bool is_pcie1_enable = priv->scu->pci1_misc[28] & BIT(0);
 
 	vram_size_cfg = is_64vram ? 0xf : 0xe;
 	vram_size = 2 << (vram_size_cfg + 10);
@@ -105,7 +104,7 @@ static int ast_vga_probe(struct udevice *dev)
 	debug("%s: ENABLE 0(%d) 1(%d)\n", __func__, is_pcie0_enable, is_pcie1_enable);
 	debug("%s: dac_src(%d) dp_src(%d)\n", __func__, dac_src, dp_src);
 
-	_ast_update_e2m(priv, is_64vram);
+	_ast_update_e2m(priv, is_64vram, is_pcie0_enable, is_pcie1_enable);
 
 	if (priv->scu->hwstrap1 & BIT(11)) {
 		debug("%s: Skip probe since it has been done.\n", __func__);
