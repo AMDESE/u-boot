@@ -661,6 +661,24 @@
 			status = "disabled";
 		};
 
+		ltpi0_gpio: ltpi0-gpio@14c34c00 {
+			compatible = "aspeed,ast2700-ltpi-gpio";
+			reg = <0x0 0x14c34c00 0x0 0x300>;
+			#gpio-cells = <2>;
+			gpio-controller;
+			ngpios = <112>;
+			status = "disabled";
+		};
+
+		ltpi1_gpio: ltpi1-gpio@14c35c00 {
+			compatible = "aspeed,ast2700-ltpi-gpio";
+			reg = <0x0 0x14c35c00 0x0 0x300>;
+			#gpio-cells = <2>;
+			gpio-controller;
+			ngpios = <112>;
+			status = "disabled";
+		};
+
 		wdt0: watchdog@14c37000 {
 			compatible = "aspeed,ast2700-wdt";
 			reg = <0x0 0x14c37000 0x0 0x40>;
