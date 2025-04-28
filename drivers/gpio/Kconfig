@@ -171,6 +171,13 @@ config ASPEED_G7_GPIO
 	  is found in the AST2700 BMC SoCs and provides access to over 200
 	  GPIOs on each chip.
 
+config ASPEED_LTPI_GPIO
+	bool "Aspeed LTPI GPIO support"
+	help
+	  Say yes here to support the Aspeed LTPI GPIO driver. The controller
+	  is found in the AST2700 BMC SoCs and provides access to control GPIOs
+	  over LTPI IO frame.
+
 config DA8XX_GPIO
 	bool "DA8xx GPIO Driver"
 	help
