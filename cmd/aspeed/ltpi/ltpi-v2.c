@@ -158,6 +158,7 @@ struct ltpi_priv {
 	uint16_t otp_speed_cap;	/* limit the speed via OTP strap */
 	uint16_t phy_speed_cap; /* limit the speed with physical line status */
 	bool otp_ddr_dis;
+	int disable_auto_downshift;
 
 	int crc_format;
 	int io_driving;
@@ -747,8 +748,9 @@ static void ltpi_scm_init(struct ltpi_priv *ltpi)
 			goto ltpi_scm_exit;
 		}
 
-		/* clear the bit to specify the current speed doesn't work */
-		ltpi->phy_speed_cap &= ~BIT(target_speed);
+		if (!ltpi->disable_auto_downshift)
+			/* clear the bit to specify the current speed doesn't work */
+			ltpi->phy_speed_cap &= ~BIT(target_speed);
 
 		/* the lowest speed 25M should always be supported */
 		if ((ltpi->phy_speed_cap & LTPI_SP_CAP_25M) == 0)
@@ -1056,6 +1058,8 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 	ltpi_data[1].link_speed_frm_rx_cnt = 0;
 	ltpi_data[0].op_timeout = 0;
 	ltpi_data[1].op_timeout = 0;
+	ltpi_data[0].disable_auto_downshift = 0;
+	ltpi_data[1].disable_auto_downshift = 0;
 
 	ltpi_data[0].index = 0;
 	ltpi_data[0].base = LTPI_REG;
@@ -1070,13 +1074,17 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 	ltpi_data[1].gpio_base = ltpi_data[1].base + 0xc00;
 
 	getopt_init_state(&gs);
-	while ((opt = getopt(&gs, argc, argv, "l:m:i:t:T:d:c:r:sh")) > 0) {
+	while ((opt = getopt(&gs, argc, argv, "l:m:a:i:t:T:d:c:r:sh")) > 0) {
 		switch (opt) {
 		case 'l':
 			speed = simple_strtoul(gs.arg, &endp, 16);
 			break;
 		case 'm':
 			mode = simple_strtoul(gs.arg, &endp, 0);
+			break;
+		case 'a':
+			ltpi_data[0].disable_auto_downshift = simple_strtoul(gs.arg, &endp, 0);
+			ltpi_data[1].disable_auto_downshift = ltpi_data[0].disable_auto_downshift;
 			break;
 		case 'i':
 			ltpi_data[0].clk_inverse = simple_strtoul(gs.arg, &endp, 0);
@@ -1168,6 +1176,7 @@ static char ltpi_help_text[] = {
 	"-l <speed mask>, set bitmask to disable the corresponding speeds\n"
 	"    [15] DDR [14] N/A [13] N/A [12] 500M [11] N/A [10] N/A [9] 600M [8] 400M\n"
 	"    [7] 300M [6] 250M [5] 200M [4] 150M  [3] 100M [2] 75M  [1] 50M  [0] 25M\n"
+	"-a <auto downshift on failure>, 0=enable, 1=disable, default 0\n"
 	"-i <clk inverse>, 0x0=no inverse, 0x1=inverse tx, 0x2=inverse rx, 0x3=inverse both\n"
 	"-t <advertise timeout in us>, default 100000\n"
 	"-d <driving strength>, 0=weakest 3=strongest, default 2\n"
