@@ -1,0 +1,86 @@
+// SPDX-License-Identifier: GPL-2.0+
+
+/dts-v1/;
+
+#include "ast2700-evb.dts"
+
+#if PCIE2_RC
+&pcie2 {
+	status = "disabled";
+};
+#else
+&mdio2 {
+	status = "disabled";
+};
+
+&sgmii {
+	status = "disabled";
+};
+
+&mac2 {
+	status = "disabled";
+};
+#endif
+
+&fmc {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_fwspi_quad_default>;
+
+	flash@0 {
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <2>;
+		spi-rx-bus-width = <2>;
+	};
+
+	flash@1 {
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <2>;
+		spi-rx-bus-width = <2>;
+	};
+
+	flash@2 {
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <2>;
+		spi-rx-bus-width = <2>;
+	};
+};
+
+&spi2 {
+	status = "disabled";
+};
+
+&emmc_controller {
+	status = "disabled";
+};
+
+&emmc {
+	status = "disabled";
+};
+
+&sdc {
+	status = "disabled";
+};
+
+&sdhci {
+	status = "disabled";
+};
+
+&ufs {
+	status = "disabled";
+};
+
+&display_port {
+	status = "disabled";
+};
+
+&vbios {
+	status = "disabled";
+};
+
+&vga {
+	status = "disabled";
+};
