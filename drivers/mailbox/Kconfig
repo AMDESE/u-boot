@@ -58,4 +58,14 @@ config ZYNQMP_IPI
 	help
 	  This enables support for the Xilinx ZynqMP Inter Processor Interrupt
 	  communication controller.
+
+config AST2700_MBOX
+	bool "ASPEED AST2700 IPC driver"
+	depends on DM_MAILBOX && ARCH_ASPEED
+	help
+	  This enables support for the AST2700 IPC mailbox driver, providing
+	  an interface for invoking the inter-process communication signals
+	  from the application processor to other masters.
+
 endmenu
+
