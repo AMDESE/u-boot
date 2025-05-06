@@ -11,7 +11,8 @@
 #include <linux/libfdt.h>
 
 /* MAX visible range is 512M for SSP and TSP */
-#define MAX_I_D_ADDRESS		(512 * 1024 * 1024)
+#define MAX_I_D_ADDRESS	(512 * 1024 * 1024)
+#define TCM_SIZE	(8 * 1024) /* 8KB */
 
 #define SSP_MEMORY_NODE		"/reserved-memory/ssp-memory"
 #define TSP_MEMORY_NODE		"/reserved-memory/tsp-memory"
@@ -75,8 +76,8 @@ int ssp_init(ulong load_addr)
 	/*
 	 * SSP Memory Map:
 	 * - 0x0000_0000 - 0x0587_FFFF: ssp_remap2 -> DRAM[load_addr]
-	 * - 0x0588_0000 - 0x1FFF_FFFF: ssp_remap1 -> AHB -> DRAM[0]
-	 * - 0x2000_0000 - 0x2000_2000: ssp_remap0 -> TCM (Not used)
+	 * - 0x0588_0000 - 0x1FFF_DFFF: ssp_remap1 -> AHB -> DRAM[0]
+	 * - 0x1FFF_E000 - 0x2000_0000: ssp_remap0 -> TCM (SSP stack)
 	 *
 	 * The SSP serves as the secure loader for TSP, ATF, OP-TEE, and U-Boot.
 	 * Therefore, their load buffers must be visible to the SSP.
@@ -86,9 +87,9 @@ int ssp_init(ulong load_addr)
 	 *   are contiguous.
 	 * - SSP remap entry #1 (ssp_remap1_base/size) maps the load buffer
 	 *   for U-Boot at DRAM offset 0x0.
-	 * - SSP remap entry #0 (ssp_remap0_base/size) maps TCM, which is not used.
+	 * - SSP remap entry #0 (ssp_remap0_base/size) maps TCM, which is used for stack.
 	 */
-	writel(0, (void *)&scu->ssp_remap2_base);
+	writel(0, (void *)&scu->ssp_memory_base);
 	reg_val = info.size;
 	info = get_reserved_memory(TSP_MEMORY_NODE);
 	reg_val += info.size;
@@ -98,13 +99,13 @@ int ssp_init(ulong load_addr)
 	reg_val += info.size;
 	info = get_reserved_memory(IPC_SSP_MEMORY_NODE);
 	reg_val += info.size;
-	writel(reg_val, (void *)&scu->ssp_remap2_size);
+	writel(reg_val, (void *)&scu->ssp_memory_size);
 
-	writel(reg_val, (void *)&scu->ssp_remap1_base);
-	writel(MAX_I_D_ADDRESS - reg_val, (void *)&scu->ssp_remap1_size);
+	writel(reg_val, (void *)&scu->ssp_ahb_base);
+	writel(MAX_I_D_ADDRESS - reg_val - TCM_SIZE, (void *)&scu->ssp_ahb_size);
 
-	writel(MAX_I_D_ADDRESS, (void *)&scu->ssp_remap0_base);
-	writel(0x0, (void *)&scu->ssp_remap0_size);
+	writel(MAX_I_D_ADDRESS - TCM_SIZE, (void *)&scu->ssp_tcm_base);
+	writel(TCM_SIZE, (void *)&scu->ssp_tcm_size);
 
 	/* Configure physical AHB remap: through H2M, mapped to SYS_DRAM_BASE */
 	writel((uint32_t)(0x400000000ULL >> 4), (void *)&scu->ssp_ctrl_2);

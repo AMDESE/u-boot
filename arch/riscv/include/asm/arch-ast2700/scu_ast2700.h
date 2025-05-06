@@ -172,12 +172,12 @@ struct ast2700_scu0 {
 	uint32_t ssp_ctrl_6;		/* 0x134 */
 	uint32_t ssp_ctrl_7;		/* 0x138 */
 	uint32_t rsv_0x13c[1];		/* 0x13C */
-	uint32_t ssp_remap0_base;	/* 0x140 */
-	uint32_t ssp_remap0_size;	/* 0x144 */
-	uint32_t ssp_remap1_base;	/* 0x148 */
-	uint32_t ssp_remap1_size;	/* 0x14c */
-	uint32_t ssp_remap2_base;	/* 0x150 */
-	uint32_t ssp_remap2_size;	/* 0x154 */
+	uint32_t ssp_tcm_base;		/* 0x140 */
+	uint32_t ssp_tcm_size;		/* 0x144 */
+	uint32_t ssp_ahb_base;		/* 0x148 */
+	uint32_t ssp_ahb_size;		/* 0x14c */
+	uint32_t ssp_memory_base;	/* 0x150 */
+	uint32_t ssp_memory_size;	/* 0x154 */
 	uint32_t rsv_0x158[2];		/* 0x158 ~ 0x15C */
 	uint32_t tsp_ctrl_1;		/* 0x160 */
 	uint32_t rsv_0x164[1];		/* 0x164 */
