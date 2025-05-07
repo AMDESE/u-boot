@@ -1,0 +1,79 @@
+// SPDX-License-Identifier: GPL-2.0+
+
+/dts-v1/;
+
+#include "ast2700-evb.dts"
+
+/ {
+	model = "AST2700 VFF DCSCM";
+};
+
+/* Disable components from ast2700-evb */
+&mdio0 {
+	status = "disabled";
+};
+
+&mdio1 {
+	status = "disabled";
+};
+
+&pcie2 {
+	status = "disabled";
+};
+
+/* Enable components for ast2700-vff */
+&mac0 {
+	status = "okay";
+	phy-mode = "NC-SI";
+	use-ncsi;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_rmii0_default>;
+	/delete-property/phy-handle;
+};
+
+&mac1 {
+	status = "okay";
+	phy-mode = "NC-SI";
+	use-ncsi;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_rmii1_default>;
+	/delete-property/phy-handle;
+};
+
+&mdio2 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	ethphy2: ethernet-phy@0 {
+		reg = <0>;
+	};
+};
+
+&sgmii {
+	status = "okay";
+};
+
+&mac2 {
+	status = "okay";
+	phy-mode = "sgmii";
+	phy-handle = <&ethphy2>;
+};
+
+&spi2 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_spi2_default &pinctrl_spi2_cs1_default>;
+
+	compatible = "aspeed,ast2700-spi-txrx";
+	spi-aspeed-full-duplex;
+	tpm0: tpmdev@0 {
+		compatible = "tcg,tpm_tis-spi";
+		spi-max-frequency = <25000000>;
+		reg = <0>;
+		status = "okay";
+	};
+};
+
+&i2c12 {
+	status = "okay";
+};
