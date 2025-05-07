@@ -305,6 +305,21 @@
 
 			status = "disabled";
 		};
+		mbox0: mbox@12c1c200 {
+			compatible = "aspeed,ast2700-mailbox";
+			reg = <0x0 0x12c1c200 0x0 0x200>;
+			interrupts = <GIC_SPI 103 IRQ_TYPE_LEVEL_HIGH>;
+			#mbox-cells = <1>;
+			mbox-name = "ssp";
+		};
+
+		mbox1: mbox@12c1c600 {
+			compatible = "aspeed,ast2700-mailbox";
+			reg = <0x0 0x12c1c600 0x0 0x200>;
+			interrupts = <GIC_SPI 107 IRQ_TYPE_LEVEL_HIGH>;
+			#mbox-cells = <1>;
+			mbox-name = "tsp";
+		};
 	};
 
 	soc1: soc@14000000 {
@@ -940,6 +955,13 @@
 			perst = <&pcie_perst2>;
 
 			status = "disabled";
+		};
+
+		mbox2: mbox@14c39200 {
+			compatible = "aspeed,ast2700-mailbox";
+			reg = <0x0 0x14c39200 0x0 0x200>;
+			#mbox-cells = <1>;
+			mbox-name = "bootmcu";
 		};
 	};
 };
