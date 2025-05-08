@@ -227,6 +227,9 @@ static int ftgmac100_phy_adjust_link(struct ftgmac100_data *priv)
 	/* update MII config into maccr */
 	writel(maccr, &ftgmac100->maccr);
 
+	if (phydev->interface == PHY_INTERFACE_MODE_SGMII)
+		generic_phy_set_speed(&priv->sgmii, phydev->speed);
+
 	return 0;
 }
 
