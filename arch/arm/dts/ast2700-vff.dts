@@ -6,6 +6,14 @@
 
 / {
 	model = "AST2700 VFF DCSCM";
+
+	/* alias eth0 for mac2 for development convenience */
+	aliases {
+		ethernet0 = &mac2;
+		ethernet1 = &mac0;
+		ethernet2 = &mac1;
+	};
+
 };
 
 /* Disable components from ast2700-evb */
