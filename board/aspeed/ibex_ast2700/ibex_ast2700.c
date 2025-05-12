@@ -216,6 +216,19 @@ int dram_init(void)
 	return err;
 }
 
+static int vbios_init(void)
+{
+	struct udevice *dev;
+	int err = 0;
+
+	/* load vbios init */
+	err = uclass_get_device_by_name(UCLASS_MISC, "vbios@0", &dev);
+	if (err && err != -ENODEV)
+		printf("Get VBIOS udevice Failed %d.\n", err);
+
+	return err;
+}
+
 struct init_callback board_init_seq[] = {
 	{"POLICY",	sys_policy_init},
 	{"WDT",		wdt_init},
@@ -226,6 +239,7 @@ struct init_callback board_init_seq[] = {
 	{"SLI0",	sli0_init},
 	{"DRAM",	dram_init},
 	{"PCI",		pci_init},
+	{"VBIOS",	vbios_init},
 };
 
 int spl_board_init_f(void)
