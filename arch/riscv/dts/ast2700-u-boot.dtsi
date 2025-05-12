@@ -66,6 +66,10 @@
 			};
 		};
 
+		sram_prictrl: sram-prictrl@12c0e000 {
+			bootph-all;
+		};
+
 		prictrl: prictrl@12140000 {
 			bootph-all;
 		};

@@ -103,10 +103,16 @@
 			};
 		};
 
+		sram_prictrl: sram-prictrl@12c0e000 {
+			compatible = "aspeed,ast2700-sram-prictrl";
+			reg = <0x10000000 0x20000>, <0x12c0e000 0x1000>;
+			status = "disabled";
+		};
+
 		prictrl: prictrl@12140000 {
 			compatible = "aspeed,ast2700-prictrl";
 			reg = <0x12140000 0x400>, <0x14100000 0x400>;
-			status = "disable";
+			status = "disabled";
 		};
 
 		ufs: ufs-wrapper@12c08000 {
