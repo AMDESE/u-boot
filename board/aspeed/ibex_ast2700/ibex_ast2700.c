@@ -188,6 +188,19 @@ static int pci_init(void)
 	return 0;
 }
 
+static int sram_prictrl_init(void)
+{
+	struct udevice *dev;
+	int err = 0;
+
+	/* privilege control init */
+	err = uclass_get_device_by_name(UCLASS_MISC, "sram_prictrl@12c0e000", &dev);
+	if (err && err != -ENODEV)
+		printf("Get SRAM privilege control udevice Failed %d.\n", err);
+
+	return err;
+}
+
 static int prictrl_init(void)
 {
 	struct udevice *dev;
@@ -360,6 +373,9 @@ void spl_board_prepare_for_boot(void)
 
 	/* Enable privilege control */
 	prictrl_init();
+
+	/* Enable SRAM privilege control */
+	sram_prictrl_init();
 
 	/* release SSP reset */
 	if (has_sspfw)
