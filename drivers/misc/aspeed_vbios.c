@@ -41,6 +41,8 @@
 #define E2M1_BASE		(0x12c22000)
 #define E2M1_VBIOS_RAM  (E2M1_BASE + 0x124)
 
+#define BIOS_HEADER_TAG 0xaa55
+
 struct aspeed_vbios_priv {
 	struct regmap *scu_ctl_base;
 	void *e2m0_ctl_base;
@@ -116,11 +118,17 @@ static int aspeed_vbios_probe(struct udevice *dev)
 		/* Get the controller base address */
 		vbios_mem_base = (uintptr_t)(vbios->vbios0_base);
 
-		/* Initial memory region and copy vbios into it */
-		memset((u32 *)vbios->vbios0_base, 0x0, 0x10000);
-
+		/* Check the VBIOS if has been loaded */
+		if (*(u16 *)vbios->vbios0_base != BIOS_HEADER_TAG) {
+			/* Initial memory region */
+			memset((u32 *)vbios->vbios0_base, 0x0, 0x10000);
+		}
 #ifdef CONFIG_RISCV
-		ast_loader_load_image(PBT_UEFI_X64_AST2700, (u32 *)vbios->vbios0_base, true);
+		/* Check the VBIOS if has been loaded */
+		if (*(u16 *)vbios->vbios0_base != BIOS_HEADER_TAG) {
+			/* Copy vbios into it */
+			ast_loader_load_image(PBT_UEFI_X64_AST2700, (u32 *)vbios->vbios0_base, true);
+		}
 
 		/* Remove riscv Dram base */
 		vbios_mem_base &= ~(ASPEED_DRAM_BASE);
@@ -200,13 +208,23 @@ static int aspeed_vbios_probe(struct udevice *dev)
 		/* Get the controller base address */
 		vbios_mem_base = (uintptr_t)(vbios->vbios1_base);
 
-		/* Initial memory region and copy vbios into it */
-		memset((u32 *)vbios->vbios1_base, 0x0, 0x10000);
+		/* If the pcie 0 would not be enabled, the VBIOS need be cleared here*/
+		if (!is_pcie0_enable) {
+			/* Check the VBIOS if has been loaded */
+			if (*(u16 *)vbios->vbios1_base != BIOS_HEADER_TAG) {
+				/* Initial memory region */
+				memset((u32 *)vbios->vbios1_base, 0x0, 0x10000);
+			}
+		}
+
 #ifdef CONFIG_RISCV
 		/* If the pcie 0 would not be enabled, the VBIOS need be loaded here*/
 		if (!is_pcie0_enable) {
-			ast_loader_load_image(PBT_UEFI_X64_AST2700, (u32 *)vbios->vbios1_base,
-					      true);
+			/* Check the VBIOS if has been loaded */
+			if (*(u16 *)vbios->vbios1_base != BIOS_HEADER_TAG) {
+				/* Copy vbios into it */
+				ast_loader_load_image(PBT_UEFI_X64_AST2700, (u32 *)vbios->vbios1_base, true);
+			}
 
 			/* Remove riscv Dram base */
 			vbios_mem_base &= ~(ASPEED_DRAM_BASE);
