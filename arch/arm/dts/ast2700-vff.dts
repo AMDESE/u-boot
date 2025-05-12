@@ -68,16 +68,27 @@
 };
 
 &spi2 {
+	compatible = "aspeed,ast2700-spi-txrx";
 	status = "okay";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_spi2_default &pinctrl_spi2_cs1_default>;
 
-	compatible = "aspeed,ast2700-spi-txrx";
-	spi-aspeed-full-duplex;
-	tpm0: tpmdev@0 {
-		compatible = "tcg,tpm_tis-spi";
-		spi-max-frequency = <25000000>;
+	/delete-property/ spi-aspeed-full-duplex;
+	/delete-node/ flash@1;
+
+	flash@0 {
+		compatible = "jedec,spi-nor";
 		reg = <0>;
+		spi-max-frequency = <25000000>;
+		spi-tx-bus-width = <1>;
+		spi-rx-bus-width = <1>;
+		status = "okay";
+	};
+
+	tpm1: tpmdev@1 {
+		compatible = "tcg,tpm_tis-spi";
+		reg = <1>;
+		spi-max-frequency = <25000000>;
 		status = "okay";
 	};
 };

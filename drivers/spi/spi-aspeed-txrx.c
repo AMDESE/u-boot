@@ -196,7 +196,7 @@ static void aspeed_spi_tx(struct udevice *bus, u32 cs,
 	for (i = 0; i < len; i++) {
 		dev_dbg(bus, "%02x ", tx_buf[i]);
 		writeb(tx_buf[i], ahb_base);
-		if (rx_buf && (plat->flag & SPI_FULL_DUPLEX_SUPPORT)) {
+		if (rx_buf || (plat->flag & SPI_FULL_DUPLEX_SUPPORT)) {
 			rx_buf[i] = readb(&priv->regs->full_duplex_rx_data);
 			*full_duplex_rx = true;
 		}
@@ -248,10 +248,8 @@ static int aspeed_spi_transfer(struct udevice *dev, unsigned int bitlen,
 	if (din && !full_duplex_rx)
 		aspeed_spi_rx(bus, cs, din, bytes);
 
-	if (flags & SPI_XFER_END) {
+	if (flags & SPI_XFER_END)
 		aspeed_spi_cs_deactivate(priv, cs);
-		writel(0x00130601, &priv->regs->ce_ctrl[cs]);
-	}
 
 	return 0;
 }
