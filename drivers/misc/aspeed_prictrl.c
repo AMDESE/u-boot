@@ -247,7 +247,7 @@ static int prictrl_set_client_group(const struct prictrl_aspeed_config *cfg,
 		return -EINVAL;
 
 #ifdef PRICTRL_CFG_READABLE
-	if (dev_cfg->device == IO_S_I_PRICTRL || dev_cfg->device == C_S_C_PRICTRL)
+	if (dev_cfg->device == IO_S_I_PRICTRL || dev_cfg->device == C_S_C_PRICTRL || dev_cfg->device == IO_S_I_SRAM)
 		return ret;
 #endif
 
