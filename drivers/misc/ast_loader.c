@@ -125,7 +125,7 @@ int ast_loader_load_image(u32 type, u32 *dst, bool verify)
 
 	ast = dev_get_priv(dev);
 
-	tmp_buf = (ast->rev_id && verify) ? (u32 *)ASPEED_SRAM_BASE : dst;
+	tmp_buf = (ast->rev_id && verify) ? (u32 *)ASPEED_HASH_BUFFER : dst;
 
 	if (ast->load) {
 		err = ast->load(dev, type, tmp_buf, &len);
