@@ -152,16 +152,7 @@
 			protect-start = <0x2c000000>;
 			protect-end = <0x2d000000>;
 			allow = <MPU_ID_SSP_INST S_READONLY>,
-				<MPU_ID_SSP_DATA S_READWRITE>;
-		};
-
-		/* ipc: ssp <=> ibex_fw (bootmcu) */
-		share_1: share-1 {
-			bootph-all;
-			protect-name = "share-1";
-			protect-start = <0x2d000000>;
-			protect-end = <0x2e000000>;
-			allow = <MPU_ID_SSP_DATA S_READWRITE>,
+				<MPU_ID_SSP_DATA S_READWRITE>,
 				<MPU_ID_SLIM S_READWRITE>;
 		};
 
@@ -176,22 +167,22 @@
 		};
 
 		/* ipc: ssp <=> optee (ca35_s) */
-		share_2: share-2 {
+		share_1: share-1 {
 			bootph-all;
-			protect-name = "share-2";
+			protect-name = "share-1";
 			protect-start = <0x31080000>;
 			protect-end = <0x31480000>;
-			allow = <MPU_ID_SSP_DATA S_READWRITE>,
+			allow = <MPU_ID_SSP_DATA S_READONLY>,
 				<MPU_ID_CA35 S_READWRITE>;
 		};
 
 		/* ipc: ssp <=> linux (ca35_ns) */
-		share_3: share-3 {
+		share_2: share-2 {
 			bootph-all;
-			protect-name = "share-3";
+			protect-name = "share-2";
 			protect-start = <0x31480000>;
 			protect-end = <0x31880000>;
-			allow = <MPU_ID_SSP_DATA S_READWRITE>,
+			allow = <MPU_ID_SSP_DATA S_READONLY>,
 				<MPU_ID_CA35 NS_READWRITE>;
 		};
 
@@ -223,7 +214,7 @@
 	aes-size = <0x38000000>;
 #endif
 
-#if 0
+#if 1
 	/*
 	 * Example of memory protection unit
 	 */
@@ -232,8 +223,7 @@
 	mpu-2 = <&tsp>;
 	mpu-3 = <&share_1>;
 	mpu-4 = <&share_2>;
-	mpu-5 = <&share_3>;
-	mpu-6 = <&vb>;
+	mpu-5 = <&vb>;
 #endif
 };
 
