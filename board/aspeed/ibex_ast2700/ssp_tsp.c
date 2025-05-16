@@ -115,14 +115,15 @@ int ssp_init(ulong load_addr)
 	reg_val = (uint32_t)(phy_addr >> 4);
 	writel(reg_val, (void *)&scu->ssp_ctrl_3);
 
-	/* Enable 1st i-cache area */
-	writel(BIT(0), (void *)&scu->ssp_ctrl_4);
+	/*
+	 * For A1, the Cache region can only be enabled entirely;
+	 * partial enabling is not supported.
+	 */
+	writel(GENMASK(31, 0), (void *)&scu->ssp_ctrl_4);
+	writel(GENMASK(31, 0), (void *)&scu->ssp_ctrl_5);
 
-	/* Enable 1st d-cache area */
-	writel(BIT(0), (void *)&scu->ssp_ctrl_5);
-
-	/* Disable i & d cache by default */
-	writel(0x0, (void *)&scu->ssp_ctrl_7);
+	/* Enable I and D cache as default */
+	writel(SCU_CPU_SSP_CTR1_ICACHE_EN | SCU_CPU_SSP_CTR1_DCACHE_EN, (void *)&scu->ssp_ctrl_7);
 
 	return 0;
 }
