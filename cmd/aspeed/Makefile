@@ -5,3 +5,4 @@ obj-$(CONFIG_AST2700_CMD_LTPI_V2) += ltpi/ltpi-v2.o
 obj-$(CONFIG_AST2600_CMD_DPTEST) += dptest_2600.o
 obj-$(CONFIG_AST2700_CMD_DPTEST) += dptest_2700.o
 obj-$(CONFIG_CMD_NETTEST) += nettest/
+obj-$(CONFIG_CMD_ASPEED_MBOX) += aspeed_mbox.o

@@ -55,3 +55,9 @@ config CMD_NETTEST
 	select GETOPT
 	select HEXDUMP
 	default n
+
+config CMD_ASPEED_MBOX
+	bool "ASPEED Mailbox utility"
+	default n
+	help
+	  Enable ASPEED Mailbox commands for AST2700A1 SoC.
