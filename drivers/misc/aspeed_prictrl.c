@@ -395,7 +395,6 @@ static int prictrl_master_mapping(const struct udevice *dev)
 	ret |= prictrl_list_lock_group(cfg, &cfg->master[3]);
 	ret |= prictrl_list_lock_group(cfg, &cfg->master[4]);
 	ret |= prictrl_list_lock_group(cfg, &cfg->master[5]);
-	ret |= prictrl_list_lock_group(cfg, &cfg->master[6]);
 
 	return ret;
 }
