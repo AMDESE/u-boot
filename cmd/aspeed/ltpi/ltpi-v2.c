@@ -913,13 +913,12 @@ static void ltpi_scm_set_pins(void)
 	ltpi_scm_sgpios_init();
 }
 
-struct bootstage_t ltpi_init(struct rom_context *rom_ctx)
+struct bootstage_t ltpi_init(struct rom_context *rom_ctx, uint32_t pin_strap)
 {
 	struct bootstage_t sts = { 0, 0 };
 
 	struct ltpi_priv *ltpi0 = &ltpi_data[0];
 	struct ltpi_priv *ltpi1 = &ltpi_data[1];
-	uint32_t pin_strap = readl(SCU1_HWSTRAP1);
 	uint32_t otpcfg_03_02;
 
 	otpcfg_03_02 = readl(SCU1_OTPCFG_03_02);
@@ -1122,12 +1121,9 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 	}
 
 	/* Set pin strap according to the command argument */
-	writel(0xf, (void *)SCU1_HWSTRAP1 + 0x4);
-	setbits_le32((void *)SCU1_HWSTRAP1, SCU1_HWSTRAP1_LTPI0_EN);
+	pin_strap = SCU1_HWSTRAP1_LTPI0_EN;
 	if (mode)
-		setbits_le32((void *)SCU1_HWSTRAP1, SCU1_HWSTRAP1_LTPI1_EN);
-
-	pin_strap = readl((void *)SCU1_HWSTRAP1);
+		pin_strap |= SCU1_HWSTRAP1_LTPI1_EN;
 
 	/* Set otp strap according to the command argument */
 	ltpi_data[0].otp_speed_cap = LTPI_SP_CAP_ASPEED_SUPPORTED & ~speed;
@@ -1135,7 +1131,7 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 	ltpi_data[1].otp_speed_cap = LTPI_SP_CAP_ASPEED_SUPPORTED & ~speed;
 	ltpi_data[1].otp_ddr_dis = !!(speed & LTPI_SP_CAP_DDR);
 
-	sts = ltpi_init(&rc);
+	sts = ltpi_init(&rc, pin_strap);
 
 	if (pin_strap & SCU1_HWSTRAP1_LTPI0_EN) {
 		uint32_t reg;
