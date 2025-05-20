@@ -16,7 +16,7 @@
 
 #define CFG_EXTRA_ENV_SETTINGS \
 	"bootspi=fdt addr ${fdtspiaddr} && fdt header get fitsize totalsize && " \
-	"cp.b ${fdtspiaddr} ${loadaddr} ${fitsize} && bootm ${loadaddr}; " \
+	"cp.b ${fdtspiaddr} ${loadaddr} ${fitsize} && bootm ${loadaddr}${board_conf}; " \
 	"echo Error loading kernel FIT image\0" \
 	"loadaddr=" STR(CONFIG_SYS_LOAD_ADDR) "\0"	\
 	"bootside=a\0"	\
