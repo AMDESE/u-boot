@@ -11,6 +11,18 @@
 #define ESRAM_SPROT_CTL 0x180
 #define ESRAM_SPROT_ADR 0x1c0
 
+/* IO SRAM protect register offset */
+#define GSRAM_REG_SPROT_CFG 0x200
+#define GSRAM_REG_SPROT_SIDG 0x210
+#define GSRAM_REG_SPROT_CTL 0x280
+#define GSRAM_REG_SPROT_ADR 0x2c0
+
+/* IO SRAM protect memory offset */
+#define GSRAM_SPROT_CFG 0x300
+#define GSRAM_SPROT_SIDG 0x310
+#define GSRAM_SPROT_CTL 0x380
+#define GSRAM_SPROT_ADR 0x3c0
+
 struct sprot_cfg_ast2700 {
 	union {
 		struct {
@@ -119,6 +131,9 @@ struct sram_prictrl_aspeed_config {
 	uintptr_t esram_base;
 	uint32_t esram_size;
 	uintptr_t esram_ctrl_base;
+	uintptr_t gsram_base;
+	uint32_t gsram_size;
+	uintptr_t gsram_ctrl_base;
 };
 
 #endif /* __ASPEED_SRAM_PRICTRL_H__ */

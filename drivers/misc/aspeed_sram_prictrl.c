@@ -137,6 +137,61 @@ static int esram_prictrl_init(uintptr_t ctrl_base, uintptr_t sprot_addr, uint32_
 	return ret;
 }
 
+static int gsram_prictrl_init(uintptr_t ctrl_base, uintptr_t sprot_addr, uint32_t sprot_size)
+{
+	struct sprot_cfg_ast2700 *sprot_cfg;		/* config */
+	struct sprot_sid_ast2700 *sprot_sid_ctrl;	/* ID definition */
+	struct sprot_region_enable_ast2700 *sprot_ctrl; /* SID Enable ctrl */
+	struct sprot_addr_ast2700 *sprot_region;	/* region definition */
+	uint32_t i;
+	uint32_t ret = 0;
+	uint32_t sprot_unit;
+
+	sprot_cfg = (struct sprot_cfg_ast2700 *)(ctrl_base + GSRAM_SPROT_CFG);
+	sprot_unit = 1;
+	for (i = 0; i < sprot_cfg->b.unit; i++)
+		sprot_unit = 2 * sprot_unit;
+
+	debug("reg(cfg) \t\taddr:0x%p,\tvalue:%x\n", &sprot_cfg->raw, sprot_cfg->raw);
+	debug("sprot_unit \tvalue:%x\n", sprot_unit);
+
+	sprot_sid_ctrl = (struct sprot_sid_ast2700 *)(ctrl_base + GSRAM_SPROT_SIDG);
+	sprot_ctrl = (struct sprot_region_enable_ast2700 *)(ctrl_base + GSRAM_SPROT_CTL);
+	sprot_region = (struct sprot_addr_ast2700 *)(ctrl_base + GSRAM_SPROT_ADR);
+
+	/* (0x12C0E100)SPROT_SIDG0 = 0x2120; */
+	sprot_sid_ctrl->sidg0.b.sid0 = 0x20; /* BootMCU I */
+	sprot_sid_ctrl->sidg0.b.sid1 = 0x21; /* BootMCU D */
+	debug("reg(sidg0) \t\taddr:0x%p,\tvalue:%x\n", &sprot_sid_ctrl->sidg0.raw,
+	      sprot_sid_ctrl->sidg0.raw);
+
+	/* region0 for BootMCU read write but others read only . */
+	sprot_ctrl->region0_enable.ctrl.b.w_enable_sid0 = 1; /* region0 enable write for BootMCU I */
+	sprot_ctrl->region0_enable.ctrl.b.r_enable_sid0 = 1; /* region0 enable read for BootMCU I */
+	sprot_ctrl->region0_enable.ctrl.b.w_enable_sid1 = 1; /* region0 enable write for BootMCU D */
+	sprot_ctrl->region0_enable.ctrl.b.r_enable_sid1 = 1; /* region0 enable read for BootMCU D */
+	sprot_ctrl->region0_enable.ctrl.b.r_enable_sid7 = 1; /* region0 enable read for Others */
+	debug("reg(region0_enable) \taddr:0x%p,\tvalue:%x\n", &sprot_ctrl->region0_enable.ctrl.raw,
+	      sprot_ctrl->region0_enable.ctrl.raw);
+
+	/* (0x14c0a3c0)region0:
+	 * Start address : 0x14b8_0000(SRAM base) + 0x0(start address) * 4(unit size)
+	 * End address   : 0x14bc_0000(Start address) + sprot_size
+	 */
+	sprot_region->region0.b.start_address = 0x0;
+	if (sprot_size >= 0x40000)
+		sprot_region->region0.b.size = 0xffff; /* 0x14b8_0000 + 0x3fffc in max setting */
+	else
+		sprot_region->region0.b.size = sprot_size >> 2; /* 0x14b8_0000 + sprot_size */
+	debug("reg(region0) \t\taddr:0x%p,\tvalue:%x\n", &sprot_region->region0.raw,
+	      sprot_region->region0.raw);
+	debug("\tProtect range \taddr:0x%lx, \tsize:%x\n",
+	      sprot_addr + sprot_region->region0.b.start_address * sprot_unit,
+	      sprot_region->region0.b.size * sprot_unit);
+
+	return ret;
+}
+
 static int sram_prictrl_hw_init(struct udevice *dev)
 {
 	const uint32_t magic = 0x7F7F7F7E;
@@ -147,6 +202,12 @@ static int sram_prictrl_hw_init(struct udevice *dev)
 	if (readl((void *)cfg->esram_base) != magic)
 		return -EAGAIN;
 	esram_prictrl_init(cfg->esram_ctrl_base, cfg->esram_base, cfg->esram_size);
+
+	/* Check whether gsram privilege control is ready */
+	writel(magic, (void *)cfg->gsram_base);
+	if (readl((void *)cfg->gsram_base) != magic)
+		return -EAGAIN;
+	gsram_prictrl_init(cfg->gsram_ctrl_base, cfg->gsram_base, cfg->gsram_size);
 
 	return 0;
 }
@@ -174,6 +235,11 @@ static int aspeed_sram_prictrl_of_to_plat(struct udevice *dev)
 	cfg->esram_ctrl_base = dev_read_addr_index(dev, 1);
 	debug("reg(esram base) \t\taddr:0x%p,\tsize:%x\n", (void *)cfg->esram_base, cfg->esram_size);
 	debug("reg(esram ctrl base) \taddr:0x%p\n", (void *)cfg->esram_ctrl_base);
+
+	cfg->gsram_base = dev_read_addr_size_index(dev, 2, &cfg->gsram_size);
+	cfg->gsram_ctrl_base = dev_read_addr_index(dev, 3);
+	debug("reg(gsram base) \t\taddr:0x%p,\tsize:%x\n", (void *)cfg->gsram_base, cfg->gsram_size);
+	debug("reg(gsram ctrl base) \taddr:0x%p\n", (void *)cfg->gsram_ctrl_base);
 
 	return 0;
 }

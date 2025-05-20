@@ -105,7 +105,8 @@
 
 		sram_prictrl: sram-prictrl@12c0e000 {
 			compatible = "aspeed,ast2700-sram-prictrl";
-			reg = <0x10000000 0x20000>, <0x12c0e000 0x1000>;
+			reg = <0x10000000 0x20000>, <0x12c0e000 0x1000>,
+			      <0x14b80000 0x40000>, <0x14c0a000 0x1000>;
 			status = "disabled";
 		};
 
