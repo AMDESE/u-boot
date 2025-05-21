@@ -797,6 +797,21 @@ static void ltpi_scm_sgpios_init(void)
 	u32 invert_index = 0;
 	u8 val = 1;
 
+	/*
+	 * Pin       MF
+	 * --------------------------
+	 * GPIOT6    5: SGPSCK
+	 * GPIOT1    5: SGPSLD
+	 *
+	 * GPIOU3    5: SGPSMI
+	 * GPIOU2    5: SGPSMO
+	 */
+	clrsetbits_le32((void *)SCU1_PINMUX_GRP_T, SCU1_PINMUX_PIN6 | SCU1_PINMUX_PIN1,
+			FIELD_PREP(SCU1_PINMUX_PIN6, 0x5) | FIELD_PREP(SCU1_PINMUX_PIN1, 0x5));
+
+	clrsetbits_le32((void *)SCU1_PINMUX_GRP_U, SCU1_PINMUX_PIN3 | SCU1_PINMUX_PIN2,
+			FIELD_PREP(SCU1_PINMUX_PIN3, 0x5) | FIELD_PREP(SCU1_PINMUX_PIN2, 0x5));
+
 	for (u32 i = 0; i < LTPI_SGPIOS_PARALLEL_PIN_NUM;) {
 		if (val)
 			setbits_le32((void *)SGPIOS_REG + SGPIO_G7_CTRL_REG_OFFSET(i),
@@ -842,7 +857,10 @@ static void ltpi_scm_set_pins(void)
 	 * GPIOC0    5: SCM_GPO8
 	 */
 	writel(0x55555555, (void *)SCU1_PINMUX_GRP_C);
+}
 
+static void ltpi0_hpm_set_pins(void)
+{
 	/*
 	 * Pin       MF
 	 * --------------------------
@@ -856,7 +874,10 @@ static void ltpi_scm_set_pins(void)
 	 * GPIOD0    5: HPM0_GPI0
 	 */
 	writel(0x55555555, (void *)SCU1_PINMUX_GRP_D);
+}
 
+static void ltpi1_hpm_set_pins(void)
+{
 	/*
 	 * Pin         MF
 	 * ----------------------------
@@ -891,29 +912,9 @@ static void ltpi_scm_set_pins(void)
 	clrsetbits_le32((void *)SCU1_PINMUX_GRP_AA, SCU1_PINMUX_PIN7 | SCU1_PINMUX_PIN6,
 			FIELD_PREP(SCU1_PINMUX_PIN7, 0x5) |
 			FIELD_PREP(SCU1_PINMUX_PIN6, 0x5));
-
-	/*
-	 * Pin       MF
-	 * --------------------------
-	 * GPIOT6    5: SGPSCK
-	 * GPIOT1    5: SGPSLD
-	 *
-	 * GPIOU3    5: SGPSMI
-	 * GPIOU2    5: SGPSMO
-	 */
-	clrsetbits_le32((void *)SCU1_PINMUX_GRP_T, SCU1_PINMUX_PIN6 | SCU1_PINMUX_PIN1,
-			FIELD_PREP(SCU1_PINMUX_PIN6, 0x5) |
-			FIELD_PREP(SCU1_PINMUX_PIN1, 0x5));
-
-	clrsetbits_le32((void *)SCU1_PINMUX_GRP_U, SCU1_PINMUX_PIN3 | SCU1_PINMUX_PIN2,
-			FIELD_PREP(SCU1_PINMUX_PIN3, 0x5) |
-			FIELD_PREP(SCU1_PINMUX_PIN2, 0x5));
-
-	/* Enable SGPIO slave */
-	ltpi_scm_sgpios_init();
 }
 
-struct bootstage_t ltpi_init(struct rom_context *rom_ctx, uint32_t pin_strap)
+struct bootstage_t ltpi_init(struct rom_context *rom_ctx, uint32_t pin_strap, bool skip_pinctrl)
 {
 	struct bootstage_t sts = { 0, 0 };
 
@@ -978,7 +979,11 @@ struct bootstage_t ltpi_init(struct rom_context *rom_ctx, uint32_t pin_strap)
 	 *         0           1           1    SOC is AST2700, SCM mode + dual node
 	 */
 	if (pin_strap & SCU1_HWSTRAP1_LTPI0_EN) {
-		ltpi_scm_set_pins();
+		if (!skip_pinctrl)
+			ltpi_scm_set_pins();
+		/* Enable SGPIO slave */
+		ltpi_scm_sgpios_init();
+		ltpi0_hpm_set_pins();
 		ltpi_scm_init(ltpi0);
 
 		if (pin_strap & SCU1_HWSTRAP1_LTPI1_EN) {
@@ -986,6 +991,7 @@ struct bootstage_t ltpi_init(struct rom_context *rom_ctx, uint32_t pin_strap)
 			bootstage_prologue(BOOTSTAGE_LTPI_INIT);
 			ltpi1->bootstage->errno = LTPI_STATUS_IDX;
 			ltpi1->bootstage->syndrome = LTPI_SYND_OK;
+			ltpi1_hpm_set_pins();
 			ltpi_scm_init(ltpi1);
 		}
 	}
@@ -1043,6 +1049,7 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 	struct bootstage_t sts;
 	uint32_t pin_strap;
 	int opt, speed = 0, mode = 0;
+	bool skip_pinctrl = false;
 	char *endp;
 
 	ltpi_data[0].ad_timeout = ADVERTISE_TIMEOUT_US;
@@ -1073,7 +1080,7 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 	ltpi_data[1].gpio_base = ltpi_data[1].base + 0xc00;
 
 	getopt_init_state(&gs);
-	while ((opt = getopt(&gs, argc, argv, "l:m:a:i:t:T:d:c:r:sh")) > 0) {
+	while ((opt = getopt(&gs, argc, argv, "l:m:a:i:t:T:d:c:r:p:sh")) > 0) {
 		switch (opt) {
 		case 'l':
 			speed = simple_strtoul(gs.arg, &endp, 16);
@@ -1113,6 +1120,9 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 			ltpi_show_status(&ltpi_data[0]);
 			ltpi_show_status(&ltpi_data[1]);
 			return CMD_RET_SUCCESS;
+		case 'p':
+			skip_pinctrl = (simple_strtoul(gs.arg, &endp, 0) != 0);
+			break;
 		case 'h':
 			fallthrough;
 		default:
@@ -1131,7 +1141,7 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 	ltpi_data[1].otp_speed_cap = LTPI_SP_CAP_ASPEED_SUPPORTED & ~speed;
 	ltpi_data[1].otp_ddr_dis = !!(speed & LTPI_SP_CAP_DDR);
 
-	sts = ltpi_init(&rc, pin_strap);
+	sts = ltpi_init(&rc, pin_strap, skip_pinctrl);
 
 	if (pin_strap & SCU1_HWSTRAP1_LTPI0_EN) {
 		uint32_t reg;
@@ -1180,6 +1190,7 @@ static char ltpi_help_text[] = {
 	"-r <rx link-speed count in AD-align>, default 0\n"
 	"-s, Display current link status\n"
 	"-T <timeout to get to the operational state in us>, 0=wait forever, default 0\n"
+	"-p <skip pinctrl>, 0=apply SCMx GPIO setting, 1=skip pinctrl, default 0\n"
 };
 
 U_BOOT_CMD(ltpi, 11, 0, do_ltpi, "ASPEED LTPI commands", ltpi_help_text);
