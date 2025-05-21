@@ -38,6 +38,7 @@ CONFIG_BOOTARGS="console=ttyS4,115200n8 root=/dev/ram rw"
 CONFIG_USE_BOOTCOMMAND=y
 CONFIG_BOOTCOMMAND="echo Boot from ${boot_device}; if test ${boot_device} = mmc; then run bootmmc; fi; if test ${boot_device} = spi; then run bootspi; fi;"
 CONFIG_DISPLAY_BOARDINFO_LATE=y
+CONFIG_BOARD_EARLY_INIT_F=y
 CONFIG_SPL_SIZE_LIMIT_SUBTRACT_GD=y
 CONFIG_SPL_SIZE_LIMIT_SUBTRACT_MALLOC=y
 CONFIG_SPL_HAS_BSS_LINKER_SECTION=y
