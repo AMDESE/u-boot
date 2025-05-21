@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+
+/dts-v1/;
+
+#include "ast2700-ibex.dts"
+
+&prictrl {
+	client-list-0 = <IO_S_I_PRICTRL C_S_C_PRICTRL IO_S_WDT_7>;
+};
