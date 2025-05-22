@@ -193,11 +193,23 @@ static int sli_log_ahb_pad_delay(struct sli_data *data, int first, int last)
 	return 0;
 }
 
+static int sli_get_ahb_pad_delay(struct sli_data *data, int *first, int *last)
+{
+	uint32_t value;
+
+	value = readl((void *)&data->scu1->scratch[30]);
+	*first = (value & 0xff);
+	*last = (value >> 8) & 0xff;
+
+	return 0;
+}
+
 static void sli_calibrate_ahb_delay(struct sli_data *data)
 {
 	int dc;
 	int d_first_pass = -1;
 	int d_last_pass = -1;
+	int win_size = 0;
 
 	if (data->flags & SLI_FLAG_RX_LAH_NEG_IO_SLIH)
 		setbits_le32(data->die1.slih + SLI_CTRL_I, SLI_RX_PHY_LAH_SEL_NEG);
@@ -217,13 +229,18 @@ static void sli_calibrate_ahb_delay(struct sli_data *data)
 
 			d_last_pass = dc;
 		} else if (d_last_pass != -1) {
-			break;
+			if (d_last_pass - d_first_pass > win_size) {
+				win_size = d_last_pass - d_first_pass;
+				sli_log_ahb_pad_delay(data, d_first_pass, d_last_pass);
+			}
+			d_first_pass = -1;
+			d_last_pass = -1;
 		}
 	}
 
+	sli_get_ahb_pad_delay(data, &d_first_pass, &d_last_pass);
 	dc = (d_first_pass + d_last_pass) >> 1;
 	debug("IOD SLIH DS coarse win: {%d, %d} -> select %d\n", d_first_pass, d_last_pass, dc);
-	sli_log_ahb_pad_delay(data, d_first_pass, d_last_pass);
 
 	sli_set_ahb_rx_delay(data->die1.slih, dc, dc);
 
@@ -280,6 +297,29 @@ static int sli_log_mbus_pad_delay(struct sli_data *data, int index, int first, i
 	return 0;
 }
 
+static int sli_get_mbus_pad_delay(struct sli_data *data, int index, int *first, int *last)
+{
+	uintptr_t addr;
+	uint32_t value;
+	uint32_t bit_offset;
+
+	if (index > 1)
+		addr = (uintptr_t)&data->scu1->scratch[29];
+	else
+		addr = (uintptr_t)&data->scu1->scratch[28];
+
+	if (index & 1)
+		bit_offset = 16;
+	else
+		bit_offset = 0;
+
+	value = readl((void *)addr);
+	*first = (value >> bit_offset) & 0xff;
+	*last = (value >> (bit_offset + 8)) & 0xff;
+
+	return 0;
+}
+
 static int sli_calibrate_mbus_pad_delay(struct sli_data *data, int index, int begin, int end)
 {
 	int d;
@@ -295,8 +335,8 @@ static int sli_calibrate_mbus_pad_delay(struct sli_data *data, int index, int be
 		sli_set_mbus_rx_delay_single(data->die1.slim, index, d);
 
 		/* Reset CPU-die TX and IO-die RX */
-		sli_clear(data->die0.slim, SLI_CLEAR_TX | SLI_CLEAR_BUS);
-		sli_clear(data->die1.slim, SLI_CLEAR_RX | SLI_CLEAR_BUS);
+		sli_clear(data->die0.slim, SLI_RESET_TRIGGER);
+		sli_clear(data->die1.slim, SLI_RESET_TRIGGER);
 
 		/* Check result */
 		sli_clear_interrupt_status(data->die1.slim);
@@ -329,6 +369,7 @@ static void sli_calibrate_mbus_delay(struct sli_data *data)
 	int d_first_pass = -1;
 	int d_last_pass = -1;
 	int d_def = 12;
+	int win_size = 0;
 
 	if (data->die0.phy_clk_freq == SLI_PHYCLK_800M ||
 	    data->die0.phy_clk_freq == SLI_PHYCLK_788M)
@@ -344,8 +385,8 @@ static void sli_calibrate_mbus_delay(struct sli_data *data)
 		sli_set_mbus_rx_delay(data->die1.slim, dc, dc, dc, dc);
 
 		/* Reset CPU-die TX and IO-die RX */
-		sli_clear(data->die0.slim, SLI_CLEAR_TX | SLI_CLEAR_BUS);
-		sli_clear(data->die1.slim, SLI_CLEAR_RX | SLI_CLEAR_BUS);
+		sli_clear(data->die0.slim, SLI_RESET_TRIGGER);
+		sli_clear(data->die1.slim, SLI_RESET_TRIGGER);
 
 		/* Check result */
 		sli_clear_interrupt_status(data->die1.slim);
@@ -356,10 +397,16 @@ static void sli_calibrate_mbus_delay(struct sli_data *data)
 
 			d_last_pass = dc;
 		} else if (d_last_pass != -1) {
-			break;
+			if (d_last_pass - d_first_pass > win_size) {
+				win_size = d_last_pass - d_first_pass;
+				sli_log_mbus_pad_delay(data, 0, d_first_pass, d_last_pass);
+			}
+			d_first_pass = -1;
+			d_last_pass = -1;
 		}
 	}
 
+	sli_get_mbus_pad_delay(data, 0, &d_first_pass, &d_last_pass);
 	if (d_first_pass < 0)
 		dc = d_def;
 	else
@@ -386,8 +433,8 @@ static void sli_calibrate_mbus_delay(struct sli_data *data)
 	sli_set_mbus_rx_delay_single(data->die1.slim, 3, d3);
 
 	/* Reset CPU-die TX and IO-die RX */
-	sli_clear(data->die0.slim, SLI_CLEAR_TX | SLI_CLEAR_BUS);
-	sli_clear(data->die1.slim, SLI_CLEAR_RX | SLI_CLEAR_BUS);
+	sli_clear(data->die0.slim, SLI_RESET_TRIGGER);
+	sli_clear(data->die1.slim, SLI_RESET_TRIGGER);
 
 	/* Turn on the hardware training and wait suspend state */
 	clrbits_le32(data->die1.slim + SLI_CTRL_I, SLI_AUTO_SEND_TRN_OFF);
