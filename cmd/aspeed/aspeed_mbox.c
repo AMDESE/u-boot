@@ -65,7 +65,10 @@ static int do_mbox_stress(struct cmd_tbl *cmdtp, int flag,
 
 		// check message
 		if ((msg[0] & 0xff) != 0xF0) {
-			printf("message not expected, 0x%x 0x%x\n", msg[0], msg[1]);
+			if ((msg[0] & 0xff) == 0xF1)
+				printf("recv stop message, 0x%x\n", msg[0]);
+			else
+				printf("message not expected, 0x%x 0x%x\n", msg[0], msg[1]);
 			break;
 		}
 		size = msg[0] >> 8;
