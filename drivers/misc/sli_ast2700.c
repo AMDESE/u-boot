@@ -101,10 +101,10 @@ struct sli_data {
 };
 
 #define SLIH_COARSE_D_BEGIN		6
-#define SLIH_COARSE_D_END		20
+#define SLIH_COARSE_D_END		24
 
 #define SLIM_COARSE_D_BEGIN		0
-#define SLIM_COARSE_D_END		16
+#define SLIM_COARSE_D_END		24
 #define SLIM_FINE_MARGIN		5
 
 #define SCU1_SCRATCH31_SLI0_READY	BIT(0)
@@ -222,16 +222,17 @@ static void sli_calibrate_ahb_delay(struct sli_data *data)
 
 		/* Check result */
 		sli_clear_interrupt_status(data->die1.slih);
-		udelay(50);
+		udelay(200);
 		if (is_sli_suspend(data->die1.slih) > 0) {
 			if (d_first_pass == -1)
 				d_first_pass = dc;
 
 			d_last_pass = dc;
 		} else if (d_last_pass != -1) {
-			if (d_last_pass - d_first_pass > win_size) {
+			if ((d_last_pass - d_first_pass) > win_size) {
 				win_size = d_last_pass - d_first_pass;
 				sli_log_ahb_pad_delay(data, d_first_pass, d_last_pass);
+				debug("IOD SLIH DS coarse win: {%d, %d}\n", d_first_pass, d_last_pass);
 			}
 			d_first_pass = -1;
 			d_last_pass = -1;
@@ -326,29 +327,35 @@ static int sli_calibrate_mbus_pad_delay(struct sli_data *data, int index, int be
 	int d_first_pass = -1;
 	int d_last_pass = -1;
 	int d_def = 12;
+	int count;
 
 	if (data->die0.phy_clk_freq == SLI_PHYCLK_800M ||
 	    data->die0.phy_clk_freq == SLI_PHYCLK_788M)
 		d_def = 5;
 
-	for (d = begin; d < end; d++) {
-		sli_set_mbus_rx_delay_single(data->die1.slim, index, d);
+	for (count = 0; count < 99; count++) {
+		for (d = begin; d < end; d++) {
+			sli_set_mbus_rx_delay_single(data->die1.slim, index, d);
 
-		/* Reset CPU-die TX and IO-die RX */
-		sli_clear(data->die0.slim, SLI_RESET_TRIGGER);
-		sli_clear(data->die1.slim, SLI_RESET_TRIGGER);
+			/* Reset CPU-die TX and IO-die RX */
+			sli_clear(data->die0.slim, SLI_RESET_TRIGGER);
+			sli_clear(data->die1.slim, SLI_RESET_TRIGGER);
 
-		/* Check result */
-		sli_clear_interrupt_status(data->die1.slim);
-		udelay(50);
-		if (is_sli_suspend(data->die1.slim) > 0) {
-			if (d_first_pass == -1)
-				d_first_pass = d;
+			/* Check result */
+			sli_clear_interrupt_status(data->die1.slim);
+			udelay(200);
+			if (is_sli_suspend(data->die1.slim) > 0) {
+				if (d_first_pass == -1)
+					d_first_pass = d;
 
-			d_last_pass = d;
-		} else if (d_last_pass != -1) {
-			break;
+				d_last_pass = d;
+			} else if (d_last_pass != -1) {
+				break;
+			}
 		}
+
+		if ((d_last_pass - d_first_pass) > 3)
+			break;
 	}
 
 	if (d_first_pass == -1)
@@ -390,16 +397,17 @@ static void sli_calibrate_mbus_delay(struct sli_data *data)
 
 		/* Check result */
 		sli_clear_interrupt_status(data->die1.slim);
-		udelay(50);
+		udelay(200);
 		if (is_sli_suspend(data->die1.slim) > 0) {
 			if (d_first_pass == -1)
 				d_first_pass = dc;
 
 			d_last_pass = dc;
 		} else if (d_last_pass != -1) {
-			if (d_last_pass - d_first_pass > win_size) {
+			if ((d_last_pass - d_first_pass) > win_size) {
 				win_size = d_last_pass - d_first_pass;
 				sli_log_mbus_pad_delay(data, 0, d_first_pass, d_last_pass);
+				debug("IOD SLIM DS coarse win: {%d, %d}\n", d_first_pass, d_last_pass);
 			}
 			d_first_pass = -1;
 			d_last_pass = -1;
@@ -407,10 +415,9 @@ static void sli_calibrate_mbus_delay(struct sli_data *data)
 	}
 
 	sli_get_mbus_pad_delay(data, 0, &d_first_pass, &d_last_pass);
-	if (d_first_pass < 0)
+	dc = (d_first_pass + d_last_pass) >> 1;
+	if (dc == 0)
 		dc = d_def;
-	else
-		dc = (d_first_pass + d_last_pass) >> 1;
 
 	debug("IOD SLIM DS coarse win: {%d, %d} -> select %d\n", d_first_pass, d_last_pass, dc);
 
