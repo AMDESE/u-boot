@@ -713,7 +713,6 @@ int pcie_ast2700_setup(struct udevice *dev)
 		reset_assert(&perst);
 	}
 
-	regmap_write(pcie->pciephy, PEHR_VID_DID, 0x11501a02);
 	regmap_write(pcie->pciephy, PEHR_CLASS, PCI_CLASS_BRIDGE_PCI_NORMAL << 8 | 0x27);
 	regmap_write(pcie->pciephy, PEHR_MISC_70, 0xa00c0);
 	regmap_write(pcie->pciephy, PEHR_MISC_78, 0x80030);
