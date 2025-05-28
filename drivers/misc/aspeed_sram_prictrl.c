@@ -51,10 +51,10 @@ static int esram_prictrl_init(uintptr_t ctrl_base, uintptr_t sprot_addr, uint32_
 	      sprot_sid_ctrl->sidg1.raw);
 
 	/*
-	 * (0x12C0E1c0)region0: start_address = 0x0, size = 0x800
+	 * (0x12C0E1c0)region0: start_address = 0x0, size = 0x400
 	 * Read/Write permission = SSP and secure ARM_R
 	 * Start address = 0x1000_0000 : 0x1000_0000(SRAM base) + 0x0(start address) * 4(unit size)
-	 * End address   = 0x1000_2000 : 0x1000_0000(Start address) + 0x800(size) * 4(unit size)
+	 * End address   = 0x1000_1000 : 0x1000_0000(Start address) + 0x400(size) * 4(unit size)
 	 */
 	sprot_ctrl->region0_enable.ctrl.b.w_enable_sid2 = 1; /* secure ARM_W */
 	sprot_ctrl->region0_enable.ctrl.b.r_enable_sid3 = 1; /* secure ARM_R */
@@ -64,7 +64,7 @@ static int esram_prictrl_init(uintptr_t ctrl_base, uintptr_t sprot_addr, uint32_
 	      sprot_ctrl->region0_enable.ctrl.raw);
 
 	sprot_region->region0.b.start_address = 0x0;
-	sprot_region->region0.b.size = 0x800;
+	sprot_region->region0.b.size = 0x400;
 	debug("reg(region0) \t\taddr:0x%p,\tvalue:%x\n", &sprot_region->region0.raw,
 	      sprot_region->region0.raw);
 	debug("\tProtect range \taddr:0x%lx, \tsize:%x\n",
@@ -72,10 +72,10 @@ static int esram_prictrl_init(uintptr_t ctrl_base, uintptr_t sprot_addr, uint32_
 	      sprot_region->region0.b.size * sprot_unit);
 
 	/*
-	 * (0x12C0E1c4)region1: start_address = 0x800, size = 0x800
+	 * (0x12C0E1c4)region1: start_address = 0x400, size = 0x400
 	 * Read/Write permission = SSP and ARM_R
-	 * Start address = 0x1000_2000 : 0x1000_0000(SRAM base) + 0x800(start address) * 4(unit size)
-	 * End address   = 0x1000_4000 : 0x1000_2000(Start address) + 0x800 * 4(unit size)
+	 * Start address = 0x1000_1000 : 0x1000_0000(SRAM base) + 0x400(start address) * 4(unit size)
+	 * End address   = 0x1000_2000 : 0x1000_2000(Start address) + 0x400 * 4(unit size)
 	 */
 	sprot_ctrl->region1_enable.ctrl.b.w_enable_sid0 = 1; /* ARM_W */
 	sprot_ctrl->region1_enable.ctrl.b.r_enable_sid1 = 1; /* ARM_R */
@@ -84,8 +84,8 @@ static int esram_prictrl_init(uintptr_t ctrl_base, uintptr_t sprot_addr, uint32_
 	debug("reg(region1_enable) \taddr:0x%p,\tvalue:%x\n", &sprot_ctrl->region1_enable.ctrl.raw,
 	      sprot_ctrl->region1_enable.ctrl.raw);
 
-	sprot_region->region1.b.start_address = 0x800;
-	sprot_region->region1.b.size = 0x800;
+	sprot_region->region1.b.start_address = 0x400;
+	sprot_region->region1.b.size = 0x400;
 	debug("reg(region1) \t\taddr:0x%p,\tvalue:%x\n", &sprot_region->region1.raw,
 	      sprot_region->region1.raw);
 	debug("\tProtect range \taddr:0x%lx, \tsize:%x\n",
@@ -93,10 +93,10 @@ static int esram_prictrl_init(uintptr_t ctrl_base, uintptr_t sprot_addr, uint32_
 	      sprot_region->region1.b.size * sprot_unit);
 
 	/*
-	 * (0x12C0E1c8)region2: start_address = 0x1000, size = 0x800
+	 * (0x12C0E1c8)region2: start_address = 0x800, size = 0x800
 	 * Read/Write permission = MCU0D and SSP
-	 * Start address = 0x1000_4000 : 0x1000_0000(SRAM base) + 0x1000(start address) * 4(unit size)
-	 * End address   = 0x1000_6000 : 0x1000_4000(Start address) + 0x800 * 4(unit size)
+	 * Start address = 0x1000_2000 : 0x1000_0000(SRAM base) + 0x800(start address) * 4(unit size)
+	 * End address   = 0x1000_4000 : 0x1000_4000(Start address) + 0x800 * 4(unit size)
 	 */
 	sprot_ctrl->region2_enable.ctrl.b.w_enable_sid6 = 1; /* MCU0D */
 	sprot_ctrl->region2_enable.ctrl.b.r_enable_sid6 = 1; /* MCU0D */
@@ -105,7 +105,7 @@ static int esram_prictrl_init(uintptr_t ctrl_base, uintptr_t sprot_addr, uint32_
 	debug("reg(region2_enable) \taddr:0x%p,\tvalue:%x\n", &sprot_ctrl->region2_enable.ctrl.raw,
 	      sprot_ctrl->region2_enable.ctrl.raw);
 
-	sprot_region->region2.b.start_address = 0x1000;
+	sprot_region->region2.b.start_address = 0x800;
 	sprot_region->region2.b.size = 0x800;
 	debug("reg(region2) \t\taddr:0x%p,\tvalue:%x\n", &sprot_region->region2.raw,
 	      sprot_region->region2.raw);
@@ -114,10 +114,10 @@ static int esram_prictrl_init(uintptr_t ctrl_base, uintptr_t sprot_addr, uint32_
 	      sprot_region->region2.b.size * sprot_unit);
 
 	/*
-	 * (0x12C0E1cc)region3: start_address = 0x1800, size = 0x800
+	 * (0x12C0E1cc)region3: start_address = 0x1000, size = 0x800
 	 * Read/Write permission = MCU0D and SSP
-	 * Start address = 0x1000_6000 : 0x1000_0000(SRAM base) + 0x1800(start address) * 4(unit size)
-	 * End address   = 0x1000_8000 : 0x1000_6000(Start address) + 0x800 * 4(unit size)
+	 * Start address = 0x1000_4000 : 0x1000_0000(SRAM base) + 0x1000(start address) * 4(unit size)
+	 * End address   = 0x1000_6000 : 0x1000_6000(Start address) + 0x800 * 4(unit size)
 	 */
 	sprot_ctrl->region3_enable.ctrl.b.w_enable_sid6 = 1; /* MCU0D */
 	sprot_ctrl->region3_enable.ctrl.b.r_enable_sid6 = 1; /* MCU0D */
@@ -126,7 +126,7 @@ static int esram_prictrl_init(uintptr_t ctrl_base, uintptr_t sprot_addr, uint32_
 	debug("reg(region3_enable) \taddr:0x%p,\tvalue:%x\n", &sprot_ctrl->region3_enable.ctrl.raw,
 	      sprot_ctrl->region3_enable.ctrl.raw);
 
-	sprot_region->region3.b.start_address = 0x1800;
+	sprot_region->region3.b.start_address = 0x1000;
 	sprot_region->region3.b.size = 0x800;
 	debug("reg(region3) \t\taddr:0x%p,\tvalue:%x\n", &sprot_region->region3.raw,
 	      sprot_region->region3.raw);
