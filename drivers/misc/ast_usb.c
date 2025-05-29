@@ -34,6 +34,8 @@ struct bootusb_priv {
 #define SCU1_HWSTRAP1				(SCU1_REG + 0x010)
 #define   SCU1_HWSTRAP1_RECOVERY_USB_PORT	GENMASK(29, 28)
 
+#define SCU1_CHIP_UNIQ_ID0			(SCU1_REG + 0x810)
+#define SCU1_CHIP_UNIQ_ID1			(SCU1_REG + 0x814)
 /*****************************
  *                           *
  * VHUB register definitions *
@@ -614,6 +616,24 @@ static u32 *dfu_dst_addr;
 static u32 dfu_max_len = U32_MAX; // Temp set to max.
 static u32 dfu_recv_len;
 
+static void usb_serial_number_desc(uint16_t bString[], int size)
+{
+	static const char hexmap[] = "0123456789ABCDEF";
+	uint8_t byte;
+	uint32_t id[2] = {
+		readl(SCU1_CHIP_UNIQ_ID0),
+		readl(SCU1_CHIP_UNIQ_ID1)
+	};
+
+	for (int i = 0; i < 8; i++) {
+		byte = (id[1 - (i / 4)] >> ((3 - (i % 4)) * 8)) & 0xFF;
+		if ((i * 2 + 1) < size) {
+			bString[i * 2] = hexmap[(byte >> 4) & 0xF];
+			bString[i * 2 + 1] = hexmap[byte & 0xF];
+		}
+	}
+}
+
 static int safe_memcpy(void *dest, size_t dest_size, const void *src, size_t num_bytes)
 {
 	/* Check if buffer is not NULL */
@@ -834,8 +854,8 @@ static int vhub_std_request(struct usb_ctrlrequest *crq)
 				usb_req_ctx.length = sizeof(string_desc.utf16le_product);
 				break;
 			case 0x3:
-				for (int i = 0; i < len; i++)
-					string_desc.utf16le_sn.bString[i] = usb_strings[desc_idx][i];
+				usb_serial_number_desc(string_desc.utf16le_sn.bString,
+						       ARRAY_SIZE(string_desc.utf16le_sn.bString));
 				/* Send serial number descriptor */
 				if (safe_memcpy(ep0_ctrl_buf, USB_DMA_BUF_SIZE,
 						&string_desc.utf16le_sn,
