@@ -182,10 +182,9 @@ int get_platform_name( const u8 board_id, char* platname, char* dtsname)
 		}
 	}
 	if (ret == -1)
-	{
+	{	/* Default device tree */
 		strlcpy(platname, "sp7", sizeof(platname));
 		strlcpy(dtsname, "congo", sizeof(dtsname));
-		ret = -1;
 	}
 	return ret;
 }
@@ -360,29 +359,41 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 	return 0;
 }
 
-void configure_safs_spi_mux(const u8 *eeprom_buf)
+void configure_edaf_spi(const u8 *eeprom_buf)
 {
+	char *edaf_flag = NULL;
+
+	// Reconfigure pin from SCM_GPO to GPIO mode.
+	// pin mode changes to SCM_GPO on power-on/reset of BMC.
+	run_command("mw 14c02404 55000055", 0);
+
 	if ( *(eeprom_buf + SCM_BOM_VARIANT_OFF) & ESPI_VARIANT_BIT) {
 		printf("eSPI variant SCM board detected\n");
 
-		//TODO: Move to FGPA based mode selection
-		printf("configuring gpios for eDAF ...\n");
-		/* remote P0 BIOS SPI */
-		run_command("gpio set 169", 0); //GPIO V1
-		run_command("gpio set 170", 0); //GPIO V2
-		printf("configuring gpios for eDAF ...Done\n");
+		printf("configuring for eDAF ...\n");
+		edaf_flag = env_get("edaf");
+		if ( edaf_flag == NULL ) {
+			/* used by remote BIOS SPI updates */
+			run_command("setenv edaf true", 0);
+			run_command("saveenv", 0);
+		}
+		/* Set eSPI strap to high for IO/Alert pin mode */
+		run_command("gpio set 10", 0); //eSPI0
+		run_command("gpio set 11", 0); //eSPI1
+		printf("configuring for eDAF ...Done\n");
 	}
-	else
+	else {
 		printf("QSPI variant SCM board detected\n");
+
+		// set espi GPIO strap to low for dedicated alert pin mode
+		run_command("gpio clear 10", 0); //eSPI0
+		run_command("gpio clear 11", 0); //eSPI1
+	}
 }
 
 void train_ltpi(int retry)
 {
 	int i=0;
-	// set espi GPIO strap to low
-	// this reconfigures pin from SCM_GPO to GPIO mode.
-	run_command("mw 14c02404 55000055", 0);
-	run_command("gpio clear 10", 0);
 
 	/* start LTPI with operational and advertise timeouts */
 	if(run_command("ltpi -T " OP_TIMEOUT_US " -t " ADVRT_TIMEOUT_US_1_1, 0) != 0)
@@ -423,15 +434,22 @@ int read_eeprom_buffers(u8 *scm_eeprom_buf, u8 *hpm_eeprom_buf)
 	int ret;
 
 	ret = uclass_get_device_by_seq(UCLASS_I2C, SCM_EEPROM_I2C_BUS, &ibus);
-	if (ret)
+	if (ret) {
+		printf("\nSCM i2c bus acquisition failed!\n");
 		return ret;
+	}
+
 	ret = dm_i2c_probe(ibus, EEPROM_DEV_ADDR, 0, &idev);
-	if (ret)
+	if (ret) {
+		printf("\n SCM slave probe failed\n");
 		return ret;
+	}
 
 	ret = i2c_set_chip_offset_len(idev, SCM_EEPROM_OFF_LEN);
-	if (ret)
+	if (ret) {
+		printf("\n SCM slave len failed\n");
 		return ret;
+	}
 
 	if (dm_i2c_read(idev, 0, scm_eeprom_buf, EEPROM_BUF_LEN)) {
 		printf("\nSCM EEPROM read failed!\n");
@@ -439,16 +457,22 @@ int read_eeprom_buffers(u8 *scm_eeprom_buf, u8 *hpm_eeprom_buf)
 	}
 
 	ret = uclass_get_device_by_seq(UCLASS_I2C, HPM_EEPROM_I2C_BUS, &ibus);
-	if (ret)
+	if (ret) {
+		printf("\n HPM i2c bus acquisition failed\n");
 		return ret;
+	}
 
 	ret = dm_i2c_probe(ibus, EEPROM_DEV_ADDR, 0, &idev);
-	if (ret)
+	if (ret) {
+		printf("\n HPM slave probe failed\n");
 		return ret;
+	}
 
 	ret = i2c_set_chip_offset_len(idev, HPM_EEPROM_OFF_LEN);
-	if (ret)
+	if (ret) {
+		printf("\n HPM slave len failed\n");
 		return ret;
+	}
 
 	if (dm_i2c_read(idev, 0, hpm_eeprom_buf, EEPROM_BUF_LEN)) {
 		printf("\nHPM EEPROM read failed!\n");
@@ -509,14 +533,17 @@ int misc_init_r(void)
 	/* set power-on reset variable */
 	update_por_env();
 
-	/* configure spi mux for safs */
-	configure_safs_spi_mux(&scm_eeprom_buf);
-
 	/* enable ltpi strap and train link */
 	train_ltpi(LTPI_TRAIN_RETRY);
+
+	/* configure spi mux for edaf
+           NOTE: do after running 'ltpi' as it reconfigures SCM GPIOs
+        */
+	configure_edaf_spi(&scm_eeprom_buf);
 
 	return 0;
 err:
 	printf("EEPROM i2c error in %s\n", __func__);
+
 	return 0; // non-zero return code will halt u-boot
 }
