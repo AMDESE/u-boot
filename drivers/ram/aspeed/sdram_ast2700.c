@@ -30,7 +30,7 @@
 #define IO_HWSTRAP1_DRAM_TYPE		BIT(10)
 #define SCU_IO_MCU0_CTRL		(ASPEED_IO_SCU_BASE + 0x110)
 #define SCU_MCU0_MAP1_MASK		GENMASK(22, 16)
-#define SCU_MCU0_MAP1_SHIFT		BIT(16)
+#define SCU_MCU0_MAP1_SHIFT		(16)
 
 #define RFC 880
 
@@ -643,7 +643,7 @@ static int sdramc_bist(struct sdramc *sdramc, u32 addr, u32 size, u32 cfg, u32 t
 	writel(0, &regs->bistcfg);
 	writel(cfg, &regs->bistcfg);
 	writel(addr >> 4, &regs->bist_addr);
-	writel(size >> 4, &regs->bist_size);
+	writel(size, &regs->bist_size);
 	writel(0x89abcdef, &regs->bist_patt);
 	writel(cfg | DRAMC_BISTCFG_START, &regs->bistcfg);
 
@@ -672,35 +672,101 @@ static void sdramc_aes_enable(struct sdramc *sdramc)
 	u32 addr_min = 0;
 	u32 addr_max = sdramc->aes_size;
 
+	if (!sdramc->aes_enable) {
+		debug("AES is not enabled\n");
+		return;
+	}
+
 	writel(addr_min >> 4, &regs->enc_min_addr);
 	writel(addr_max >> 4, &regs->enc_max_addr);
 	writel(1, &regs->enccfg);
 }
 
 #define DRAM_SIZE_DEF	3
+static size_t ast2700_sdrammc_get_vga_mem_size(struct sdramc *sdramc)
+{
+	struct ast2700_scu0 *scu;
+	struct sdramc_regs *regs = sdramc->regs;
+	int nodeoffset;
+	u32 vga_ram_size[] = {
+		0x2000000, // 32MB
+		0x4000000, // 64MB
+		};
+	int vga_sz_sel;
+	ofnode node;
+	int dual = 0;
+
+	vga_sz_sel = readl(&regs->gfmcfg) & 0x1;
+
+	/* find the offset of compatible node */
+	nodeoffset = fdt_node_offset_by_compatible(gd->fdt_blob, -1,
+						   "aspeed,ast2700-scu0");
+	if (nodeoffset < 0) {
+		printf("%s: failed to get aspeed,ast2700-scu0\n", __func__);
+		return -ENODEV;
+	}
+
+	/* get ast2700-scu0 node */
+	node = offset_to_ofnode(nodeoffset);
+
+	scu = (struct ast2700_scu0 *)ofnode_get_addr(node);
+
+	if (scu->pci0_misc[28] & BIT(0)) {
+		if (!IS_ENABLED(CONFIG_SPL_BUILD))
+			printf("VGA0:%dMiB, ", vga_ram_size[vga_sz_sel] / SZ_1M);
+		dual++;
+	}
+
+	if (scu->pci1_misc[28] & BIT(0)) {
+		if (!IS_ENABLED(CONFIG_SPL_BUILD))
+			printf("VGA1:%dMiB, ", vga_ram_size[vga_sz_sel] / SZ_1M);
+		dual++;
+	}
+
+	return vga_ram_size[vga_sz_sel] * dual;
+}
+
 static int sdramc_ecc_enable(struct sdramc *sdramc)
 {
-	size_t ram_size_ary[] = {
-		0x10000000, // 256MB
-		0x20000000, // 512MB
-		0x40000000, // 1GB
-		0x80000000, // 2GB
+	u32 ram_size_ary[] = {
+		0x1000000, // 256MB
+		0x2000000, // 512MB
+		0x4000000, // 1GB
+		0x8000000, // 2GB
+		0x10000000, // 4GB
+		0x20000000, // 8GB
 		};
-	size_t ecc_sz, ram_size = ram_size_ary[DRAM_SIZE_DEF];
+	u32 ecc_sz, ram_size;
 	struct sdramc_regs *regs = sdramc->regs;
 	u32 bistcfg;
 	u32 val;
 	int err;
 
+	if (!sdramc->ecc_enable) {
+		debug("ECC is not enabled\n");
+		return 0;
+	}
+
+	/* declare a size arrary that already shifted by 4 */
+	ram_size = ram_size_ary[sdramc->sz];
+
+	/* Clean up all the dram for ECC redundant */
 	bistcfg = 0x82;
 	err = sdramc_bist(sdramc, 0, ram_size, bistcfg, 0x200000);
 	if (err) {
-		printf("bist is failed\n");
+		printf("ecc bist failed\n");
 		return err;
 	}
 
-	/* config ecc range */
-	ecc_sz = sdramc->ecc_size >> 4;
+	/*
+	 * When ecc enabled without given a size, it will use the full dram size.
+	 * The rule of ecc range is (dram size - vga memory size) * 8 / 9.
+	 */
+	if (sdramc->ecc_size == 0)
+		ecc_sz = (ram_size - (ast2700_sdrammc_get_vga_mem_size(sdramc) >> 4)) * 8 / 9;
+	else
+		ecc_sz = sdramc->ecc_size >> 4;
+
 	writel(ecc_sz, &regs->ecc_addr_range);
 
 	/* enable ecc, page matching should be disabled */
@@ -758,13 +824,25 @@ static int sdramc_size_detect(struct sdramc *sdramc)
 	void *test_addr = (void *)0xc0000000;
 	void *start_addr = (void *)0x80000000;
 
-	/* temparaly detect between 1GB and 2GB. */
-	writel(pattern, test_addr);
+	/* Assume the mimimum dram size is 1GB, hence test starts from 2GB */
+	for (sz = SDRAM_SIZE_2GB; sz < SDRAM_SIZE_MAX; sz++) {
+		/* change mapping address for mcu0 upper 1G space */
+		writel((readl((void *)SCU_IO_MCU0_CTRL) & SCU_MCU0_MAP1_MASK)
+		       | (ram_size[sz].size << SCU_MCU0_MAP1_SHIFT),
+		       (void *)SCU_IO_MCU0_CTRL);
 
-	if (readl(start_addr) != pattern)
-		sz = SDRAM_SIZE_2GB;
-	else
-		sz = SDRAM_SIZE_1GB;
+		/* test if pattern wrapped around */
+		writel(pattern, test_addr);
+
+		/* if it is wrapped around, the size should be smaller one */
+		if (readl(start_addr) == pattern)
+			break;
+
+		pattern = pattern >> 4;
+	}
+
+	sz--;
+	sdramc->sz = sz;
 
 	/* re-configure ram size to dramc. */
 	val = readl(&regs->mcfg);
@@ -795,13 +873,13 @@ static void sdramc_get_property(struct udevice *dev)
 	int len;
 
 	if (dev_read_bool(dev, "ecc-enable")) {
+		sdramc->ecc_enable = 1;
 		sdramc->ecc_size = dev_read_u32_default(dev, "ecc-size", 0);
-		sdramc_ecc_enable(sdramc);
 	}
 
 	if (dev_read_bool(dev, "aes-enable")) {
+		sdramc->aes_enable = 1;
 		sdramc->aes_size = dev_read_u32_default(dev, "aes-size", 0);
-		sdramc_aes_enable(sdramc);
 	}
 
 	for (i = 0; i < MAX_MPU_COUNT; i++) {
@@ -1050,6 +1128,9 @@ static int sdram_init(struct udevice *dev)
 	if (!!(readl((void *)ASPEED_IO_REVISION_ID) & CHIP_AST2700A1_ID_MASK)) {
 		sdramc_size_detect(sdramc);
 
+		sdramc_ecc_enable(sdramc);
+		sdramc_aes_enable(sdramc);
+
 		if (IS_ENABLED(CONFIG_SPL_BUILD) && IS_ENABLED(CONFIG_ASPEED_MPU))
 			sdramc_mpu_init(sdramc);
 	}
@@ -1082,47 +1163,6 @@ static int ast2700_sdrammc_of_to_plat(struct udevice *dev)
 }
 
 #ifndef CONFIG_RISCV
-static size_t ast2700_sdrammc_get_vga_mem_size(struct sdramc *sdramc)
-{
-	struct ast2700_scu0 *scu;
-	struct sdramc_regs *regs = sdramc->regs;
-	int nodeoffset;
-	u32 vga_ram_size[] = {
-		0x2000000, // 32MB
-		0x4000000, // 64MB
-		};
-	int vga_sz_sel;
-	ofnode node;
-	int dual = 0;
-
-	vga_sz_sel = readl(&regs->gfmcfg) & 0x1;
-
-	/* find the offset of compatible node */
-	nodeoffset = fdt_node_offset_by_compatible(gd->fdt_blob, -1,
-						   "aspeed,ast2700-scu0");
-	if (nodeoffset < 0) {
-		printf("%s: failed to get aspeed,ast2700-scu0\n", __func__);
-		return -ENODEV;
-	}
-
-	/* get ast2700-scu0 node */
-	node = offset_to_ofnode(nodeoffset);
-
-	scu = (struct ast2700_scu0 *)ofnode_get_addr(node);
-
-	if (scu->pci0_misc[28] & BIT(0)) {
-		printf("VGA0:%dMiB, ", vga_ram_size[vga_sz_sel] / SZ_1M);
-		dual++;
-	}
-
-	if (scu->pci1_misc[28] & BIT(0)) {
-		printf("VGA1:%dMiB, ", vga_ram_size[vga_sz_sel] / SZ_1M);
-		dual++;
-	}
-
-	return vga_ram_size[vga_sz_sel] * dual;
-}
-
 static int ast2700_sdrammc_calc_size(struct sdramc *sdramc)
 {
 	struct ast2700_scu1 *scu;

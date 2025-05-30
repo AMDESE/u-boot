@@ -300,7 +300,12 @@ struct sdramc {
 	void __iomem *phy_setting;
 	void __iomem *phy_status;
 	ulong clock_rate;
+
+	int sz;
+
+	bool ecc_enable;
 	u32 ecc_size;
+	bool aes_enable;
 	u32 aes_size;
 
 	struct mpu_info mpu[MAX_MPU_COUNT];
