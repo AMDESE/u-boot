@@ -207,6 +207,7 @@
 	/*
 	 * Example of dram ECC enable
 	 * The max ECC size = ((Capacity - VGA size) * 8) / 9;
+	 * ecc-size for customization, if not set, it will be dynamic detected.
 	 */
 	ecc-enable;
 	ecc-size = <0x38000000>;
