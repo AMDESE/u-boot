@@ -552,7 +552,7 @@ static int read_cr(struct spi_nor *nor)
 static int write_sr(struct spi_nor *nor, u8 val)
 {
 	if (nor->write_sr)
-		return nor->write_sr(nor, val);
+		return nor->write_sr(nor, &val, 1);
 
 	nor->cmd_buf[0] = val;
 	return nor->write_reg(nor, SPINOR_OP_WRSR, nor->cmd_buf, 1);
@@ -2080,6 +2080,9 @@ static int spansion_no_read_cr_quad_enable(struct spi_nor *nor)
 	}
 	sr_cr[0] = ret;
 	sr_cr[1] = CR_QUAD_EN_SPAN;
+
+	if (nor->write_sr)
+		return nor->write_sr(nor, sr_cr, 2);
 
 	return write_sr_cr(nor, sr_cr);
 }
@@ -3841,19 +3844,19 @@ static struct spi_nor_fixups mt35xu512aba_fixups = {
 #endif /* CONFIG_SPI_FLASH_MT35XU */
 
 #if CONFIG_IS_ENABLED(SPI_FLASH_WINBOND)
-int write_sr_w25q01gjv(struct spi_nor *nor, u8 val)
+int write_sr_w25q01gjv(struct spi_nor *nor, u8 *val, u32 len)
 {
 	int ret = 0;
 
 	write_disable(nor);
+	udelay(50);
 	spi_nor_wait_till_ready(nor);
 
 	ret = nor->write_reg(nor, SPINOR_OP_VSR_WREN, NULL, 0);
 	if (ret)
 		return ret;
 
-	nor->cmd_buf[0] = val;
-	ret = nor->write_reg(nor, SPINOR_OP_WRSR, nor->cmd_buf, 1);
+	ret = nor->write_reg(nor, SPINOR_OP_WRSR, val, len);
 	if (ret)
 		return ret;
 
