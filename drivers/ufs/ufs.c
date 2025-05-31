@@ -1950,12 +1950,13 @@ int ufshcd_probe(struct udevice *ufs_dev, struct ufs_hba_ops *hba_ops)
 	hba->dev = ufs_dev;
 	hba->ops = hba_ops;
 
-	if (device_is_on_pci_bus(ufs_dev)) {
+	if (IS_ENABLED(CONFIG_PCI) && device_is_on_pci_bus(ufs_dev)) {
 		mmio_base = dm_pci_map_bar(ufs_dev, PCI_BASE_ADDRESS_0, 0, 0,
 					   PCI_REGION_TYPE, PCI_REGION_MEM);
 	} else {
 		mmio_base = dev_read_addr_ptr(ufs_dev);
 	}
+
 	hba->mmio_base = mmio_base;
 
 	/* Set descriptor lengths to specification defaults */
