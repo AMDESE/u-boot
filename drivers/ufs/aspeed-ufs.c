@@ -189,7 +189,7 @@ static int aspeed_ufs_probe(struct udevice *dev)
 
 	/* reduce signal swing */
 	writel(0xd0707, base + UFS_MPHY_CALI_IN_1);
-	writel(0x5ffff00, base + UFS_MPHY_CALI_IN_0);
+	writel(0xbbffff00, base + UFS_MPHY_CALI_IN_0);
 
 	/* Reset MPHY */
 	reg = readl(base + UFS_MPHY_RST_REG);
