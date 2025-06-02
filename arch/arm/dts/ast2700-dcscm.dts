@@ -48,3 +48,7 @@
 &i2c10 {
 	status = "okay";
 };
+
+&ltpi0_gpio {
+	status = "okay";
+};
