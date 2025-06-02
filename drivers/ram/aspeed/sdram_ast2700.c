@@ -827,7 +827,7 @@ static int sdramc_size_detect(struct sdramc *sdramc)
 	/* Assume the mimimum dram size is 1GB, hence test starts from 2GB */
 	for (sz = SDRAM_SIZE_2GB; sz < SDRAM_SIZE_MAX; sz++) {
 		/* change mapping address for mcu0 upper 1G space */
-		writel((readl((void *)SCU_IO_MCU0_CTRL) & SCU_MCU0_MAP1_MASK)
+		writel((readl((void *)SCU_IO_MCU0_CTRL) & ~SCU_MCU0_MAP1_MASK)
 		       | (ram_size[sz].size << SCU_MCU0_MAP1_SHIFT),
 		       (void *)SCU_IO_MCU0_CTRL);
 
