@@ -1146,21 +1146,26 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 	if (pin_strap & SCU1_HWSTRAP1_LTPI0_EN) {
 		uint32_t reg;
 
-		if (ltpi_get_link_partner(&ltpi_data[0]))
+		if (ltpi_get_link_partner(&ltpi_data[0])) {
 			reg = FIELD_PREP(REG_LTPI_AHB_ADDR_MAP0, 0x5) |
 			      FIELD_PREP(REG_LTPI_AHB_ADDR_MAP1, 0xa0);
-		else
+		} else {
 			reg = 0;
+			/* FIXME:  Disable the checker of data channel */
+			writel(0, (void *)ltpi_data[0].base + LTPI_DATA_CH_CFG0);
+		}
 
 		writel(reg, (void *)ltpi_data[0].base + LTPI_AHB_CTRL0);
 
 		if (pin_strap & SCU1_HWSTRAP1_LTPI1_EN) {
-			if (ltpi_get_link_partner(&ltpi_data[1]))
+			if (ltpi_get_link_partner(&ltpi_data[1])) {
 				reg = FIELD_PREP(REG_LTPI_AHB_ADDR_MAP0, 0x5) |
 				      FIELD_PREP(REG_LTPI_AHB_ADDR_MAP1, 0xa0);
-			else
+			} else {
 				reg = 0;
-
+				/* FIXME:  Disable the checker of data channel */
+				writel(0, (void *)ltpi_data[1].base + LTPI_DATA_CH_CFG0);
+			}
 			writel(reg, (void *)ltpi_data[1].base + LTPI_AHB_CTRL0);
 		}
 
