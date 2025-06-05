@@ -270,6 +270,7 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 	char plat_name [STR_BUF_LEN] = {0};
 	char dts_name [STR_BUF_LEN] = {0};
 	char board_conf_name[STR_BUF_LEN] = {0};
+	char board_id_buf[STR_BUF_LEN] = {0};
 	char board_id_str[STR_BUF_LEN] = {0};
 	char board_rev_str[STR_BUF_LEN] = {0};
 	char chassis_ser_num[STR_BUF_LEN] = {0};
@@ -306,7 +307,8 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 	/* HPM board env variables for linux apps */
 	if(!env_get(ENV_BOARD_ID)) {
 		if ((board_id != 0xff)) {
-			bin2hex(board_id_str, &board_id, sizeof board_id);
+			bin2hex(board_id_buf, &board_id, sizeof board_id);
+			str_to_upper(board_id_buf, board_id_str, strlen(board_id_buf)+1);
 			env_set(ENV_BOARD_ID, board_id_str);
 			printf("Saving board_id: %s\n", board_id_str);
 			env_save();
