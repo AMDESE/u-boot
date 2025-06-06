@@ -188,10 +188,6 @@ void dwc_ddrphy_phyinit_userCustom_G_waitFwDone(void)
 
 void dwc_ddrphy_phyinit_userCustom_J_enterMissionMode(struct sdramc *sdramc)
 {
-#define CHIP_REVID_AST2700A0	0x06000003
-#define CHIP_REVID_AST2700A1	0x06010003
-#define CHIP_AST2700A1_ID_MASK	BIT(16)
-
 	struct sdramc_regs *regs = sdramc->regs;
 	uint32_t val;
 

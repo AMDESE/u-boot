@@ -1125,7 +1125,7 @@ static int sdram_init(struct udevice *dev)
 	}
 
 	/* a1 get size in the spl */
-	if (!!(readl((void *)ASPEED_IO_REVISION_ID) & CHIP_AST2700A1_ID_MASK)) {
+	if ((readl((void *)ASPEED_IO_REVISION_ID) & CHIP_AST2700A1_ID_MASK)) {
 		sdramc_size_detect(sdramc);
 
 		sdramc_ecc_enable(sdramc);
@@ -1182,7 +1182,7 @@ static int ast2700_sdrammc_calc_size(struct sdramc *sdramc)
 	ofnode node;
 
 	/* a1 size already get in the spl */
-	if (!!(readl((void *)ASPEED_IO_REVISION_ID) & CHIP_AST2700A1_ID_MASK)) {
+	if ((readl((void *)ASPEED_IO_REVISION_ID) & CHIP_AST2700A1_ID_MASK)) {
 		sz = (readl(&regs->mcfg) >> 2) & 0x7;
 		sdramc->info.base = CFG_SYS_SDRAM_BASE;
 		sdramc->info.size = ram_size[sz].size - ast2700_sdrammc_get_vga_mem_size(sdramc);
