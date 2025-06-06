@@ -162,6 +162,7 @@ static int gsram_prictrl_init(uintptr_t ctrl_base, uintptr_t sprot_addr, uint32_
 	/* (0x12C0E100)SPROT_SIDG0 = 0x2120; */
 	sprot_sid_ctrl->sidg0.b.sid0 = 0x20; /* BootMCU I */
 	sprot_sid_ctrl->sidg0.b.sid1 = 0x21; /* BootMCU D */
+	sprot_sid_ctrl->sidg0.b.sid2 = 0xc; /* eMMC Boot */
 	debug("reg(sidg0) \t\taddr:0x%p,\tvalue:%x\n", &sprot_sid_ctrl->sidg0.raw,
 	      sprot_sid_ctrl->sidg0.raw);
 
@@ -170,6 +171,8 @@ static int gsram_prictrl_init(uintptr_t ctrl_base, uintptr_t sprot_addr, uint32_
 	sprot_ctrl->region0_enable.ctrl.b.r_enable_sid0 = 1; /* region0 enable read for BootMCU I */
 	sprot_ctrl->region0_enable.ctrl.b.w_enable_sid1 = 1; /* region0 enable write for BootMCU D */
 	sprot_ctrl->region0_enable.ctrl.b.r_enable_sid1 = 1; /* region0 enable read for BootMCU D */
+	sprot_ctrl->region0_enable.ctrl.b.w_enable_sid2 = 1; /* region0 enable write for eMMC Boot */
+	sprot_ctrl->region0_enable.ctrl.b.r_enable_sid2 = 1; /* region0 enable read for eMMC Boot */
 	sprot_ctrl->region0_enable.ctrl.b.r_enable_sid7 = 1; /* region0 enable read for Others */
 	debug("reg(region0_enable) \taddr:0x%p,\tvalue:%x\n", &sprot_ctrl->region0_enable.ctrl.raw,
 	      sprot_ctrl->region0_enable.ctrl.raw);
