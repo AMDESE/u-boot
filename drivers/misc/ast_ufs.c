@@ -57,36 +57,70 @@ static int ufs_copy(struct udevice *dev, u32 *dst, u32 *src, u32 len)
 	struct blk_desc *bd = bootufs->bd;
 	u32 *base;
 	int ret;
-	u32 blk, blks, blk_len;
-	u32 ofst_in_blk = (u32)src;
-	u32 i;
+	u32 blks;
+	u32 offset, lba, trans, extra;
+	u8 blk_buf[UFS_BLK_LEN], *out = (u8 *)dst, *in = (u8 *)src;
 
-	blk_len = UFS_BLK_LEN;
-	blk = (u32)src / blk_len;
-	blks = len / blk_len;
-	ofst_in_blk %= blk_len;
+	lba = (u32)src / UFS_BLK_LEN;
+	offset = (u32)src % UFS_BLK_LEN;
 
-	if (len % blk_len)
-		blks++;
+	/* Handle the case where the source address is not aligned to block size */
+	if (offset) {
+		if (len < (UFS_BLK_LEN - offset))
+			trans = len;
+		else
+			trans = UFS_BLK_LEN - offset;
 
-	if ((u32)src % blk_len)
-		blks++;
+		/* Read the first block to get the offset */
+		ret = blk_dread(bd, lba, 1, blk_buf);
+		if (ret != 1) {
+			printf("blk read is incomplete!!!\n");
+			return -1;
+		}
 
-	debug("blk read blk=0x%x, blks=0x%x\n", blk, blks);
-	ret = blk_dread(bd, blk, blks, (void *)ASPEED_SRAM_BASE);
-	debug("blk read cnt=%d\n", ret);
-	if (ret != blks) {
-		printf("blk read is incomplete!!!\n");
-		return -1;
+		base = (u32 *)(blk_buf + offset);
+		memcpy(dst, base, trans);
+
+		out += trans;
+		in  += trans;
+		len -= trans;
 	}
 
-	base = (u32 *)(ASPEED_SRAM_BASE + ofst_in_blk);
+	/* Read the rest of the blocks */
+	while (len)  {
+		blks = len / UFS_BLK_LEN;
+		extra = len % UFS_BLK_LEN;
 
-	debug("blk load image base = %x\n", (u32)base);
-	debug("blk load image base[0] = %x\n", *base);
+		lba = (u32)in / UFS_BLK_LEN;
+		offset = (u32)in % UFS_BLK_LEN;
 
-	for (i = 0; i < len / 4; i++)
-		writel(*(base + i), dst + i);
+		if (len == extra) {
+			/* Read out the last block */
+			ret = blk_dread(bd, lba, 1, blk_buf);
+			if (ret != 1) {
+				printf("blk read is incomplete!!!\n");
+				return -1;
+			}
+
+			memcpy(out, blk_buf + offset, extra);
+
+			out += extra;
+			in += extra;
+			len -= extra;
+		} else {
+			/* Read out the whole block */
+			ret = blk_dread(bd, lba, blks, (void *)out);
+			debug("blk read cnt=%d\n", ret);
+			if (ret != blks) {
+				printf("blk read is incomplete!!!\n");
+				return -1;
+			}
+
+			out += (UFS_BLK_LEN * blks);
+			in += (UFS_BLK_LEN * blks);
+			len -= (UFS_BLK_LEN * blks);
+		}
+	}
 
 	return 0;
 }
