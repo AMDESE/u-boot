@@ -28,6 +28,7 @@
 #define SCU_PCI_MISC70		(0xa70)
 #define SCU_PCI_MISCF0		(0xaf0)
 #define SCU_REVISION		(0x0)
+#define SCU_REVISION_ID_REV    GENMASK(23, 16)
 #define SCU_REVISION_ID_EFUSE	GENMASK(15, 8)
 #define EFUSE_AST2700		(0x1)
 #define EFUSE_AST2720		(0x2)
@@ -68,6 +69,7 @@ static int aspeed_vbios_probe(struct udevice *dev)
 #else
 	u32 vbios_x64_size;
 	u32 vbios_arm_size;
+	u32 rev_id;
 #endif
 
 #ifdef CONFIG_RISCV
@@ -76,6 +78,15 @@ static int aspeed_vbios_probe(struct udevice *dev)
 	efuse = FIELD_GET(SCU_CPU_REVISION_ID_EFUSE, vbios->scu->chip_id1);
 #else
 	/* Get chip version */
+	regmap_read(vbios->scu_ctl_base, SCU_REVISION, &value);
+	rev_id = FIELD_GET(SCU_REVISION_ID_REV, value);
+
+	if (rev_id != 0x0) {
+		dev_err(dev, "UEFI load doesn't need after ast2700 a1.\n");
+		return -1;
+	}
+
+	/* Get chip efuse */
 	regmap_read(vbios->scu_ctl_base, SCU_REVISION, &value);
 	efuse = FIELD_GET(SCU_REVISION_ID_EFUSE, value);
 
