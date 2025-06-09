@@ -159,27 +159,42 @@ static int gsram_prictrl_init(uintptr_t ctrl_base, uintptr_t sprot_addr, uint32_
 	sprot_ctrl = (struct sprot_region_enable_ast2700 *)(ctrl_base + GSRAM_SPROT_CTL);
 	sprot_region = (struct sprot_addr_ast2700 *)(ctrl_base + GSRAM_SPROT_ADR);
 
-	/* (0x12C0E100)SPROT_SIDG0 = 0x2120; */
+	/* Master ID setting in (0x14c0a300)SPROT_SIDG0 and (0x14c0a304)SPROT_SIDG1 */
 	sprot_sid_ctrl->sidg0.b.sid0 = 0x20; /* BootMCU I */
 	sprot_sid_ctrl->sidg0.b.sid1 = 0x21; /* BootMCU D */
-	sprot_sid_ctrl->sidg0.b.sid2 = 0xc; /* eMMC Boot */
+	sprot_sid_ctrl->sidg0.b.sid2 = 0x0C; /* EB(eMMC Boot) */
+	sprot_sid_ctrl->sidg0.b.sid3 = 0x32; /* I2C */
+	sprot_sid_ctrl->sidg1.b.sid4 = 0xF; /* U3 */
+	sprot_sid_ctrl->sidg1.b.sid5 = 0x3A; /* UUARTA */
+	sprot_sid_ctrl->sidg1.b.sid6 = 0x3B; /* UUARTB */
 	debug("reg(sidg0) \t\taddr:0x%p,\tvalue:%x\n", &sprot_sid_ctrl->sidg0.raw,
 	      sprot_sid_ctrl->sidg0.raw);
+	debug("reg(sidg1) \t\taddr:0x%p,\tvalue:%x\n", &sprot_sid_ctrl->sidg1.raw,
+	      sprot_sid_ctrl->sidg1.raw);
 
-	/* region0 for BootMCU read write but others read only . */
-	sprot_ctrl->region0_enable.ctrl.b.w_enable_sid0 = 1; /* region0 enable write for BootMCU I */
-	sprot_ctrl->region0_enable.ctrl.b.r_enable_sid0 = 1; /* region0 enable read for BootMCU I */
-	sprot_ctrl->region0_enable.ctrl.b.w_enable_sid1 = 1; /* region0 enable write for BootMCU D */
-	sprot_ctrl->region0_enable.ctrl.b.r_enable_sid1 = 1; /* region0 enable read for BootMCU D */
-	sprot_ctrl->region0_enable.ctrl.b.w_enable_sid2 = 1; /* region0 enable write for eMMC Boot */
-	sprot_ctrl->region0_enable.ctrl.b.r_enable_sid2 = 1; /* region0 enable read for eMMC Boot */
-	sprot_ctrl->region0_enable.ctrl.b.r_enable_sid7 = 1; /* region0 enable read for Others */
+	/* region0 read and write permission. */
+	sprot_ctrl->region0_enable.ctrl.b.w_enable_sid0 = 1; /* Enable write for BootMCU I */
+	sprot_ctrl->region0_enable.ctrl.b.r_enable_sid0 = 1; /* Enable read for BootMCU I */
+	sprot_ctrl->region0_enable.ctrl.b.w_enable_sid1 = 1; /* Enable write for BootMCU D */
+	sprot_ctrl->region0_enable.ctrl.b.r_enable_sid1 = 1; /* Enable read for BootMCU D */
+	sprot_ctrl->region0_enable.ctrl.b.w_enable_sid2 = 1; /* Enable write for eMMC Boot */
+	sprot_ctrl->region0_enable.ctrl.b.r_enable_sid2 = 1; /* Enable read for eMMC Boot */
+	sprot_ctrl->region0_enable.ctrl.b.w_enable_sid3 = 1; /* Enable write for I2C */
+	sprot_ctrl->region0_enable.ctrl.b.r_enable_sid3 = 1; /* Enable read for I2C */
+	sprot_ctrl->region0_enable.ctrl.b.w_enable_sid4 = 1; /* Enable write for U3 */
+	sprot_ctrl->region0_enable.ctrl.b.r_enable_sid4 = 1; /* Enable read for U3 */
+	sprot_ctrl->region0_enable.ctrl.b.w_enable_sid5 = 1; /* Enable write for UUARTA */
+	sprot_ctrl->region0_enable.ctrl.b.r_enable_sid5 = 1; /* Enable read for UUARTA */
+	sprot_ctrl->region0_enable.ctrl.b.w_enable_sid6 = 1; /* Enable write for UUARTB */
+	sprot_ctrl->region0_enable.ctrl.b.r_enable_sid6 = 1; /* Enable read for UUARTB */
+	sprot_ctrl->region0_enable.ctrl.b.r_enable_sid7 = 1; /* Enable read for Others */
 	debug("reg(region0_enable) \taddr:0x%p,\tvalue:%x\n", &sprot_ctrl->region0_enable.ctrl.raw,
 	      sprot_ctrl->region0_enable.ctrl.raw);
 
-	/* (0x14c0a3c0)region0:
+	/*
+	 * (0x14c0a3c0)region0:
 	 * Start address : 0x14b8_0000(SRAM base) + 0x0(start address) * 4(unit size)
-	 * End address   : 0x14bc_0000(Start address) + sprot_size
+	 * End address   : 0x14bc_0000(Start address) + 0xffff(sprot_size) * 4(unit size)
 	 */
 	sprot_region->region0.b.start_address = 0x0;
 	if (sprot_size >= 0x40000)
