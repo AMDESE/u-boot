@@ -834,6 +834,9 @@ static int sdramc_size_detect(struct sdramc *sdramc)
 		/* test if pattern wrapped around */
 		writel(pattern, test_addr);
 
+		/* prevent RAW hazzard */
+		udelay(1);
+
 		/* if it is wrapped around, the size should be smaller one */
 		if (readl(start_addr) == pattern)
 			break;
