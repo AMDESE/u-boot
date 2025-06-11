@@ -71,6 +71,7 @@ int board_init(void)
 	int ret;
 
 	ahbc_init();
+	aspeed_rgmii_init();
 
 	regulators_enable_boot_on(0);
 

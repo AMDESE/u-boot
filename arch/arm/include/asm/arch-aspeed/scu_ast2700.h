@@ -511,5 +511,7 @@ void aspeed_print_2nd_wdt_mode(void);
 void aspeed_print_fmc_aux_ctrl(void);
 void aspeed_print_spi_misc_func(void);
 
+void aspeed_rgmii_init(void);
+
 #endif
 #endif
