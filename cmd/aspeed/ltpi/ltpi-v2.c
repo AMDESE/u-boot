@@ -774,6 +774,8 @@ ltpi_scm_exit:
 
 #define LTPI_SGPIOS_PARALLEL_PIN_NUM 64
 #define SGPIOS_INVERT_POINT 10
+#define SGPIOS_LTPI_RELATIVE_PIN_START 16
+#define SGPIOS_LTPI_RELATIVE_PIN_END 47
 /*
  * Default value:
  * BMC_SGPO [3:0] = 1
@@ -800,6 +802,11 @@ static u8 sgpo_hl_invert_point[SGPIOS_INVERT_POINT] = {
 #define SGPIO_G7_CTRL_REG_BASE 0x80
 #define SGPIO_G7_CTRL_REG_OFFSET(x) (SGPIO_G7_CTRL_REG_BASE + (x) * 0x4)
 #define SGPIO_G7_PARALLEL_OUT_DATA BIT(1)
+#define SGPIO_G7_SERIAL_OUT_SEL GENMASK(17, 16)
+#define SGPIO_G7_PARALLEL_OUT_SEL GENMASK(19, 18)
+#define SELECT_FROM_CSR 0
+#define SELECT_FROM_PARALLEL_IN 1
+#define SELECT_FROM_SERIAL_IN 2
 
 static inline void ltpi_scm_sgpios_serial_out_lock(void)
 {
@@ -809,6 +816,14 @@ static inline void ltpi_scm_sgpios_serial_out_lock(void)
 static inline void ltpi_scm_sgpios_serial_out_unlock(void)
 {
 	clrbits_le32((void *)SGPIOS_REG + SGPIO_G7_CFG_REG_OFFSET, SGPIO_SERIAL_OUT_LOCK);
+}
+
+static inline void ltpi_scm_sgpios_serial_out_source_sel(u8 source)
+{
+	for (u32 i = SGPIOS_LTPI_RELATIVE_PIN_START; i < SGPIOS_LTPI_RELATIVE_PIN_END; i++)
+		clrsetbits_le32((void *)SGPIOS_REG + SGPIO_G7_CTRL_REG_OFFSET(i),
+				SGPIO_G7_SERIAL_OUT_SEL,
+				FIELD_PREP(SGPIO_G7_SERIAL_OUT_SEL, source));
 }
 
 static void ltpi_scm_sgpios_init(void)
@@ -845,6 +860,7 @@ static void ltpi_scm_sgpios_init(void)
 			invert_index++;
 		}
 	}
+	ltpi_scm_sgpios_serial_out_source_sel(SELECT_FROM_CSR);
 	/* Avoid the SGPIOS output unstable value to SGPIOM */
 	ltpi_scm_sgpios_serial_out_lock();
 	/*
@@ -1023,6 +1039,7 @@ struct bootstage_t ltpi_init(struct rom_context *rom_ctx, uint32_t pin_strap, bo
 			ltpi1_hpm_set_pins();
 			ltpi_scm_init(ltpi1);
 		}
+		ltpi_scm_sgpios_serial_out_source_sel(SELECT_FROM_PARALLEL_IN);
 		/* Unlock serial out to pass the LTPI Parallel in to SGPIOM */
 		ltpi_scm_sgpios_serial_out_unlock();
 	}
