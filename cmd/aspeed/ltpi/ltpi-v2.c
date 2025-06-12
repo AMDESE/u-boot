@@ -800,6 +800,17 @@ static u8 sgpo_hl_invert_point[SGPIOS_INVERT_POINT] = {
 #define SGPIO_G7_CTRL_REG_BASE 0x80
 #define SGPIO_G7_CTRL_REG_OFFSET(x) (SGPIO_G7_CTRL_REG_BASE + (x) * 0x4)
 #define SGPIO_G7_PARALLEL_OUT_DATA BIT(1)
+
+static inline void ltpi_scm_sgpios_serial_out_lock(void)
+{
+	setbits_le32((void *)SGPIOS_REG + SGPIO_G7_CFG_REG_OFFSET, SGPIO_SERIAL_OUT_LOCK);
+}
+
+static inline void ltpi_scm_sgpios_serial_out_unlock(void)
+{
+	clrbits_le32((void *)SGPIOS_REG + SGPIO_G7_CFG_REG_OFFSET, SGPIO_SERIAL_OUT_LOCK);
+}
+
 static void ltpi_scm_sgpios_init(void)
 {
 	u32 invert_index = 0;
@@ -834,6 +845,8 @@ static void ltpi_scm_sgpios_init(void)
 			invert_index++;
 		}
 	}
+	/* Avoid the SGPIOS output unstable value to SGPIOM */
+	ltpi_scm_sgpios_serial_out_lock();
 	/*
 	 * The meaning of SGPIO_PARALLEL_OUT_PROTECT will be inverted in A2,
 	 * so this bit setting should be removed when migrating to A2.
@@ -1010,6 +1023,8 @@ struct bootstage_t ltpi_init(struct rom_context *rom_ctx, uint32_t pin_strap, bo
 			ltpi1_hpm_set_pins();
 			ltpi_scm_init(ltpi1);
 		}
+		/* Unlock serial out to pass the LTPI Parallel in to SGPIOM */
+		ltpi_scm_sgpios_serial_out_unlock();
 	}
 
 	return sts;
