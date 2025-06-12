@@ -826,9 +826,9 @@ static inline void ltpi_scm_sgpios_serial_out_source_sel(u8 source)
 				FIELD_PREP(SGPIO_G7_SERIAL_OUT_SEL, source));
 }
 
-static void ltpi_scm_sgpios_init(void)
+static void ltpi_scm_sgpios_init(struct ltpi_priv *ltpi)
 {
-	u32 invert_index = 0;
+	u32 invert_index = 0, state;
 	u8 val = 1;
 	u32 scu_id = readl((void *)SCU1_CHIP_ID);
 
@@ -860,9 +860,13 @@ static void ltpi_scm_sgpios_init(void)
 			invert_index++;
 		}
 	}
-	ltpi_scm_sgpios_serial_out_source_sel(SELECT_FROM_CSR);
-	/* Avoid the SGPIOS output unstable value to SGPIOM */
-	ltpi_scm_sgpios_serial_out_lock();
+	/* Check whether LTPI is initialized */
+	state = ltpi_get_link_mng_state(ltpi);
+	if (state != LTPI_LINK_MNG_ST_OP) {
+		ltpi_scm_sgpios_serial_out_source_sel(SELECT_FROM_CSR);
+		/* Avoid the SGPIOS output unstable value to SGPIOM */
+		ltpi_scm_sgpios_serial_out_lock();
+	}
 	/*
 	 * The meaning of SGPIO_PARALLEL_OUT_PROTECT will be inverted in A2,
 	 * so this bit setting should be removed when migrating to A2.
@@ -1027,7 +1031,7 @@ struct bootstage_t ltpi_init(struct rom_context *rom_ctx, uint32_t pin_strap, bo
 		if (!skip_pinctrl)
 			ltpi_scm_set_pins();
 		/* Enable SGPIO slave */
-		ltpi_scm_sgpios_init();
+		ltpi_scm_sgpios_init(ltpi0);
 		ltpi0_hpm_set_pins();
 		ltpi_scm_init(ltpi0);
 
