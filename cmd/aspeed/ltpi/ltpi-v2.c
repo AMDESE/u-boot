@@ -22,6 +22,8 @@
 #define LTPI_REG				0x14c34000
 #define SGPIOS_REG				0x14c3c000
 
+#define SCU1_CHIP_ID				(SCU1_REG + 0x000)
+#define   SCU1_CHIP_ID_REVISION			GENMASK(23, 16)
 #define SCU1_HWSTRAP1				(SCU1_REG + 0x010)
 #define   SCU1_HWSTRAP1_LTPI0_IO_DRIVING	GENMASK(15, 14)
 #define   SCU1_HWSTRAP1_EN_RECOVERY_BOOT	BIT(4)
@@ -789,6 +791,12 @@ static u8 sgpo_hl_invert_point[SGPIOS_INVERT_POINT] = {
 	4, 16, 20, 24, 28, 32, 36, 48, 52, LTPI_SGPIOS_PARALLEL_PIN_NUM
 };
 
+#define SGPIO_G7_CFG_REG_OFFSET 0x00
+#define SGPIO_PARALLEL_OUT_PROTECT BIT(14)
+#define SGPIO_SERIAL_IN_LOCK BIT(13)
+#define SGPIO_SERIAL_OUT_LOCK BIT(12)
+#define SGPIO_ENABLE BIT(0)
+
 #define SGPIO_G7_CTRL_REG_BASE 0x80
 #define SGPIO_G7_CTRL_REG_OFFSET(x) (SGPIO_G7_CTRL_REG_BASE + (x) * 0x4)
 #define SGPIO_G7_PARALLEL_OUT_DATA BIT(1)
@@ -796,6 +804,7 @@ static void ltpi_scm_sgpios_init(void)
 {
 	u32 invert_index = 0;
 	u8 val = 1;
+	u32 scu_id = readl((void *)SCU1_CHIP_ID);
 
 	/*
 	 * Pin       MF
@@ -825,7 +834,14 @@ static void ltpi_scm_sgpios_init(void)
 			invert_index++;
 		}
 	}
-	writel(0x1, (void *)SGPIOS_REG);
+	/*
+	 * The meaning of SGPIO_PARALLEL_OUT_PROTECT will be inverted in A2,
+	 * so this bit setting should be removed when migrating to A2.
+	 */
+	setbits_le32((void *)SGPIOS_REG + SGPIO_G7_CFG_REG_OFFSET,
+		     (FIELD_GET(SCU1_CHIP_ID_REVISION, scu_id) == 1) ?
+			     SGPIO_ENABLE | SGPIO_PARALLEL_OUT_PROTECT :
+			     SGPIO_ENABLE);
 }
 
 static void ltpi_scm_set_pins(void)
