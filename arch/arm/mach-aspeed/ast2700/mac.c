@@ -17,7 +17,6 @@
 DECLARE_GLOBAL_DATA_PTR;
 
 #define IER 0x04
-#define LADR 0x0c
 #define TXPD 0x18
 #define TXR_BADR 0x20
 #define RXR_BADR 0x24
@@ -235,7 +234,7 @@ static void mac_init(u32 index)
 	mac_reset_deassert(index);
 	mac_clk_enable(index);
 
-	writel(0x01, base + LADR);
+	// writel(0x01, base + LADR);
 
 	/* disable interrupt */
 	writel(0, base + IER);
