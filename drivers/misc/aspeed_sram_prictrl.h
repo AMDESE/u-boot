@@ -7,9 +7,16 @@
 
 /* CPU SRAM protect memory offset */
 #define ESRAM_SPROT_CFG 0x100
-#define ESRAM_SPROT_SIDG 0x110
-#define ESRAM_SPROT_CTL 0x180
-#define ESRAM_SPROT_ADR 0x1c0
+#define ESRAM_SPROT_SIDG0 0x110
+#define ESRAM_SPROT_SIDG1 0x114
+#define ESRAM_SPROT_CTL00 0x180
+#define ESRAM_SPROT_CTL01 0x184
+#define ESRAM_SPROT_CTL02 0x188
+#define ESRAM_SPROT_CTL03 0x18c
+#define ESRAM_SPROT_ADR00 0x1c0
+#define ESRAM_SPROT_ADR01 0x1c4
+#define ESRAM_SPROT_ADR02 0x1c8
+#define ESRAM_SPROT_ADR03 0x1cc
 
 /* IO SRAM protect register offset */
 #define GSRAM_REG_SPROT_CFG 0x200
@@ -19,9 +26,10 @@
 
 /* IO SRAM protect memory offset */
 #define GSRAM_SPROT_CFG 0x300
-#define GSRAM_SPROT_SIDG 0x310
-#define GSRAM_SPROT_CTL 0x380
-#define GSRAM_SPROT_ADR 0x3c0
+#define GSRAM_SPROT_SIDG0 0x310
+#define GSRAM_SPROT_SIDG1 0x314
+#define GSRAM_SPROT_CTL00 0x380
+#define GSRAM_SPROT_ADR00 0x3c0
 
 struct sprot_cfg_ast2700 {
 	union {
