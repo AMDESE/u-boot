@@ -771,8 +771,8 @@ static int sdramc_ecc_enable(struct sdramc *sdramc)
 
 	/* enable ecc, page matching should be disabled */
 	val = readl(&regs->mcfg);
-	val &= ~(DRAMC_MCFG_PGM_EN | 0x1c);
-	val |= (DRAMC_MCFG_ECC_EN | (DRAM_SIZE_DEF << 2));
+	val &= ~(DRAMC_MCFG_PGM_EN);
+	val |= (DRAMC_MCFG_ECC_EN);
 	writel(val, &regs->mcfg);
 
 	return err;
