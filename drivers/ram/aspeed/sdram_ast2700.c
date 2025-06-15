@@ -123,9 +123,9 @@ struct sdramc_ac_timing ac_table[] = {
 };
 
 #define DRAMC_INIT_DONE		BIT(6)
-static bool is_ddr_initialized(void)
+static bool is_ddr_initialized(struct sdramc *sdramc)
 {
-	if (readl((void *)SCU_CPU_VGA0_SCRATCH) & DRAMC_INIT_DONE) {
+	if (readl((void *)&sdramc->regs->mctl) & DRAMC_MCTL_PHY_POWER_ON) {
 		debug("DDR has been initialized\n");
 		return 1;
 	}
@@ -1097,7 +1097,7 @@ static int sdram_init(struct udevice *dev)
 	u32 bistcfg;
 	int err = 0;
 
-	if (is_ddr_initialized())
+	if (is_ddr_initialized(sdramc))
 		return 0;
 
 	sdramc_unlock(sdramc);
