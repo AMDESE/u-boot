@@ -38,7 +38,7 @@ static int aspeed_ufs_link_startup_notify(struct ufs_hba *hba,
 	if (IS_ENABLED(CONFIG_ASPEED_FPGA))
 		max_gear = UFS_HS_G1;
 	else
-		max_gear = UFS_HS_G3;
+		max_gear = UFS_HS_G2;
 
 	hba->quirks |= UFSHCD_QUIRK_BROKEN_LCC;
 	switch (status) {
