@@ -33,6 +33,14 @@ config TARGET_AST2700_DCSCM
 
 endchoice
 
+config AST2700_RGMII_CLIBRATION
+	bool "AST2700-RGMII-CLIBRATION"
+	depends on ASPEED_AST2700
+	default y
+	help
+	  RGMII CLIBRATION is automatically to find the tx/rx edge/center of
+	  RGMII.
+
 source "board/aspeed/evb_ast2700/Kconfig"
 source "board/aspeed/ast2700_dcscm/Kconfig"
 
