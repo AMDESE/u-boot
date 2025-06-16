@@ -23,6 +23,7 @@
 #include <dm.h>
 #include <misc.h>
 #include <asm/arch/otp_ast2700.h>
+#include <display_options.h>
 #include "otp_info_ast2700.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -102,7 +103,7 @@ enum otp_status {
 #define CAL_REGION_START_ADDR		SEC_REGION_END_ADDR
 #define CAL_REGION_END_ADDR		0x1f80
 #define SW_PUF_REGION_START_ADDR	CAL_REGION_END_ADDR
-#define SW_PUF_REGION_END_ADDR		0x1fc0
+#define SW_PUF_REGION_END_ADDR		0x1fa0
 #define HW_PUF_REGION_START_ADDR	SW_PUF_REGION_END_ADDR
 #define HW_PUF_REGION_END_ADDR		0x2000
 
@@ -116,6 +117,7 @@ enum otp_status {
 #define OTP_SEC_REGION_SIZE		(SEC_REGION_END_ADDR - SEC_REGION_START_ADDR)
 #define OTP_CAL_REGION_SIZE		(CAL_REGION_END_ADDR - CAL_REGION_START_ADDR)
 #define OTP_PUF_REGION_SIZE		(HW_PUF_REGION_END_ADDR - SW_PUF_REGION_START_ADDR)
+#define OTP_SWPUF_REGION_SIZE		(SW_PUF_REGION_END_ADDR - SW_PUF_REGION_START_ADDR)
 
 /* OTPRBP */
 #define OTPRBP0_ADDR			OTPRBP_START_ADDR
@@ -339,6 +341,11 @@ static int otp_read_secure_multi(u32 offset, u16 *data, int num)
 static int otp_read_cptra(u32 offset, u16 *data)
 {
 	return otp_read(offset + CAL_REGION_START_ADDR, data);
+}
+
+static int otp_read_puf(u32 offset, u16 *data)
+{
+	return otp_read(offset + SW_PUF_REGION_START_ADDR, data);
 }
 
 static int otp_print_rom(u32 offset, int w_count)
@@ -1945,6 +1952,246 @@ static int otp_prog_image(phys_addr_t addr, int nconfirm)
 	return OTP_SUCCESS;
 }
 
+static unsigned char otp_rompatch_v3_dgst[] =
+	"\x2f\x9c\x5c\x1a\x72\xdf\x21\x43\x4f\x6a\x55\x10\x4a\x4f\xb0\x1c"
+	"\xf6\xc8\xf1\xdb\xe6\x1f\x92\xfc\xcc\x6c\xda\xf8\x1c\x5b\x53\xaf"
+	"\x67\xa4\xba\x61\xd9\x4f\xc6\xf8\x6b\xb0\xe6\x68\xa8\x72\x15\xbf";
+
+static unsigned char otp_vendor_keyhash[] =
+	"\xCF\x30\xDE\xEB\xCE\x37\xB1\xA0\xC4\x74\xD6\xC0\xD4\x9F\x33\x70"
+	"\xCB\x79\x72\xCF\x44\xF8\xEA\xB9\x60\x10\x14\x95\xBA\x94\xC9\x4E"
+	"\xA6\x5E\x9F\xE3\x90\x1B\x62\x6B\x20\x40\x4F\xC4\x2B\x2B\xA2\x86";
+
+#define OTP_ROM_PATCH_VERSION_ADDR	0x14c02180
+#define OTPCFG0_GLD_VALUE		0x4020
+#define OTPCFG2_GLD_VALUE		0x100
+#define OTPCFG4_GLD_VALUE		0x1
+#define OTPCFG5_GLD_VALUE		0x13a
+#define OTPCFG6_GLD_VALUE		0x275
+#define OTPCFG7_GLD_VALUE		0x19a
+
+static int otp_test_provision(void)
+{
+	int rom_patch_ver;
+
+	/* Check ROM patch version */
+	rom_patch_ver = readl(OTP_ROM_PATCH_VERSION_ADDR);
+	switch (rom_patch_ver) {
+	case 0x3:
+		printf("WARN: ROM patch version 1 detected\n");
+		printf("This chip is not provisioned, please change your chip !!!\n");
+		return OTP_FAILURE;
+	case 0x3276:
+		printf("ROM patch version 2 detected\n");
+		printf("This chip is not provisioned, please change your chip !!!\n");
+		return OTP_FAILURE;
+	case 0x3376:
+		printf("ROM patch version 3 detected\n");
+		break;
+	default:
+		printf("Unknown ROM patch version: 0x%x\n", rom_patch_ver);
+		return OTP_FAILURE;
+	}
+
+	/* Check OTPROM region */
+	uint16_t data_rom[OTP_ROM_REGION_SIZE];
+	uint8_t digest[48];
+
+	for (int i = 0; i < OTP_ROM_REGION_SIZE; i++) {
+		if (otp_read_rom(i, &data_rom[i]) != OTP_SUCCESS) {
+			printf("OTPROM read failed at offset 0x%x\n", i);
+			return OTP_FAILURE;
+		}
+	}
+
+	sha384_csum_wd((uint8_t *)data_rom, sizeof(data_rom), digest, 48);
+
+	/* print_buffer((ulong)digest, digest, 1, 48, 16); */
+
+	if (memcmp(otp_rompatch_v3_dgst, digest, 48) != 0) {
+		printf("OTPROM digest mismatch\n");
+		return -1;
+	}
+
+	printf("OTPROM region is valid\n");
+
+	/* Check OTPCFG region */
+	uint16_t data_cfg[OTP_CONF_REGION_SIZE];
+
+	for (int i = 0; i < OTP_CONF_REGION_SIZE; i++) {
+		if (otp_read_conf(i, &data_cfg[i]) != OTP_SUCCESS) {
+			printf("OTPCFG read failed at offset 0x%x\n", i);
+			return -1;
+		}
+
+		switch (i) {
+		case 0:
+			if (data_cfg[i] != OTPCFG0_GLD_VALUE) {
+				printf("OTPCFG[0] value mismatch: 0x%x, expected: 0x%x\n",
+				       data_cfg[i], OTPCFG0_GLD_VALUE);
+				return -1;
+			}
+			break;
+		case 2:
+			if (data_cfg[i] != OTPCFG2_GLD_VALUE) {
+				printf("OTPCFG[2] value mismatch: 0x%x, expected: 0x%x\n",
+				       data_cfg[i], OTPCFG2_GLD_VALUE);
+				return -1;
+			}
+			break;
+		case 4:
+			if (data_cfg[i] != OTPCFG4_GLD_VALUE) {
+				printf("OTPCFG[4] value mismatch: 0x%x, expected: 0x%x\n",
+				       data_cfg[i], OTPCFG4_GLD_VALUE);
+				return -1;
+			}
+			break;
+		case 5:
+			if (data_cfg[i] != OTPCFG5_GLD_VALUE) {
+				printf("OTPCFG[5] value mismatch: 0x%x, expected: 0x%x\n",
+				       data_cfg[i], OTPCFG5_GLD_VALUE);
+				return -1;
+			}
+			break;
+		case 6:
+			if (data_cfg[i] != OTPCFG6_GLD_VALUE) {
+				printf("OTPCFG[6] value mismatch: 0x%x, expected: 0x%x\n",
+				       data_cfg[i], OTPCFG6_GLD_VALUE);
+				return -1;
+			}
+			break;
+		case 7:
+			if (data_cfg[i] != OTPCFG7_GLD_VALUE) {
+				printf("OTPCFG[7] value mismatch: 0x%x, expected: 0x%x\n",
+				       data_cfg[i], OTPCFG7_GLD_VALUE);
+				return -1;
+			}
+			break;
+		default:
+			if (data_cfg[i] != 0) {
+				printf("OTPCFG[%d] value mismatch: 0x%x, expected: 0x0\n",
+				       i, data_cfg[i]);
+				return -1;
+			}
+			break;
+		}
+	}
+
+	printf("OTPCFG region is valid\n");
+
+	/* Check OTPCAL region */
+	int otpcal_check_size = 0x2a;			/* word */
+	int otpcal_vendor_keyhash_offset = 0x12;	/* word */
+	uint16_t data_cptra[otpcal_check_size];
+
+	for (int i = 0; i < otpcal_check_size; i++) {
+		if (otp_read_cptra(i, &data_cptra[i]) != OTP_SUCCESS) {
+			printf("OTPCAL read failed at offset 0x%x\n", i);
+			return -1;
+		}
+
+		if (i < otpcal_vendor_keyhash_offset && data_cptra[i] != 0) {
+			printf("OTPCAL[%d] value mismatch: 0x%x, expected: 0x0\n",
+			       i, data_cptra[i]);
+			return -1;
+		}
+	}
+
+	if (memcmp(otp_vendor_keyhash, &data_cptra[otpcal_vendor_keyhash_offset], 48) != 0) {
+		printf("OTPCAL vendor key hash mismatch\n");
+		return -1;
+	}
+
+	printf("OTPCAL region is valid\n");
+
+	/* Check OTPPUF region is not empty */
+	uint16_t data_puf[OTP_SWPUF_REGION_SIZE];
+
+	for (int i = 0; i < OTP_SWPUF_REGION_SIZE; i++) {
+		if (otp_read_puf(i, &data_puf[i]) != OTP_SUCCESS) {
+			printf("OTPPUF read failed at offset 0x%x\n", i);
+			return -1;
+		}
+
+		if (data_puf[i] == 0x0) {
+			printf("OTPPUF region is empty, this chip is abnormal\n");
+			return -1;
+		}
+	}
+
+	printf("OTPPUF region is valid\n");
+
+	/* Check other's region is empty
+	 * - OTPRBP region
+	 * - OTPSTRAP region
+	 * - OTPSTRAP_EXT region
+	 * - OTPUSR region
+	 * - OTPSEC region
+	 */
+	uint16_t data;
+
+	for (int i = 0; i < OTP_RBP_REGION_SIZE; i++) {
+		if (otp_read_rbp(i, &data) != OTP_SUCCESS) {
+			printf("OTPRBP read failed at offset 0x%x\n", i);
+			return -1;
+		}
+
+		if (data != 0x0) {
+			printf("OTPRBP region is not empty, this chip is abnormal\n");
+			return -1;
+		}
+	}
+	for (int i = 0; i < OTP_STRAP_REGION_SIZE; i++) {
+		if (otp_read_strap(i, &data) != OTP_SUCCESS) {
+			printf("OTPSTRAP read failed at offset 0x%x\n", i);
+			return -1;
+		}
+
+		if (data != 0x0) {
+			printf("OTPSTRAP region is not empty, this chip is abnormal\n");
+			return -1;
+		}
+	}
+	for (int i = 0; i < OTP_STRAP_EXT_REGION_SIZE; i++) {
+		if (otp_read_strap_ext(i, &data) != OTP_SUCCESS) {
+			printf("OTPSTRAP_EXT read failed at offset 0x%x\n", i);
+			return -1;
+		}
+
+		if (data != 0x0) {
+			printf("OTPSTRAP_EXT region is not empty, this chip is abnormal\n");
+			return -1;
+		}
+	}
+	for (int i = 0; i < OTP_USER_REGION_SIZE; i++) {
+		if (otp_read_data(i, &data) != OTP_SUCCESS) {
+			printf("OTPUSR read failed at offset 0x%x\n", i);
+			return -1;
+		}
+
+		if (data != 0x0) {
+			printf("OTPUSR region is not empty, this chip is abnormal\n");
+			return -1;
+		}
+	}
+	for (int i = 0; i < OTP_SEC_REGION_SIZE; i++) {
+		if (otp_read_secure(i, &data) != OTP_SUCCESS) {
+			printf("OTPSEC read failed at offset 0x%x\n", i);
+			return -1;
+		}
+
+		if (data != 0x0) {
+			printf("OTPSEC region is not empty, this chip is abnormal\n");
+			return -1;
+		}
+	}
+	printf("Other regions are empty\n");
+
+	printf("This chip is provisioned successfully !!!\n");
+
+	return OTP_SUCCESS;
+}
+
 static int do_otpinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	if (argc != 2 && argc != 3)
@@ -2282,6 +2529,41 @@ static int do_otpver(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv
 	return CMD_RET_SUCCESS;
 }
 
+static int do_otptest(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
+{
+	int ret;
+
+	/* Drop the test cmd */
+	argc--;
+	argv++;
+
+	if (strcmp(argv[0], "prov"))
+		return CMD_RET_USAGE;
+
+	printf("OTP test prov...\n");
+
+	ret = otp_test_provision();
+	if (ret == OTP_SUCCESS) {
+		printf("\n"
+			"______________________________________________\n"
+			"___  __ \\__    |_  ___/_  ___/__  ____/__  __ \\\n"
+			"__  /_/ /_  /| |____ \\_____ \\__  __/  __  / / /\n"
+			"_  ____/_  ___ |___/ /____/ /_  /___  _  /_/ /\n"
+			"/_/     /_/  |_/____/ /____/ /_____/  /_____/\n"
+			);
+	} else {
+		printf("\n"
+			"______________________________________________\n"
+			"___  ____/__    |___  _/__  /___  ____/__  __ \\\n"
+			"__  /_   __  /| |__  / __  / __  __/  __  / / /\n"
+			"_  __/   _  ___ |_/ /  _  /___  /___  _  /_/ /\n"
+			"/_/      /_/  |_/___/  /_____/_____/  /_____/\n"
+			);
+	}
+
+	return CMD_RET_SUCCESS;
+}
+
 static struct cmd_tbl cmd_otp[] = {
 	U_BOOT_CMD_MKENT(version, 1, 0, do_otpver, "", ""),
 	U_BOOT_CMD_MKENT(read, 4, 0, do_otpread, "", ""),
@@ -2290,6 +2572,7 @@ static struct cmd_tbl cmd_otp[] = {
 	U_BOOT_CMD_MKENT(patch, 5, 0, do_otppatch, "", ""),
 	U_BOOT_CMD_MKENT(ecc, 2, 0, do_otpecc, "", ""),
 	U_BOOT_CMD_MKENT(info, 3, 0, do_otpinfo, "", ""),
+	U_BOOT_CMD_MKENT(test, 2, 0, do_otptest, "", ""),
 };
 
 static int do_driver_init(int argc, char *const argv[])
@@ -2401,4 +2684,5 @@ U_BOOT_CMD(otp, 7, 0,  do_ast_otp,
 	   "otp <dev> patch prog <dram_addr> <otp_w_offset> <w_count>\n"
 	   "otp <dev> patch enable pre|post <otp_start_w_offset> <w_count>\n"
 	   "otp <dev> ecc status|enable\n"
+	   "otp <dev> test prov\n"
 	  );
