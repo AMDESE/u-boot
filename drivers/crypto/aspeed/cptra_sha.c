@@ -127,7 +127,7 @@ static int cptra_sha_update(struct udevice *dev, void *ctx, const void *ibuf, ui
 		writel(din_be, cs->regs + CPTRA_SHA_DATAIN);
 	}
 
-	if (i < ilen) {
+	if (i < ilen || ilen == 0x0) {
 		last = 0;
 		for (int j = 0; j < ilen - i; ++j)
 			last |= p8[i + j] << (8 * (3 - j));
