@@ -1977,6 +1977,10 @@ static int otp_test_provision(void)
 	/* Check ROM patch version */
 	rom_patch_ver = readl(OTP_ROM_PATCH_VERSION_ADDR);
 	switch (rom_patch_ver) {
+	case 0x0:
+		printf("WARN: No ROM patch detected\n");
+		printf("This chip is not provisioned, please change your chip !!!\n");
+		return OTP_FAILURE;
 	case 0x3:
 		printf("WARN: ROM patch version 1 detected\n");
 		printf("This chip is not provisioned, please change your chip !!!\n");
