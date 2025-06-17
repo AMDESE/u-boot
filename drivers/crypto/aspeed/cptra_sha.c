@@ -109,7 +109,7 @@ free_n_out:
 static int cptra_sha_update(struct udevice *dev, void *ctx, const void *ibuf, uint32_t ilen)
 {
 	struct cptra_sha *cs;
-	uint32_t din_be;
+	uint32_t din_be, last;
 	uint32_t dlen_sum;
 	uint8_t *p8;
 	uint32_t i;
@@ -120,21 +120,20 @@ static int cptra_sha_update(struct udevice *dev, void *ctx, const void *ibuf, ui
 	dlen_sum = readl(cs->regs + CPTRA_SHA_DLEN) + ilen;
 	writel(dlen_sum, cs->regs + CPTRA_SHA_DLEN);
 
-	din_be = 0;
-	for (i = 0, p8 = (uint8_t *)ibuf; i < ilen; ++i) {
-		if (i && (i % sizeof(din_be) == 0)) {
-			writel(din_be, cs->regs + CPTRA_SHA_DATAIN);
-			din_be = 0;
-		}
+	p8 = (uint8_t *)ibuf;
+	for (i = 0; i + 4 <= ilen; i += 4) {
+		din_be = cpu_to_be32(*(uint32_t *)(p8 + i));
 
-		din_be <<= 8;
-		din_be |= p8[i];
+		writel(din_be, cs->regs + CPTRA_SHA_DATAIN);
 	}
 
-	if (i % sizeof(din_be))
-		din_be <<= (8 * (sizeof(din_be) - (i % sizeof(din_be))));
+	if (i < ilen) {
+		last = 0;
+		for (int j = 0; j < ilen - i; ++j)
+			last |= p8[i + j] << (8 * (3 - j));
 
-	writel(din_be, cs->regs + CPTRA_SHA_DATAIN);
+		writel(last, cs->regs + CPTRA_SHA_DATAIN);
+	}
 
 	return 0;
 }
