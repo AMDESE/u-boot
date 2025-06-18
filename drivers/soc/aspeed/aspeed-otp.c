@@ -213,13 +213,6 @@ static void otp_unlock(struct udevice *dev)
 	writel(OTP_PASSWD, otp->base + OTP_KEY);
 }
 
-static void otp_lock(struct udevice *dev)
-{
-	struct aspeed_otp *otp = dev_get_priv(dev);
-
-	writel(0x1, otp->base + OTP_KEY);
-}
-
 static int wait_complete(struct udevice *dev)
 {
 	struct aspeed_otp *otp = dev_get_priv(dev);
@@ -291,7 +284,6 @@ static int aspeed_otp_read(struct udevice *dev, int offset,
 	int ret;
 	u16 *data = buf;
 
-	otp_unlock(dev);
 	for (int i = 0; i < size; i++) {
 		ret = otp_read_data(dev, offset + i, data + i);
 		if (ret) {
@@ -300,7 +292,6 @@ static int aspeed_otp_read(struct udevice *dev, int offset,
 		}
 	}
 
-	otp_lock(dev);
 	return ret;
 }
 
@@ -311,8 +302,6 @@ static int aspeed_otp_write(struct udevice *dev, int offset,
 	u16 *data = (u16 *)buf;
 	int ret;
 
-	otp_unlock(dev);
-
 	if (size == 1)
 		ret = otp_prog_data(dev, offset, data[0]);
 	else
@@ -321,7 +310,6 @@ static int aspeed_otp_write(struct udevice *dev, int offset,
 	if (ret)
 		printf("%s: prog failed\n", __func__);
 
-	otp_lock(dev);
 	return ret;
 }
 
@@ -334,8 +322,6 @@ static int aspeed_otp_ecc_en(struct udevice *dev)
 	if (otp->gbl_ecc_en == 1)
 		return 0;
 
-	otp_unlock(dev);
-
 	/* enable cfg ecc */
 	ret = otp_prog_data(dev, OTPSTRAP14_ADDR, 0x1);
 	if (ret) {
@@ -345,8 +331,6 @@ static int aspeed_otp_ecc_en(struct udevice *dev)
 
 	otp->gbl_ecc_en = 1;
 end:
-	otp_lock(dev);
-
 	return ret;
 }
 
@@ -356,8 +340,6 @@ static int aspeed_otp_ioctl(struct udevice *dev, unsigned long request,
 	struct aspeed_otp *otp = dev_get_priv(dev);
 	int *data = (int *)buf;
 	int ret = 0;
-
-	otp_unlock(dev);
 
 	switch (request) {
 	case GET_ECC_STATUS:
@@ -373,8 +355,6 @@ static int aspeed_otp_ioctl(struct udevice *dev, unsigned long request,
 		break;
 	}
 
-	otp_lock(dev);
-
 	return ret;
 }
 
@@ -383,8 +363,6 @@ static int aspeed_otp_ecc_init(struct udevice *dev)
 	struct aspeed_otp *otp = dev_get_priv(dev);
 	int ret;
 	u32 val;
-
-	otp_unlock(dev);
 
 	/* Check cfg_ecc_en */
 	writel(0, otp->base + OTP_ECC_EN);
@@ -399,8 +377,6 @@ static int aspeed_otp_ecc_init(struct udevice *dev)
 		otp->gbl_ecc_en = 0x1;
 	else
 		otp->gbl_ecc_en = 0x0;
-
-	otp_lock(dev);
 
 	return 0;
 }
@@ -439,6 +415,8 @@ static int aspeed_otp_probe(struct udevice *dev)
 	int rc;
 
 	otp->base = (u8 *)devfdt_get_addr(dev);
+
+	otp_unlock(dev);
 
 	/* OTP ECC init */
 	rc = aspeed_otp_ecc_init(dev);
