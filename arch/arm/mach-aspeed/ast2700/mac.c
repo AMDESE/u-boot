@@ -70,6 +70,14 @@ DECLARE_GLOBAL_DATA_PTR;
 #define RX_DELAY_1 GENMASK(17, 12)
 #define RX_DELAY_2 GENMASK(23, 18)
 
+#define SCU_FREQ_RING_ENABLE	BIT(0)
+#define SCU_FREQ_OSC_ENABLE	BIT(1)
+#define SCU_FREQ_SELECT		FIELD_PREP(GENMASK(5, 2), 0x5)
+#define SCU_FREQ_DONE		BIT(6)
+#define SCU_FREQ_RING_STG(x)	FIELD_PREP(GENMASK(14, 9), x)
+#define SCU_FREQ_COUNTER_MASK	GENMASK(29, 16)
+#define SCU_FREQ_COUNTER(x)	FIELD_GET(SCU_FREQ_COUNTER_MASK, x)
+
 #ifndef DMA_ALIGNED
 #define DMA_ALIGNED __aligned(CONFIG_SYS_CACHELINE_SIZE)
 #endif
@@ -109,26 +117,27 @@ static u32 cal_delay32_ring(u8 tap)
 {
 	struct ast2700_scu1 *scu = (struct ast2700_scu1 *)ASPEED_IO_SCU_BASE;
 	void *base = (void *)&scu->freq_counter_ctrl;
-	u32 reg;
-	u32 delay;
 	uint64_t time_ps;
+	u32 reg;
+	int ret;
 
 	writel(0x1c, base);
-	while (readl(base) & GENMASK(29, 16))
-		;
-
-	reg = BIT(0) | FIELD_PREP(GENMASK(5, 2), 0x5) | FIELD_PREP(GENMASK(14, 9), tap);
+	ret = readl_poll_timeout(base, reg, ((reg & SCU_FREQ_COUNTER_MASK) == 0), 50);
+	if (ret < 0)
+		return 0;
+	reg = SCU_FREQ_RING_ENABLE | SCU_FREQ_SELECT | SCU_FREQ_RING_STG(tap);
 	writel(reg, base);
 
 	mdelay(1);
 
-	reg |= BIT(1);
+	reg |= SCU_FREQ_OSC_ENABLE;
 	writel(reg, base);
-	while (!(readl(base) & BIT(6)))
-		;
-	delay = FIELD_GET(GENMASK(29, 16), readl(base));
-	delay = calculate_freq(delay);
-	time_ps = 1000000000000ULL / delay;
+	ret = readl_poll_timeout(base, reg, (reg & SCU_FREQ_DONE), 50);
+	if (ret < 0)
+		return 0;
+	reg = SCU_FREQ_COUNTER(readl(base));
+	reg = calculate_freq(reg);
+	time_ps = 1000000000000ULL / reg;
 
 	writel(0, base);
 
@@ -466,7 +475,10 @@ static void find_rgmii_delay(u32 index)
 	const char *phy_mode;
 	u8 result[32];
 
-	average_delay = (cal_delay32_ring(31) * 10 / 7) / 32;
+	average_delay = cal_delay32_ring(31);
+	if (average_delay == 0)
+		return;
+	average_delay = (average_delay * 10 / 7) / 32;
 
 	mac_init(index);
 	mac_set_loopback(index, true);
@@ -487,10 +499,7 @@ static void find_rgmii_delay(u32 index)
 
 	phy_mode = get_mac_phy_mode(index);
 	if (phy_mode) {
-		if (index)
-			printf("%d: %s\n", index, phy_mode);
-		else
-			printf("%d: %s, ", index, phy_mode);
+		printf(" %d: %s ", index, phy_mode);
 		if (strcmp(phy_mode, "rgmii-rxid") == 0) {
 			tx = tx_center;
 			rx = rx_edge;
@@ -526,7 +535,8 @@ static void find_rgmii_delay(u32 index)
 
 void aspeed_rgmii_init(void)
 {
-	printf("MAC:   ");
+	printf("MAC:  ");
 	find_rgmii_delay(0);
 	find_rgmii_delay(1);
+	printf("\n");
 }
