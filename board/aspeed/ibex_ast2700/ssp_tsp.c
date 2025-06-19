@@ -62,7 +62,7 @@ int ssp_init(ulong load_addr)
 
 	scu = (struct ast2700_scu0 *)ASPEED_CPU_SCU_BASE;
 
-	reg_val = readl((void *)&scu->ssp_ctrl_1);
+	reg_val = readl((void *)&scu->ssp_ctrl_0);
 	if (!(reg_val & SCU_CPU_SSP_TSP_RESET_STS))
 		return 0;
 
@@ -71,7 +71,7 @@ int ssp_init(ulong load_addr)
 
 	reg_val = SCU_CPU_SSP_TSP_NIDEN | SCU_CPU_SSP_TSP_DBGEN |
 		  SCU_CPU_SSP_TSP_DBG_ENABLE | SCU_CPU_SSP_TSP_RESET;
-	writel(reg_val, (void *)&scu->ssp_ctrl_1);
+	writel(reg_val, (void *)&scu->ssp_ctrl_0);
 
 	/*
 	 * SSP Memory Map:
@@ -108,7 +108,7 @@ int ssp_init(ulong load_addr)
 	writel(TCM_SIZE, (void *)&scu->ssp_tcm_size);
 
 	/* Configure physical AHB remap: through H2M, mapped to SYS_DRAM_BASE */
-	writel((uint32_t)(0x400000000ULL >> 4), (void *)&scu->ssp_ctrl_2);
+	writel((uint32_t)(0x400000000ULL >> 4), (void *)&scu->ssp_ctrl_1);
 
 	/* Configure physical DRAM remap */
 	phy_addr = ((uint64_t)load_addr - ASPEED_DRAM_BASE) | 0x400000000ULL;
@@ -119,11 +119,12 @@ int ssp_init(ulong load_addr)
 	 * For A1, the Cache region can only be enabled entirely;
 	 * partial enabling is not supported.
 	 */
+	writel(GENMASK(31, 0), (void *)&scu->ssp_ctrl_3);
 	writel(GENMASK(31, 0), (void *)&scu->ssp_ctrl_4);
-	writel(GENMASK(31, 0), (void *)&scu->ssp_ctrl_5);
 
 	/* Enable I and D cache as default */
-	writel(SCU_CPU_SSP_CTR1_ICACHE_EN | SCU_CPU_SSP_CTR1_DCACHE_EN, (void *)&scu->ssp_ctrl_7);
+	writel(SCU_CPU_SSP_TSP_CTRL_ICACHE_EN | SCU_CPU_SSP_TSP_CTRL_DCACHE_EN,
+	       (void *)&scu->ssp_ctrl_6);
 
 	return 0;
 }
@@ -133,10 +134,10 @@ int ssp_enable(void)
 	struct ast2700_scu0 *scu;
 
 	scu = (struct ast2700_scu0 *)ASPEED_CPU_SCU_BASE;
-	setbits_le32((void *)&scu->ssp_ctrl_1, SCU_CPU_SSP_TSP_ENABLE);
+	setbits_le32((void *)&scu->ssp_ctrl_0, SCU_CPU_SSP_TSP_ENABLE);
 
 	/* HW auto de-asserts SSP reset when WDT timeout reset occurs */
-	clrbits_le32((void *)&scu->ssp_ctrl_1, SCU_CPU_SSP_TSP_RESET);
+	clrbits_le32((void *)&scu->ssp_ctrl_0, SCU_CPU_SSP_TSP_RESET);
 
 	return 0;
 }
@@ -157,7 +158,7 @@ int tsp_init(ulong load_addr)
 
 	scu = (struct ast2700_scu0 *)ASPEED_CPU_SCU_BASE;
 
-	reg_val = readl((void *)&scu->tsp_ctrl_1);
+	reg_val = readl((void *)&scu->tsp_ctrl_0);
 	if (!(reg_val & SCU_CPU_SSP_TSP_RESET_STS))
 		return 0;
 
@@ -166,7 +167,7 @@ int tsp_init(ulong load_addr)
 
 	reg_val = SCU_CPU_SSP_TSP_NIDEN | SCU_CPU_SSP_TSP_DBGEN |
 		  SCU_CPU_SSP_TSP_DBG_ENABLE | SCU_CPU_SSP_TSP_RESET;
-	writel(reg_val, (void *)&scu->tsp_ctrl_1);
+	writel(reg_val, (void *)&scu->tsp_ctrl_0);
 
 	/* TSP 0x0000_0000 - 0x0200_0000 -> DRAM */
 	writel(info.size, (void *)&scu->tsp_remap_size);
@@ -174,17 +175,18 @@ int tsp_init(ulong load_addr)
 	/* Configure physical DRAM remap */
 	phy_addr = ((uint64_t)info.base - 0x80000000) | 0x400000000ULL;
 	reg_val = (uint32_t)(phy_addr >> 4);
-	writel(reg_val, (void *)&scu->tsp_ctrl_3);
+	writel(reg_val, (void *)&scu->tsp_ctrl_1);
 
 	/*
 	 * For A1, the Cache region can only be enabled entirely;
 	 * partial enabling is not supported.
 	 */
-	writel(GENMASK(31, 0), (void *)&scu->tsp_ctrl_4);
-	writel(GENMASK(31, 0), (void *)&scu->tsp_ctrl_5);
+	writel(GENMASK(31, 0), (void *)&scu->tsp_ctrl_2);
+	writel(GENMASK(31, 0), (void *)&scu->tsp_ctrl_3);
 
 	/* Enable I and D cache as default */
-	writel(SCU_CPU_SSP_CTR1_ICACHE_EN | SCU_CPU_SSP_CTR1_DCACHE_EN, (void *)&scu->tsp_ctrl_7);
+	writel(SCU_CPU_SSP_TSP_CTRL_ICACHE_EN | SCU_CPU_SSP_TSP_CTRL_DCACHE_EN,
+	       (void *)&scu->tsp_ctrl_5);
 
 	return 0;
 }
