@@ -21,6 +21,8 @@
 #define SCU1_REG				0x14c02000
 #define LTPI_REG				0x14c34000
 #define SGPIOS_REG				0x14c3c000
+#define LTPI0_SGPIOM1_REG			0x30c0d000
+#define LTPI1_SGPIOM1_REG			0x50c0d000
 
 #define SCU1_CHIP_ID				(SCU1_REG + 0x000)
 #define   SCU1_CHIP_ID_REVISION			GENMASK(23, 16)
@@ -773,6 +775,7 @@ ltpi_scm_exit:
 }
 
 #define LTPI_SGPIOS_PARALLEL_PIN_NUM 64
+#define LTPI_SGPIOM_PIN_NUM 80
 #define SGPIOS_INVERT_POINT 10
 #define SGPIOS_LTPI_RELATIVE_PIN_START 16
 #define SGPIOS_LTPI_RELATIVE_PIN_END 47
@@ -875,6 +878,29 @@ static void ltpi_scm_sgpios_init(struct ltpi_priv *ltpi)
 		     (FIELD_GET(SCU1_CHIP_ID_REVISION, scu_id) == 1) ?
 			     SGPIO_ENABLE | SGPIO_PARALLEL_OUT_PROTECT :
 			     SGPIO_ENABLE);
+}
+
+static void ltpi_hpm_init_sgpiom(uintptr_t base)
+{
+	u32 value;
+
+	for (u32 i = 0; i < LTPI_SGPIOM_PIN_NUM; i++)
+		clrsetbits_le32((void *)base + SGPIO_G7_CTRL_REG_OFFSET(i), SGPIO_G7_SERIAL_OUT_SEL,
+				FIELD_PREP(SGPIO_G7_SERIAL_OUT_SEL, SELECT_FROM_PARALLEL_IN));
+	/*
+	 * SGPIO master controller #1:
+	 *
+	 * Register 0x0
+	 * - bit[31:16] clock divider
+	 *     SGPIO clock = (PCLK 100M / 2) / (divider + 1)
+	 *     select divider = 4 -> SGPIO clock = 50MHz / (4 + 1) = 10MHz
+	 * - bit[11: 3] pin number
+	 *     enable 80 parallel pins (BMC_GPIO 64 pins + BMC_SGPIO 16 pins)
+	 * - bit[0] SGPIO controller enabling
+	 */
+	value = FIELD_PREP(GENMASK(31, 16), 4) | FIELD_PREP(GENMASK(11, 3), LTPI_SGPIOM_PIN_NUM) |
+		BIT(0);
+	writel(value, (void *)base + 0x0);
 }
 
 static void ltpi_scm_set_pins(void)
@@ -1208,6 +1234,8 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 		}
 
 		writel(reg, (void *)ltpi_data[0].base + LTPI_AHB_CTRL0);
+		if (ltpi_get_link_partner(&ltpi_data[0]))
+			ltpi_hpm_init_sgpiom(LTPI0_SGPIOM1_REG);
 
 		if (pin_strap & SCU1_HWSTRAP1_LTPI1_EN) {
 			if (ltpi_get_link_partner(&ltpi_data[1])) {
@@ -1219,6 +1247,8 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 				writel(0, (void *)ltpi_data[1].base + LTPI_DATA_CH_CFG0);
 			}
 			writel(reg, (void *)ltpi_data[1].base + LTPI_AHB_CTRL0);
+			if (ltpi_get_link_partner(&ltpi_data[1]))
+				ltpi_hpm_init_sgpiom(LTPI1_SGPIOM1_REG);
 		}
 
 		ltpi_show_status(&ltpi_data[0]);
