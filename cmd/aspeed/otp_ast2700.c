@@ -2125,6 +2125,27 @@ static int otp_test_provision(void)
 
 	printf("OTPPUF region is valid\n");
 
+	uint16_t ueid[8] = {0};
+	uint32_t ueid_off = 0x38;
+	bool same_ueid = true;
+
+	for (int i = 0; i < 8; i++) {
+		if (otp_read_cptra(ueid_off + i, &ueid[i]) != OTP_SUCCESS) {
+			printf("OTPCAL read failed at offset 0x%x\n", ueid_off + i);
+			return -1;
+		}
+
+		if (i && same_ueid && ueid[i] != ueid[0])
+			same_ueid = false;
+	}
+
+	if (same_ueid && (ueid[0] == 0x0000 || ueid[0] == 0xFFFF)) {
+		printf("Invalid UEID: all the same 0x%04x\n", ueid[0]);
+		return -1;
+	}
+
+	printf("OTPUEID values are valid\n");
+
 	/* Check other's region is empty
 	 * - OTPRBP region
 	 * - OTPSTRAP region
