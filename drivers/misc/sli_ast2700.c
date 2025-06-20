@@ -472,12 +472,16 @@ static void sli_calibrate_mbus_delay(struct sli_data *data, bool is_k_rx)
 	setbits_le32(data->die1.slim + SLIM_MARB_FUNC_I, SLIM_SLI_MARB_RR);
 }
 
-static void sli_set_video_rx_delay(uint32_t base, int d0, int d1)
+static void sli_set_video_rx_delay(uint32_t base, int d0, int d1, bool is_k_rx)
 {
 	uint32_t value;
+	uint32_t mask = SLIV_PAD_DLY_RX1 | SLIV_PAD_DLY_RX0;
+	u8 offset = (is_k_rx) ? 0 : 12;
 
 	value = FIELD_PREP(SLIV_PAD_DLY_RX1, d1) | FIELD_PREP(SLIV_PAD_DLY_RX0, d0);
-	clrsetbits_le32(base + SLI_CTRL_III, SLIV_PAD_DLY_RX1 | SLIV_PAD_DLY_RX0, value);
+	clrsetbits_le32(base + SLI_CTRL_III,
+			mask << offset,
+			value << offset);
 	readl((void *)base + SLI_CTRL_III);
 	udelay(8);
 }
@@ -500,7 +504,7 @@ static int sli_get_video_pad_delay(uintptr_t scu, int *first, int *last)
 	return 0;
 }
 
-static void sli_calibrate_video_delay(struct sli_data *data, bool is_cpu_tx)
+static void sli_calibrate_video_delay(struct sli_data *data, bool is_cpu_tx, bool is_k_rx)
 {
 	int d;
 	int d_first_pass = -1;
@@ -509,20 +513,21 @@ static void sli_calibrate_video_delay(struct sli_data *data, bool is_cpu_tx)
 	int dc_end = 24;
 	int d_def = 12;
 	int win_size = 0;
-	uintptr_t tx, rx, scu;
-	char *die_name = NULL;
+	uintptr_t tx, rx, kx, scu;
+	char *die_name = (is_cpu_tx ^ is_k_rx) ? "CPUD" : "IOD";
+	char *dir_name = (is_cpu_tx) ? "DS" : "US";
 
 	if (is_cpu_tx) {
 		tx = data->die0.sliv;
 		rx = data->die1.sliv;
 		scu = (uintptr_t)&data->scu0->cpu_scratch[30];
-		die_name = "IOD";
 	} else {
 		tx = data->die1.sliv;
 		rx = data->die0.sliv;
 		scu = (uintptr_t)&data->scu1->scratch[30];
-		die_name = "CPUD";
 	}
+
+	kx = (is_k_rx) ? rx : tx;
 
 	setbits_le32(rx + SLI_CTRL_I, SLI_AUTO_SEND_TRN_OFF);
 	setbits_le32(tx + SLI_CTRL_I, SLI_AUTO_SEND_TRN_OFF);
@@ -542,7 +547,7 @@ static void sli_calibrate_video_delay(struct sli_data *data, bool is_cpu_tx)
 	setbits_le32(tx + SLI_CTRL_II, SLIV_TX_ENT_SUSPEND);
 
 	for (d = dc_begin; d < dc_end; d++) {
-		sli_set_video_rx_delay(rx, d, d);
+		sli_set_video_rx_delay(kx, d, d, is_k_rx);
 
 		/* reset SLIV */
 		sli_clear(rx, SLI_CLEAR_BUS | SLI_RESET_TRIGGER);
@@ -560,7 +565,7 @@ static void sli_calibrate_video_delay(struct sli_data *data, bool is_cpu_tx)
 			if (d_last_pass - d_first_pass > win_size) {
 				win_size = d_last_pass - d_first_pass;
 				sli_log_video_pad_delay(scu, d_first_pass, d_last_pass);
-				debug("%s SLIV DS coarse win: {%d, %d}\n", die_name, d_first_pass, d_last_pass);
+				debug("%s SLIV %s coarse win: {%d, %d}\n", die_name, dir_name, d_first_pass, d_last_pass);
 			}
 			d_first_pass = -1;
 			d_last_pass = -1;
@@ -570,19 +575,19 @@ static void sli_calibrate_video_delay(struct sli_data *data, bool is_cpu_tx)
 	if (win_size == 0 && d_last_pass != -1) {
 		win_size = d_last_pass - d_first_pass;
 		sli_log_video_pad_delay(scu, d_first_pass, d_last_pass);
-		debug("%s SLIV DS coarse win: {%d, %d}\n", die_name, d_first_pass, d_last_pass);
+		debug("%s SLIV %s coarse win: {%d, %d}\n", die_name, dir_name, d_first_pass, d_last_pass);
 	}
 
 	sli_get_video_pad_delay(scu, &d_first_pass, &d_last_pass);
 	if (d_first_pass < 0 || (d_last_pass - d_first_pass) < 4)
-		printf("%s SLIV margin not enough! {%d, %d}\n", die_name, d_first_pass, d_last_pass);
+		printf("%s SLIV %s margin not enough! {%d, %d}\n", die_name, dir_name, d_first_pass, d_last_pass);
 
 	d = (d_first_pass + d_last_pass) >> 1;
 	if (d == 0)
 		d = d_def;
-	debug("%s SLIV DS coarse win: {%d, %d} -> select %d\n", die_name, d_first_pass, d_last_pass, d);
+	debug("%s SLIV %s coarse win: {%d, %d} -> select %d\n", die_name, dir_name, d_first_pass, d_last_pass, d);
 
-	sli_set_video_rx_delay(rx, d, d);
+	sli_set_video_rx_delay(kx, d, d, is_k_rx);
 
 	sli_clear(rx, SLI_CLEAR_BUS | SLI_RESET_TRIGGER);
 	sli_clear(tx, SLI_CLEAR_BUS | SLI_RESET_TRIGGER);
@@ -931,7 +936,7 @@ int ast2700_sli0_probe(struct udevice *dev)
 		reg_val = readl((void *)ASPEED_IO_INTC_BASE + 0x14);
 		writel(reg_val, (void *)ASPEED_IO_INTC_BASE + 0x14);
 
-		sli_calibrate_video_delay(data, false);
+		sli_calibrate_video_delay(data, false, true);
 		sli_switch_video_dir(data, true);
 
 		return 0;
