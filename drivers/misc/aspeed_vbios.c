@@ -107,7 +107,6 @@ static int aspeed_vbios_probe(struct udevice *dev)
 	}
 
 #ifdef CONFIG_RISCV
-	//fmc_hdr_get_prebuilt(PBT_UEFI_X64_AST2700, &vbios_ofst, &vbios_size, NULL);
 #else
 	/* get x64 and arm bios length */
 	vbios_x64_size = sizeof(uefi2000);
@@ -115,6 +114,7 @@ static int aspeed_vbios_probe(struct udevice *dev)
 	vbios_arm_size = sizeof(uefi2000_arm);
 	dev_dbg(dev, "len1: 0x%08x\n", vbios_arm_size);
 #endif
+
 	/* load vbios for pcie 0 node */
 	if (is_pcie0_enable) {
 		/* obtain the vbios0 reserved memory */
@@ -138,7 +138,7 @@ static int aspeed_vbios_probe(struct udevice *dev)
 		/* Check the VBIOS if has been loaded */
 		if (*(u16 *)vbios->vbios0_base != BIOS_HEADER_TAG) {
 			/* Copy vbios into it */
-			ast_loader_load_image(PBT_UEFI_X64_AST2700, (u32 *)vbios->vbios0_base, true);
+			ast_loader_load_image(PBT_UEFI_AST2700, (u32 *)vbios->vbios0_base, true);
 		}
 
 		/* Remove riscv Dram base */
@@ -234,7 +234,7 @@ static int aspeed_vbios_probe(struct udevice *dev)
 			/* Check the VBIOS if has been loaded */
 			if (*(u16 *)vbios->vbios1_base != BIOS_HEADER_TAG) {
 				/* Copy vbios into it */
-				ast_loader_load_image(PBT_UEFI_X64_AST2700, (u32 *)vbios->vbios1_base, true);
+				ast_loader_load_image(PBT_UEFI_AST2700, (u32 *)vbios->vbios1_base, true);
 			}
 
 			/* Remove riscv Dram base */

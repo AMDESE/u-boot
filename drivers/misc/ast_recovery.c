@@ -32,7 +32,7 @@ struct recovery_info message[] = {
 	{PBT_DDR5_PMU_TRAIN_IMEM,	"ddr5_pmu_train_imem.bin"},
 	{PBT_DDR5_PMU_TRAIN_DMEM,	"ddr5_pmu_train_dmem.bin"},
 	{PBT_DP_FW,			"dp_fw.bin"},
-	{PBT_UEFI_X64_AST2700,		"uefi_x64_ast2700.bin"},
+	{PBT_UEFI_AST2700,		"uefi_ast2700.bin"},
 	{PBT_FIT_HEADER,		"u-boot-fit-header.bin"},
 	{PBT_FIT,			"u-boot.bin"},
 };
