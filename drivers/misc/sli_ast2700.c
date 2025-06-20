@@ -13,8 +13,6 @@
 #include <linux/err.h>
 #include <linux/iopoll.h>
 
-#define SLIM_K_IO_RX
-
 #define SLI_POLL_TIMEOUT_US	100
 
 #define SLIM_REG_OFFSET			0x000
@@ -817,12 +815,12 @@ int ast2700_sli1_probe(struct udevice *dev)
 
 	/* Calibrate SLIH DS delay */
 	sli_calibrate_ahb_delay(data);
-#ifdef SLIM_K_IO_RX
-	sli_calibrate_mbus_delay(data, true);
-#else
-	writel(0, (void *)data->die1.slim + SLI_CTRL_III);
-	sli_calibrate_mbus_delay(data, false);
-#endif
+	if (IS_ENABLED(CONFIG_SLI_K_ON_CPU)) {
+		writel(0, (void *)data->die1.slim + SLI_CTRL_III);
+		sli_calibrate_mbus_delay(data, false);
+	} else {
+		sli_calibrate_mbus_delay(data, true);
+	}
 
 	debug("SLI DS @ %dMHz init done\n", phyclk_lookup[data->die0.phy_clk_freq]);
 
@@ -937,7 +935,12 @@ int ast2700_sli0_probe(struct udevice *dev)
 		writel(reg_val, (void *)ASPEED_IO_INTC_BASE + 0x14);
 
 		sli_calibrate_video_delay(data, false, true);
-		sli_switch_video_dir(data, true);
+		if (IS_ENABLED(CONFIG_SLI_K_ON_CPU)) {
+			writel(0, (void *)data->die1.sliv + SLI_CTRL_III);
+			sli_calibrate_video_delay(data, true, false);
+		} else {
+			sli_switch_video_dir(data, true);
+		}
 
 		return 0;
 	}
