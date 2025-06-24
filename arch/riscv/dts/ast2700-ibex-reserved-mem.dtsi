@@ -37,7 +37,7 @@ espi0_mmbi_memory: espi0-mmbi-memory@a4000000 {
 	bootph-all;
 };
 
-espi1_mmbi_memory: espi1-mmbi-memory@a8000000 {
+edaf0: safs-ddr-mode@a8000000 {
 	reg = <0xa8000000 0x4000000>;
 	no-map;
 	bootph-all;
