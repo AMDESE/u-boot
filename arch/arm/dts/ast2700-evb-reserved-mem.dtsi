@@ -61,6 +61,18 @@ ipc_ssp_share: ipc-ssp-share@431080000 {
 	no-map;
 };
 
+uhci0_reserved: uhci0-reserved@431b30000 {
+	reg = <0x4 0x31b30000 0x0 0x40000>;
+	compatible = "shared-dma-pool";
+	no-map;
+};
+
+uhci1_reserved: uhci1-reserved@431b70000 {
+	reg = <0x4 0x31b70000 0x0 0x40000>;
+	compatible = "shared-dma-pool";
+	no-map;
+};
+
 vbios_base0: vbios-base0@431bb0000 {
 	reg = <0x4 0x31bb0000 0x0 0x10000>;
 	no-map;
@@ -73,15 +85,18 @@ vbios_base1: vbios-base1@431bc0000 {
 
 mctp0_reserved: mctp0-reserved@431bd0000 {
 	reg = <0x4 0x31bd0000 0x0 0x10000>;
+	compatible = "shared-dma-pool";
 	no-map;
 };
 
 mctp1_reserved: mctp1-reserved@431be0000 {
 	reg = <0x4 0x31be0000 0x0 0x10000>;
+	compatible = "shared-dma-pool";
 	no-map;
 };
 
 mctp2_reserved: mctp2-reserved@431bf0000 {
 	reg = <0x4 0x31bf0000 0x0 0x10000>;
+	compatible = "shared-dma-pool";
 	no-map;
 };

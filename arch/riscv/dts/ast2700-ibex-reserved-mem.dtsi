@@ -4,36 +4,43 @@
 bmc_dev0_memory: bmc-dev0-memory@a3800000 {
 	reg = <0xa3800000 0x100000>;
 	no-map;
+	bootph-all;
 };
 
 bmc_dev1_memory: bmc-dev1-memory@a3900000 {
 	reg = <0xa3900000 0x100000>;
 	no-map;
+	bootph-all;
 };
 
 pcie0_mmbi0_memory: pcie0-mmbi0-memory@a3a00000 {
 	reg = <0xa3a00000 0x200000>;
 	no-map;
+	bootph-all;
 };
 
 pcie1_mmbi4_memory: pcie1-mmbi4-memory@a3c00000 {
 	reg = <0xa3c00000 0x200000>;
 	no-map;
+	bootph-all;
 };
 
 pcie2_mmbi0_memory: pcie2-mmbi0-memory@a3e00000 {
 	reg = <0xa3e00000 0x200000>;
 	no-map;
+	bootph-all;
 };
 
-espi1_mmbi_memory: espi-mmbi-memory@a4000000 {
+espi0_mmbi_memory: espi0-mmbi-memory@a4000000 {
 	reg = <0xa4000000 0x4000000>;
 	no-map;
+	bootph-all;
 };
 
-espi0_mmbi_memory: espi-mmbi-memory@a8000000 {
+espi1_mmbi_memory: espi1-mmbi-memory@a8000000 {
 	reg = <0xa8000000 0x4000000>;
 	no-map;
+	bootph-all;
 };
 
 ssp_memory: ssp-memory@ac000000 {
@@ -66,6 +73,20 @@ ipc_ssp_share: ipc-ssp-share@b1080000 {
 	bootph-all;
 };
 
+uhci0_reserved: uhci0-reserved@b1b30000 {
+	reg = <0xb1b30000 0x40000>;
+	compatible = "shared-dma-pool";
+	no-map;
+	bootph-all;
+};
+
+uhci1_reserved: uhci1-reserved@b1b70000 {
+	reg = <0xb1b70000 0x40000>;
+	compatible = "shared-dma-pool";
+	no-map;
+	bootph-all;
+};
+
 vbios_base0: vbios-base0@b1bb0000 {
 	reg = <0xb1bb0000 0x10000>;
 	no-map;
@@ -80,15 +101,21 @@ vbios_base1: vbios-base1@b1bc0000 {
 
 mctp0_reserved: mctp0-reserved@b1bd0000 {
 	reg = <0xb1bd0000 0x10000>;
+	compatible = "shared-dma-pool";
 	no-map;
+	bootph-all;
 };
 
 mctp1_reserved: mctp1-reserved@b1be0000 {
 	reg = <0xb1be0000 0x10000>;
+	compatible = "shared-dma-pool";
 	no-map;
+	bootph-all;
 };
 
 mctp2_reserved: mctp2-reserved@b1bf0000 {
 	reg = <0xb1bf0000 0x10000>;
+	compatible = "shared-dma-pool";
 	no-map;
+	bootph-all;
 };
