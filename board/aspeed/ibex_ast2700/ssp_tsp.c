@@ -134,10 +134,7 @@ int ssp_enable(void)
 	struct ast2700_scu0 *scu;
 
 	scu = (struct ast2700_scu0 *)ASPEED_CPU_SCU_BASE;
-	setbits_le32((void *)&scu->ssp_ctrl_0, SCU_CPU_SSP_TSP_ENABLE);
-
-	/* HW auto de-asserts SSP reset when WDT timeout reset occurs */
-	clrbits_le32((void *)&scu->ssp_ctrl_0, SCU_CPU_SSP_TSP_RESET);
+	setbits_le32((void *)&scu->ssp_ctrl_0, SCU_CPU_SSP_TSP_ENABLE | SCU_CPU_SSP_TSP_RESET);
 
 	return 0;
 }
@@ -196,10 +193,7 @@ int tsp_enable(void)
 	struct ast2700_scu0 *scu;
 
 	scu = (struct ast2700_scu0 *)ASPEED_CPU_SCU_BASE;
-	setbits_le32((void *)&scu->tsp_ctrl_1, SCU_CPU_SSP_TSP_ENABLE);
-
-	/* HW auto de-asserts TSP reset when WDT timeout reset occurs */
-	clrbits_le32((void *)&scu->tsp_ctrl_1, SCU_CPU_SSP_TSP_RESET);
+	setbits_le32((void *)&scu->tsp_ctrl_1, SCU_CPU_SSP_TSP_ENABLE | SCU_CPU_SSP_TSP_RESET);
 
 	return 0;
 }
