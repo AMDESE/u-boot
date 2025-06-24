@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <fdtdec.h>
 #include <linux/bitfield.h>
+#include <linux/ioport.h>
 #include <reset.h>
 
 #define SCU1_HOST_CONF_1		0xa00
@@ -54,11 +55,11 @@ uintptr_t ast27xx_soc_phy_addr_to_virt_addr(uint64_t addr)
 static int aspeed_edaf_bridge_probe(struct udevice *dev)
 {
 	void *edaf_bridge_regs;
+	void *scu_regs, *espi_regs, *virt;
+	ofnode node, scu1_node, mem_node;
 	uint64_t cbase, mbase, espibase;
-	uint32_t cfg;
-	uint32_t phandle;
-	ofnode node, scu1_node;
-	void *scu_regs, *espi_regs;
+	uint32_t cfg, phandle;
+	struct resource res;
 	int rc;
 
 	edaf_bridge_regs = (void *)devfdt_get_addr_index(dev, 0);
@@ -109,10 +110,46 @@ static int aspeed_edaf_bridge_probe(struct udevice *dev)
 
 	cfg = readl(edaf_bridge_regs + EDAF_BDGE_CFG);
 	if (ofnode_read_bool(node, "edaf-ddr-mode")) {
+		rc = ofnode_read_u32(node, "mem-base", &phandle);
+		if (rc) {
+			printf("cannot get mem-base phandle\n");
+			return -ENODEV;
+		}
+
+		mem_node = ofnode_get_by_phandle(phandle);
+		if (!ofnode_valid(mem_node)) {
+			printf("cannot get mem-base device node\n");
+			return -ENODEV;
+		}
+
+		rc = ofnode_read_resource(mem_node, 0, &res);
+		if (rc) {
+			printf("cannot get eDAF resource.\n");
+			return -ENODEV;
+		}
+
+		mbase = ast27xx_soc_virt_addr_to_phy_addr(res.start);
+		virt = (void *)(uintptr_t)mbase;
+		if (!virt) {
+			printf("cannot map eDAF physical address\n");
+			return -ENOMEM;
+		}
+
 		cfg &= ~EDAF_BDGE_CFG_CMD_EN;
 	} else {
+		rc = ofnode_read_u64(node, "mem-base", &mbase);
+		if (rc)
+			printf("cannot get eDAF memory region\n");
+
 		cfg |= EDAF_BDGE_CFG_CMD_EN;
 	}
+	writel(mbase, edaf_bridge_regs + EDAF_BDGE_MBASE);
+
+	cfg = readl(edaf_bridge_regs + EDAF_BDGE_MISC);
+	cfg &= ~EDAF_BDGE_MISC_MBASE_H;
+	cfg |= FIELD_PREP(EDAF_BDGE_MISC_MBASE_H, mbase >> 32);
+	writel(cfg, edaf_bridge_regs + EDAF_BDGE_MISC);
+
 	writel(cfg, edaf_bridge_regs + EDAF_BDGE_CFG);
 
 	rc = ofnode_read_u64(node, "ctl-base", &cbase);
@@ -122,16 +159,6 @@ static int aspeed_edaf_bridge_probe(struct udevice *dev)
 		cfg = readl(edaf_bridge_regs + EDAF_BDGE_MISC);
 		cfg &= ~EDAF_BDGE_MISC_CBASE_H;
 		cfg |= FIELD_PREP(EDAF_BDGE_MISC_CBASE_H, cbase >> 32);
-		writel(cfg, edaf_bridge_regs + EDAF_BDGE_MISC);
-	}
-
-	rc = ofnode_read_u64(node, "mem-base", &mbase);
-	if (!rc) {
-		writel(mbase, edaf_bridge_regs + EDAF_BDGE_MBASE);
-
-		cfg = readl(edaf_bridge_regs + EDAF_BDGE_MISC);
-		cfg &= ~EDAF_BDGE_MISC_MBASE_H;
-		cfg |= FIELD_PREP(EDAF_BDGE_MISC_MBASE_H, mbase >> 32);
 		writel(cfg, edaf_bridge_regs + EDAF_BDGE_MISC);
 	}
 
