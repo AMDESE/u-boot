@@ -113,7 +113,7 @@ int ssp_init(ulong load_addr)
 	/* Configure physical DRAM remap */
 	phy_addr = ((uint64_t)load_addr - ASPEED_DRAM_BASE) | 0x400000000ULL;
 	reg_val = (uint32_t)(phy_addr >> 4);
-	writel(reg_val, (void *)&scu->ssp_ctrl_3);
+	writel(reg_val, (void *)&scu->ssp_ctrl_2);
 
 	/*
 	 * For A1, the Cache region can only be enabled entirely;
@@ -193,7 +193,7 @@ int tsp_enable(void)
 	struct ast2700_scu0 *scu;
 
 	scu = (struct ast2700_scu0 *)ASPEED_CPU_SCU_BASE;
-	setbits_le32((void *)&scu->tsp_ctrl_1, SCU_CPU_SSP_TSP_ENABLE | SCU_CPU_SSP_TSP_RESET);
+	setbits_le32((void *)&scu->tsp_ctrl_0, SCU_CPU_SSP_TSP_ENABLE | SCU_CPU_SSP_TSP_RESET);
 
 	return 0;
 }
