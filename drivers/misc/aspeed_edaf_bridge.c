@@ -35,6 +35,22 @@
 #define   EDAF_BDGE_MISC_MBASE_H	GENMASK(15, 8)
 #define   EDAF_BDGE_MISC_CBASE_H	GENMASK(7, 0)
 
+uint64_t ast27xx_soc_virt_addr_to_phy_addr(uintptr_t addr)
+{
+	if (addr < 0x80000000)
+		return addr;
+
+	return (uint64_t)(addr & ~0x80000000) | 0x400000000ULL;
+}
+
+uintptr_t ast27xx_soc_phy_addr_to_virt_addr(uint64_t addr)
+{
+	if (addr < 0x400000000)
+		return addr;
+
+	return (uintptr_t)(addr - 0x400000000ULL) | 0x80000000UL;
+}
+
 static int aspeed_edaf_bridge_probe(struct udevice *dev)
 {
 	void *edaf_bridge_regs;
