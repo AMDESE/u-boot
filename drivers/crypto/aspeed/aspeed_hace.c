@@ -55,7 +55,7 @@ struct aspeed_hace_ctx {
 } __aligned((8));
 
 struct aspeed_hace {
-	phys_addr_t base;
+	uintptr_t base;
 	struct clk clk;
 };
 
@@ -88,18 +88,18 @@ static const uint32_t iv_sha512[16] = {
 	0xabd9831f, 0x6bbd41fb, 0x19cde05b, 0x79217e13UL
 };
 
-static int aspeed_hace_wait_completion(uint32_t reg, uint32_t flag, int timeout_us)
+static int aspeed_hace_wait_completion(uintptr_t reg, uint32_t flag, int timeout_us)
 {
 	uint32_t val;
 
-	return readl_poll_timeout((uintptr_t)reg, val, (val & flag) == flag, timeout_us);
+	return readl_poll_timeout((void *)reg, val, (val & flag) == flag, timeout_us);
 }
 
 static int aspeed_hace_process(struct udevice *dev, void *ctx, const void *ibuf, uint32_t ilen)
 {
 	struct aspeed_hace *hace = dev_get_priv(dev);
 	struct aspeed_hace_ctx *hace_ctx = (struct aspeed_hace_ctx *)ctx;
-	uint32_t sts = readl(hace->base + HACE_STS);
+	uint32_t sts = readl((void *)hace->base + HACE_STS);
 	int rc;
 
 	if (sts & HACE_HASH_BUSY) {
@@ -110,13 +110,13 @@ static int aspeed_hace_process(struct udevice *dev, void *ctx, const void *ibuf,
 #if !CONFIG_IS_ENABLED(SYS_DCACHE_OFF)
 		flush_dcache_all();
 #endif
-	writel(HACE_HASH_INT, hace->base + HACE_STS);
+	writel(HACE_HASH_INT, (void *)hace->base + HACE_STS);
 
-	writel((uintptr_t)ibuf, hace->base + HACE_HASH_DATA);
-	writel((uintptr_t)hace_ctx->digest, hace->base + HACE_HASH_DIGEST);
-	writel((uintptr_t)hace_ctx->digest, hace->base + HACE_HASH_HMAC_KEY);
-	writel(ilen, hace->base + HACE_HASH_DATA_LEN);
-	writel(hace_ctx->cmd, hace->base + HACE_HASH_CMD);
+	writel((uintptr_t)ibuf, (void *)hace->base + HACE_HASH_DATA);
+	writel((uintptr_t)hace_ctx->digest, (void *)hace->base + HACE_HASH_DIGEST);
+	writel((uintptr_t)hace_ctx->digest, (void *)hace->base + HACE_HASH_HMAC_KEY);
+	writel(ilen, (void *)hace->base + HACE_HASH_DATA_LEN);
+	writel(hace_ctx->cmd, (void *)hace->base + HACE_HASH_CMD);
 
 	rc = aspeed_hace_wait_completion(hace->base + HACE_STS,
 					 HACE_HASH_INT,
