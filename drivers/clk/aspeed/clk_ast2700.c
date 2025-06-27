@@ -230,7 +230,7 @@ static void ast2700_init_sdclk(struct ast2700_scu1 *scu)
 	int i;
 
 	for (i = 0; i < 8; i++) {
-		if (src_clk / ast2700_sd_div_tbl[i] <= 200000000)
+		if (src_clk / ast2700_sd_div_tbl[i] <= 125000000)
 			break;
 	}
 
