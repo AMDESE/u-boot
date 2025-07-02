@@ -62,7 +62,7 @@ static int aspeed_sgmii_phy_init(struct phy *phy)
 	writel(0, sgmii->regs + SGMII_CFG);
 	writel(SGMII_CFG_SW_RESET | SGMII_CFG_PWR_DOWN, sgmii->regs + SGMII_CFG);
 	writel(SGMII_CFG_AN_ENABLE, sgmii->regs + SGMII_CFG);
-	writel(0x0a, sgmii->regs + SGMII_FIFO_DELAY_THREHOLD);
+	writel(0x0c, sgmii->regs + SGMII_FIFO_DELAY_THREHOLD);
 	writel(SGMII_PCTL_TX_DEEMPH_3_5DB, sgmii->regs + SGMII_PHY_PIPE_CTL);
 	writel(SGMII_MODE_ENABLE, sgmii->regs + SGMII_MODE);
 
@@ -73,12 +73,7 @@ int aspeed_sgmii_set_speed(struct phy *phy, int speed)
 {
 	struct udevice *dev = phy->dev;
 	struct aspeed_sgmii *sgmii = dev_get_priv(dev);
-	u32 reg, delay = (speed == 1000) ? 0x05 : 0x0a;
-
-	if (readl(sgmii->regs + SGMII_CFG) & SGMII_CFG_AN_ENABLE) {
-		writel(delay, sgmii->regs + SGMII_FIFO_DELAY_THREHOLD);
-		return 0;
-	}
+	u32 reg;
 
 	reg = PLDA_CLK_SEL_INTERNAL_25M | FIELD_PREP(PLDA_CLK_FREQ_MULTI, 0x2b);
 	regmap_write(sgmii->plda_regmap, PLDA_CLK, reg);
@@ -102,7 +97,7 @@ int aspeed_sgmii_set_speed(struct phy *phy, int speed)
 	writel(0, sgmii->regs + SGMII_CFG);
 	writel(SGMII_CFG_SW_RESET | SGMII_CFG_PWR_DOWN, sgmii->regs + SGMII_CFG);
 	writel(reg, sgmii->regs + SGMII_CFG);
-	writel(delay, sgmii->regs + SGMII_FIFO_DELAY_THREHOLD);
+	writel(0x0c, sgmii->regs + SGMII_FIFO_DELAY_THREHOLD);
 	writel(SGMII_PCTL_TX_DEEMPH_3_5DB, sgmii->regs + SGMII_PHY_PIPE_CTL);
 	writel(SGMII_MODE_ENABLE | SGMII_MODE_USE_LOCAL_CONFIG, sgmii->regs + SGMII_MODE);
 
