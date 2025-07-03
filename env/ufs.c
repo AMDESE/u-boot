@@ -39,9 +39,10 @@ DECLARE_GLOBAL_DATA_PTR;
 
 static inline s64 ufs_offset(struct ufs *ufs, int copy)
 {
-	s64 offset = 0x400000;
+	const char *propname = "u-boot,ufs-env-offset";
+	s64 defvalue = ENV_UFS_OFFSET;
 
-	return offset;
+	return ofnode_conf_read_int(propname, defvalue);
 }
 
 __weak int ufs_get_env_addr(struct ufs *ufs, int copy, u32 *env_addr)
