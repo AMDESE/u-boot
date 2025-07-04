@@ -3,7 +3,7 @@
 / {
 	config {
 		u-boot,mmc-env-offset = <0x5000>;      /* @  20KB */
-		u-boot,ufs-env-offset = <0x5000>;
+		u-boot,ufs-env-offset = <0x22000>;
 	};
 };
 
