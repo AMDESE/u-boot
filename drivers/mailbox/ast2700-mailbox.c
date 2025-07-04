@@ -13,14 +13,11 @@
 
 /* Each bit in the register represents an IPC ID */
 #define IPCR_TX_TRIG		0x00
-#define IPCR_TX_ENABLE		0x04
-#define IPCR_RX_ENABLE		0x104
-#define IPCR_TX_STATUS		0x08
-#define IPCR_RX_STATUS		0x108
-#define  RX_IRQ(n)		BIT(0 + 1 * (n))
+#define IPCR_ENABLE		0x04
+#define IPCR_STATUS		0x08
+#define  RX_IRQ(n)		BIT(n)
 #define  RX_IRQ_MASK		0xf
-#define IPCR_TX_DATA		0x10
-#define IPCR_RX_DATA		0x110
+#define IPCR_DATA		0x10
 
 struct ast2700_mbox_data {
 	u8 num_chans;
@@ -28,13 +25,14 @@ struct ast2700_mbox_data {
 };
 
 struct ast2700_mbox_priv {
-	void __iomem *regs;
-	const struct ast2700_mbox_data *drv_data;
+	u8 msg_size;
+	void __iomem *tx_regs;
+	void __iomem *rx_regs;
 };
 
-static inline int ast2700_mbox_tx_done(struct ast2700_mbox_priv *mb, int idx)
+static inline bool ast2700_mbox_tx_done(struct ast2700_mbox_priv *mb, int idx)
 {
-	return !(readl(mb->regs + IPCR_TX_STATUS) & BIT(idx));
+	return !(readl(mb->tx_regs + IPCR_STATUS) & BIT(idx));
 }
 
 static int ast2700_mbox_send(struct mbox_chan *chan, const void *data)
@@ -45,9 +43,9 @@ static int ast2700_mbox_send(struct mbox_chan *chan, const void *data)
 	uint32_t *word_data;
 	int num_words;
 
-	if (!(readl(mb->regs + IPCR_TX_ENABLE) & BIT(idx))) {
+	if (!(readl(mb->tx_regs + IPCR_ENABLE) & BIT(idx))) {
 		dev_warn(chan->dev, "%s: Ch-%d not enabled yet\n", __func__, idx);
-		return -EBUSY;
+		return -ENODEV;
 	}
 
 	if (!(ast2700_mbox_tx_done(mb, idx))) {
@@ -55,13 +53,14 @@ static int ast2700_mbox_send(struct mbox_chan *chan, const void *data)
 		return -EBUSY;
 	}
 
-	for (data_reg = mb->regs + IPCR_TX_DATA + mb->drv_data->msg_size * idx,
-	     num_words = (mb->drv_data->msg_size / sizeof(uint32_t)),
+	for (data_reg = mb->tx_regs + IPCR_DATA + mb->msg_size * idx,
+	     num_words = (mb->msg_size / sizeof(uint32_t)),
 	     word_data = (uint32_t *)data;
-	     num_words; num_words--, data_reg += sizeof(uint32_t), word_data++)
+	     num_words;
+	     num_words--, data_reg += sizeof(uint32_t), word_data++)
 		writel(*word_data, data_reg);
 
-	writel(BIT(idx), mb->regs + IPCR_TX_TRIG);
+	writel(BIT(idx), mb->tx_regs + IPCR_TX_TRIG);
 	debug("%s: Ch-%d sent\n", __func__, idx);
 
 	return 0;
@@ -76,17 +75,18 @@ static int ast2700_mbox_recv(struct mbox_chan *chan, void *data)
 	uint32_t *word_data;
 	uint32_t status;
 
-	status = readl(mb->regs + IPCR_RX_STATUS);
+	status = readl(mb->rx_regs + IPCR_STATUS);
 	if (!(status & BIT(idx)))
 		return -ENODATA;
 
-	for (data_reg = mb->regs + IPCR_RX_DATA + mb->drv_data->msg_size * idx,
+	for (data_reg = mb->rx_regs + IPCR_DATA + mb->msg_size * idx,
 	     word_data = data,
-	     num_words = (mb->drv_data->msg_size / sizeof(uint32_t));
-	     num_words; num_words--, data_reg += sizeof(uint32_t), word_data++)
+	     num_words = (mb->msg_size / sizeof(uint32_t));
+	     num_words;
+	     num_words--, data_reg += sizeof(uint32_t), word_data++)
 		*word_data = readl(data_reg);
 
-	writel(RX_IRQ(idx), mb->regs + IPCR_RX_STATUS);
+	writel(RX_IRQ(idx), mb->rx_regs + IPCR_STATUS);
 	debug("%s: Ch-%d)\n", __func__, idx);
 
 	return 0;
@@ -98,7 +98,7 @@ static int ast2700_mbox_request(struct mbox_chan *chan)
 	int idx = chan->id;
 
 	debug("%s: Ch-%d\n", __func__, idx);
-	setbits_le32(mb->regs + IPCR_RX_ENABLE, BIT(idx));
+	setbits_le32(mb->rx_regs + IPCR_ENABLE, BIT(idx));
 
 	return 0;
 }
@@ -109,7 +109,7 @@ static int ast2700_mbox_free(struct mbox_chan *chan)
 	int idx = chan->id;
 
 	debug("%s: Ch-%d\n", __func__, idx);
-	clrbits_le32(mb->regs + IPCR_RX_ENABLE, BIT(idx));
+	clrbits_le32(mb->rx_regs + IPCR_ENABLE, BIT(idx));
 
 	return 0;
 }
@@ -117,12 +117,20 @@ static int ast2700_mbox_free(struct mbox_chan *chan)
 static int ast2700_mbox_probe(struct udevice *dev)
 {
 	struct ast2700_mbox_priv *priv = dev_get_priv(dev);
+	struct ast2700_mbox_data *data;
 
-	priv->regs = dev_read_addr_ptr(dev);
-	if (!priv->regs)
+	priv->tx_regs = dev_read_addr_index_ptr(dev, 0);
+	if (!priv->tx_regs)
 		return -EINVAL;
 
-	priv->drv_data = (void *)dev_get_driver_data(dev);
+	priv->rx_regs = dev_read_addr_index_ptr(dev, 1);
+	if (!priv->rx_regs)
+		return -EINVAL;
+
+	data = (struct ast2700_mbox_data *)dev_get_driver_data(dev);
+	if (!data)
+		return -EINVAL;
+	priv->msg_size = data->msg_size;
 
 	return 0;
 }
