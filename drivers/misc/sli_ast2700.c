@@ -598,7 +598,7 @@ static void sli_calibrate_video_delay(struct sli_data *data, bool is_DS, bool is
 	sli_wait_suspend(rx);
 }
 
-static void sli_switch_video_dir(struct sli_data *data, bool is_DS)
+static void __maybe_unused sli_switch_video_dir(struct sli_data *data, bool is_DS)
 {
 	uintptr_t tx, rx, scu;
 
@@ -942,7 +942,7 @@ int ast2700_sli0_probe(struct udevice *dev)
 			writel(0, (void *)data->die1.sliv + SLI_CTRL_III);
 			sli_calibrate_video_delay(data, true, false);
 		} else {
-			sli_switch_video_dir(data, true);
+			sli_calibrate_video_delay(data, true, true);
 		}
 
 		return 0;
