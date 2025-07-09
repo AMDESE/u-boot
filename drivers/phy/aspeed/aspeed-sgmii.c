@@ -18,6 +18,7 @@
 #include <linux/bitfield.h>
 
 #define SGMII_CFG			0x00
+#define SGMII_NWAY_ACK			0x0c
 #define SGMII_PHY_CFG1			0x18
 #define SGMII_PHY_PIPE_CTL		0x20
 #define SGMII_FIFO_DELAY_THREHOLD	0x28
@@ -64,6 +65,8 @@ static int aspeed_sgmii_phy_init(struct phy *phy)
 	writel(SGMII_CFG_AN_ENABLE, sgmii->regs + SGMII_CFG);
 	writel(0x0c, sgmii->regs + SGMII_FIFO_DELAY_THREHOLD);
 	writel(SGMII_PCTL_TX_DEEMPH_3_5DB, sgmii->regs + SGMII_PHY_PIPE_CTL);
+	/* Bit 0 always sets to 1 in ACK message */
+	writel(0x1, sgmii->regs + SGMII_NWAY_ACK);
 	writel(SGMII_MODE_ENABLE, sgmii->regs + SGMII_MODE);
 
 	return 0;
@@ -99,6 +102,8 @@ int aspeed_sgmii_set_speed(struct phy *phy, int speed)
 	writel(reg, sgmii->regs + SGMII_CFG);
 	writel(0x0c, sgmii->regs + SGMII_FIFO_DELAY_THREHOLD);
 	writel(SGMII_PCTL_TX_DEEMPH_3_5DB, sgmii->regs + SGMII_PHY_PIPE_CTL);
+	/* Bit 0 always sets to 1 in ACK message */
+	writel(0x1, sgmii->regs + SGMII_NWAY_ACK);
 	writel(SGMII_MODE_ENABLE | SGMII_MODE_USE_LOCAL_CONFIG, sgmii->regs + SGMII_MODE);
 
 	return 0;
