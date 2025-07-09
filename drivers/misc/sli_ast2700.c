@@ -778,7 +778,8 @@ int ast2700_sli1_probe(struct udevice *dev)
 		}
 	}
 
-	if (IS_ENABLED(CONFIG_SLI_TARGET_PHYCLK_25MHZ))
+	if (IS_ENABLED(CONFIG_SLI_TARGET_PHYCLK_25MHZ) ||
+	    IS_ENABLED(CONFIG_ASPEED_FPGA))
 		return 0;
 
 	if (!(data->flags & SLI_FLAG_AST2700A0)) {
@@ -885,7 +886,8 @@ int ast2700_sli0_probe(struct udevice *dev)
 	if (FIELD_GET(SCU_CPU_REVISION_ID_HW, reg_val) == 0)
 		return 0;
 
-	if (IS_ENABLED(CONFIG_SLI_TARGET_PHYCLK_25MHZ)) {
+	if (IS_ENABLED(CONFIG_SLI_TARGET_PHYCLK_25MHZ) ||
+	    IS_ENABLED(CONFIG_ASPEED_FPGA)) {
 		debug("AST2700 SLI0 ready, 25MHz\n");
 		return 0;
 	}
