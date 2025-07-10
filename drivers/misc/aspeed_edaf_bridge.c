@@ -144,13 +144,12 @@ static int aspeed_edaf_bridge_probe(struct udevice *dev)
 		cfg |= EDAF_BDGE_CFG_CMD_EN;
 	}
 	writel(mbase, edaf_bridge_regs + EDAF_BDGE_MBASE);
+	writel(cfg, edaf_bridge_regs + EDAF_BDGE_CFG);
 
 	cfg = readl(edaf_bridge_regs + EDAF_BDGE_MISC);
 	cfg &= ~EDAF_BDGE_MISC_MBASE_H;
 	cfg |= FIELD_PREP(EDAF_BDGE_MISC_MBASE_H, mbase >> 32);
 	writel(cfg, edaf_bridge_regs + EDAF_BDGE_MISC);
-
-	writel(cfg, edaf_bridge_regs + EDAF_BDGE_CFG);
 
 	rc = ofnode_read_u64(node, "ctl-base", &cbase);
 	if (!rc) {
