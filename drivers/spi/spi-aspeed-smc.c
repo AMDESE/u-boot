@@ -70,8 +70,10 @@ struct aspeed_spi_regs {
 	u32 dma_len;                    /* 0x8c DMA Length Register */
 	u32 dma_checksum;               /* 0x90 Checksum Calculation Result */
 	u32 timings[ASPEED_SPI_MAX_CS]; /* 0x94 Read Timing Compensation */
-	u32 _reserved3[83];             /* 0xA8 - 0x1F0 */
+	u32 _reserved3[82];             /* 0xA8 - 0x1EC */
+	u32 srst_lock;                  /* 0x1F0 reset lock after SRST */
 	u32 val_kept_wdt;               /* 0x1F4 Value Kept WDT */
+	u32 soc_rst_lock;               /* 0x1F8 reset lock after WDT */
 };
 
 struct aspeed_spi_plat {
@@ -117,6 +119,7 @@ struct aspeed_spi_info {
 	uintptr_t (*segment_start)(struct udevice *bus, u32 reg);
 	uintptr_t (*segment_end)(struct udevice *bus, u32 reg);
 	u32 (*segment_reg)(uintptr_t start, uintptr_t end);
+	bool (*decoded_range_lock)(struct udevice *bus);
 	int (*adjust_decoded_sz)(struct udevice *bus);
 	u32 (*get_clk_setting)(struct udevice *dev, uint hz);
 	int (*calibrate)(struct udevice *dev, u32 hdiv,
@@ -443,6 +446,22 @@ static u32 ast2700_spi_segment_reg(uintptr_t start, uintptr_t end)
 		return 0;
 
 	return ((((start) >> 16) & 0x7fff) | ((end + 1) & 0x7fff0000));
+}
+
+static bool ast2700_decoded_range_lock(struct udevice *bus)
+{
+	struct aspeed_spi_priv *priv = dev_get_priv(bus);
+	u32 srst_lock;
+	u32 soc_rst_lock;
+
+	srst_lock = readl(&priv->regs->srst_lock);
+	soc_rst_lock = readl(&priv->regs->soc_rst_lock);
+
+	if ((srst_lock & GENMASK(23, 20)) ||
+	    (soc_rst_lock & GENMASK(23, 20)))
+		return true;
+
+	return false;
 }
 
 static void ast2600_spi_chip_set_4byte(struct udevice *bus, u32 cs)
@@ -1491,6 +1510,34 @@ static int aspeed_spi_decoded_ranges_sanity(struct udevice *bus)
 	return 0;
 }
 
+static int aspeed_spi_get_decoded_reg(struct udevice *bus)
+{
+	struct aspeed_spi_plat *plat = dev_get_plat(bus);
+	struct aspeed_spi_priv *priv = dev_get_priv(bus);
+	u32 decoded_reg;
+	u32 cs;
+
+	for (cs = 0; cs < plat->max_cs; cs++) {
+		decoded_reg = readl(&priv->regs->segment_addr[cs]);
+
+		priv->flashes[cs].ahb_base =
+			priv->info->segment_start(bus, decoded_reg);
+		priv->flashes[cs].ahb_decoded_sz =
+			priv->info->segment_end(bus, decoded_reg) -
+			priv->info->segment_start(bus, decoded_reg);
+
+		if (priv->flashes[cs].ahb_decoded_sz <
+		    priv->info->min_decoded_sz ||
+		    priv->flashes[cs].ahb_decoded_sz >= plat->ahb_sz) {
+			dev_err(bus, "cs: %d, invalid fixed decode size %x\n",
+				cs, (u32)priv->flashes[cs].ahb_decoded_sz);
+			return -EINVAL;
+		}
+	}
+
+	return 0;
+}
+
 static int aspeed_spi_read_fixed_decoded_ranges(struct udevice *bus)
 {
 	int ret = 0;
@@ -1504,6 +1551,16 @@ static int aspeed_spi_read_fixed_decoded_ranges(struct udevice *bus)
 	u32 i;
 
 	priv->fixed_decoded_range = false;
+
+	if (priv->info->decoded_range_lock &&
+	    priv->info->decoded_range_lock(bus)) {
+		ret = aspeed_spi_get_decoded_reg(bus);
+		if (ret)
+			return ret;
+
+		priv->fixed_decoded_range = true;
+		return ret;
+	}
 
 	prop = dev_read_prop(bus, range_prop, &prop_sz);
 	if (!prop)
@@ -1712,6 +1769,7 @@ static const struct aspeed_spi_info ast2700_fmc_info = {
 	.adjust_decoded_sz = ast2700_adjust_decoded_size,
 	.get_clk_setting = ast2700_get_clk_setting,
 	.calibrate = aspeed_spi_ast2600_calibrate,
+	.decoded_range_lock = ast2700_decoded_range_lock,
 };
 
 static const struct aspeed_spi_info ast2700_spi_info = {
@@ -1727,6 +1785,7 @@ static const struct aspeed_spi_info ast2700_spi_info = {
 	.adjust_decoded_sz = ast2700_adjust_decoded_size,
 	.get_clk_setting = ast2700_get_clk_setting,
 	.calibrate = aspeed_spi_ast2600_calibrate,
+	.decoded_range_lock = ast2700_decoded_range_lock,
 };
 
 static int aspeed_spi_claim_bus(struct udevice *dev)
