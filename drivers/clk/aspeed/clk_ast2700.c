@@ -504,9 +504,9 @@ static u32 ast2700_soc0_get_hclk_rate(struct ast2700_scu0 *scu)
 
 	if (scu->chip_id1 & SCU_HW_REVISION_ID) {
 		if (hwstrap1 & BIT(7))
-			src_clk = ast2700_soc0_get_hpll_rate(scu);
-		else
 			src_clk = ast2700_soc0_get_pll_rate(scu, SCU0_CLK_MPLL);
+		else
+			src_clk = ast2700_soc0_get_hpll_rate(scu);
 
 		div = (hwstrap1 & SCU_AHB_DIV_MASK) >> SCU_AHB_DIV_SHIFT;
 		div = hclk_ast2700a1_div_table[div];
