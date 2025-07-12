@@ -579,7 +579,7 @@ static void sdhci_set_voltage(struct sdhci_host *host)
 			}
 
 			/* Wait for 5ms */
-			mdelay(5);
+			mdelay(15);
 
 			/* 3.3V regulator output should be stable within 5 ms */
 			if (IS_SD(mmc)) {
@@ -615,7 +615,7 @@ static void sdhci_set_voltage(struct sdhci_host *host)
 			}
 
 			/* Wait for 5 ms */
-			mdelay(5);
+			mdelay(15);
 
 			/* 1.8V regulator output has to be stable within 5 ms */
 			if (IS_SD(mmc)) {
