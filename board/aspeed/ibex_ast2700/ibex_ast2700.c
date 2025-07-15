@@ -17,6 +17,7 @@
 #include <asm/arch/scu_ast2700.h>
 #include <asm/arch/sli_ast2700.h>
 #include <asm/arch/sdram_ast2700.h>
+#include <asm/arch/spi.h>
 #include <asm/arch/sys_policy.h>
 #include <asm/arch/wdt.h>
 #include <asm/arch/ssp_tsp_ast2700.h>
@@ -242,6 +243,23 @@ static int vbios_init(void)
 	return err;
 }
 
+static int hspi_init(void)
+{
+	u32 val;
+
+	val = readl((void *)(ASPEED_SPI0_REG_BASE + MISC_CTRL_REG));
+	val |= SPI_USER_CMD_MODE | SPI_UNALGNED_ACCESS;
+	val &= ~SPI_CS_CONTINUOUS;
+	writel(val, (void *)(ASPEED_SPI0_REG_BASE + MISC_CTRL_REG));
+
+	val = readl((void *)(ASPEED_SPI1_REG_BASE + MISC_CTRL_REG));
+	val |= SPI_USER_CMD_MODE | SPI_UNALGNED_ACCESS;
+	val &= ~SPI_CS_CONTINUOUS;
+	writel(val, (void *)(ASPEED_SPI1_REG_BASE + MISC_CTRL_REG));
+
+	return 0;
+}
+
 struct init_callback board_init_seq[] = {
 	{"POLICY",	sys_policy_init},
 	{"WDT",		wdt_init},
@@ -250,6 +268,7 @@ struct init_callback board_init_seq[] = {
 	{"SLI1",	sli1_init},
 	{"DP",		dp_init},
 	{"SLI0",	sli0_init},
+	{"HSPI",	hspi_init},
 	{"DRAM",	dram_init},
 	{"PCI",		pci_init},
 	{"VBIOS",	vbios_init},

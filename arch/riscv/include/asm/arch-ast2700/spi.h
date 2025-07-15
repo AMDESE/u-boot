@@ -33,6 +33,12 @@
 #define SNOR_SZ_256MB			0x10000000
 #define SNOR_SZ_512MB			0x20000000
 
+#define MISC_CTRL_REG			0x54
+#define   SPI_USER_CMD_MODE		BIT(27)
+#define   SPI_CS_TO_DIS			BIT(26)
+#define   SPI_UNALGNED_ACCESS		BIT(24)
+#define   SPI_CS_CONTINUOUS		BIT(16)
+
 enum spi_abr_mode {
 	DUAL_FLASH_ABR = 0,
 	SINGLE_FLASH_ABR,
