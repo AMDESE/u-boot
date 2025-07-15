@@ -41,6 +41,11 @@
 #define CTRL_IO_MODE_CMD_WRITE  BIT(1)
 #define CTRL_STOP_ACTIVE        BIT(2)
 
+#define SPI_USER_CMD_MODE	BIT(27)
+#define SPI_CS_TO_DIS		BIT(26)
+#define SPI_UNALGNED_ACCESS	BIT(24)
+#define SPI_CS_CONTINUOUS	BIT(16)
+
 #define DAM_CTRL_REQUEST	BIT(31)
 #define DAM_CTRL_GRANT		BIT(30)
 #define DMA_CTRL_CALIB		BIT(3)
@@ -63,7 +68,8 @@ struct aspeed_spi_regs {
 	u32 segment_addr[ASPEED_SPI_MAX_CS]; /* 0x30 .. 0x40 Segment Address */
 	u32 _reserved1[3];		/* .. */
 	u32 soft_rst_cmd_ctrl;          /* 0x50 Auto Soft-Reset Command Control */
-	u32 _reserved2[11];             /* .. */
+	u32 misc_ctrl;                  /* 0x54 Misc control */
+	u32 _reserved2[10];             /* .. */
 	u32 dma_ctrl;                   /* 0x80 DMA Control/Status */
 	u32 dma_flash_addr;             /* 0x84 DMA Flash Side Address */
 	u32 dma_dram_addr;              /* 0x88 DMA DRAM Side Address */
@@ -124,6 +130,9 @@ struct aspeed_spi_info {
 	u32 (*get_clk_setting)(struct udevice *dev, uint hz);
 	int (*calibrate)(struct udevice *dev, u32 hdiv,
 			 const u8 *golden_buf, u8 *test_buf);
+	void (*safs_init)(struct udevice *dev);
+	void (*safs_start)(struct udevice *dev);
+	void (*safs_stop)(struct udevice *dev);
 };
 
 struct aspeed_spi_decoded_range {
@@ -595,6 +604,38 @@ static u32 ast2600_get_clk_setting(struct udevice *dev, uint max_hz)
 static u32 ast2700_get_clk_setting(struct udevice *dev, uint max_hz)
 {
 	return ast2600_get_clk_setting(dev, max_hz);
+}
+
+void aspeed_spi_ast2700_safs_init(struct udevice *bus)
+{
+	struct aspeed_spi_priv *priv = dev_get_priv(bus);
+	u32 val;
+
+	val = readl(&priv->regs->misc_ctrl);
+	val |= SPI_UNALGNED_ACCESS | SPI_USER_CMD_MODE;
+	val &= ~SPI_CS_CONTINUOUS;
+	writel(val, &priv->regs->misc_ctrl);
+}
+
+void aspeed_spi_ast2700_safs_start(struct udevice *bus)
+{
+	struct aspeed_spi_priv *priv = dev_get_priv(bus);
+	u32 val;
+
+	val = readl(&priv->regs->misc_ctrl);
+	val |= SPI_UNALGNED_ACCESS | SPI_USER_CMD_MODE;
+	val &= ~SPI_CS_CONTINUOUS;
+	writel(val, &priv->regs->misc_ctrl);
+}
+
+void aspeed_spi_ast2700_safs_stop(struct udevice *bus)
+{
+	struct aspeed_spi_priv *priv = dev_get_priv(bus);
+	u32 val;
+
+	val = readl(&priv->regs->misc_ctrl);
+	val &= ~GENMASK(27, 24);
+	writel(val, &priv->regs->misc_ctrl);
 }
 
 /*
@@ -1162,6 +1203,9 @@ static int aspeed_spi_exec_op_user_mode(struct spi_slave *slave,
 	if (priv->info == &ast2400_spi_info)
 		ce_ctrl_reg = (uintptr_t)&priv->regs->ctrl;
 
+	if (priv->info->safs_stop)
+		priv->info->safs_stop(bus);
+
 	/*
 	 * Set controller to 4-byte address mode
 	 * if flash is in 4-byte address mode.
@@ -1213,6 +1257,9 @@ static int aspeed_spi_exec_op_user_mode(struct spi_slave *slave,
 	/* Restore controller setting. */
 	writel(flash->cmd_mode[CMD_READ_MODE], ce_ctrl_reg);
 
+	if (priv->info->safs_start)
+		priv->info->safs_start(bus);
+
 	return 0;
 }
 
@@ -1235,6 +1282,9 @@ static int aspeed_spi_dirmap_create(struct spi_mem_dirmap_desc *desc)
 	ce_ctrl_reg = (uintptr_t)&priv->regs->ce_ctrl[cs];
 	if (info == &ast2400_spi_info)
 		ce_ctrl_reg = (uintptr_t)&priv->regs->ctrl;
+
+	if (info->safs_init)
+		info->safs_init(bus);
 
 	if (desc->info.op_tmpl.data.dir == SPI_MEM_DATA_IN) {
 		if (desc->info.length > 0x1000000)
@@ -1786,6 +1836,9 @@ static const struct aspeed_spi_info ast2700_spi_info = {
 	.get_clk_setting = ast2700_get_clk_setting,
 	.calibrate = aspeed_spi_ast2600_calibrate,
 	.decoded_range_lock = ast2700_decoded_range_lock,
+	.safs_init = aspeed_spi_ast2700_safs_init,
+	.safs_start = aspeed_spi_ast2700_safs_start,
+	.safs_stop = aspeed_spi_ast2700_safs_stop,
 };
 
 static int aspeed_spi_claim_bus(struct udevice *dev)
