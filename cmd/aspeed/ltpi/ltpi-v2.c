@@ -865,11 +865,8 @@ static void ltpi_scm_sgpios_init(struct ltpi_priv *ltpi)
 	}
 	/* Check whether LTPI is initialized */
 	state = ltpi_get_link_mng_state(ltpi);
-	if (state != LTPI_LINK_MNG_ST_OP) {
+	if (state != LTPI_LINK_MNG_ST_OP)
 		ltpi_scm_sgpios_serial_out_source_sel(SELECT_FROM_CSR);
-		/* Avoid the SGPIOS output unstable value to SGPIOM */
-		ltpi_scm_sgpios_serial_out_lock();
-	}
 	/*
 	 * The meaning of SGPIO_PARALLEL_OUT_PROTECT will be inverted in A2,
 	 * so this bit setting should be removed when migrating to A2.
@@ -1069,6 +1066,8 @@ struct bootstage_t ltpi_init(struct rom_context *rom_ctx, uint32_t pin_strap, bo
 			ltpi1_hpm_set_pins();
 			ltpi_scm_init(ltpi1);
 		}
+		/* Avoid the SGPIOS output unstable value to SGPIOM */
+		ltpi_scm_sgpios_serial_out_lock();
 		ltpi_scm_sgpios_serial_out_source_sel(SELECT_FROM_PARALLEL_IN);
 		/* Unlock serial out to pass the LTPI Parallel in to SGPIOM */
 		ltpi_scm_sgpios_serial_out_unlock();
