@@ -96,8 +96,8 @@ void aspeed_print_security_info(void)
 		return;
 	printf("Secure Boot: ");
 	if (qsr & BIT(7)) {
-		hash = (qsr >> 10) & 3;
-		rsa = (qsr >> 12) & 3;
+		hash = (qsr >> 12) & 3;
+		rsa = (qsr >> 10) & 3;
 
 		printf("Mode_2, ");
 
