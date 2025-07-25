@@ -75,41 +75,68 @@ static void _ast_update_e2m(struct ast_vga_priv *priv, bool is_64vram,
 	}
 }
 
-static int ast_vga_probe(struct udevice *dev)
+int ast_vga_get_nodes(u8 *is_pcie0_enable, u8 *is_pcie1_enable)
 {
-	struct ast_vga_priv *priv = dev_get_priv(dev);
-	u32 val;
-	bool is_pcie0_enable = priv->scu->pci0_misc[28] & BIT(0);
-	bool is_pcie1_enable = priv->scu->pci1_misc[28] & BIT(0);
-	bool is_64vram = priv->ram->gfmcfg & BIT(0);
-	u8 dac_src = priv->scu->hwstrap1 & BIT(28);
-	u8 dp_src = priv->scu->hwstrap1 & BIT(29);
-	u8 efuse = FIELD_GET(SCU_CPU_REVISION_ID_EFUSE, priv->scu->chip_id1);
-	int ret;
+	struct ast2700_scu0 *scu = (struct ast2700_scu0 *)ASPEED_CPU_SCU_BASE;
+	u8 efuse = FIELD_GET(SCU_CPU_REVISION_ID_EFUSE, scu->chip_id1);
+	u8 node0 = scu->pci0_misc[28] & BIT(0);
+	u8 node1 = scu->pci1_misc[28] & BIT(0);
 
 	/* Decide feature by efuse
 	 *  0: 2750 has full function
 	 *  1: 2700 has only 1 VGA
 	 *  2: 2720 has no VGA
 	 */
+	if (efuse == 2) {
+		debug("%s: 2720 has no VGA\n", __func__);
+		return 0;
+	}
 	if (efuse == 1) {
+		debug("%s: 2700 has only 1 VGA\n", __func__);
+		if (is_pcie0_enable)
+			*is_pcie0_enable = node0;
+		return node0;
+	}
+
+	if (is_pcie0_enable)
+		*is_pcie0_enable = node0;
+	if (is_pcie1_enable)
+		*is_pcie1_enable = node1;
+	return node0 + node1;
+}
+
+static int ast_vga_probe(struct udevice *dev)
+{
+	struct ast_vga_priv *priv = dev_get_priv(dev);
+	u32 val;
+	u8 is_pcie0_enable, is_pcie1_enable;
+	bool is_64vram = priv->ram->gfmcfg & BIT(0);
+	u8 dac_src = priv->scu->hwstrap1 & BIT(28);
+	u8 dp_src = priv->scu->hwstrap1 & BIT(29);
+	int ret;
+
+	switch (ast_vga_get_nodes(&is_pcie0_enable, &is_pcie1_enable)) {
+	case 0:
+		return -1;
+	case 1:
 		is_pcie1_enable = false;
 		dac_src = 0;
 		dp_src = 0;
-	} else if (efuse == 2) {
-		debug("%s: 2720 has no VGA\n", __func__);
-		return -1;
+		break;
+	case 2:
+	default:
+		break;
 	}
 
 	debug("%s: ENABLE 0(%d) 1(%d)\n", __func__, is_pcie0_enable, is_pcie1_enable);
 	debug("%s: dac_src(%d) dp_src(%d)\n", __func__, dac_src, dp_src);
 
-	_ast_update_e2m(priv, is_64vram, is_pcie0_enable, is_pcie1_enable);
-
 	if (priv->scu->hwstrap1 & BIT(11)) {
 		debug("%s: Skip probe since it has been done.\n", __func__);
 		return 0;
 	}
+
+	_ast_update_e2m(priv, is_64vram, is_pcie0_enable, is_pcie1_enable);
 
 	/* scratch for VGA CRAA[1:0] : 10b: 32Mbytes, 11b: 64Mbytes */
 	setbits_le32(&priv->scu->hwstrap1, BIT(11));
