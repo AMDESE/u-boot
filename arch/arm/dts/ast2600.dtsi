@@ -2180,6 +2180,16 @@
 		groups = "SGPM2";
 	};
 
+	pinctrl_gpiol6_gpio: gpiol6_gpio {
+		function = "GPIOL6";
+		groups = "GPIOL6";
+	};
+
+	pinctrl_gpiol7_gpio: gpiol7_gpio {
+		function = "GPIOL7";
+		groups = "GPIOL7";
+	};
+
 };
 
 #ifdef CONFIG_ASPEED_DP
