@@ -2231,7 +2231,7 @@ static int do_otpinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 
 	if (!strcmp(argv[1], "rbp"))
 		otp_print_rbp_info();
-	if (!strcmp(argv[1], "conf"))
+	else if (!strcmp(argv[1], "conf"))
 		otp_print_conf_info();
 	else if (!strcmp(argv[1], "strap"))
 		otp_print_strap_info();
