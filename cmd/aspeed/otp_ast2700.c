@@ -2554,7 +2554,7 @@ static int do_otpecc(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv
 		if (ret)
 			return CMD_RET_FAILURE;
 
-		printf("OTP ECC is enabled\n");
+		printf("OTP ECC is enabled (temporarily)\n");
 
 	} else {
 		return CMD_RET_USAGE;

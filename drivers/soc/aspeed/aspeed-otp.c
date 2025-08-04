@@ -316,22 +316,10 @@ static int aspeed_otp_write(struct udevice *dev, int offset,
 static int aspeed_otp_ecc_en(struct udevice *dev)
 {
 	struct aspeed_otp *otp = dev_get_priv(dev);
-	int ret = 0;
-
-	/* Check ecc is already enabled */
-	if (otp->gbl_ecc_en == 1)
-		return 0;
-
-	/* enable cfg ecc */
-	ret = otp_prog_data(dev, OTPSTRAP14_ADDR, 0x1);
-	if (ret) {
-		printf("%s: prog failed\n", __func__);
-		goto end;
-	}
 
 	otp->gbl_ecc_en = 1;
-end:
-	return ret;
+
+	return 0;
 }
 
 static int aspeed_otp_ioctl(struct udevice *dev, unsigned long request,
