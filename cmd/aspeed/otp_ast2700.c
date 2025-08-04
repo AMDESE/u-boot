@@ -52,6 +52,7 @@ enum otp_status {
 
 #define OTP_AST2700_A0			0
 #define OTP_AST2700_A1			1
+#define OTP_AST2700_A2			2
 
 #define ID0_AST2700A0			0x06000003
 #define ID1_AST2700A0			0x06000003
@@ -265,7 +266,7 @@ static u32 chip_version(void)
 	} else if ((revid0 == ID0_AST2700A2 || revid1 == ID1_AST2700A2) ||
 		   (revid0 == ID0_AST2750A2 || revid1 == ID1_AST2750A2)) {
 		/* AST2700-A2 */
-		return OTP_AST2700_A1;
+		return OTP_AST2700_A2;
 	}
 
 	return OTP_FAILURE;
@@ -2250,8 +2251,6 @@ static int do_otpread(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 	u32 offset, count;
 	int ret;
 
-	printf("%s: %d: %s %s %s\n", __func__, argc, argv[1], argv[2], argv[3]);
-
 	if (argc == 4) {
 		offset = simple_strtoul(argv[2], NULL, 16);
 		count = simple_strtoul(argv[3], NULL, 16);
@@ -2298,8 +2297,6 @@ static int do_otppatch(struct cmd_tbl *cmdtp, int flag, int argc, char *const ar
 	u32 offset;
 	size_t size;
 	int ret;
-
-	printf("%s: argc:%d\n", __func__, argc);
 
 	if (argc != 5)
 		return CMD_RET_USAGE;
@@ -2368,6 +2365,7 @@ static int do_otpprog(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 static int do_otppb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	struct otpstrap_status otpstrap[32];
+	bool otpstrap_prot = false;
 	int mode = 0;
 	int nconfirm = 0;
 	int otp_addr = 0;
@@ -2390,7 +2388,10 @@ static int do_otppb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[
 		mode = OTP_REGION_RBP;
 	else if (!strcmp(argv[0], "strap"))
 		mode = OTP_REGION_STRAP;
-	else if (!strcmp(argv[0], "strap-ext"))
+	else if (!strcmp(argv[0], "strap-pro")) {
+		mode = OTP_REGION_STRAP;
+		otpstrap_prot = true;
+	} else if (!strcmp(argv[0], "strap-ext"))
 		mode = OTP_REGION_STRAP_EXT;
 	else if (!strcmp(argv[0], "strap-ext-vld"))
 		mode = OTP_REGION_STRAP_EXT_VLD;
@@ -2466,22 +2467,31 @@ static int do_otppb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[
 			return CMD_RET_USAGE;
 
 	} else if (mode == OTP_REGION_STRAP) {
-		// get otpstrap status
-		otp_strap_status(otpstrap);
-
-		ret = otp_strap_bit_confirm(&otpstrap[bit_offset], bit_offset, value, 0);
-		if (ret != OTP_SUCCESS)
-			return ret;
-
-		// assign writable otp address
-		if (bit_offset < 16) {
-			otp_addr = 2 + otpstrap[bit_offset].writeable_option * 2;
+		if (otpstrap_prot) {
+			if (bit_offset < 16) {
+				otp_addr = 0;
+			} else {
+				otp_addr = 1;
+				bit_offset -= 16;
+			}
 		} else {
-			otp_addr = 3 + otpstrap[bit_offset].writeable_option * 2;
-			bit_offset -= 16;
-		}
+			// get otpstrap status
+			otp_strap_status(otpstrap);
 
-		value = 1;
+			ret = otp_strap_bit_confirm(&otpstrap[bit_offset], bit_offset, value, 0);
+			if (ret != OTP_SUCCESS)
+				return ret;
+
+			// assign writable otp address
+			if (bit_offset < 16) {
+				otp_addr = 2 + otpstrap[bit_offset].writeable_option * 2;
+			} else {
+				otp_addr = 3 + otpstrap[bit_offset].writeable_option * 2;
+				bit_offset -= 16;
+			}
+
+			value = 1;
+		}
 
 	} else if (mode == OTP_REGION_STRAP_EXT || mode == OTP_REGION_STRAP_EXT_VLD) {
 		otp_addr = bit_offset / 16;
@@ -2704,6 +2714,22 @@ static int do_ast_otp(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 		info_cb.key_info = a1_key_type;
 		info_cb.key_info_len = ARRAY_SIZE(a1_key_type);
 		break;
+	case OTP_AST2700_A2:
+		printf("Chip: AST2700-A2\n");
+		info_cb.version = OTP_AST2700_A1;
+		info_cb.rbp_info = a1_rbp_info;
+		info_cb.rbp_info_len = ARRAY_SIZE(a1_rbp_info);
+		info_cb.conf_info = a1_conf_info;
+		info_cb.conf_info_len = ARRAY_SIZE(a1_conf_info);
+		info_cb.strap_info = a1_strap_info;
+		info_cb.strap_info_len = ARRAY_SIZE(a1_strap_info);
+		info_cb.strap_ext_info = a1_strap_ext_info;
+		info_cb.strap_ext_info_len = ARRAY_SIZE(a1_strap_ext_info);
+		info_cb.cal_info = a1_cal_info;
+		info_cb.cal_info_len = ARRAY_SIZE(a1_cal_info);
+		info_cb.key_info = a1_key_type;
+		info_cb.key_info_len = ARRAY_SIZE(a1_key_type);
+		break;
 	default:
 		printf("SOC is not supported\n");
 		return CMD_RET_FAILURE;
@@ -2723,7 +2749,7 @@ U_BOOT_CMD(otp, 7, 0,  do_ast_otp,
 	   "<dev> version\n"
 	   "otp <dev> read rom|rbp|conf|strap|strap-pro|strap-ext|strap-ext-vld|u-data|s-data|cptra|puf <otp_w_offset> <w_count>\n"
 	   "otp <dev> pb rbp|conf|u-data|s-data|cptra [o] <otp_w_offset> <bit_offset> <value>\n"
-	   "otp <dev> pb strap|strap-ext|strap-ext-vld [o] <bit_offset> <value>\n"
+	   "otp <dev> pb strap|strap-pro|strap-ext|strap-ext-vld [o] <bit_offset> <value>\n"
 	   "otp <dev> pb strap-ext-vld all\n"
 	   "otp <dev> prog <addr>\n"
 	   "otp <dev> info key|rbp|conf|strap|strap-ext\n"
