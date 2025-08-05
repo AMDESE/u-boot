@@ -197,7 +197,7 @@ static int ast_vga_probe(struct udevice *dev)
 		writel(0x00030009, priv->vgal_cpu_base + 0x10);
 		val = 0x10000000 | dac_src;
 		writel(val, priv->vgal_cpu_base + 0x50);
-		writel(0x00100000, priv->vgal_cpu_base + 0x44);
+		writel(0x00100010, priv->vgal_cpu_base + 0x44);
 		writel(0x00030009, priv->vgal_cpu_base + 0x110);
 		writel(0x00030009, priv->vgal_io_base + 0x10);
 		writel(0x00010002, priv->vgal_io_base + 0x44);
