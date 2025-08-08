@@ -78,6 +78,11 @@ DECLARE_GLOBAL_DATA_PTR;
 #define SCU_FREQ_COUNTER_MASK	GENMASK(29, 16)
 #define SCU_FREQ_COUNTER(x)	FIELD_GET(SCU_FREQ_COUNTER_MASK, x)
 
+#define SCU_MULTI_CTRL18	0x444	/* GPIO Group R */
+#define SCU_MULTI_CTRL19	0x448	/* GPIO Group S */
+#define SCU_MULTI_CTRL20	0x44C	/* GPIO Group T */
+#define SCU_MULTI_CTRL21	0x450	/* GPIO Group U */
+
 #ifndef DMA_ALIGNED
 #define DMA_ALIGNED __aligned(CONFIG_SYS_CACHELINE_SIZE)
 #endif
@@ -230,6 +235,21 @@ void mac_set_loopback(u32 index, bool enable)
 	writel(fear, base + FEAR);
 }
 
+static void mac_rgmii_pin(u32 index)
+{
+	void *scu = (void *)ASPEED_IO_SCU_BASE;
+
+	if (index) {
+		/* Configure MAC1 pin to GPIO */
+		writel(0, scu + SCU_MULTI_CTRL20);
+		clrsetbits_le32(scu + SCU_MULTI_CTRL21, GENMASK(14, 0), 0);
+	} else {
+		/* Configure MAC0 pin to GPIO */
+		writel(0, scu + SCU_MULTI_CTRL18);
+		clrsetbits_le32(scu + SCU_MULTI_CTRL19, GENMASK(14, 0), 0);
+	}
+}
+
 static void mac_init(u32 index)
 {
 	void *base;
@@ -240,6 +260,7 @@ static void mac_init(u32 index)
 	else
 		base = (void *)ASPEED_IO_MAC0_BASE;
 
+	mac_rgmii_pin(index);
 	mac_reset_deassert(index);
 	mac_clk_enable(index);
 
@@ -427,6 +448,9 @@ static const char *get_mac_phy_mode(u32 index)
 		return NULL;
 	}
 
+	if (strcmp("okay", (const char *)fdt_getprop(fdt, nodeoffset, "status", NULL)) != 0)
+		return NULL;
+
 	return fdt_getprop(fdt, nodeoffset, "phy-mode", NULL);
 }
 
@@ -475,6 +499,10 @@ static void find_rgmii_delay(u32 index)
 	const char *phy_mode;
 	u8 result[32];
 
+	phy_mode = get_mac_phy_mode(index);
+	if (!phy_mode)
+		return;
+
 	average_delay = cal_delay32_ring(31);
 	if (average_delay == 0)
 		return;
@@ -497,7 +525,6 @@ static void find_rgmii_delay(u32 index)
 	rx_edge = find_rx_center(result) + 1;
 	rx_center = rx_edge + 2000 / average_delay;
 
-	phy_mode = get_mac_phy_mode(index);
 	if (phy_mode) {
 		printf(" %d: %s ", index, phy_mode);
 		if (strcmp(phy_mode, "rgmii-rxid") == 0) {
