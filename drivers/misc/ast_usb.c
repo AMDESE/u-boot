@@ -727,6 +727,9 @@ static uint8_t vhub_ep0_in(struct bootusb_priv *hci)
 			vhub_req_cleanup(hci);
 		}
 		break;
+	case STALL:
+		hci->usb_fsm_state = IDLE;
+		break;
 	default:
 		return (hci->usb_fsm_state << 4 | STS_IN_WRONG_STATE);
 	}
@@ -763,6 +766,9 @@ static uint8_t vhub_ep0_out(struct bootusb_priv *hci)
 		if (hci->dfu_data.state == dfuERROR)
 			hci->is_dnload_done = true;
 
+		break;
+	case STALL:
+		hci->usb_fsm_state = IDLE;
 		break;
 	default:
 		return (hci->usb_fsm_state << 4 | STS_OUT_WRONG_STATE);
@@ -1023,8 +1029,13 @@ static uint8_t vhub_ep0_setup(struct bootusb_priv *hci)
 
 	if (ret == USBD_REQ_MEMCPY_FAIL)
 		return STS_MEMCPY_FAIL;
-	else if (ret)
-		return STS_CRQ_NOT_SUPPORT;
+	else if (ret) {
+		/* Stall un-supported USB requests but do not exit USB recovery */
+		printf(" U");
+		writel(VHUB_EP0_CTRL_STALL, usb->base + VHUB_EP0_CTRL);
+		hci->usb_fsm_state = STALL;
+		return STS_OKAY;
+	}
 
 	data_size_max = le16_to_cpu(crq->wLength);
 
