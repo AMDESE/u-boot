@@ -20,10 +20,6 @@
 #include <ast_loader.h>
 #include <linux/usb/ch9.h>
 
-struct bootusb_priv {
-	u32 temp;
-};
-
 #define USB_VHUBA_REG	(void __iomem *)0x12011000
 #define USB_VHUBB_REG	(void __iomem *)0x12021000
 #define SCU0_REG	(void __iomem *)0x12c02000
@@ -238,8 +234,6 @@ const char *usb_strings[] = {
 	FIRMWARE_IMAGE_0_LABEL,
 };
 
-static uint8_t *ep0_ctrl_buf = (uint8_t *)USB_DMA_BUF_ADDR + CPU_SRAM_SIZE - USB_DFU_MAX_XFER_SIZE;
-
 enum usbd_req_rc {
 	USBD_REQ_HANDLED = 0,
 	USBD_REQ_NOTSUPP,
@@ -252,8 +246,6 @@ struct request_ctx {
 	uint32_t actual;
 	uint32_t block_nr;
 };
-
-static struct request_ctx usb_req_ctx;
 
 /* DFU mode device descriptor */
 struct dev_dfu_mode_descriptor {
@@ -502,12 +494,6 @@ struct dfu_data_t {
 	uint16_t bwPollTimeout;
 };
 
-static struct dfu_data_t dfu_data = {
-	.state = dfuIDLE,
-	.status = statusOK,
-	.bwPollTimeout = USB_DFU_DEFAULT_POLLTIMEOUT,
-};
-
 enum usb_state {
 	IDLE,
 	STALL,
@@ -519,8 +505,6 @@ enum usb_state {
 	STATUS_OUT,
 };
 
-static enum usb_state usb_fsm_state;
-
 enum usb_port {
 	PORT_A,
 	PORT_B,
@@ -528,8 +512,6 @@ enum usb_port {
 	PORT_D,
 	PORT_NUM,
 };
-
-static enum usb_port usb_vhub_port = PORT_A;
 
 #define OTP_USB_UART_NUM	13 //OTP configurable USB2UART number (No UART13/14)
 #define USB_UART_NUM		15 //Total USB2UART number
@@ -554,8 +536,6 @@ struct usb_uart_cfg {
 	uint8_t mode3;
 	uint8_t put_all_msg;
 } _packed;
-
-static bool usb_uart_enabled;
 
 struct usb_vhub_config {
 	void *base;
@@ -611,10 +591,18 @@ static struct usb_vhub_config usb_cfg[PORT_NUM] = {
 	},
 };
 
-static bool is_dnload_done;
-static u32 *dfu_dst_addr;
-static u32 dfu_max_len = U32_MAX; // Temp set to max.
-static u32 dfu_recv_len;
+struct bootusb_priv {
+	bool is_dnload_done;
+	u32 *dfu_dst_addr;
+	u32 dfu_max_len;
+	u32 dfu_recv_len;
+	uint8_t *ep0_ctrl_buf;
+	enum usb_state usb_fsm_state;
+	struct request_ctx usb_req_ctx;
+	struct dfu_data_t dfu_data;
+	bool usb_uart_enabled;
+	enum usb_port usb_vhub_port;
+};
 
 static void usb_serial_number_desc(uint16_t bString[], int size)
 {
@@ -648,9 +636,9 @@ static int safe_memcpy(void *dest, size_t dest_size, const void *src, size_t num
 	return 0;
 }
 
-static void vhub_ep0_tx(u64 addr, int size)
+static void vhub_ep0_tx(struct bootusb_priv *hci, u64 addr, int size)
 {
-	struct usb_vhub_config *usb = &usb_cfg[usb_vhub_port];
+	struct usb_vhub_config *usb = &usb_cfg[hci->usb_vhub_port];
 	uint8_t high_addr = addr >> 32;
 
 	/* low addr */
@@ -663,9 +651,9 @@ static void vhub_ep0_tx(u64 addr, int size)
 	       usb->base + VHUB_EP0_CTRL);
 }
 
-static void vhub_ep0_rx(u64 addr)
+static void vhub_ep0_rx(struct bootusb_priv *hci, u64 addr)
 {
-	struct usb_vhub_config *usb = &usb_cfg[usb_vhub_port];
+	struct usb_vhub_config *usb = &usb_cfg[hci->usb_vhub_port];
 	uint8_t high_addr = addr >> 32;
 
 	/* low addr */
@@ -677,113 +665,115 @@ static void vhub_ep0_rx(u64 addr)
 	       usb->base + VHUB_EP0_CTRL);
 }
 
-static void vhub_req_cleanup(void)
+static void vhub_req_cleanup(struct bootusb_priv *hci)
 {
-	usb_req_ctx.length = 0;
-	usb_req_ctx.actual = 0;
+	hci->usb_req_ctx.length = 0;
+	hci->usb_req_ctx.actual = 0;
 }
 
-static uint8_t vhub_ep0_in(void)
+static uint8_t vhub_ep0_in(struct bootusb_priv *hci)
 {
 	uint32_t mps, data_size_max;
 	uint32_t chunk;
 	u32 offset;
 	u64 tx_buff_addr;
 
-	switch (usb_fsm_state) {
+	switch (hci->usb_fsm_state) {
 	case DATA_IN:
 		mps = dfu_mode_desc.device_desc.bMaxPacketSize0;
-		chunk = usb_req_ctx.length - usb_req_ctx.actual;
+		chunk = hci->usb_req_ctx.length - hci->usb_req_ctx.actual;
 		if (chunk > mps)
 			chunk = mps;
-		tx_buff_addr = (uintptr_t)ep0_ctrl_buf + usb_req_ctx.actual;
-		vhub_ep0_tx(tx_buff_addr, chunk);
-		usb_req_ctx.actual += chunk;
+		tx_buff_addr = (uintptr_t)hci->ep0_ctrl_buf + hci->usb_req_ctx.actual;
+		vhub_ep0_tx(hci, tx_buff_addr, chunk);
+		hci->usb_req_ctx.actual += chunk;
 
-		data_size_max = le16_to_cpu(usb_req_ctx.crq.wLength);
+		data_size_max = le16_to_cpu(hci->usb_req_ctx.crq.wLength);
+
 		/* Go to status stage if payload size is less than MPS or has transferred exactly
 		 * the amount of data specified during the Setup stage (data_size_max).
 		 * Otherwise, go to DATA stage again for more data or a ZLP (short transfer).
 		 */
-		if (chunk < mps || usb_req_ctx.actual == data_size_max)
-			usb_fsm_state = LAST_DATA_IN;
+		if (chunk < mps || hci->usb_req_ctx.actual == data_size_max)
+			hci->usb_fsm_state = LAST_DATA_IN;
 		else
-			usb_fsm_state = DATA_IN;
+			hci->usb_fsm_state = DATA_IN;
 		break;
 	case LAST_DATA_IN:
-		vhub_ep0_rx(0);
-		usb_fsm_state = STATUS_OUT;
+		vhub_ep0_rx(hci, 0);
+		hci->usb_fsm_state = STATUS_OUT;
 		break;
 	case STATUS_IN:
-		usb_fsm_state = IDLE;
-		if (dfu_data.state == dfuDNLOAD_IDLE) {
-			offset = usb_req_ctx.block_nr * DRAM_BLOCK_SIZE;
-			if (dfu_max_len > offset) {
-				if (safe_memcpy((uint8_t *)dfu_dst_addr + offset,
-						dfu_max_len - offset,
-						ep0_ctrl_buf,
-						usb_req_ctx.length))
-					return (usb_fsm_state << 4 | STS_MEMCPY_FAIL);
+		hci->usb_fsm_state = IDLE;
+		if (hci->dfu_data.state == dfuDNLOAD_IDLE) {
+			offset = hci->usb_req_ctx.block_nr * DRAM_BLOCK_SIZE;
+			if (hci->dfu_max_len > offset) {
+				if (safe_memcpy((uint8_t *)hci->dfu_dst_addr + offset,
+						hci->dfu_max_len - offset,
+						hci->ep0_ctrl_buf,
+						hci->usb_req_ctx.length))
+					return (hci->usb_fsm_state << 4 | STS_MEMCPY_FAIL);
 
-				dfu_recv_len = offset + usb_req_ctx.length;
+				hci->dfu_recv_len = offset + hci->usb_req_ctx.length;
 			} else {
 				/* This address is out of max. length of FW size, so do not copy to SRAM.
 				 * Also repot DFU bStatus Error-8 for DFU_GETSTATUS Request
 				 */
-				dfu_data.state = dfuERROR;
-				dfu_data.status = errADDRESS;
+
+				hci->dfu_data.state = dfuERROR;
+				hci->dfu_data.status = errADDRESS;
 			}
 
-			vhub_req_cleanup();
+			vhub_req_cleanup(hci);
 		}
 		break;
 	default:
-		return (usb_fsm_state << 4 | STS_IN_WRONG_STATE);
+		return (hci->usb_fsm_state << 4 | STS_IN_WRONG_STATE);
 	}
 
 	return 0;
 }
 
-static uint8_t vhub_ep0_out(void)
+static uint8_t vhub_ep0_out(struct bootusb_priv *hci)
 {
-	struct usb_vhub_config *usb = &usb_cfg[usb_vhub_port];
+	struct usb_vhub_config *usb = &usb_cfg[hci->usb_vhub_port];
 	uint32_t val;
 
-	switch (usb_fsm_state) {
+	switch (hci->usb_fsm_state) {
 	case DATA_OUT:
 		val = readl(usb->base + VHUB_EP0_CTRL);
-		usb_req_ctx.actual += VHUB_EP0_RX_LEN(val);
+		hci->usb_req_ctx.actual += VHUB_EP0_RX_LEN(val);
 
-		if (usb_req_ctx.length == usb_req_ctx.actual) {
-			dfu_data.state = dfuDNLOAD_IDLE;
-			vhub_ep0_tx(0, 0);
-			usb_fsm_state = STATUS_IN;
+		if (hci->usb_req_ctx.length == hci->usb_req_ctx.actual) {
+			hci->dfu_data.state = dfuDNLOAD_IDLE;
+			vhub_ep0_tx(hci, 0, 0);
+			hci->usb_fsm_state = STATUS_IN;
 
 		} else {
-			vhub_ep0_rx((uintptr_t)ep0_ctrl_buf + usb_req_ctx.actual);
+			vhub_ep0_rx(hci, (uintptr_t)hci->ep0_ctrl_buf + hci->usb_req_ctx.actual);
 		}
 		break;
 	case STATUS_OUT:
-		usb_fsm_state = IDLE;
+		hci->usb_fsm_state = IDLE;
 		/* Download complete */
-		if (dfu_data.state == dfuIDLE && usb_req_ctx.block_nr != -1)
-			is_dnload_done = true;
+		if (hci->dfu_data.state == dfuIDLE && hci->usb_req_ctx.block_nr != -1)
+			hci->is_dnload_done = true;
 
 		/* DFU Error reported and download complete */
-		if (dfu_data.state == dfuERROR)
-			is_dnload_done = true;
+		if (hci->dfu_data.state == dfuERROR)
+			hci->is_dnload_done = true;
 
 		break;
 	default:
-		return (usb_fsm_state << 4 | STS_OUT_WRONG_STATE);
+		return (hci->usb_fsm_state << 4 | STS_OUT_WRONG_STATE);
 	}
 
 	return 0;
 }
 
-static int vhub_std_request(struct usb_ctrlrequest *crq)
+static int vhub_std_request(struct bootusb_priv *hci, struct usb_ctrlrequest *crq)
 {
-	struct usb_vhub_config *usb = &usb_cfg[usb_vhub_port];
+	struct usb_vhub_config *usb = &usb_cfg[hci->usb_vhub_port];
 	uint16_t wValue = le16_to_cpu(crq->wValue);
 	int desc_idx, desc_type;
 	int len;
@@ -794,30 +784,30 @@ static int vhub_std_request(struct usb_ctrlrequest *crq)
 	switch (crq->bRequest) {
 	case USB_REQ_SET_ADDRESS:
 		writel(wValue, usb->base + VHUB_CONF);
-		vhub_ep0_tx(0, 0);
+		vhub_ep0_tx(hci, 0, 0);
 		return USBD_REQ_HANDLED;
 
 	case USB_REQ_GET_DESCRIPTOR:
-		is_dnload_done = false;
-		usb_req_ctx.block_nr = -1;
+		hci->is_dnload_done = false;
+		hci->usb_req_ctx.block_nr = -1;
 		switch (wValue >> 8) {
 		case USB_DT_DEVICE:
 			/* copy device descriptor */
-			if (safe_memcpy(ep0_ctrl_buf, USB_DMA_BUF_SIZE,
+			if (safe_memcpy(hci->ep0_ctrl_buf, USB_DMA_BUF_SIZE,
 					&dfu_mode_desc.device_desc,
 					sizeof(dfu_mode_desc.device_desc)))
 				return USBD_REQ_MEMCPY_FAIL;
-			usb_req_ctx.length = sizeof(dfu_mode_desc.device_desc);
+			hci->usb_req_ctx.length = sizeof(dfu_mode_desc.device_desc);
 			return USBD_REQ_HANDLED;
 
 		case USB_DT_CONFIG:
 			/* copy config descriptor */
-			if (safe_memcpy(ep0_ctrl_buf, USB_DMA_BUF_SIZE,
+			if (safe_memcpy(hci->ep0_ctrl_buf, USB_DMA_BUF_SIZE,
 					&dfu_mode_desc.cfg_desc,
 					sizeof(dfu_mode_desc.cfg_desc) +
 					sizeof(dfu_mode_desc.dfu_cfg)))
 				return USBD_REQ_MEMCPY_FAIL;
-			usb_req_ctx.length = sizeof(dfu_mode_desc.cfg_desc) +
+			hci->usb_req_ctx.length = sizeof(dfu_mode_desc.cfg_desc) +
 				sizeof(dfu_mode_desc.dfu_cfg);
 			return USBD_REQ_HANDLED;
 
@@ -827,67 +817,67 @@ static int vhub_std_request(struct usb_ctrlrequest *crq)
 			switch (desc_idx) {
 			case 0x0:
 				/* Send Language ID descriptor */
-				if (safe_memcpy(ep0_ctrl_buf, USB_DMA_BUF_SIZE,
+				if (safe_memcpy(hci->ep0_ctrl_buf, USB_DMA_BUF_SIZE,
 						&string_desc.lang_desc,
 						sizeof(string_desc.lang_desc)))
 					return USBD_REQ_MEMCPY_FAIL;
-				usb_req_ctx.length = sizeof(string_desc.lang_desc);
+				hci->usb_req_ctx.length = sizeof(string_desc.lang_desc);
 				break;
 			case 0x1:
 				for (int i = 0; i < len; i++)
 					string_desc.utf16le_mfr.bString[i] = usb_strings[desc_idx][i];
 				/* Send manufacturer descriptor */
-				if (safe_memcpy(ep0_ctrl_buf, USB_DMA_BUF_SIZE,
+				if (safe_memcpy(hci->ep0_ctrl_buf, USB_DMA_BUF_SIZE,
 						&string_desc.utf16le_mfr,
 						sizeof(string_desc.utf16le_mfr)))
 					return USBD_REQ_MEMCPY_FAIL;
-				usb_req_ctx.length = sizeof(string_desc.utf16le_mfr);
+				hci->usb_req_ctx.length = sizeof(string_desc.utf16le_mfr);
 				break;
 			case 0x2:
 				for (int i = 0; i < len; i++)
 					string_desc.utf16le_product.bString[i] = usb_strings[desc_idx][i];
 				/* Send product descriptor */
-				if (safe_memcpy(ep0_ctrl_buf, USB_DMA_BUF_SIZE,
+				if (safe_memcpy(hci->ep0_ctrl_buf, USB_DMA_BUF_SIZE,
 						&string_desc.utf16le_product,
 						sizeof(string_desc.utf16le_product)))
 					return USBD_REQ_MEMCPY_FAIL;
-				usb_req_ctx.length = sizeof(string_desc.utf16le_product);
+				hci->usb_req_ctx.length = sizeof(string_desc.utf16le_product);
 				break;
 			case 0x3:
 				usb_serial_number_desc(string_desc.utf16le_sn.bString,
 						       ARRAY_SIZE(string_desc.utf16le_sn.bString));
 				/* Send serial number descriptor */
-				if (safe_memcpy(ep0_ctrl_buf, USB_DMA_BUF_SIZE,
+				if (safe_memcpy(hci->ep0_ctrl_buf, USB_DMA_BUF_SIZE,
 						&string_desc.utf16le_sn,
 						sizeof(string_desc.utf16le_sn)))
 					return USBD_REQ_MEMCPY_FAIL;
-				usb_req_ctx.length = sizeof(string_desc.utf16le_sn);
+				hci->usb_req_ctx.length = sizeof(string_desc.utf16le_sn);
 				break;
 			case 0x4:
 				for (int i = 0; i < len; i++)
 					string_desc.utf16le_image0.bString[i] = usb_strings[desc_idx][i];
 				/* Send if0 string descriptor */
-				if (safe_memcpy(ep0_ctrl_buf, USB_DMA_BUF_SIZE,
+				if (safe_memcpy(hci->ep0_ctrl_buf, USB_DMA_BUF_SIZE,
 						&string_desc.utf16le_image0,
 						sizeof(string_desc.utf16le_image0)))
 					return USBD_REQ_MEMCPY_FAIL;
-				usb_req_ctx.length = sizeof(string_desc.utf16le_image0);
+				hci->usb_req_ctx.length = sizeof(string_desc.utf16le_image0);
 				break;
 			case OS_STRING_IDX:
 				/* Send Microsoft OS String Descriptor */
-				if (safe_memcpy(ep0_ctrl_buf, USB_DMA_BUF_SIZE,
+				if (safe_memcpy(hci->ep0_ctrl_buf, USB_DMA_BUF_SIZE,
 						&desc_string_ms_10,
 						sizeof(desc_string_ms_10)))
 					return USBD_REQ_MEMCPY_FAIL;
-				usb_req_ctx.length = sizeof(desc_string_ms_10);
+				hci->usb_req_ctx.length = sizeof(desc_string_ms_10);
 				break;
 			}
 			return USBD_REQ_HANDLED;
 		}
 		break;
 	case USB_REQ_GET_CONFIGURATION:
-		ep0_ctrl_buf[0] = 1;
-		usb_req_ctx.length = 1;
+		hci->ep0_ctrl_buf[0] = 1;
+		hci->usb_req_ctx.length = 1;
 		return USBD_REQ_HANDLED;
 	case USB_REQ_SET_CONFIGURATION:
 		return USBD_REQ_HANDLED;
@@ -897,9 +887,9 @@ static int vhub_std_request(struct usb_ctrlrequest *crq)
 
 			status[0] = 1 << USB_DEVICE_SELF_POWERED;
 			status[0] |= 0 << USB_DEVICE_REMOTE_WAKEUP;
-			if (safe_memcpy(ep0_ctrl_buf, USB_DMA_BUF_SIZE, status, sizeof(status)))
+			if (safe_memcpy(hci->ep0_ctrl_buf, USB_DMA_BUF_SIZE, status, sizeof(status)))
 				return USBD_REQ_MEMCPY_FAIL;
-			usb_req_ctx.length = sizeof(status);
+			hci->usb_req_ctx.length = sizeof(status);
 			return USBD_REQ_HANDLED;
 		}
 		break;
@@ -912,31 +902,31 @@ static int vhub_std_request(struct usb_ctrlrequest *crq)
 	return USBD_REQ_NOTSUPP;
 }
 
-static int vhub_class_request(struct usb_ctrlrequest *crq)
+static int vhub_class_request(struct bootusb_priv *hci, struct usb_ctrlrequest *crq)
 {
-	uint8_t *data = ep0_ctrl_buf;
+	uint8_t *data = hci->ep0_ctrl_buf;
 
 	switch (crq->bRequest) {
 	case DFU_DNLOAD:
-		usb_req_ctx.block_nr = crq->wValue;
+		hci->usb_req_ctx.block_nr = crq->wValue;
 
-		switch (dfu_data.state) {
+		switch (hci->dfu_data.state) {
 		case dfuIDLE:
-			dfu_data.state = dfuDNBUSY;
-			usb_req_ctx.length = crq->wLength;
+			hci->dfu_data.state = dfuDNBUSY;
+			hci->usb_req_ctx.length = crq->wLength;
 			break;
 		case dfuDNLOAD_IDLE:
 			if (crq->wLength == 0) {
 				/* download complete */
-				dfu_data.state = dfuMANIFEST_SYNC;
+				hci->dfu_data.state = dfuMANIFEST_SYNC;
 				break;
 			}
-			dfu_data.state = dfuDNBUSY;
-			usb_req_ctx.length = crq->wLength;
+			hci->dfu_data.state = dfuDNBUSY;
+			hci->usb_req_ctx.length = crq->wLength;
 			break;
 		default:
-			dfu_data.state = dfuERROR;
-			dfu_data.status = errUNKNOWN;
+			hci->dfu_data.state = dfuERROR;
+			hci->dfu_data.status = errUNKNOWN;
 			return -1;
 		}
 		return USBD_REQ_HANDLED;
@@ -947,20 +937,20 @@ static int vhub_class_request(struct usb_ctrlrequest *crq)
 	case DFU_DETACH:
 		return USBD_REQ_HANDLED;
 	case DFU_GETSTATUS:
-		if (dfu_data.state == dfuMANIFEST_SYNC)
-			dfu_data.state = dfuIDLE;
+		if (hci->dfu_data.state == dfuMANIFEST_SYNC)
+			hci->dfu_data.state = dfuIDLE;
 
 		/* bStatus */
-		data[0] = dfu_data.status;
+		data[0] = hci->dfu_data.status;
 		/* bwPollTimeout */
-		data[1] = dfu_data.bwPollTimeout;
+		data[1] = hci->dfu_data.bwPollTimeout;
 		data[3] = 0U;
 		data[2] = 0U;
 		/* bState */
-		data[4] = dfu_data.state;
+		data[4] = hci->dfu_data.state;
 		/* iString */
 		data[5] = 0U;
-		usb_req_ctx.length = 6;
+		hci->usb_req_ctx.length = 6;
 
 		return USBD_REQ_HANDLED;
 	case DFU_GETSTATE:
@@ -970,64 +960,64 @@ static int vhub_class_request(struct usb_ctrlrequest *crq)
 	return USBD_REQ_NOTSUPP;
 }
 
-static int vhub_vendor_request(struct usb_ctrlrequest *crq)
+static int vhub_vendor_request(struct bootusb_priv *hci, struct usb_ctrlrequest *crq)
 {
 	switch (crq->bRequest) {
 	case VENDOR_REQ_MS_OS_DESC:
 		if (crq->wIndex == WINDEX_OS_FEATURE_EXT_COMPAT_ID) {
-			if (safe_memcpy(ep0_ctrl_buf, USB_DMA_BUF_SIZE,
+			if (safe_memcpy(hci->ep0_ctrl_buf, USB_DMA_BUF_SIZE,
 					&desc_compat_id_ms,
 					sizeof(desc_compat_id_ms)))
 				return USBD_REQ_MEMCPY_FAIL;
-			usb_req_ctx.length = sizeof(desc_compat_id_ms);
+			hci->usb_req_ctx.length = sizeof(desc_compat_id_ms);
 			return USBD_REQ_HANDLED;
 		} else if (crq->wIndex == WINDEX_OS_FEATURE_EXT_PROPERTIES) {
-			if (safe_memcpy(ep0_ctrl_buf, USB_DMA_BUF_SIZE,
+			if (safe_memcpy(hci->ep0_ctrl_buf, USB_DMA_BUF_SIZE,
 					&desc_ext_properties_ms,
 					sizeof(desc_ext_properties_ms)))
 				return USBD_REQ_MEMCPY_FAIL;
-			usb_req_ctx.length = sizeof(desc_ext_properties_ms);
+			hci->usb_req_ctx.length = sizeof(desc_ext_properties_ms);
 			return USBD_REQ_HANDLED;
 		}
 	}
 	return USBD_REQ_NOTSUPP;
 }
 
-static uint8_t vhub_ep0_setup(void)
+static uint8_t vhub_ep0_setup(struct bootusb_priv *hci)
 {
-	struct usb_vhub_config *usb = &usb_cfg[usb_vhub_port];
-	struct usb_ctrlrequest crq = usb_req_ctx.crq;
+	struct usb_vhub_config *usb = &usb_cfg[hci->usb_vhub_port];
+	struct usb_ctrlrequest *crq = &hci->usb_req_ctx.crq;
 	uint32_t data_size_max, mps;
 	uint32_t len, act, chunk;
 	bool diection_in;
 	u64 tx_buff_addr;
 	int ret;
 
-	vhub_req_cleanup();
+	vhub_req_cleanup(hci);
 
 	/*
 	 * The usb state shouldn't be DATA stage when setup token comes.
 	 * If really happens, set dfu state to error for DFU_GETSTATUS.
 	 * Return error because DL FW may be corrupted. Cannot continue.
 	 */
-	if (usb_fsm_state == DATA_IN || usb_fsm_state == LAST_DATA_IN ||
-	    usb_fsm_state == DATA_OUT || usb_fsm_state == LAST_DATA_OUT) {
-		dfu_data.state = dfuERROR;
-		dfu_data.status = errUNKNOWN;
-		return  (usb_fsm_state << 4 | STS_SETUP_WRONG_STATE);
+	if (hci->usb_fsm_state == DATA_IN || hci->usb_fsm_state == LAST_DATA_IN ||
+	    hci->usb_fsm_state == DATA_OUT || hci->usb_fsm_state == LAST_DATA_OUT) {
+		hci->dfu_data.state = dfuERROR;
+		hci->dfu_data.status = errUNKNOWN;
+		return  (hci->usb_fsm_state << 4 | STS_SETUP_WRONG_STATE);
 	}
 
-	if (safe_memcpy(&crq, sizeof(struct usb_ctrlrequest),
+	if (safe_memcpy(crq, sizeof(struct usb_ctrlrequest),
 			(void *)(usb->base + VHUB_SETUP0),
 			sizeof(struct usb_ctrlrequest)))
 		return STS_MEMCPY_FAIL;
 
-	if ((crq.bRequestType & USB_TYPE_MASK) == USB_TYPE_STANDARD)
-		ret = vhub_std_request(&crq);
-	else if ((crq.bRequestType & USB_TYPE_MASK) == USB_TYPE_CLASS)
-		ret = vhub_class_request(&crq);
-	else if ((crq.bRequestType & USB_TYPE_MASK) == USB_TYPE_VENDOR)
-		ret = vhub_vendor_request(&crq);
+	if ((crq->bRequestType & USB_TYPE_MASK) == USB_TYPE_STANDARD)
+		ret = vhub_std_request(hci, crq);
+	else if ((crq->bRequestType & USB_TYPE_MASK) == USB_TYPE_CLASS)
+		ret = vhub_class_request(hci, crq);
+	else if ((crq->bRequestType & USB_TYPE_MASK) == USB_TYPE_VENDOR)
+		ret = vhub_vendor_request(hci, crq);
 	else
 		ret = USBD_REQ_NOTSUPP;
 
@@ -1036,68 +1026,63 @@ static uint8_t vhub_ep0_setup(void)
 	else if (ret)
 		return STS_CRQ_NOT_SUPPORT;
 
-	data_size_max = le16_to_cpu(crq.wLength);
+	data_size_max = le16_to_cpu(crq->wLength);
 
 	if (data_size_max) {
 		/* data stage */
-		diection_in = !!(crq.bRequestType & USB_DIR_IN);
+		diection_in = !!(crq->bRequestType & USB_DIR_IN);
 		mps = dfu_mode_desc.device_desc.bMaxPacketSize0;
-		len = usb_req_ctx.length;
-		act = usb_req_ctx.actual;
+		len = hci->usb_req_ctx.length;
+		act = hci->usb_req_ctx.actual;
 		chunk = len - act;
 
 		if (data_size_max < chunk) {
 			chunk = data_size_max;
 			if (diection_in) {
 				/* Data more than host expected, only return wLength (setup) size of data */
-				usb_req_ctx.length = data_size_max;
+				hci->usb_req_ctx.length = data_size_max;
 			}
 		}
 		if (!diection_in) {
 			/* OUT transmission */
-			vhub_ep0_rx((uintptr_t)ep0_ctrl_buf);
-			usb_fsm_state = DATA_OUT;
+			vhub_ep0_rx(hci, (uintptr_t)hci->ep0_ctrl_buf);
+			hci->usb_fsm_state = DATA_OUT;
 		} else {
 			if (mps < chunk) {
 				/* Normal IN transmission */
 				chunk = mps;
-				tx_buff_addr = (uintptr_t)ep0_ctrl_buf + act;
-				vhub_ep0_tx(tx_buff_addr, chunk);
-				usb_req_ctx.actual += chunk;
-				usb_fsm_state = DATA_IN;
+				tx_buff_addr = (uintptr_t)hci->ep0_ctrl_buf + act;
+				vhub_ep0_tx(hci, tx_buff_addr, chunk);
+				hci->usb_req_ctx.actual += chunk;
+				hci->usb_fsm_state = DATA_IN;
 			} else {
 				/* End of IN transmission */
-				tx_buff_addr = (uintptr_t)ep0_ctrl_buf + act;
-				vhub_ep0_tx(tx_buff_addr, chunk);
-				usb_req_ctx.actual += chunk;
+				tx_buff_addr = (uintptr_t)hci->ep0_ctrl_buf + act;
+				vhub_ep0_tx(hci, tx_buff_addr, chunk);
+				hci->usb_req_ctx.actual += chunk;
 
 				/* Go to status stage if payload size is less than MPS or has transferred exactly
 				 * the amount of data specified during the Setup stage (data_size_max).
 				 * Otherwise, go to DATA stage again for more data or a ZLP (short transfer).
 				 */
-				if (chunk < mps || usb_req_ctx.actual == data_size_max)
-					usb_fsm_state = LAST_DATA_IN;
+				if (chunk < mps || hci->usb_req_ctx.actual == data_size_max)
+					hci->usb_fsm_state = LAST_DATA_IN;
 				else
-					usb_fsm_state = DATA_IN;
+					hci->usb_fsm_state = DATA_IN;
 			}
 		}
 	} else {
 		/* status stage: send 0 packet */
-		vhub_ep0_tx(0, 0);
-		usb_fsm_state = STATUS_IN;
+		vhub_ep0_tx(hci, 0, 0);
+		hci->usb_fsm_state = STATUS_IN;
 	}
 
 	return STS_OKAY;
 }
 
-bool usb_is_dnload_done(void)
+uint8_t usb_poll(struct bootusb_priv *hci)
 {
-	return is_dnload_done;
-}
-
-uint8_t usb_poll(void)
-{
-	struct usb_vhub_config *usb = &usb_cfg[usb_vhub_port];
+	struct usb_vhub_config *usb = &usb_cfg[hci->usb_vhub_port];
 	uint32_t istat;
 	uint8_t ret;
 
@@ -1112,19 +1097,19 @@ uint8_t usb_poll(void)
 	writel(istat, usb->base + VHUB_ISR);
 #endif
 	if (istat & VHUB_IRQ_HUB_EP0_IN_ACK_STALL) {
-		ret = vhub_ep0_in();
+		ret = vhub_ep0_in(hci);
 		if (ret)
 			return ret;
 	}
 
 	if (istat & VHUB_IRQ_HUB_EP0_OUT_ACK_STALL) {
-		ret = vhub_ep0_out();
+		ret = vhub_ep0_out(hci);
 		if (ret)
 			return ret;
 	}
 
 	if (istat & VHUB_IRQ_HUB_EP0_SETUP) {
-		ret = vhub_ep0_setup();
+		ret = vhub_ep0_setup(hci);
 		if (ret)
 			return ret;
 	}
@@ -1132,16 +1117,16 @@ uint8_t usb_poll(void)
 	return 0;
 }
 
-void usb_pinctrl(void)
+void usb_pinctrl(struct bootusb_priv *hci)
 {
-	struct usb_vhub_config *usb = &usb_cfg[usb_vhub_port];
+	struct usb_vhub_config *usb = &usb_cfg[hci->usb_vhub_port];
 	uint32_t val;
 
 	val = readl(usb->scu_multi_func);
 
 	val = val & ~(usb->func_mask);
 
-	if (usb_vhub_port == PORT_C && usb_uart_enabled == true) {
+	if (hci->usb_vhub_port == PORT_C && hci->usb_uart_enabled == true) {
 		/* Switch PortC from Mode-1 (vHUB only) to Mode-0 (UART + vHUB) */
 		usb->func_bits &= ~GENMASK(1, 0);
 	}
@@ -1168,29 +1153,39 @@ void usb_clk_enable_reset(enum usb_port port)
 
 static int usb_init(struct udevice *dev)
 {
+	struct bootusb_priv *hci = dev_get_priv(dev);
 	struct usb_vhub_config *usb;
 	uint32_t val, reg;
 
+	hci->ep0_ctrl_buf = (uint8_t *)USB_DMA_BUF_ADDR + CPU_SRAM_SIZE - USB_DFU_MAX_XFER_SIZE;
+	hci->usb_fsm_state = IDLE;
+	hci->dfu_max_len = U32_MAX;
+	hci->dfu_data.state = dfuIDLE;
+	hci->dfu_data.status = statusOK;
+	hci->dfu_data.bwPollTimeout = USB_DFU_DEFAULT_POLLTIMEOUT;
+	hci->usb_uart_enabled = false;
+	hci->is_dnload_done = false;
+
 	reg = readl(SCU1_HWSTRAP1);
-	usb_vhub_port = FIELD_GET(SCU1_HWSTRAP1_RECOVERY_USB_PORT, reg);
+	hci->usb_vhub_port = FIELD_GET(SCU1_HWSTRAP1_RECOVERY_USB_PORT, reg);
 
 	/* Select the usb configuration */
-	usb = &usb_cfg[usb_vhub_port];
+	usb = &usb_cfg[hci->usb_vhub_port];
 
 	/* Configure PinCtrl for USB vhub function */
-	usb_pinctrl();
+	usb_pinctrl(hci);
 
 	/* vHUB controller clock enable and reset */
-	usb_clk_enable_reset(usb_vhub_port);
+	usb_clk_enable_reset(hci->usb_vhub_port);
 
 	udelay(1);
 
 	/* Enable SRAM access */
 	val = readl(usb->base + 0x800);
-	if (usb_vhub_port == PORT_A || usb_vhub_port == PORT_B)
+	if (hci->usb_vhub_port == PORT_A || hci->usb_vhub_port == PORT_B)
 		/* vHUBA & vHUBB. CPU Die: BIT4 for SRAM access */
 		writel(val | BIT(4), usb->base + 0x800);
-	else if (usb_vhub_port == PORT_C || usb_vhub_port == PORT_D)
+	else if (hci->usb_vhub_port == PORT_C || hci->usb_vhub_port == PORT_D)
 		/* vHUBC & vHUBD. I/O Die: BIT10 for SRAM access, BIT5 for AHBM Addr 34 */
 		writel(val | BIT(10) | BIT(5), usb->base + 0x800);
 
@@ -1213,30 +1208,32 @@ static int usb_init(struct udevice *dev)
 
 static int usb_load(struct udevice *dev, u32 *dst, u32 *len)
 {
+	struct bootusb_priv *hci = dev_get_priv(dev);
 	int ret;
+
 	/* Reset 'is_dnload_done flag' and all state/status for the next DL */
-	is_dnload_done = false;
-	usb_fsm_state = IDLE;
-	dfu_data.state = dfuIDLE;
-	dfu_data.status = statusOK;
+	hci->is_dnload_done = false;
+	hci->usb_fsm_state = IDLE;
+	hci->dfu_data.state = dfuIDLE;
+	hci->dfu_data.status = statusOK;
 
 	/* Read usb_vhub_port again. SPL will clear it */
-	usb_vhub_port = FIELD_GET(SCU1_HWSTRAP1_RECOVERY_USB_PORT, readl(SCU1_HWSTRAP1));
+	hci->usb_vhub_port = FIELD_GET(SCU1_HWSTRAP1_RECOVERY_USB_PORT, readl(SCU1_HWSTRAP1));
 
 	/* Save this time DFU destination and max. length */
-	dfu_dst_addr = dst;
+	hci->dfu_dst_addr = dst;
 
-	//printf(" usb_load /start [dst_addr = %x max_len = %x]\n", (u32) dfu_dst_addr, dfu_max_len);
+	//printf(" usb_load /start [port = %d dst_addr = %x max_len = %x]\n", hci->usb_vhub_port, (u32) hci->dfu_dst_addr, hci->dfu_max_len);
 	while (1) {
-		ret = usb_poll();
+		ret = usb_poll(hci);
 
 		if (ret)
 			break;
 
-		if (usb_is_dnload_done())
+		if (hci->is_dnload_done)
 			break;
 	}
-	*len = dfu_recv_len;
+	*len = hci->dfu_recv_len;
 	//printf("usb_load /end [len = %d, ret =%d]\n", *len, ret);
 	return ret;
 }
