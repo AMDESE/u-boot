@@ -907,10 +907,11 @@ static int ast2700_clk1_init(struct udevice *dev)
 	u32 reg[3];
 
 	if (scu->chip_id1 & SCU_HW_REVISION_ID) {
-		if ((readl(&scu->mac_delay) & GENMASK(25, 0)) == 0)
-			reg[0] = MAC01_DEF_DELAY_1G_A1;
-		else
-			reg[0] = readl(&scu->mac_delay) & GENMASK(25, 0);
+		if ((readl(&scu->mac_delay) & GENMASK(25, 0)) == 0) {
+			/* Run RGMII calibration */
+			aspeed_rgmii_init();
+		}
+		reg[0] = readl(&scu->mac_delay) & GENMASK(25, 0);
 	}
 	reg[1] = MAC01_DEF_DELAY_100M;
 	reg[2] = MAC01_DEF_DELAY_10M;

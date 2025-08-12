@@ -512,5 +512,7 @@ struct ast2700_scu1 {
 	uint32_t io_driving8;	/* 0x4e0 */
 };
 
+static inline void aspeed_rgmii_init(void) {}
+
 #endif
 #endif
