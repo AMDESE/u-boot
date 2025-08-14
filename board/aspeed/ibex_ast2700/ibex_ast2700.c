@@ -171,6 +171,11 @@ static int pci_init(void)
 		writel(0x12600000, (void *)ASPEED_PLDA2_PRESET0);
 		writel(0x00012600, (void *)ASPEED_PLDA2_PRESET1);
 
+		// Enable Bridge2 MSI
+		clrbits_le32((void *)ASPEED_PLDA2_MSI_CAP, BIT(3));
+		// Set Bridge2 INTA
+		clrsetbits_le32((void *)ASPEED_PLDA2_MSI_CAP, GENMASK(2, 0), 0x1);
+
 		// clk/reset for e2m
 		setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_E2M1);
 		mdelay(10);
@@ -180,6 +185,16 @@ static int pci_init(void)
 	// setup preset for plda1
 	writel(0x12600000, (void *)ASPEED_PLDA1_PRESET0);
 	writel(0x00012600, (void *)ASPEED_PLDA1_PRESET1);
+
+	// Enable Bridge1 MSI
+	clrbits_le32((void *)ASPEED_PLDA1_MSI_CAP, BIT(3));
+	// Set Bridge1 INTA
+	clrsetbits_le32((void *)ASPEED_PLDA1_MSI_CAP, GENMASK(2, 0), 0x1);
+
+	// Enable Bridge3 MSI
+	clrbits_le32((void *)ASPEED_PLDA3_MSI_CAP, BIT(3));
+	// Set Bridge3 INTA
+	clrsetbits_le32((void *)ASPEED_PLDA3_MSI_CAP, GENMASK(2, 0), 0x1);
 
 	// clk/reset for e2m
 	setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_E2M0);
