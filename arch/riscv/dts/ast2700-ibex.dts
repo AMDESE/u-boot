@@ -281,26 +281,6 @@
 	status = "okay";
 };
 
-&mhmac {
-	status = "okay";
-	mhmac-region-0 {
-		master = "";
-		region = <>;
-	};
-	mhmac-region-1 {
-		master = "";
-		region = <>;
-	};
-	mhmac-region-2 {
-		master = "";
-		region = <>;
-	};
-	mhmac-region-3 {
-		master = "";
-		region = <>;
-	};
-};
-
 &ltpi0 {
 	status = "okay";
 };

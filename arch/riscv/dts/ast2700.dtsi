@@ -210,16 +210,6 @@
 			aspeed,scu = <&syscon0>;
 			status = "disabled";
 		};
-
-		mhmac: mhmac@12c1f000 {
-			compatible = "aspeed,ast2700-mhmac";
-			reg = <0x12c1f000 0x3c0>;
-			clocks = <&soc0_clk SCU0_CLK_GATE_HACCLK>;
-			resets = <&soc0_rst SCU0_RESET_HACE>;
-			aspeed,scu1 = <&syscon1>;
-			region-sel = <3>;
-			status = "disabled";
-		};
 	};
 
 	soc1: soc@14000000 {
