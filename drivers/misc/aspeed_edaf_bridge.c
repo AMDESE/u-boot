@@ -13,6 +13,10 @@
 #include <linux/ioport.h>
 #include <reset.h>
 
+#define UNKNOWN 0
+#define EDAF_BDGE_OVER_ESPI0 1
+#define EDAF_BDGE_OVER_ESPI1 2
+
 #define SCU1_HOST_CONF_1		0xa00
 #define SCU1_HOST_CONF_2		0xa20
 #define   SCU1_HOST_CONF_EDAF_EN	BIT(10)
@@ -59,6 +63,7 @@ static int aspeed_edaf_bridge_probe(struct udevice *dev)
 	ofnode node, scu1_node, mem_node;
 	uint64_t cbase, mbase, espibase;
 	uint32_t scu, edaf, espi, phandle;
+	uint32_t plat = (unsigned long)dev_get_driver_data(dev);
 	struct resource res;
 	int rc;
 
@@ -92,21 +97,26 @@ static int aspeed_edaf_bridge_probe(struct udevice *dev)
 		return -ENODEV;
 	}
 
-	scu = readl(scu_regs + SCU1_HOST_CONF_1);
-	if (scu & SCU1_HOST_CONF_LPC_EN) {
-		printf("Host Configuration1: eSPI0 eDAF is not valid\n");
+	if (plat == EDAF_BDGE_OVER_ESPI0) {
+		scu = readl(scu_regs + SCU1_HOST_CONF_1);
+		if (scu & SCU1_HOST_CONF_LPC_EN) {
+			printf("Host Configuration1: eSPI0 eDAF is not valid\n");
+			return -EINVAL;
+		}
+		scu |= SCU1_HOST_CONF_EDAF_EN;
+		writel(scu, scu_regs + SCU1_HOST_CONF_1);
+	} else if (plat == EDAF_BDGE_OVER_ESPI1) {
+		scu = readl(scu_regs + SCU1_HOST_CONF_2);
+		if (scu & SCU1_HOST_CONF_LPC_EN) {
+			printf("Host Configuration2: eSPI1 eDAF is not valid\n");
+			return -EINVAL;
+		}
+		scu |= SCU1_HOST_CONF_EDAF_EN;
+		writel(scu, scu_regs + SCU1_HOST_CONF_2);
+	} else {
+		printf("Unknown platform for eDAF bridge\n");
 		return -EINVAL;
 	}
-	scu |= SCU1_HOST_CONF_EDAF_EN;
-	writel(scu, scu_regs + SCU1_HOST_CONF_1);
-
-	scu = readl(scu_regs + SCU1_HOST_CONF_2);
-	if (scu & SCU1_HOST_CONF_LPC_EN) {
-		printf("Host Configuration2: eSPI1 eDAF is not valid\n");
-		return -EINVAL;
-	}
-	scu |= SCU1_HOST_CONF_EDAF_EN;
-	writel(scu, scu_regs + SCU1_HOST_CONF_2);
 
 	edaf = readl(edaf_bridge_regs + EDAF_BDGE_CFG);
 	if (ofnode_read_bool(node, "edaf-ddr-mode")) {
@@ -201,7 +211,8 @@ static int aspeed_edaf_bridge_probe(struct udevice *dev)
 }
 
 static const struct udevice_id aspeed_edaf_bridge_ids[] = {
-	{ .compatible = "aspeed,ast2700-edaf-bridge" },
+	{ .compatible = "aspeed,ast2700-edaf-bridge0", .data = (unsigned long)EDAF_BDGE_OVER_ESPI0 },
+	{ .compatible = "aspeed,ast2700-edaf-bridge1", .data = (unsigned long)EDAF_BDGE_OVER_ESPI1 },
 	{ }
 };
 
