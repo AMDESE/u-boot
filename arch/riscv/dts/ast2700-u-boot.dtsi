@@ -118,6 +118,10 @@
 			};
 		};
 
+		edaf_bridge_cfg: edaf-bridge-cfg@140ec100 {
+			bootph-all;
+		};
+
 		sli1: sli@14c1e000 {
 			bootph-all;
 		};

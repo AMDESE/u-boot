@@ -243,6 +243,11 @@
 			};
 		};
 
+		edaf_bridge_cfg: edaf-bridge-cfg@140ec100 {
+			compatible = "aspeed,ast2700-edaf-bridge-cfg";
+			reg = <0x140ec100 0x100>;
+		};
+
 		sli1: sli@14c1e000 {
 			compatible = "aspeed,ast2700-sli1";
 			reg = <0x14c1e000 0x500>;
@@ -278,6 +283,7 @@
 			compatible = "aspeed,ast2700-edaf-bridge0";
 			reg = <0x14c38000 0x200>;
 			aspeed,scu1 = <&syscon1>;
+			aspeed,edaf_bridge_cfg = <&edaf_bridge_cfg>;
 			status = "disabled";
 		};
 
@@ -285,6 +291,7 @@
 			compatible = "aspeed,ast2700-edaf-bridge1";
 			reg = <0x14c38200 0x200>;
 			aspeed,scu1 = <&syscon1>;
+			aspeed,edaf_bridge_cfg = <&edaf_bridge_cfg>;
 			status = "disabled";
 		};
 
