@@ -49,6 +49,7 @@
 #define ENV_ETH_ADDR            "ethaddr"
 #define ENV_ETH1_ADDR          "eth1addr"
 #define ENV_ETH2_ADDR          "eth2addr"
+#define ENV_SOC_ID               "soc_id"
 
 /* Sys Scratch reg that holds sys_rst info, refer cpu-info.c */
 #define ASPEED_SYS_SCRATCH_7FC 0x12C027FC
@@ -62,6 +63,9 @@
 #define ADVRT_TIMEOUT_US_1_0   "1000"
 // 3x advt timeout for FPGA to move to LDFA state
 #define OP_TIMEOUT_US          "300000"
+
+/* SoC mapping Table */
+#define SOC_ID(str, rev) { .name = str, .rev_id = rev, }
 
 /* SP7 Circuit Type */
 typedef enum {
@@ -121,6 +125,42 @@ const BoardInfo boards[] = {
 	{"zaire", 0x9E, AMD_TYPE_SLT_1P},
 	{"marrakesh", 0xB0, AMD_TYPE_SLT_1P}
 };
+
+// mach aspeed cpu info
+struct soc_id {
+	const char *name;
+	u64 rev_id;
+};
+
+static struct soc_id soc_map_table[] = {
+	SOC_ID("AST2750-A0", 0x0600000306000003),
+	SOC_ID("AST2700-A0", 0x0600010306000103),
+	SOC_ID("AST2720-A0", 0x0600020306000203),
+	SOC_ID("AST2750-A1", 0x0601000306010003),
+	SOC_ID("AST2700-A1", 0x0601010306010103),
+	SOC_ID("AST2720-A1", 0x0601020306010203),
+};
+
+void env_soc_id(void)
+{
+	int i;
+	u64 rev_id;
+
+	rev_id = readl(ASPEED_CPU_REVISION_ID);
+	rev_id = ((u64)readl(ASPEED_IO_REVISION_ID) << 32) | rev_id;
+
+	for (i = 0; i < ARRAY_SIZE(soc_map_table); i++) {
+		if (rev_id == soc_map_table[i].rev_id)
+			break;
+	}
+	if (i == ARRAY_SIZE(soc_map_table))
+		printf("Unknown-SOC: %llx\n", rev_id);
+	else {
+		env_set(ENV_SOC_ID, soc_map_table[i].name);
+		printf("Saving SOC config: %s\n", soc_map_table[i].name);
+		env_save();
+	}
+}
 
 int set_mac_addresses(const u8 *eeprom_buf)
 {
@@ -487,6 +527,9 @@ int read_eeprom_buffers(u8 *scm_eeprom_buf, u8 *hpm_eeprom_buf)
 int misc_init_r(void)
 {
 	int ret;
+
+	/* Identify SoC of DC-SCM card */
+	env_soc_id();
 
 	/* Read the FRU EEPROM and store in buffer */
 	u8 scm_eeprom_buf [EEPROM_BUF_LEN] = {0};
