@@ -41,8 +41,8 @@
 #define   EDAF_BDGE_MISC_CBASE_H	GENMASK(7, 0)
 
 #define EDAF_BDGE_GLOBAL_CFG		0x0
-#define   EDAF_BDGE_GLOBAL_CFG0_EARSE	BIT(1)
-#define   EDAF_BDGE_GLOBAL_CFG1_EARSE	BIT(9)
+#define   EDAF_BDGE_GLOBAL_CFG0_ERASE	BIT(1)
+#define   EDAF_BDGE_GLOBAL_CFG1_ERASE	BIT(9)
 
 uint64_t ast27xx_soc_virt_addr_to_phy_addr(uintptr_t addr)
 {
@@ -158,7 +158,7 @@ static int aspeed_edaf_bridge_probe(struct udevice *dev)
 			return -ENOMEM;
 		}
 
-		if (ofnode_read_bool(node, "edaf-earse-with-1")) {
+		if (ofnode_read_bool(node, "edaf-erase-with-1")) {
 			rc = ofnode_read_u32(node, "aspeed,edaf_bridge_cfg", &phandle);
 			if (rc) {
 				printf("cannot get edaf_bridge_cfg phandle\n");
@@ -179,9 +179,9 @@ static int aspeed_edaf_bridge_probe(struct udevice *dev)
 
 			edaf_gcfg = readl(edaf_bridge_cfg_regs + EDAF_BDGE_GLOBAL_CFG);
 			if (plat == EDAF_BDGE_OVER_ESPI0) {
-				edaf_gcfg |= EDAF_BDGE_GLOBAL_CFG0_EARSE;
+				edaf_gcfg |= EDAF_BDGE_GLOBAL_CFG0_ERASE;
 			} else if (plat == EDAF_BDGE_OVER_ESPI1) {
-				edaf_gcfg |= EDAF_BDGE_GLOBAL_CFG1_EARSE;
+				edaf_gcfg |= EDAF_BDGE_GLOBAL_CFG1_ERASE;
 			} else {
 				printf("Unknown platform for eDAF bridge\n");
 				return -ENODEV;

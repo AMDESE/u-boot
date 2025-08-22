@@ -241,7 +241,7 @@
 	espi-base = <0x0 0x14c05000>;
 #if 0 //DDR mode using edaf0 reserved memory
 	edaf-ddr-mode;
-	edaf-earse-with-1;
+	edaf-erase-with-1;
 	mem-base = <&edaf0>;
 #else //Flash mode using SPI0
 	mem-base = <0x1 0x80000000>; //SPI0
