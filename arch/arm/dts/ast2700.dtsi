@@ -965,6 +965,7 @@
 			reg-names = "tx", "rx";
 			#mbox-cells = <1>;
 			mbox-name = "bootmcu";
+			aspeed,tx-timeout = <1000>;
 		};
 	};
 };
