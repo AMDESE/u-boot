@@ -10,6 +10,7 @@
 #include <mailbox-uclass.h>
 #include <linux/bitfield.h>
 #include <linux/bug.h>
+#include <wait_bit.h>
 
 /* Each bit in the register represents an IPC ID */
 #define IPCR_TX_TRIG		0x00
@@ -28,6 +29,7 @@ struct ast2700_mbox_priv {
 	u8 msg_size;
 	void __iomem *tx_regs;
 	void __iomem *rx_regs;
+	u32 tx_tout;
 };
 
 static inline bool ast2700_mbox_tx_done(struct ast2700_mbox_priv *mb, int idx)
@@ -62,6 +64,10 @@ static int ast2700_mbox_send(struct mbox_chan *chan, const void *data)
 
 	writel(BIT(idx), mb->tx_regs + IPCR_TX_TRIG);
 	debug("%s: Ch-%d sent\n", __func__, idx);
+
+	/* Wait until observation bit is cleared */
+	wait_for_bit_le32((const void *)(mb->tx_regs + IPCR_TX_TRIG), BIT(idx), false,
+			  mb->tx_tout, false);
 
 	return 0;
 }
@@ -131,6 +137,8 @@ static int ast2700_mbox_probe(struct udevice *dev)
 	if (!data)
 		return -EINVAL;
 	priv->msg_size = data->msg_size;
+
+	priv->tx_tout = dev_read_u32_default(dev, "aspeed,tx-timeout", -1);
 
 	return 0;
 }
