@@ -2,3 +2,9 @@ config ASPEED_FMC_HEADER
 	bool "Enable ASPEED FMC header lib"
 	help
 	  Support ASPEED proprietary boot FMC header lib
+
+config ASPEED_CPTRA
+	bool "Use Caliptra Library"
+        help
+          This enables the Caliptra common library to communicate with BootMCU
+          via IPC in AST27xx SoC series.
