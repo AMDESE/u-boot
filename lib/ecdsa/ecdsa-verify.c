@@ -11,6 +11,7 @@
 #include <crypto/ecdsa-uclass.h>
 #include <dm/uclass.h>
 #include <u-boot/ecdsa.h>
+#include <u-boot/cptra_ipc.h>
 
 /*
  * Derive size of an ECDSA key from the curve name
@@ -71,8 +72,18 @@ static int ecdsa_verify_hash(struct udevice *dev,
 		if (ret < 0)
 			return ret;
 
-		return ops->verify(dev, &key, hash, algo->checksum_len,
-				   sig, sig_len);
+		ret = ops->verify(dev, &key, hash, algo->checksum_len, sig,
+				  sig_len);
+		if (ret)
+			return ret;
+
+		if (IS_ENABLED(CONFIG_ASPEED_AST2700))
+			/* Do stash measurement if signature verification pass */
+			return cptra_stash_measurement((char *)fdt_get_name(info->fdt_blob,
+									    info->required_keynode, NULL),
+						       (uint8_t *)hash, algo->checksum_len);
+		else
+			return 0;
 	}
 
 	sig_node = fdt_subnode_offset(info->fdt_blob, 0, FIT_SIG_NODENAME);
@@ -89,8 +100,22 @@ static int ecdsa_verify_hash(struct udevice *dev,
 				  sig, sig_len);
 
 		/* On success, don't worry about remaining keys */
-		if (!ret)
-			return 0;
+		if (!ret) {
+			if (IS_ENABLED(CONFIG_ASPEED_AST2700)) {
+				int olen;
+
+				/* Do stash measurement if signature verification pass */
+				ret = cptra_stash_measurement((char *)fdt_get_name(info->fdt_blob,
+										   key_node, &olen),
+							      (uint8_t *)hash, algo->checksum_len);
+				if (ret)
+					printf("Failed to stash measurement: %d\n", ret);
+
+				return ret;
+			} else {
+				return 0;
+			}
+		}
 	}
 
 	return -EPERM;
