@@ -983,6 +983,14 @@
 			mbox-name = "bootmcu";
 			aspeed,tx-timeout = <1000>;
 		};
+
+		cptra_ipc_ecdsa: cptra-ipc-ecdsa {
+			compatible = "aspeed,cptra-ipc-ecdsa";
+		};
+
+		cptra_ipc_sha: cptra-ipc-sha {
+			compatible = "aspeed,cptra-ipc-sha";
+		};
 	};
 };
 
