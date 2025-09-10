@@ -56,5 +56,19 @@ enum cptra_ipc_rx_type {
 
 int cptra_ipc_trigger(enum cptra_ipc_cmd cmd);
 int cptra_ipc_receive(enum cptra_ipc_rx_type type, void *output, int output_size);
+int cptra_stash_measurement(char *metadata, uint8_t *hash, int hash_len);
+
+struct cptra_stash_measurement_ia {
+	uint8_t metadata[4];
+	uint8_t measure[48];
+	uint8_t context[48];
+	uint32_t svn;
+};
+
+struct cptra_stash_measurement_oa {
+	uint32_t chksum;
+	uint32_t fips_status;
+	uint32_t dpe_result;
+};
 
 #endif /* _CPTRA_H */
