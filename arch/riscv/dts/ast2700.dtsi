@@ -29,6 +29,22 @@
 		reg = <0x80000000 0x80000000>;
 	};
 
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		atf: trusted-firmware-a@b0000000 {
+			reg = <0xb0000000 0x80000>;
+			no-map;
+		};
+
+		optee_core: optee-core@b0080000 {
+			reg = <0xb0080000 0x1000000>;
+			no-map;
+		};
+	};
+
 	ast_loader {
 		compatible = "aspeed,ast_loader";
 
