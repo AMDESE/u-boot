@@ -166,22 +166,22 @@ static int pci_init(void)
 		return 0;
 	}
 
-	if (efuse == 0) {
-		// setup preset for plda2
-		writel(0x12600000, (void *)ASPEED_PLDA2_PRESET0);
-		writel(0x00012600, (void *)ASPEED_PLDA2_PRESET1);
+	/* cpu-die pcie node 1 */
+	// setup preset for plda2
+	writel(0x12600000, (void *)ASPEED_PLDA2_PRESET0);
+	writel(0x00012600, (void *)ASPEED_PLDA2_PRESET1);
 
-		// Enable Bridge2 MSI
-		clrbits_le32((void *)ASPEED_PLDA2_MSI_CAP, BIT(3));
-		// Set Bridge2 INTA
-		clrsetbits_le32((void *)ASPEED_PLDA2_MSI_CAP, GENMASK(2, 0), 0x1);
+	// Enable Bridge2 MSI
+	clrbits_le32((void *)ASPEED_PLDA2_MSI_CAP, BIT(3));
+	// Set Bridge2 INTA
+	clrsetbits_le32((void *)ASPEED_PLDA2_MSI_CAP, GENMASK(2, 0), 0x1);
 
-		// clk/reset for e2m
-		setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_E2M1);
-		mdelay(10);
-		setbits_le32(&scu->modrst2_clr, SCU_CPU_RST2_E2M1);
-	}
+	// clk/reset for e2m
+	setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_E2M1);
+	mdelay(10);
+	setbits_le32(&scu->modrst2_clr, SCU_CPU_RST2_E2M1);
 
+	/* cpu-die pcie node 0 */
 	// setup preset for plda1
 	writel(0x12600000, (void *)ASPEED_PLDA1_PRESET0);
 	writel(0x00012600, (void *)ASPEED_PLDA1_PRESET1);
@@ -191,15 +191,16 @@ static int pci_init(void)
 	// Set Bridge1 INTA
 	clrsetbits_le32((void *)ASPEED_PLDA1_MSI_CAP, GENMASK(2, 0), 0x1);
 
-	// Enable Bridge3 MSI
-	clrbits_le32((void *)ASPEED_PLDA3_MSI_CAP, BIT(3));
-	// Set Bridge3 INTA
-	clrsetbits_le32((void *)ASPEED_PLDA3_MSI_CAP, GENMASK(2, 0), 0x1);
-
 	// clk/reset for e2m
 	setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_E2M0);
 	mdelay(10);
 	setbits_le32(&scu->modrst2_clr, SCU_CPU_RST2_E2M0);
+
+	/* io-die pcie node */
+	// Enable Bridge3 MSI
+	clrbits_le32((void *)ASPEED_PLDA3_MSI_CAP, BIT(3));
+	// Set Bridge3 INTA
+	clrsetbits_le32((void *)ASPEED_PLDA3_MSI_CAP, GENMASK(2, 0), 0x1);
 
 	return 0;
 }
