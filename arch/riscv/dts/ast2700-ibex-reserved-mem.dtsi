@@ -1,47 +1,80 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-/* AST2700 reserved memories with fixed address */
-bmc_dev0_memory: bmc-dev0-memory@a3800000 {
-	reg = <0xa3800000 0x100000>;
+/* AST2700 reserved memories with no-map property */
+
+#if PCIE0_EP
+bmc_dev0_memory: bmc-dev0-memory@9b800000 {
+	reg = <0x9b800000 0x100000>;
 	no-map;
 	bootph-all;
 };
 
-bmc_dev1_memory: bmc-dev1-memory@a3900000 {
-	reg = <0xa3900000 0x100000>;
+xdma_memory0: xdma0 {
+	size = <0x0 0x00100000>;
+	compatible = "shared-dma-pool";
+	no-map;
+};
+
+pcie0_mmbi0_memory: pcie0-mmbi0-memory@9ba00000 {
+	reg = <0x9ba00000 0x200000>;
+	no-map;
+	bootph-all;
+};
+#endif
+
+#if PCIE1_EP
+bmc_dev1_memory: bmc-dev1-memory@9b900000 {
+	reg = <0x9b900000 0x100000>;
 	no-map;
 	bootph-all;
 };
 
-pcie0_mmbi0_memory: pcie0-mmbi0-memory@a3a00000 {
-	reg = <0xa3a00000 0x200000>;
+xdma_memory1: xdma1 {
+	size = <0x0 0x00100000>;
+	compatible = "shared-dma-pool";
+	no-map;
+};
+
+pcie1_mmbi4_memory: pcie1-mmbi4-memory@9bc00000 {
+	reg = <0x9bc00000 0x200000>;
+	no-map;
+	bootph-all;
+};
+#endif
+
+pcie2_mmbi0_memory: pcie2-mmbi0-memory@9be00000 {
+	reg = <0x9be00000 0x200000>;
 	no-map;
 	bootph-all;
 };
 
-pcie1_mmbi4_memory: pcie1-mmbi4-memory@a3c00000 {
-	reg = <0xa3c00000 0x200000>;
+espi0_mmbi_memory: espi0-mmbi-memory@9c000000 {
+	reg = <0x9c000000 0x4000000>;
 	no-map;
 	bootph-all;
 };
 
-pcie2_mmbi0_memory: pcie2-mmbi0-memory@a3e00000 {
-	reg = <0xa3e00000 0x200000>;
+// This area used for eDAF DDR mode even in MIX mode or HW mode(enabled in SPL)
+edaf0: eadf0-memory@a0000000 {
+	reg = <0xa0000000 0x4000000>;
 	no-map;
 	bootph-all;
 };
 
-espi0_mmbi_memory: espi0-mmbi-memory@a4000000 {
+#if DUAL_NODE
+espi1_mmbi_memory: espi1-mmbi-memory@a4000000 {
 	reg = <0xa4000000 0x4000000>;
 	no-map;
 	bootph-all;
 };
 
+// This area used for eDAF DDR mode even in MIX mode or HW mode(enabled in SPL)
 edaf0: safs-ddr-mode@a8000000 {
 	reg = <0xa8000000 0x4000000>;
 	no-map;
 	bootph-all;
 };
+#endif
 
 ssp_memory: ssp-memory@ac000000 {
 	reg = <0xac000000 0x2000000>;
