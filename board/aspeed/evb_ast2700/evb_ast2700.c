@@ -141,6 +141,37 @@ static struct soc_id soc_map_table[] = {
 	SOC_ID("AST2720-A1", 0x0601020306010203),
 };
 
+
+void disable_fru_bus_muxes(void)
+{
+	struct udevice *bus;
+	struct udevice *dev;
+	int ret;
+	uint8_t zero = 0x00;
+	int addrs[] = { 0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77 };
+	int i;
+
+	// Get the I2C bus 
+	ret = uclass_get_device_by_seq(UCLASS_I2C, HPM_EEPROM_I2C_BUS, &bus);
+	if (ret) {
+		printf("INFO: Cannot find I2C bus %d, err=%d\n", HPM_EEPROM_I2C_BUS, ret);
+		return;
+	}
+
+	// Write 0x00 to register 0x00 of each target address
+	for (i = 0; i < ARRAY_SIZE(addrs); i++) {
+		ret = i2c_get_chip(bus, addrs[i], 1, &dev);
+		if (ret) {
+			printf("INFO: Failed to get device at 0x%02x\n", addrs[i]);
+			continue;
+		}
+		ret = dm_i2c_write(dev, 0x00, &zero, 1);
+		if (ret) {
+			printf("INFO: Write to 0x%02x failed (err=%d)\n", addrs[i], ret);
+		}
+	}
+}
+
 void env_soc_id(void)
 {
 	int i;
@@ -497,6 +528,9 @@ int read_eeprom_buffers(u8 *scm_eeprom_buf, u8 *hpm_eeprom_buf)
 		printf("\nSCM EEPROM read failed!\n");
 		return -1;
 	}
+
+	/* Disable muxes on FRU bus to access direct slaves only */
+	disable_fru_bus_muxes();
 
 	ret = uclass_get_device_by_seq(UCLASS_I2C, HPM_EEPROM_I2C_BUS, &ibus);
 	if (ret) {
