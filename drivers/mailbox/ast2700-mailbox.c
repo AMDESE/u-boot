@@ -43,7 +43,7 @@ static int ast2700_mbox_send(struct mbox_chan *chan, const void *data)
 	int idx = chan->id;
 	void *data_reg;
 	uint32_t *word_data;
-	int num_words;
+	int num_words, ret;
 
 	if (!(readl(mb->tx_regs + IPCR_ENABLE) & BIT(idx))) {
 		dev_warn(chan->dev, "%s: Ch-%d not enabled yet\n", __func__, idx);
@@ -66,10 +66,13 @@ static int ast2700_mbox_send(struct mbox_chan *chan, const void *data)
 	debug("%s: Ch-%d sent\n", __func__, idx);
 
 	/* Wait until observation bit is cleared */
-	wait_for_bit_le32((const void *)(mb->tx_regs + IPCR_TX_TRIG), BIT(idx), false,
-			  mb->tx_tout, false);
+	ret = wait_for_bit_le32((const void *)(mb->tx_regs + IPCR_STATUS), BIT(idx), false,
+				mb->tx_tout, false);
 
-	return 0;
+	if (ret < 0)
+		return ret;
+	else
+		return 0;
 }
 
 static int ast2700_mbox_recv(struct mbox_chan *chan, void *data)
@@ -136,6 +139,7 @@ static int ast2700_mbox_probe(struct udevice *dev)
 	data = (struct ast2700_mbox_data *)dev_get_driver_data(dev);
 	if (!data)
 		return -EINVAL;
+
 	priv->msg_size = data->msg_size;
 
 	priv->tx_tout = dev_read_u32_default(dev, "aspeed,tx-timeout", -1);
