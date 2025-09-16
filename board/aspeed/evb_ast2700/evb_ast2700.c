@@ -123,7 +123,19 @@ const BoardInfo boards[] = {
 	{"morocco", 0x9C, HCC_TYPE_2},
 	{"morocco", 0x9D, HCC_TYPE_2},
 	{"zaire", 0x9E, AMD_TYPE_SLT_1P},
-	{"marrakesh", 0xB0, AMD_TYPE_SLT_1P}
+	{"marrakesh", 0xB0, AMD_TYPE_SLT_1P},
+        {"eagle", 0x9F, HCC_TYPE_1},
+        {"eagle", 0xA0, HCC_TYPE_1},
+        {"eagle", 0xA1, HCC_TYPE_1},
+        {"hornbill", 0xA5, HCC_TYPE_2},
+        {"hornbill", 0xA6, HCC_TYPE_2},
+        {"hornbill", 0xA7, HCC_TYPE_2},
+        {"hornbill", 0xA8, HCC_TYPE_2},
+        {"hornbill", 0xA9, HCC_TYPE_2},
+        {"hornbill", 0xAA, HCC_TYPE_2},
+        {"hornbill", 0xAB, HCC_TYPE_2},
+        {"hornbill", 0xAC, HCC_TYPE_2},
+        {"hornbill", 0xAD, HCC_TYPE_2}
 };
 
 // mach aspeed cpu info
