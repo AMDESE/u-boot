@@ -47,6 +47,10 @@ static int aspeed_mbox_read(struct udevice *dev, int offset,
 		return -EINVAL;
 	}
 
+	/* invalidate dcache before memory copy */
+	invalidate_dcache_range((ulong)mb->rx_base.buf,
+				(ulong)mb->rx_base.buf + mb->rx_base.size);
+
 	memcpy(buf, mb->rx_base.buf + offset, size);
 	return size;
 }
