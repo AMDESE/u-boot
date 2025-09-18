@@ -48,6 +48,11 @@ int arch_misc_init(void)
 			env_set("boot_device", "spi");
 			spi_bootarg_config();
 		}
+
+		if ((readl(ASPEED_IO_HW_STRAP1) & SCU_IO_HWSTRAP_SECBOOT))
+			env_set("verify", "yes");
+		else
+			env_set("verify", "no");
 	}
 
 	return 0;
