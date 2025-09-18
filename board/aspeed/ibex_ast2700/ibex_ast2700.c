@@ -19,6 +19,7 @@
 #include <asm/arch/sdram_ast2700.h>
 #include <asm/arch/spi.h>
 #include <asm/arch/sys_policy.h>
+#include <asm/arch/usb_ast2700.h>
 #include <asm/arch/wdt.h>
 #include <asm/arch/ssp_tsp_ast2700.h>
 #include <linux/bitfield.h>
@@ -276,6 +277,51 @@ static int hspi_init(void)
 	return 0;
 }
 
+static int usb_init(void)
+{
+	int nodeoffset;
+	ofnode node;
+	struct ast2700_scu0 *scu;
+
+	/* find the offset of compatible node */
+	nodeoffset = fdt_node_offset_by_compatible(gd->fdt_blob, -1,
+						   "aspeed,ast2700-scu0");
+	if (nodeoffset < 0)
+		printf("%s: failed to get aspeed,ast2700-scu0\n", __func__);
+
+	/* get ast2700-scu0 node */
+	node = offset_to_ofnode(nodeoffset);
+
+	scu = (struct ast2700_scu0 *)ofnode_get_addr(node);
+	if (IS_ERR_OR_NULL(scu))
+		printf("%s: cannot get SYSCON address pointer\n", __func__);
+
+	if (FIELD_GET(SCU_CPU_REVISION_ID_HW, scu->chip_id1) == 0) {
+		debug("%s: Do nothing in A0\n", __func__);
+		return 0;
+	}
+
+	/* clk/reset for vhuba1 (including PortA 2.0 PHY) */
+	setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_USBA);
+	mdelay(10);
+	setbits_le32(&scu->modrst2_clr, SCU_CPU_RST2_USBA_VHUB);
+	mdelay(1);
+
+	/* Set PortA PHY2 Pre-emphasis current {PHYA_B08} [22:21] = b'10 */
+	clrsetbits_le32((void *)ASPEED_VHUBA1_PHY_CTL_3, GENMASK(22, 21), 2 << 21);
+
+	/* clk/reset for vhubb1 (including PortB 2.0 PHY) */
+	setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_USBB);
+	mdelay(10);
+	setbits_le32(&scu->modrst2_clr, SCU_CPU_RST2_USBB_VHUB);
+	mdelay(1);
+
+	/* Set PortB PHY2 Pre-emphasis current {PHYA_B08} [22:21] = b'10 */
+	clrsetbits_le32((void *)ASPEED_VHUBB1_PHY_CTL_3, GENMASK(22, 21), 2 << 21);
+
+	return 0;
+}
+
 struct init_callback board_init_seq[] = {
 	{"POLICY",	sys_policy_init},
 	{"WDT",		wdt_init},
@@ -288,6 +334,7 @@ struct init_callback board_init_seq[] = {
 	{"DRAM",	dram_init},
 	{"PCI",		pci_init},
 	{"VBIOS",	vbios_init},
+	{"USB",		usb_init}
 };
 
 int spl_board_init_f(void)
