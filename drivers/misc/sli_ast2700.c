@@ -247,7 +247,7 @@ static void sli_calibrate_ahb_delay(struct sli_data *data)
 		}
 	}
 
-	if (win_size == 0 && d_last_pass != -1) {
+	if (d_last_pass != -1 && (d_last_pass - d_first_pass) > win_size) {
 		win_size = d_last_pass - d_first_pass;
 		sli_log_ahb_pad_delay(data, d_first_pass, d_last_pass);
 		debug("IOD SLIH DS coarse win: {%d, %d}\n", d_first_pass, d_last_pass);
@@ -440,7 +440,7 @@ static void sli_calibrate_mbus_delay(struct sli_data *data, bool is_k_rx)
 			}
 		}
 
-		if (win_size == 0 && d_last_pass != -1) {
+		if (d_last_pass != -1 && (d_last_pass - d_first_pass) > win_size) {
 			win_size = d_last_pass - d_first_pass;
 			sli_log_mbus_pad_delay(data, 0, d_first_pass, d_last_pass);
 			debug("%s SLIM DS coarse win: {%d, %d}\n", die_name, d_first_pass, d_last_pass);
@@ -584,7 +584,7 @@ static void sli_calibrate_video_delay(struct sli_data *data, bool is_DS, bool is
 		}
 	}
 
-	if (win_size == 0 && d_last_pass != -1) {
+	if (d_last_pass != -1 && (d_last_pass - d_first_pass) > win_size) {
 		win_size = d_last_pass - d_first_pass;
 		sli_log_video_pad_delay(scu, d_first_pass, d_last_pass);
 		debug("%s SLIV %s coarse win: {%d, %d}\n", die_name, dir_name, d_first_pass, d_last_pass);
