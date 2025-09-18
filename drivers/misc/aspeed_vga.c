@@ -105,6 +105,13 @@ int ast_vga_get_nodes(u8 *is_pcie0_enable, u8 *is_pcie1_enable)
 	return node0 + node1;
 }
 
+u32 ast_vga_get_gfm_ctrl(u8 node)
+{
+	if (node == 1)
+		return (BIT(19) | BIT(28));
+	return (BIT(10) | BIT(27));
+}
+
 static int ast_vga_probe(struct udevice *dev)
 {
 	struct ast_vga_priv *priv = dev_get_priv(dev);
@@ -157,7 +164,7 @@ static int ast_vga_probe(struct udevice *dev)
 		setbits_le32(&priv->scu->vga0_scratch1[0], BIT(12));
 
 		// Enable VRAM address offset: cursor, 2d
-		writel(BIT(10) | BIT(27), &priv->ram->gfm0ctl);
+		writel(ast_vga_get_gfm_ctrl(0), &priv->ram->gfm0ctl);
 	}
 
 	if (is_pcie1_enable) {
@@ -172,7 +179,7 @@ static int ast_vga_probe(struct udevice *dev)
 		setbits_le32(&priv->scu->vga1_scratch1[0], BIT(12));
 
 		// Enable VRAM address offset: cursor, 2d
-		writel(BIT(19) | BIT(28), &priv->ram->gfm1ctl);
+		writel(ast_vga_get_gfm_ctrl(1), &priv->ram->gfm1ctl);
 	}
 
 	if ((is_pcie0_enable || is_pcie1_enable)) {

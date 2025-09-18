@@ -21,4 +21,14 @@
  */
 int ast_vga_get_nodes(u8 *is_pcie0_enable, u8 *is_pcie1_enable);
 
+/* Get control mask for graphics memory
+ *
+ * Parameters:
+ *  @node: 0 or 1, to specify which node to query
+ *
+ * return: The mask for graphics memory control which enable VRAM address
+ *	   offset.
+ */
+u32 ast_vga_get_gfm_ctrl(u8 node);
+
 #endif
