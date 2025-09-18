@@ -145,7 +145,8 @@ struct ast2600_i2c_global_regs {
 			(I2CG_SLAVE_PKT_NAK |	\
 			I2CG_CTRL_NEW_REG |		\
 			I2CG_CTRL_NEW_CLK_DIV)
-#define I2CCG_DIV_CTRL 0xc6411208
+#define AST2600_I2CCG_DIV_CTRL 0xC6411208
+#define AST2700_I2CCG_DIV_CTRL 0xC6220904
 
 #define GET_CLK1_DIV(x) ((x) & 0xff)
 #define GET_CLK2_DIV(x) (((x) >> 8) & 0xff)

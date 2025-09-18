@@ -278,12 +278,14 @@ static int ast2700_i2c_set_speed(struct udevice *dev, unsigned int speed)
 {
 	struct ast2600_i2c_priv *priv = dev_get_priv(dev);
 	unsigned long base_clk;
-	int baseclk_idx;
+	int baseclk_idx = 0;
+	u32 clk_div_reg;
 	u32 apb_clk;
 	u32 scl_low;
 	u32 scl_high;
 	int divisor;
 	u32 data;
+	u8  divid_term = 0;
 
 	debug("Setting speed for I2C%d to <%u>\n", dev->seq_, speed);
 	if (!speed) {
@@ -292,12 +294,29 @@ static int ast2700_i2c_set_speed(struct udevice *dev, unsigned int speed)
 	}
 
 	apb_clk = clk_get_rate(&priv->clk);
-	for (int i = 0; i < 0x100; i++) {
-		base_clk = (apb_clk) / (i + 1);
+	clk_div_reg = readl(&priv->global_regs->clk_divid);
+
+	/* Find the most used ac-timing */
+	for (int i = 0; i < 3; i++) {
+		divid_term = ((clk_div_reg >> (i << 3)) & GENMASK(7, 0));
+		base_clk = (apb_clk) / (divid_term + 1);
+
 		if ((base_clk / speed) <= 32) {
-			baseclk_idx = i;
+			baseclk_idx = divid_term;
 			divisor = DIV_ROUND_UP(base_clk, speed);
 			break;
+		}
+	}
+
+	/* Can't find a ac-timing then search a fitting one */
+	if (baseclk_idx == 0) {
+		for (int i = 0; i < 0x100; i++) {
+			base_clk = (apb_clk) / (i + 1);
+			if ((base_clk / speed) <= 32) {
+				baseclk_idx = i;
+				divisor = DIV_ROUND_UP(base_clk, speed);
+				break;
+			}
 		}
 	}
 
@@ -430,7 +449,9 @@ static int ast2600_i2c_probe(struct udevice *dev)
 
 	/* set device specified setting */
 	if (priv->version == AST2600)
-		writel(I2CCG_DIV_CTRL, &priv->global_regs->clk_divid);
+		writel(AST2600_I2CCG_DIV_CTRL, &priv->global_regs->clk_divid);
+	else
+		writel(AST2700_I2CCG_DIV_CTRL, &priv->global_regs->clk_divid);
 
 	/* Reset device */
 	writel(0, &priv->regs->fun_ctrl);
