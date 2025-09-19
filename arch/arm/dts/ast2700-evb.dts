@@ -306,6 +306,14 @@
 		mboxes = <&mbox0 0>;
 	};
 };
+
+&soc1 {
+	mbox-bootmcu-0 {
+		compatible = "aspeed,aspeed-mbox";
+		reg = <0x4 0x31a80000 0x0 0x80000>, <0x4 0x31a88000 0x0 0x80000>;
+		mboxes = <&mbox2 0>;
+	};
+};
 #endif
 
 &soc0 {
