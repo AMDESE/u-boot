@@ -19,6 +19,7 @@
 #include <asm/arch/platform.h>
 #include <ast_loader.h>
 #include <linux/usb/ch9.h>
+#include <linux/iopoll.h>
 
 #define USB_VHUBA_REG	(void __iomem *)0x12011000
 #define USB_VHUBB_REG	(void __iomem *)0x12021000
@@ -92,6 +93,9 @@
 #define VHUB_IRQ_HUB_EP0_OUT_ACK_STALL		BIT(1)
 #define VHUB_IRQ_HUB_EP0_SETUP			BIT(0)
 #define VHUB_IRQ_ACK_ALL			0x1ff
+#define VHUB_IRQ_EP0_SETUP_IN_OUT		(VHUB_IRQ_HUB_EP0_SETUP         | \
+						 VHUB_IRQ_HUB_EP0_OUT_ACK_STALL | \
+						 VHUB_IRQ_HUB_EP0_IN_ACK_STALL)
 
 /* Downstream device IRQ mask. */
 #define VHUB_DEV_IRQ(n)				(VHUB_IRQ_DEVICE1 << (n))
@@ -1094,16 +1098,21 @@ static uint8_t vhub_ep0_setup(struct bootusb_priv *hci)
 uint8_t usb_poll(struct bootusb_priv *hci)
 {
 	struct usb_vhub_config *usb = &usb_cfg[hci->usb_vhub_port];
-	uint32_t istat;
+	uint32_t istat, val;
 	uint8_t ret;
 
-	istat = readl(usb->base + VHUB_ISR);
+	istat = readl(usb->base + VHUB_ISR) & VHUB_IRQ_ACK_ALL;
 	if (!istat)
 		return 0;
 	/* Ack interrupts */
 #if 1
-	if (istat & 0x1ff)
-		writel(istat & 0x1ff, usb->base + VHUB_ISR);
+	writel(istat, usb->base + VHUB_ISR);
+
+	ret = readl_poll_timeout(usb->base + VHUB_ISR, val,
+				 (((val & VHUB_IRQ_EP0_SETUP_IN_OUT) & istat) == 0x0),
+				 100);
+	if (ret)
+		printf("VHUB_ISR clear failed: wrote=0x%x, remain=0x%x\n", istat, (u32)val);
 #else
 	writel(istat, usb->base + VHUB_ISR);
 #endif
