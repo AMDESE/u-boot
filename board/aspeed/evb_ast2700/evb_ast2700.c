@@ -3,6 +3,7 @@
  * Copyright (C) ASPEED Technology Inc.
  */
 
+#include <command.h>
 #include <common.h>
 #include <env.h>
 #include <i2c.h>
