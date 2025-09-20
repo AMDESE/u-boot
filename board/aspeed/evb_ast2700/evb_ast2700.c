@@ -621,7 +621,7 @@ int misc_init_r(void)
 	}
 
 	/* set MAC addresses from SCM EEPROM */
-	if (set_mac_addresses(&scm_eeprom_buf) == 0)
+	if (set_mac_addresses(scm_eeprom_buf) == 0)
 	{
 		if (eth_env_get_enetaddr(ENV_ETH_ADDR, enetaddr)) {
 			printf("SCM MAC0 : %pM\n", enetaddr);
@@ -641,7 +641,7 @@ int misc_init_r(void)
 	}
 
 	/* set Hostname, board id,rev and fdt config from HPM EEPROM */
-	if (set_board_info(&scm_eeprom_buf, &hpm_eeprom_buf) == 0)
+	if (set_board_info(scm_eeprom_buf, hpm_eeprom_buf) == 0)
 	{
 		printf("Loading %s\n", env_get(ENV_BOARD_FIT_CONF));
 	}
@@ -654,7 +654,7 @@ int misc_init_r(void)
 	/* configure spi mux for edaf
            NOTE: do after running 'ltpi' as it reconfigures SCM GPIOs
         */
-	configure_edaf_spi(&scm_eeprom_buf);
+	configure_edaf_spi(scm_eeprom_buf);
 
 	return 0;
 err:
