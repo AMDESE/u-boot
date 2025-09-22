@@ -15,6 +15,8 @@
 #define LTPISHEADER		0xf0000000
 #define LTPIMISCREAD	0x0
 #define LTPIMISCWRITE	0x1
+#define LTPICHANNEL0	0x10000
+#define LTPICHANNEL1	0x20000
 
 enum misc_op {
 	MISC_OP_READ,
@@ -251,7 +253,7 @@ static int do_mbox_ltpi_read(struct cmd_tbl *cmdtp, int flag,
 	struct udevice *dev;
 	u32 *buf = NULL;
 	struct ltpi_ipc_data *data = NULL;
-	u32 msg[8];
+	u32 msg[8], misc = 0;
 	int ret = 0, i;
 	u32 channel = 0, offset, size, data_size;
 
@@ -276,10 +278,20 @@ static int do_mbox_ltpi_read(struct cmd_tbl *cmdtp, int flag,
 
 	data = (struct ltpi_ipc_data *)buf;
 
+	/* assign ltpi channel info */
+	if (channel == 0) {
+		misc |= LTPICHANNEL0;
+	} else if (channel == 1) {
+		misc |= LTPICHANNEL1;
+	} else {
+		printf("Not permitted access!\n");
+		return -EPERM;
+	}
+
 	/* fill read data */
 	for (i = 0; i < size ; i++) {
 		/* read the port data and save into value */
-		data->misc = LTPIMISCREAD;
+		data->misc = (misc | LTPIMISCREAD);
 		data->port = offset + (i << 2);
 		data->value = 0;
 
@@ -329,7 +341,7 @@ static int do_mbox_ltpi_write(struct cmd_tbl *cmdtp, int flag,
 	struct udevice *dev;
 	u32 *buf = NULL;
 	struct ltpi_ipc_data *data = NULL;
-	u32 msg[8];
+	u32 msg[8], misc = 0;
 	int ret = 0, i;
 	u32 channel = 0, offset, value, data_size;
 
@@ -354,10 +366,20 @@ static int do_mbox_ltpi_write(struct cmd_tbl *cmdtp, int flag,
 
 	data = (struct ltpi_ipc_data *)buf;
 
+	/* assign ltpi channel info */
+	if (channel == 0) {
+		misc |= LTPICHANNEL0;
+	} else if (channel == 1) {
+		misc |= LTPICHANNEL1;
+	} else {
+		printf("Not permitted access!\n");
+		return -EPERM;
+	}
+
 	/* fill read data */
 	for (i = 0; i < 1 ; i++) {
 		/* read the port data and save into value */
-		data->misc = LTPIMISCWRITE;
+		data->misc = (misc | LTPIMISCWRITE);
 		data->port = offset + (i << 2);
 		data->value = value;
 
