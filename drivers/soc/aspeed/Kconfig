@@ -1,6 +1,6 @@
 config ASPEED_OTP
 	bool "ASPEED OTP(One Time Programmable) Memory Driver"
-	depends on ASPEED_AST2700
+	depends on TARGET_ASPEED_AST2700 || ASPEED_AST2700
 	help
 	  Select this option to enable a driver for using the OTP in
 	  the ASPEED BMC SoCs.

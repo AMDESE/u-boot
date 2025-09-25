@@ -13,6 +13,7 @@
 #include <malloc.h>
 #include <inttypes.h>
 #include <mapmem.h>
+#include <asm/arch/platform.h>
 #include <asm/io.h>
 #include <linux/compiler.h>
 #include <linux/iopoll.h>
@@ -42,7 +43,11 @@ DECLARE_GLOBAL_DATA_PTR;
 #define OTP_CMD_BIST			0x23b1e368
 
 #define OTP_CMD_OFFSET			0x20
+#ifdef CONFIG_ARCH_ASPEED
 #define OTP_MASTER			OTP_M0
+#else
+#define OTP_MASTER			OTP_M1
+#endif
 
 #define OTP_KEY				0x0
 #define OTP_CMD				(OTP_MASTER * OTP_CMD_OFFSET + 0x4)
@@ -313,6 +318,7 @@ static int aspeed_otp_write(struct udevice *dev, int offset,
 	return ret;
 }
 
+#ifdef CONFIG_ARCH_ASPEED
 static int aspeed_otp_ecc_en(struct udevice *dev)
 {
 	struct aspeed_otp *otp = dev_get_priv(dev);
@@ -345,6 +351,7 @@ static int aspeed_otp_ioctl(struct udevice *dev, unsigned long request,
 
 	return ret;
 }
+#endif
 
 static int aspeed_otp_ecc_init(struct udevice *dev)
 {
@@ -375,7 +382,7 @@ static void aspeed_otp_rom_info(void)
 	char *rom_ver_str;
 
 	/* Check ROM patch version */
-	rom_patch_ver = readl(SCU1_ROM_PATCH_ADDR);
+	rom_patch_ver = readl((void *)SCU1_ROM_PATCH_ADDR);
 	switch (rom_patch_ver) {
 	case OTP_ROM_PATCH_NONE:
 		rom_ver_str = "None";
@@ -430,7 +437,9 @@ static int aspeed_otp_remove(struct udevice *dev)
 static const struct misc_ops aspeed_otp_ops = {
 	.read = aspeed_otp_read,
 	.write = aspeed_otp_write,
+#ifdef CONFIG_ARCH_ASPEED
 	.ioctl = aspeed_otp_ioctl,
+#endif
 };
 
 static const struct udevice_id aspeed_otp_ids[] = {

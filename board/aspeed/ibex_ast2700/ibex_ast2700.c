@@ -322,9 +322,22 @@ static int usb_init(void)
 	return 0;
 }
 
+static int otp_init(void)
+{
+	struct udevice *dev;
+	int err;
+
+	err = uclass_get_device_by_name(UCLASS_MISC, "otp@14c07000", &dev);
+	if (err && err != -ENODEV)
+		printf("Get OTP udevice Failed %d.\n", err);
+
+	return err;
+}
+
 struct init_callback board_init_seq[] = {
 	{"POLICY",	sys_policy_init},
 	{"WDT",		wdt_init},
+	{"OTP",		otp_init},
 	{"EXTRST",	extrst_mask_init},
 	{"STOR",	ast_loader_init},
 	{"SLI1",	sli1_init},
