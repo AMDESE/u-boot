@@ -122,6 +122,10 @@
 			bootph-all;
 		};
 
+		otp: otp@14c07000 {
+			bootph-all;
+		};
+
 		sli1: sli@14c1e000 {
 			bootph-all;
 		};
