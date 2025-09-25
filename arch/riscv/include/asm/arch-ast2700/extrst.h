@@ -11,7 +11,7 @@
 #include <asm/arch/platform.h>
 #include <linux/types.h>
 
-#define SCU0_EXTRST_MASK_1_VAL	0x8207e771
+#define SCU0_EXTRST_MASK_1_VAL	0x8207ff71
 #define SCU0_EXTRST_MASK_2_VAL	0x000003f6
 
 #define SCU1_EXTRST_MASK_1_VAL	0x000093ec
