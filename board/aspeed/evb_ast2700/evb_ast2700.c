@@ -76,6 +76,8 @@ typedef enum {
 	AMD_TYPE_SLT_2P = 0x04,
 	AMD_TYPE_2x1_P0 = 0x05,
 	AMD_TYPE_2x1_P1 = 0x06,
+	AMD_SP8_SLT_1P = 0x07,
+	AMD_SP8_SLT_2P = 0x08,
 } BoardType;
 
 /* SP7 Board info */
@@ -124,7 +126,26 @@ const BoardInfo boards[] = {
 	{"morocco", 0x9C, HCC_TYPE_2},
 	{"morocco", 0x9D, HCC_TYPE_2},
 	{"zaire", 0x9E, AMD_TYPE_SLT_1P},
-	{"marrakesh", 0xB0, AMD_TYPE_SLT_1P}
+	{"eagle", 0x9F, HCC_TYPE_1},
+	{"eagle", 0xA0, HCC_TYPE_1},
+	{"eagle", 0xA1, HCC_TYPE_1},
+	{"duck", 0xA2, AMD_SP8_SLT_2P},
+	{"duck", 0xA3, AMD_SP8_SLT_2P},
+	{"duck", 0xA4, AMD_SP8_SLT_2P},
+	{"hornbill", 0xA5, HCC_TYPE_2},
+	{"hornbill", 0xA6, HCC_TYPE_2},
+	{"hornbill", 0xA7, HCC_TYPE_2},
+	{"hornbill", 0xA8, HCC_TYPE_2},
+	{"hornbill", 0xA9, HCC_TYPE_2},
+	{"hornbill", 0xAA, HCC_TYPE_2},
+	{"hornbill", 0xAB, HCC_TYPE_2},
+	{"hornbill", 0xAC, HCC_TYPE_2},
+	{"hornbill", 0xAD, HCC_TYPE_2},
+	{"robin", 0xAE, AMD_SP8_SLT_1P},
+	{"sandpiper", 0xAF, AMD_SP8_SLT_1P},
+	{"marrakesh", 0xB0, AMD_TYPE_SLT_1P},
+	{"falcon", 0xB2, AMD_SP8_SLT_1P},
+	{"seagull", 0xB5, AMD_SP8_SLT_2P}
 };
 
 // mach aspeed cpu info
@@ -152,7 +173,7 @@ void disable_fru_bus_muxes(void)
 	int addrs[] = { 0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77 };
 	int i;
 
-	// Get the I2C bus 
+	// Get the I2C bus
 	ret = uclass_get_device_by_seq(UCLASS_I2C, HPM_EEPROM_I2C_BUS, &bus);
 	if (ret) {
 		printf("INFO: Cannot find I2C bus %d, err=%d\n", HPM_EEPROM_I2C_BUS, ret);
@@ -226,7 +247,7 @@ int set_mac_addresses(const u8 *eeprom_buf)
 	return 0;
 }
 
-int get_platform_name( const u8 board_id, char* platname, char* dtsname)
+int get_platform_name( const u8 board_id, char* platname, char* dtsname, size_t buf_len)
 {
 	int ret = -1;
 	int i = 0;
@@ -240,14 +261,18 @@ int get_platform_name( const u8 board_id, char* platname, char* dtsname)
 	for (i = 0; i < brd_count; i++) {
 		if (boards[i].id == board_id) {
 			/* fill board name */
-			strlcpy(platname, boards[i].name, sizeof(platname));
+			strlcpy(platname, boards[i].name, buf_len);
 			/* use 1P/2P default devicetrees for SLT boards */
 			if (boards[i].type == AMD_TYPE_SLT_1P) {
-				strlcpy(dtsname, "congo", sizeof(dtsname));
+				strlcpy(dtsname, "congo", buf_len);
 			} else if (boards[i].type == AMD_TYPE_SLT_2P) {
-				strlcpy(dtsname, "morocco", sizeof(dtsname));
+				strlcpy(dtsname, "morocco", buf_len);
+			} else if (boards[i].type == AMD_SP8_SLT_1P) {
+				strlcpy(dtsname, "eagle", buf_len);
+			} else if (boards[i].type == AMD_SP8_SLT_2P) {
+				strlcpy(dtsname, "hornbill", buf_len);
 			} else {
-				strlcpy(dtsname, boards[i].name, sizeof(dtsname));
+				strlcpy(dtsname, boards[i].name, buf_len);
 			}
 			ret = 0;
 			break;
@@ -256,7 +281,7 @@ int get_platform_name( const u8 board_id, char* platname, char* dtsname)
 	if (ret == -1)
 	{	/* Default device tree */
 		strlcpy(platname, "sp7", sizeof(platname));
-		strlcpy(dtsname, "congo", sizeof(dtsname));
+		strlcpy(dtsname, "congo", buf_len);
 	}
 	return ret;
 }
@@ -357,7 +382,7 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 	board_rev = *(hpm_eeprom_buf + hpm_mrc + HPM_BRD_REV_OFFSET);
 
 	/* HPM board name */
-	if (get_platform_name(board_id, plat_name, dts_name) == 0) {
+	if (get_platform_name(board_id, plat_name, dts_name, sizeof(dts_name)) == 0) {
 		/* HPM board FDT config */
 		if(!env_get(ENV_BOARD_FIT_CONF)) {
 			snprintf(board_conf_name, sizeof(board_conf_name),"#conf-aspeed-bmc-amd-%s.dtb", dts_name);
