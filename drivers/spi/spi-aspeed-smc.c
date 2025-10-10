@@ -1001,7 +1001,7 @@ static void aspeed_spi_do_calibration(struct udevice *dev)
 
 	memcpy_fromio(golden_buf, (void *)flash->ahb_base, TIMING_CAL_LEN);
 	if (!aspeed_spi_check_calib_data(golden_buf, TIMING_CAL_LEN)) {
-		dev_info(bus, "Calibration area too uniform, using low speed");
+		dev_info(bus, "Calibration area too uniform, ignore tuning\n");
 		goto no_calib;
 	}
 
@@ -1874,23 +1874,25 @@ static int aspeed_spi_set_speed(struct udevice *bus, uint hz)
 {
 	struct aspeed_spi_priv *priv = dev_get_priv(bus);
 	const struct aspeed_spi_info *info = priv->info;
+	struct aspeed_spi_plat *plat = dev_get_plat(bus);
 	struct aspeed_spi_regs *regs = priv->regs;
 	struct aspeed_spi_flash *flash;
 	enum aspeed_spi_cmd_mode mode;
 	u32 cs;
 
 	dev_dbg(bus, "%s: setting speed to %u\n", bus->name, hz);
+
 	/*
 	 * ASPEED SPI controller supports multiple CS with different
 	 * clock frequency. We cannot distinguish which CS here.
 	 * Thus, the clock frequency of all CS will be changed once.
 	 */
-
 	for (cs = 0; cs < priv->num_cs; cs++) {
 		flash = &priv->flashes[cs];
 		for (mode = CMD_USER_MODE; mode < CMD_MODE_MAX; mode++) {
 			flash->cmd_mode[mode] &= ~info->clk_ctrl_mask;
-			flash->cmd_mode[mode] |= info->get_clk_setting(bus, hz);
+			if (hz < (plat->hclk_rate / 5) || priv->disable_calib)
+				flash->cmd_mode[mode] |= info->get_clk_setting(bus, hz);
 		}
 
 		writel(flash->cmd_mode[CMD_READ_MODE], &regs->ce_ctrl[cs]);
