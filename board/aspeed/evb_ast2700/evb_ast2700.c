@@ -57,7 +57,7 @@
 #define SYS_SRST               BIT(0)
 
 /* LTPI */
-#define LTPI_TRAIN_RETRY       (10)
+#define LTPI_TRAIN_RETRY       (50)
 // 100ms for LTPI spec 1.1
 #define ADVRT_TIMEOUT_US_1_1   "100000"
 // 1ms for LTPI spec 1.0
@@ -493,6 +493,7 @@ void configure_edaf_spi(const u8 *eeprom_buf)
 void train_ltpi(int retry)
 {
 	int i=0;
+	char buf[8];
 
 	/* start LTPI with operational and advertise timeouts */
 	if(run_command("ltpi -T " OP_TIMEOUT_US " -t " ADVRT_TIMEOUT_US_1_1, 0) != 0)
@@ -506,11 +507,17 @@ void train_ltpi(int retry)
 			}
 			else
 			{
-				printf("Retrying Link training...\n");
+				printf("Retrying Link training...(%d)\n",i);
+				snprintf(buf, sizeof(buf), "%d", i);
+				env_set("ltpi_rt_cnt", buf);
+				env_save();
 			}
 		}
 		if (i >= retry)
-			printf("LTPI failed to train, collect register dump!!!\n");
+			{
+				printf("LTPI failed to train, collect register dump!!!\n");
+			}
+
 	}
 }
 void update_por_env(void)
