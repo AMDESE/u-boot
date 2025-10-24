@@ -12,6 +12,13 @@
 #include <hexdump.h>
 #include <errno.h>
 #include <asm/io.h>
+#include <stdlib.h>
+#include <asm/gpio.h>
+
+// HPM power sequence gpio(s)
+#define HPM_RST_GPIO   19  // RST_L
+#define HPM_EN_GPIO    20  // EN
+#define HPM_RDY_GPIO   21  // RDY
 
 #define SCM_EEPROM_I2C_BUS    (7)
 #define HPM_EEPROM_I2C_BUS    (8)
@@ -56,6 +63,8 @@
 #define ASPEED_SYS_SCRATCH_7FC 0x12C027FC
 #define SYS_SRST               BIT(0)
 
+/* HPM Power-on Retry */
+#define HPM_STBY_EN_RETRY      (50)
 /* LTPI */
 #define LTPI_TRAIN_RETRY       (50)
 // 100ms for LTPI spec 1.1
@@ -499,17 +508,68 @@ void configure_edaf_spi(const u8 *eeprom_buf)
 	}
 }
 
+void power_on_hpm(int retry)
+{
+	int i;
+	// TODO: Enable by default on RevB SCM boards
+	const char *env_val = env_get("EN_HPM_PWR_SEQ");
+	if (!env_val) {
+		printf("EN_HPM_PWR_SEQ is not set. Skipping...\n");
+		return;
+	}
+	// Init GPIO
+	if (gpio_request(HPM_RST_GPIO, "HPM_RST_GPIO")) {
+		printf("[ERR] Failed to request RST_L GPIO (%d)\n", HPM_RST_GPIO);
+		return;
+	}
+	if (gpio_request(HPM_EN_GPIO, "HPM_EN_GPIO")) {
+		printf("[ERR] Failed to request EN GPIO (%d)\n", HPM_EN_GPIO);
+		gpio_free(HPM_RST_GPIO);
+		return;
+	}
+	if (gpio_request(HPM_RDY_GPIO, "HPM_RDY_GPIO")) {
+		printf("[ERR] Failed to request RDY GPIO (%d)\n", HPM_RDY_GPIO);
+		gpio_free(HPM_RST_GPIO);
+		gpio_free(HPM_EN_GPIO);
+		return;
+	}
+
+	gpio_direction_input(HPM_RST_GPIO);
+	gpio_direction_output(HPM_EN_GPIO, 0);
+	gpio_direction_input(HPM_RDY_GPIO);
+
+	// HPM STBY EN
+	gpio_set_value(HPM_EN_GPIO, 1);
+
+	for (i = 0; i < retry; i++) {
+		if (gpio_get_value(HPM_RDY_GPIO) == 0) {
+			printf("HPM FPGA not ready, attempt %d/%d\n", i+1, retry);
+			udelay(ADVRT_TIMEOUT_US_1_1); // 100ms
+		} else {
+			printf("HPM FPGA ready on attempt %d\n", i+1);
+			break;
+		}
+	}
+	if (retry == i)
+		printf("[ERR] FPGA did not become ready after %d attempts\n", retry);
+
+
+	// RST_L
+	gpio_set_value(HPM_RST_GPIO, 1);
+	printf("HPM devices out of reset\n");
+
+}
 void train_ltpi(int retry)
 {
 	int i=0;
 	char buf[8];
 
 	/* start LTPI with operational and advertise timeouts */
-	if(run_command("ltpi -T " OP_TIMEOUT_US " -t " ADVRT_TIMEOUT_US_1_1, 0) != 0)
+	if(run_command("ltpi -T " OP_TIMEOUT_US " -t " ADVRT_TIMEOUT_US_1_1 " -p 1 ", 0) != 0)
 	{
 		for (i=0; i<retry; i++)
 		{
-			if(run_command("ltpi -T " OP_TIMEOUT_US " -t "ADVRT_TIMEOUT_US_1_1 ,0) == 0)
+			if(run_command("ltpi -T " OP_TIMEOUT_US " -t "ADVRT_TIMEOUT_US_1_1 " -p 1 ",0) == 0)
 			{
 				printf("LTPI link configured, proceeding to boot...\n");
 				break;
@@ -653,6 +713,9 @@ int misc_init_r(void)
 	}
 	/* set power-on reset variable */
 	update_por_env();
+
+	/* HPM Power-on sequence */
+	power_on_hpm(HPM_STBY_EN_RETRY);
 
 	/* enable ltpi strap and train link */
 	train_ltpi(LTPI_TRAIN_RETRY);
