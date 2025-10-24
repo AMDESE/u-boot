@@ -21,7 +21,11 @@
 #define SCU1_REG				0x14c02000
 #define LTPI_REG				0x14c34000
 #define SGPIOS_REG				0x14c3c000
+#define LTPI0_SGPIOM1_REG			0x30c0d000
+#define LTPI1_SGPIOM1_REG			0x50c0d000
 
+#define SCU1_CHIP_ID				(SCU1_REG + 0x000)
+#define   SCU1_CHIP_ID_REVISION			GENMASK(23, 16)
 #define SCU1_HWSTRAP1				(SCU1_REG + 0x010)
 #define   SCU1_HWSTRAP1_LTPI0_IO_DRIVING	GENMASK(15, 14)
 #define   SCU1_HWSTRAP1_EN_RECOVERY_BOOT	BIT(4)
@@ -82,6 +86,10 @@
 #define   SCU1_OTPCFG30_LTPI0_SPEED_CAPA_DIS	GENMASK(14, 0)
 
 #define ADVERTISE_TIMEOUT_US			105000 /* 105 ms */
+
+#define SKIP_SCMx_GPIO_SETTING	BIT(0)
+#define SKIP_HPMx_GPIO_SETTING	BIT(1)
+#define SKIP_SGPIOS_SETTING	BIT(2)
 
 struct bootstage_t {
 	uint8_t errno;
@@ -158,6 +166,7 @@ struct ltpi_priv {
 	uint16_t otp_speed_cap;	/* limit the speed via OTP strap */
 	uint16_t phy_speed_cap; /* limit the speed with physical line status */
 	bool otp_ddr_dis;
+	int disable_auto_downshift;
 
 	int crc_format;
 	int io_driving;
@@ -474,7 +483,6 @@ static void ltpi_do_link_training(struct ltpi_priv *ltpi)
 	 * = (ad_timeout in us * 1000)ns / 40ns = ad_timeout * 25
 	 */
 	writel(ltpi->ad_timeout * 25, (void *)ltpi->base + LTPI_LINK_MANAGE_CTRL1);
-	printf("[%08x] %08x\n", (u32)ltpi->base + LTPI_LINK_MANAGE_CTRL1, readl((void *)ltpi->base + LTPI_LINK_MANAGE_CTRL1));
 
 	/* Set the clock source to the base frequency 25MHz */
 	ltpi_phy_set_clksel(ltpi, REG_LTPI_PLL_25M, false);
@@ -700,13 +708,13 @@ static void ltpi_scm_init(struct ltpi_priv *ltpi)
 				break;
 
 			if (ctrlc()) {
-				printf("User terminated for waiting PLL set state\n");
+				printf("LTPI: User terminated while waiting for PLL set state\n");
 				ltpi_log_exit(ltpi, LTPI_SYND_USER_TERMINATE);
 				goto ltpi_scm_exit;
 			}
 
 			if (ltpi_optimeout_query(ltpi)) {
-				printf("Timeout waiting for PLL set state\n");
+				printf("LTPI: Timeout while waiting for PLL set state\n");
 				ltpi_log_exit(ltpi, LTPI_SYND_EXTRST_LINK_TRAINING);
 				goto ltpi_scm_exit;
 			}
@@ -737,39 +745,44 @@ static void ltpi_scm_init(struct ltpi_priv *ltpi)
 			ltpi->bootstage->errno |= LTPI_STATUS_HAS_CRC_ERR;
 
 		if (ctrlc()) {
-			printf("User terminated for waiting operational state\n");
+			printf("LTPI: User terminated while waiting for operational state\n");
 			ltpi_log_exit(ltpi, LTPI_SYND_USER_TERMINATE);
 			goto ltpi_scm_exit;
 		}
 
 		if (ltpi_optimeout_query(ltpi)) {
-			printf("Timeout waiting for operational state\n");
+			printf("LTPI: Timeout while waiting for operational state\n");
 			ltpi_log_exit(ltpi, LTPI_SYND_EXTRST_LINK_CONFIG);
 			goto ltpi_scm_exit;
 		}
 
-		/* clear the bit to specify the current speed doesn't work */
-		ltpi->phy_speed_cap &= ~BIT(target_speed);
+		if (!ltpi->disable_auto_downshift)
+			/* clear the bit to specify the current speed doesn't work */
+			ltpi->phy_speed_cap &= ~BIT(target_speed);
 
 		/* the lowest speed 25M should always be supported */
-		if (ltpi->phy_speed_cap == 0)
-			ltpi->phy_speed_cap |= BIT(0);
+		if ((ltpi->phy_speed_cap & LTPI_SP_CAP_25M) == 0)
+			ltpi->phy_speed_cap |= LTPI_SP_CAP_25M;
 
 		ltpi_log_restart(ltpi, LTPI_SYND_WAIT_OP_TO);
-		printf("LTPI restart due to timeout waiting for operational state\n");
+		printf("LTPI: Failed to enter operational state within %dus, restarting link\n",
+		       ltpi->ad_timeout);
 		ltpi_dump(ltpi);
 	} while (1);
 
 	return;
 
 ltpi_scm_exit:
-	printf("Exit LTPI initialization\n");
+	printf("LTPI: Exiting initialization\n");
 	ltpi_dump(ltpi);
 	ltpi_reset(ltpi);
 }
 
 #define LTPI_SGPIOS_PARALLEL_PIN_NUM 64
+#define LTPI_SGPIOM_PIN_NUM 80
 #define SGPIOS_INVERT_POINT 10
+#define SGPIOS_LTPI_RELATIVE_PIN_START 16
+#define SGPIOS_LTPI_RELATIVE_PIN_END 47
 /*
  * Default value:
  * BMC_SGPO [3:0] = 1
@@ -787,13 +800,59 @@ static u8 sgpo_hl_invert_point[SGPIOS_INVERT_POINT] = {
 	4, 16, 20, 24, 28, 32, 36, 48, 52, LTPI_SGPIOS_PARALLEL_PIN_NUM
 };
 
+#define SGPIO_G7_CFG_REG_OFFSET 0x00
+#define SGPIO_PARALLEL_OUT_PROTECT BIT(14)
+#define SGPIO_SERIAL_IN_LOCK BIT(13)
+#define SGPIO_SERIAL_OUT_LOCK BIT(12)
+#define SGPIO_ENABLE BIT(0)
+
 #define SGPIO_G7_CTRL_REG_BASE 0x80
 #define SGPIO_G7_CTRL_REG_OFFSET(x) (SGPIO_G7_CTRL_REG_BASE + (x) * 0x4)
 #define SGPIO_G7_PARALLEL_OUT_DATA BIT(1)
-static void ltpi_scm_sgpios_init(void)
+#define SGPIO_G7_SERIAL_OUT_SEL GENMASK(17, 16)
+#define SGPIO_G7_PARALLEL_OUT_SEL GENMASK(19, 18)
+#define SELECT_FROM_CSR 0
+#define SELECT_FROM_PARALLEL_IN 1
+#define SELECT_FROM_SERIAL_IN 2
+
+static inline void ltpi_scm_sgpios_serial_out_lock(void)
 {
-	u32 invert_index = 0;
+	setbits_le32((void *)SGPIOS_REG + SGPIO_G7_CFG_REG_OFFSET, SGPIO_SERIAL_OUT_LOCK);
+}
+
+static inline void ltpi_scm_sgpios_serial_out_unlock(void)
+{
+	clrbits_le32((void *)SGPIOS_REG + SGPIO_G7_CFG_REG_OFFSET, SGPIO_SERIAL_OUT_LOCK);
+}
+
+static inline void ltpi_scm_sgpios_serial_out_source_sel(u8 source)
+{
+	for (u32 i = SGPIOS_LTPI_RELATIVE_PIN_START; i < SGPIOS_LTPI_RELATIVE_PIN_END; i++)
+		clrsetbits_le32((void *)SGPIOS_REG + SGPIO_G7_CTRL_REG_OFFSET(i),
+				SGPIO_G7_SERIAL_OUT_SEL,
+				FIELD_PREP(SGPIO_G7_SERIAL_OUT_SEL, source));
+}
+
+static void ltpi_scm_sgpios_init(struct ltpi_priv *ltpi)
+{
+	u32 invert_index = 0, state;
 	u8 val = 1;
+	u32 scu_id = readl((void *)SCU1_CHIP_ID);
+
+	/*
+	 * Pin       MF
+	 * --------------------------
+	 * GPIOT6    5: SGPSCK
+	 * GPIOT1    5: SGPSLD
+	 *
+	 * GPIOU3    5: SGPSMI
+	 * GPIOU2    5: SGPSMO
+	 */
+	clrsetbits_le32((void *)SCU1_PINMUX_GRP_T, SCU1_PINMUX_PIN6 | SCU1_PINMUX_PIN1,
+			FIELD_PREP(SCU1_PINMUX_PIN6, 0x5) | FIELD_PREP(SCU1_PINMUX_PIN1, 0x5));
+
+	clrsetbits_le32((void *)SCU1_PINMUX_GRP_U, SCU1_PINMUX_PIN3 | SCU1_PINMUX_PIN2,
+			FIELD_PREP(SCU1_PINMUX_PIN3, 0x5) | FIELD_PREP(SCU1_PINMUX_PIN2, 0x5));
 
 	for (u32 i = 0; i < LTPI_SGPIOS_PARALLEL_PIN_NUM;) {
 		if (val)
@@ -808,7 +867,41 @@ static void ltpi_scm_sgpios_init(void)
 			invert_index++;
 		}
 	}
-	writel(0x1, (void *)SGPIOS_REG);
+	/* Check whether LTPI is initialized */
+	state = ltpi_get_link_mng_state(ltpi);
+	if (state != LTPI_LINK_MNG_ST_OP)
+		ltpi_scm_sgpios_serial_out_source_sel(SELECT_FROM_CSR);
+	/*
+	 * The meaning of SGPIO_PARALLEL_OUT_PROTECT will be inverted in A2,
+	 * so this bit setting should be removed when migrating to A2.
+	 */
+	setbits_le32((void *)SGPIOS_REG + SGPIO_G7_CFG_REG_OFFSET,
+		     (FIELD_GET(SCU1_CHIP_ID_REVISION, scu_id) == 1) ?
+			     SGPIO_ENABLE | SGPIO_PARALLEL_OUT_PROTECT :
+			     SGPIO_ENABLE);
+}
+
+static void ltpi_hpm_init_sgpiom(uintptr_t base)
+{
+	u32 value;
+
+	for (u32 i = 0; i < LTPI_SGPIOM_PIN_NUM; i++)
+		clrsetbits_le32((void *)base + SGPIO_G7_CTRL_REG_OFFSET(i), SGPIO_G7_SERIAL_OUT_SEL,
+				FIELD_PREP(SGPIO_G7_SERIAL_OUT_SEL, SELECT_FROM_PARALLEL_IN));
+	/*
+	 * SGPIO master controller #1:
+	 *
+	 * Register 0x0
+	 * - bit[31:16] clock divider
+	 *     SGPIO clock = (PCLK 100M / 2) / (divider + 1)
+	 *     select divider = 4 -> SGPIO clock = 50MHz / (4 + 1) = 10MHz
+	 * - bit[11: 3] pin number
+	 *     enable 80 parallel pins (BMC_GPIO 64 pins + BMC_SGPIO 16 pins)
+	 * - bit[0] SGPIO controller enabling
+	 */
+	value = FIELD_PREP(GENMASK(31, 16), 4) | FIELD_PREP(GENMASK(11, 3), LTPI_SGPIOM_PIN_NUM) |
+		BIT(0);
+	writel(value, (void *)base + 0x0);
 }
 
 static void ltpi_scm_set_pins(void)
@@ -840,7 +933,10 @@ static void ltpi_scm_set_pins(void)
 	 * GPIOC0    5: SCM_GPO8
 	 */
 	writel(0x55555555, (void *)SCU1_PINMUX_GRP_C);
+}
 
+static void ltpi0_hpm_set_pins(void)
+{
 	/*
 	 * Pin       MF
 	 * --------------------------
@@ -854,7 +950,10 @@ static void ltpi_scm_set_pins(void)
 	 * GPIOD0    5: HPM0_GPI0
 	 */
 	writel(0x55555555, (void *)SCU1_PINMUX_GRP_D);
+}
 
+static void ltpi1_hpm_set_pins(void)
+{
 	/*
 	 * Pin         MF
 	 * ----------------------------
@@ -889,35 +988,14 @@ static void ltpi_scm_set_pins(void)
 	clrsetbits_le32((void *)SCU1_PINMUX_GRP_AA, SCU1_PINMUX_PIN7 | SCU1_PINMUX_PIN6,
 			FIELD_PREP(SCU1_PINMUX_PIN7, 0x5) |
 			FIELD_PREP(SCU1_PINMUX_PIN6, 0x5));
-
-	/*
-	 * Pin       MF
-	 * --------------------------
-	 * GPIOT6    5: SGPSCK
-	 * GPIOT1    5: SGPSLD
-	 *
-	 * GPIOU3    5: SGPSMI
-	 * GPIOU2    5: SGPSMO
-	 */
-	clrsetbits_le32((void *)SCU1_PINMUX_GRP_T, SCU1_PINMUX_PIN6 | SCU1_PINMUX_PIN1,
-			FIELD_PREP(SCU1_PINMUX_PIN6, 0x5) |
-			FIELD_PREP(SCU1_PINMUX_PIN1, 0x5));
-
-	clrsetbits_le32((void *)SCU1_PINMUX_GRP_U, SCU1_PINMUX_PIN3 | SCU1_PINMUX_PIN2,
-			FIELD_PREP(SCU1_PINMUX_PIN3, 0x5) |
-			FIELD_PREP(SCU1_PINMUX_PIN2, 0x5));
-
-	/* Enable SGPIO slave */
-	ltpi_scm_sgpios_init();
 }
 
-struct bootstage_t ltpi_init(struct rom_context *rom_ctx)
+struct bootstage_t ltpi_init(struct rom_context *rom_ctx, uint32_t pin_strap, u8 skip_pinctrl)
 {
 	struct bootstage_t sts = { 0, 0 };
 
 	struct ltpi_priv *ltpi0 = &ltpi_data[0];
 	struct ltpi_priv *ltpi1 = &ltpi_data[1];
-	uint32_t pin_strap = readl(SCU1_HWSTRAP1);
 	uint32_t otpcfg_03_02;
 
 	otpcfg_03_02 = readl(SCU1_OTPCFG_03_02);
@@ -977,7 +1055,13 @@ struct bootstage_t ltpi_init(struct rom_context *rom_ctx)
 	 *         0           1           1    SOC is AST2700, SCM mode + dual node
 	 */
 	if (pin_strap & SCU1_HWSTRAP1_LTPI0_EN) {
-		ltpi_scm_set_pins();
+		if (!(skip_pinctrl & SKIP_SCMx_GPIO_SETTING))
+			ltpi_scm_set_pins();
+		if (!(skip_pinctrl & SKIP_SGPIOS_SETTING))
+			/* Enable SGPIO slave */
+			ltpi_scm_sgpios_init(ltpi0);
+		if (!(skip_pinctrl & SKIP_HPMx_GPIO_SETTING))
+			ltpi0_hpm_set_pins();
 		ltpi_scm_init(ltpi0);
 
 		if (pin_strap & SCU1_HWSTRAP1_LTPI1_EN) {
@@ -985,7 +1069,16 @@ struct bootstage_t ltpi_init(struct rom_context *rom_ctx)
 			bootstage_prologue(BOOTSTAGE_LTPI_INIT);
 			ltpi1->bootstage->errno = LTPI_STATUS_IDX;
 			ltpi1->bootstage->syndrome = LTPI_SYND_OK;
+			if (!(skip_pinctrl & SKIP_HPMx_GPIO_SETTING))
+				ltpi1_hpm_set_pins();
 			ltpi_scm_init(ltpi1);
+		}
+		if (!(skip_pinctrl & SKIP_SGPIOS_SETTING)) {
+			/* Avoid the SGPIOS output unstable value to SGPIOM */
+			ltpi_scm_sgpios_serial_out_lock();
+			ltpi_scm_sgpios_serial_out_source_sel(SELECT_FROM_PARALLEL_IN);
+			/* Unlock serial out to pass the LTPI Parallel in to SGPIOM */
+			ltpi_scm_sgpios_serial_out_unlock();
 		}
 	}
 
@@ -1042,6 +1135,7 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 	struct bootstage_t sts;
 	uint32_t pin_strap;
 	int opt, speed = 0, mode = 0;
+	u8 skip_pinctrl = 0;
 	char *endp;
 
 	ltpi_data[0].ad_timeout = ADVERTISE_TIMEOUT_US;
@@ -1056,6 +1150,8 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 	ltpi_data[1].link_speed_frm_rx_cnt = 0;
 	ltpi_data[0].op_timeout = 0;
 	ltpi_data[1].op_timeout = 0;
+	ltpi_data[0].disable_auto_downshift = 0;
+	ltpi_data[1].disable_auto_downshift = 0;
 
 	ltpi_data[0].index = 0;
 	ltpi_data[0].base = LTPI_REG;
@@ -1070,13 +1166,17 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 	ltpi_data[1].gpio_base = ltpi_data[1].base + 0xc00;
 
 	getopt_init_state(&gs);
-	while ((opt = getopt(&gs, argc, argv, "l:m:i:t:T:d:c:r:sh")) > 0) {
+	while ((opt = getopt(&gs, argc, argv, "l:m:a:i:t:T:d:c:r:p:sh")) > 0) {
 		switch (opt) {
 		case 'l':
 			speed = simple_strtoul(gs.arg, &endp, 16);
 			break;
 		case 'm':
 			mode = simple_strtoul(gs.arg, &endp, 0);
+			break;
+		case 'a':
+			ltpi_data[0].disable_auto_downshift = simple_strtoul(gs.arg, &endp, 0);
+			ltpi_data[1].disable_auto_downshift = ltpi_data[0].disable_auto_downshift;
 			break;
 		case 'i':
 			ltpi_data[0].clk_inverse = simple_strtoul(gs.arg, &endp, 0);
@@ -1106,6 +1206,9 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 			ltpi_show_status(&ltpi_data[0]);
 			ltpi_show_status(&ltpi_data[1]);
 			return CMD_RET_SUCCESS;
+		case 'p':
+			skip_pinctrl = simple_strtoul(gs.arg, &endp, 0);
+			break;
 		case 'h':
 			fallthrough;
 		default:
@@ -1114,12 +1217,9 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 	}
 
 	/* Set pin strap according to the command argument */
-	writel(0xf, (void *)SCU1_HWSTRAP1 + 0x4);
-	setbits_le32((void *)SCU1_HWSTRAP1, SCU1_HWSTRAP1_LTPI0_EN);
+	pin_strap = SCU1_HWSTRAP1_LTPI0_EN;
 	if (mode)
-		setbits_le32((void *)SCU1_HWSTRAP1, SCU1_HWSTRAP1_LTPI1_EN);
-
-	pin_strap = readl((void *)SCU1_HWSTRAP1);
+		pin_strap |= SCU1_HWSTRAP1_LTPI1_EN;
 
 	/* Set otp strap according to the command argument */
 	ltpi_data[0].otp_speed_cap = LTPI_SP_CAP_ASPEED_SUPPORTED & ~speed;
@@ -1127,27 +1227,36 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 	ltpi_data[1].otp_speed_cap = LTPI_SP_CAP_ASPEED_SUPPORTED & ~speed;
 	ltpi_data[1].otp_ddr_dis = !!(speed & LTPI_SP_CAP_DDR);
 
-	sts = ltpi_init(&rc);
+	sts = ltpi_init(&rc, pin_strap, skip_pinctrl);
 
 	if (pin_strap & SCU1_HWSTRAP1_LTPI0_EN) {
 		uint32_t reg;
 
-		if (ltpi_get_link_partner(&ltpi_data[0]))
+		if (ltpi_get_link_partner(&ltpi_data[0])) {
 			reg = FIELD_PREP(REG_LTPI_AHB_ADDR_MAP0, 0x5) |
 			      FIELD_PREP(REG_LTPI_AHB_ADDR_MAP1, 0xa0);
-		else
+		} else {
 			reg = 0;
+			/* FIXME:  Disable the checker of data channel */
+			writel(0, (void *)ltpi_data[0].base + LTPI_DATA_CH_CFG0);
+		}
 
 		writel(reg, (void *)ltpi_data[0].base + LTPI_AHB_CTRL0);
+		if (ltpi_get_link_partner(&ltpi_data[0]))
+			ltpi_hpm_init_sgpiom(LTPI0_SGPIOM1_REG);
 
 		if (pin_strap & SCU1_HWSTRAP1_LTPI1_EN) {
-			if (ltpi_get_link_partner(&ltpi_data[1]))
+			if (ltpi_get_link_partner(&ltpi_data[1])) {
 				reg = FIELD_PREP(REG_LTPI_AHB_ADDR_MAP0, 0x5) |
 				      FIELD_PREP(REG_LTPI_AHB_ADDR_MAP1, 0xa0);
-			else
+			} else {
 				reg = 0;
-
+				/* FIXME:  Disable the checker of data channel */
+				writel(0, (void *)ltpi_data[1].base + LTPI_DATA_CH_CFG0);
+			}
 			writel(reg, (void *)ltpi_data[1].base + LTPI_AHB_CTRL0);
+			if (ltpi_get_link_partner(&ltpi_data[1]))
+				ltpi_hpm_init_sgpiom(LTPI1_SGPIOM1_REG);
 		}
 
 		ltpi_show_status(&ltpi_data[0]);
@@ -1168,6 +1277,7 @@ static char ltpi_help_text[] = {
 	"-l <speed mask>, set bitmask to disable the corresponding speeds\n"
 	"    [15] DDR [14] N/A [13] N/A [12] 500M [11] N/A [10] N/A [9] 600M [8] 400M\n"
 	"    [7] 300M [6] 250M [5] 200M [4] 150M  [3] 100M [2] 75M  [1] 50M  [0] 25M\n"
+	"-a <auto downshift on failure>, 0=enable, 1=disable, default 0\n"
 	"-i <clk inverse>, 0x0=no inverse, 0x1=inverse tx, 0x2=inverse rx, 0x3=inverse both\n"
 	"-t <advertise timeout in us>, default 100000\n"
 	"-d <driving strength>, 0=weakest 3=strongest, default 2\n"
@@ -1175,6 +1285,7 @@ static char ltpi_help_text[] = {
 	"-r <rx link-speed count in AD-align>, default 0\n"
 	"-s, Display current link status\n"
 	"-T <timeout to get to the operational state in us>, 0=wait forever, default 0\n"
+	"-p <skip pinctrl>, 0=apply SCMx/HPMx GPIO/SGPIOS pinmux setting, bit0=skip SCMx GPIO,\n bit1=skip HCMx GPIO, bit2= skip SGPIOS, default 0\n"
 };
 
 U_BOOT_CMD(ltpi, 11, 0, do_ltpi, "ASPEED LTPI commands", ltpi_help_text);

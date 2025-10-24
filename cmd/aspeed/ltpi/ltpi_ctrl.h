@@ -157,4 +157,9 @@
 #define   REG_LTPI_OEM_RX_INIT_DONE		BIT(9)
 #define   REG_LTPI_OEM_TX_INIT_DONE		BIT(8)
 
+#define LTPI_DATA_CH_CFG0                       0x1D8
+#define   REG_LTPI_DATA_CH_TAG_CHK_EN		BIT(2)
+#define   REG_LTPI_DATA_CH_ADDR_CHK_EN		BIT(1)
+#define   REG_LTPI_DATA_CH_WAIT_ACK_TO_EN	BIT(0)
+
 #endif	/* _LPTI_CTRL_H_ */
