@@ -140,7 +140,6 @@ static int pci_init(void)
 	int nodeoffset;
 	ofnode node;
 	struct ast2700_scu0 *scu;
-	u8 efuse;
 
 	/* find the offset of compatible node */
 	nodeoffset = fdt_node_offset_by_compatible(gd->fdt_blob, -1,
@@ -158,12 +157,6 @@ static int pci_init(void)
 	// leave works to u-boot
 	if (FIELD_GET(SCU_CPU_REVISION_ID_HW, scu->chip_id1) == 0) {
 		debug("%s: Do nothing in A0\n", __func__);
-		return 0;
-	}
-
-	efuse = FIELD_GET(SCU_CPU_REVISION_ID_EFUSE, scu->chip_id1);
-	if (efuse == 2) {
-		debug("%s: 2720 has no PCIE\n", __func__);
 		return 0;
 	}
 
