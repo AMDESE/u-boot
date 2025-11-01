@@ -1289,7 +1289,8 @@ dtb-$(CONFIG_ASPEED_AST2700) += \
 	ast2700-slt.dtb \
 	ast2700-ncsi.dtb \
 	ast2700-dcscm.dtb \
-	ast2700-vff.dtb
+	ast2700-vff.dtb \
+	ast2700-amd-amc-g406.dtb \
 
 dtb-$(CONFIG_ARCH_STI) += stih410-b2260.dtb
 

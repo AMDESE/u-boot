@@ -1,0 +1,221 @@
+// SPDX-License-Identifier: GPL-2.0+
+
+/dts-v1/;
+
+#include "ast2700.dtsi"
+#include "ast2700-u-boot.dtsi"
+
+/ {
+	model = "AMD MI4XX AMC G406";
+	compatible = "aspeed,ast2700-evb", "aspeed,ast2700";
+
+	memory {
+		device_type = "memory";
+		reg = <0x4 0x00000000 0x0 0x20000000>;
+	};
+
+	chosen {
+		stdout-path = &uart12;
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+
+		pcie0_mmbi0_memory: pcie0-mmbi0-memory@423a00000 {
+			reg = <0x4 0x23a00000 0x0 0x200000>;
+			no-map;
+		};
+
+		pcie1_mmbi4_memory: pcie1-mmbi4-memory@423c00000 {
+			reg = <0x4 0x23c00000 0x0 0x200000>;
+			no-map;
+		};
+
+		pcie2_mmbi0_memory: pcie2-mmbi0-memory@423e00000 {
+			reg = <0x4 0x23e00000 0x0 0x200000>;
+			no-map;
+		};
+
+		ssp_memory: ssp-memory@42c000000 {
+			reg = <0x4 0x2c000000 0x0 0x2000000>;
+			no-map;
+		};
+	};
+};
+
+&uart12 {
+	status = "okay";
+};
+
+&mdio0 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	ethphy0: ethernet-phy@0 {
+		reg = <0>;
+	};
+};
+
+&mac0 {
+	status = "okay";
+	phy-mode = "rgmii";
+	phy-handle = <&ethphy0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_rgmii0_default>;
+};
+
+&fmc {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_fwspi_quad_default>;
+
+	flash@0 {
+		status = "okay";
+		spi-max-frequency = <104000000>; // FMC support upto 100MHz
+		spi-tx-bus-width = <4>;
+		spi-rx-bus-width = <4>;
+	};
+
+	flash@1 {
+		status = "okay";
+		spi-max-frequency = <104000000>; // FMC support upto 100MHz
+		spi-tx-bus-width = <4>;
+		spi-rx-bus-width = <4>;
+	};
+};
+
+&spi0 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_spi0_default &pinctrl_spi0_cs1_default>;
+
+	flash@0 {
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <2>;
+		spi-rx-bus-width = <2>;
+	};
+
+	flash@1 {
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <2>;
+		spi-rx-bus-width = <2>;
+	};
+};
+
+&spi1 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_spi1_default &pinctrl_spi1_cs1_default>;
+
+	flash@0 {
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <2>;
+		spi-rx-bus-width = <2>;
+	};
+
+	flash@1 {
+		status = "okay";
+		spi-max-frequency = <50000000>;
+		spi-tx-bus-width = <2>;
+		spi-rx-bus-width = <2>;
+	};
+};
+
+&emmc_controller {
+	status = "okay";
+	sdhci_hs200; /* enable hs200 */
+};
+
+&emmc {
+	status = "okay";
+	max-frequency = <200000000>;
+};
+
+&sdc {
+	status = "okay";
+	sdhci_hs200; /* enable sdr104 */
+
+	vcc_sdio: vcc-sdio {
+		status = "okay";
+		compatible = "regulator-fixed";
+		gpios = <&gpio0 ASPEED_GPIO(G, 6) GPIO_ACTIVE_HIGH>;
+		regulator-name = "vcc_sdio";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		enable-active-high;
+		regulator-boot-on;
+	};
+
+	vccq_sdio: vccq-sdio {
+		status = "okay";
+		compatible = "regulator-gpio";
+		gpios = <&gpio0 ASPEED_GPIO(G, 7) GPIO_ACTIVE_HIGH>;
+		gpios-states = <1>;
+		states = <1800000 0x0>,
+			 <3300000 0x1>;
+		regulator-name = "vccq_sdio";
+		regulator-type = "voltage";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+};
+
+&sdhci {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sdio_default>;
+	vmmc-supply = <&vcc_sdio>;
+	vqmmc-supply = <&vccq_sdio>;
+	/*
+	 * When running SDR104 mode, it suggests to set driving to 3.
+	 * When running HS mode, it suggests to set driving to 2.
+	 */
+	sdhci-drive-type = <3>;
+	max-frequency = <100000000>;
+};
+
+&ufs {
+	status = "okay";
+};
+
+&i2c0 {
+	status = "okay";
+};
+
+&i2c1 {
+	status = "okay";
+};
+
+&i2c2 {
+	status = "okay";
+};
+
+&i2c3 {
+	status = "okay";
+};
+
+&i2c8 {
+	status = "okay";
+};
+
+&i2c11 {
+	status = "okay";
+};
+
+&wdt0 {
+	status = "okay";
+};
+
+&soc1_clk {
+	mac0-clk-delay = <0x33 0x30
+			  0x10 0x10
+			  0x10 0x10>;
+	mac1-clk-delay = <0x31 0x31
+			  0x10 0x10
+			  0x10 0x10>;
+};
