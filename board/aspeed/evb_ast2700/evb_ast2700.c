@@ -478,6 +478,9 @@ void configure_edaf_spi(const u8 *eeprom_buf)
 		/* Set eSPI strap to high for IO/Alert pin mode */
 		run_command("gpio set 10", 0); //eSPI0
 		run_command("gpio set 11", 0); //eSPI1
+		/* Set Erase block size - underlying SPI uses 4K blocks */
+		run_command("mw 14c05028 401", 0); // eSPI0
+		run_command("mw 14c06028 401", 0); // eSPI1
 		printf("configuring for eDAF ...Done\n");
 	}
 	else {
