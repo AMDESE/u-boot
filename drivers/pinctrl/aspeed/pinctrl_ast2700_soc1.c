@@ -343,6 +343,30 @@ static struct ast2700_soc1_sig_desc pcie2_perst[] = {
 	{ 0x440, GENMASK(2, 0), 2 },
 };
 
+static struct ast2700_soc1_sig_desc usb2cud_link[] = {
+	{ 0x3B0, GENMASK(1, 0), 0 },
+};
+
+static struct ast2700_soc1_sig_desc usb2cd_link[] = {
+	{ 0x3B0, GENMASK(1, 0), 1 },
+};
+
+static struct ast2700_soc1_sig_desc usb2ch_link[] = {
+	{ 0x3B0, GENMASK(1, 0), 2 },
+};
+
+static struct ast2700_soc1_sig_desc usb2cu_link[] = {
+	{ 0x3B0, GENMASK(1, 0), 3 },
+};
+
+static struct ast2700_soc1_sig_desc usb2dd_link[] = {
+	{ 0x3B0, GENMASK(3, 2), 1 << 2 },
+};
+
+static struct ast2700_soc1_sig_desc usb2dh_link[] = {
+	{ 0x3B0, GENMASK(3, 2), 2 << 2 },
+};
+
 static const struct aspeed_group_config ast2700_soc1_groups[] = {
 	{ "ESPI1", ARRAY_SIZE(espi1_link), espi1_link },
 	{ "SD", ARRAY_SIZE(sdio_link), sdio_link },
@@ -410,6 +434,12 @@ static const struct aspeed_group_config ast2700_soc1_groups[] = {
 	{ "MAC1LINK", ARRAY_SIZE(mac1_link), mac1_link },
 	{ "MAC2LINK", ARRAY_SIZE(mac2_link), mac2_link },
 	{ "PCIE2PERST", ARRAY_SIZE(pcie2_perst), pcie2_perst },
+	{ "USB2CUD", ARRAY_SIZE(usb2cud_link), usb2cud_link },
+	{ "USB2CD", ARRAY_SIZE(usb2cd_link), usb2cd_link },
+	{ "USB2CH", ARRAY_SIZE(usb2ch_link), usb2ch_link },
+	{ "USB2CU", ARRAY_SIZE(usb2cu_link), usb2cu_link },
+	{ "USB2DD", ARRAY_SIZE(usb2dd_link), usb2dd_link },
+	{ "USB2DH", ARRAY_SIZE(usb2dh_link), usb2dh_link },
 };
 
 static int ast2700_soc1_pinctrl_get_groups_count(struct udevice *dev)

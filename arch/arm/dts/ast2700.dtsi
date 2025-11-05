@@ -1276,6 +1276,36 @@
 		function = "PCIE2PERST";
 		groups = "PCIE2PERST";
 	};
+
+	pinctrl_usb2cud_default: usb2cud_default {
+		function = "USB2CUD";
+		groups = "USB2CUD";
+	};
+
+	pinctrl_usb2cd_default: usb2cd_default {
+		function = "USB2CD";
+		groups = "USB2CD";
+	};
+
+	pinctrl_usb2ch_default: usb2ch_default {
+		function = "USB2CH";
+		groups = "USB2CH";
+	};
+
+	pinctrl_usb2cu_default: usb2cu_default {
+		function = "USB2CU";
+		groups = "USB2CU";
+	};
+
+	pinctrl_usb2dd_default: usb2dd_default {
+		function = "USB2DD";
+		groups = "USB2DD";
+	};
+
+	pinctrl_usb2dh_default: usb2dh_default {
+		function = "USB2DH";
+		groups = "USB2DH";
+	};
 };
 
 #ifdef CONFIG_ASPEED_DP
