@@ -15,6 +15,7 @@
 #include <dm/uclass.h>
 #include <power/regulator.h>
 #include <asm/arch-aspeed/scu_ast2700.h>
+#include <g_dnl.h>
 
 #define AHBC_GROUP(x)				(0x40 * (x))
 #define AHBC_HREADY_WAIT_CNT_REG		0x34
@@ -43,6 +44,35 @@ int dram_init(void)
 	gd->ram_size = ram.size;
 	return 0;
 }
+
+#ifdef CONFIG_USB_GADGET_DOWNLOAD
+int g_dnl_get_board_bcd_device_number(int gcnum)
+{
+	return FIELD_GET(SCU_CPU_REVISION_ID_HW,
+			 readl(ASPEED_CPU_REVISION_ID));
+}
+
+#define SCU1_CHIP_UNIQ_ID0	(ASPEED_IO_SCU_BASE + 0x810)
+#define SCU1_CHIP_UNIQ_ID1	(ASPEED_IO_SCU_BASE + 0x814)
+int g_dnl_bind_fixup(struct usb_device_descriptor *dev, const char *name)
+{
+	char bString[17];
+	static const char hexmap[] = "0123456789ABCDEF";
+	uint8_t byte;
+	uint32_t id[2] = {
+		readl(SCU1_CHIP_UNIQ_ID0),
+		readl(SCU1_CHIP_UNIQ_ID1)
+	};
+	for (int i = 0; i < 8; i++) {
+		byte = (id[1 - (i / 4)] >> ((3 - (i % 4)) * 8)) & 0xFF;
+		bString[i * 2] = hexmap[(byte >> 4) & 0xF];
+		bString[i * 2 + 1] = hexmap[byte & 0xF];
+	}
+	bString[16] = 0;
+	g_dnl_set_serialnumber(bString);
+	return 0;
+}
+#endif /* CONFIG_USB_GADGET_DOWNLOAD */
 
 static void ahbc_init(void)
 {

@@ -299,6 +299,22 @@
 	status = "okay";
 };
 
+&vhuba0 {
+	status = "okay";
+};
+
+&vhubb0 {
+	status = "okay";
+};
+
+&vhubc {
+	status = "okay";
+};
+
+&vhubd {
+	status = "okay";
+};
+
 #if 0
 &soc0 {
 	mbox-ssp-0 {

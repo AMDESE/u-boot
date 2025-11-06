@@ -141,6 +141,14 @@ config USB_GADGET_MAX3420
 	help
 	  MAX3420, from MAXIM, implements USB-over-SPI Full-Speed device controller.
 
+config USB_GADGET_ASPEED
+	bool "Aspeed USB Device support on gadget"
+	depends on !ASPEED_UDC_USBTTY
+	select USB_GADGET_DUALSPEED
+	help
+	  Support Aspeed USB device gadget. It's a different architecture with
+	  usbtty.
+
 config USB_GADGET_VBUS_DRAW
 	int "Maximum VBUS Power usage (2-500 mA)"
 	range 2 500
