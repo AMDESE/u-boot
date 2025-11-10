@@ -1415,7 +1415,7 @@ static int composite_bind(struct usb_gadget *gadget)
 
 	if (cdev->use_os_string) {
 		/* TODO: Do we want to pass this via platform? */
-		cdev->b_vendor_code = 0x40;
+		cdev->b_vendor_code = 0x12;
 
 		/* Microsoft OS String Descriptor */
 		utf8_to_utf16le(qw_sign_buf, (__le16 *)cdev->qw_sign,

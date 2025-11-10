@@ -48,8 +48,8 @@ int dram_init(void)
 #ifdef CONFIG_USB_GADGET_DOWNLOAD
 int g_dnl_get_board_bcd_device_number(int gcnum)
 {
-	return FIELD_GET(SCU_CPU_REVISION_ID_HW,
-			 readl(ASPEED_CPU_REVISION_ID));
+	/* TODO: Use 0 as spl. */
+	return 0;//FIELD_GET(SCU_CPU_REVISION_ID_HW, readl(ASPEED_CPU_REVISION_ID));
 }
 
 #define SCU1_CHIP_UNIQ_ID0	(ASPEED_IO_SCU_BASE + 0x810)

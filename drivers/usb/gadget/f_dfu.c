@@ -28,6 +28,27 @@
 #include <g_dnl.h>
 #include "f_dfu.h"
 
+#ifdef CONFIG_USB_GADGET_OS_DESCRIPTORS
+static char fb_ext_prop_name[] = "DeviceInterfaceGUID";
+static char fb_ext_prop_data[] = "{AA536045-0A1E-4782-A559-2E1ACA555AAE}";
+
+static struct usb_os_desc_ext_prop fb_ext_prop = {
+	.type = 1,		/* NUL-terminated Unicode String (REG_SZ) */
+	.name = fb_ext_prop_name,
+	.data = fb_ext_prop_data,
+};
+
+/* 16 bytes of "Compatible ID" and "Subcompatible ID" */
+static char fb_cid[16] = {'W', 'I', 'N', 'U', 'S', 'B'};
+static struct usb_os_desc fb_os_desc = {
+	.ext_compat_id = fb_cid,
+};
+
+static struct usb_os_desc_table fb_os_desc_table = {
+	.os_desc = &fb_os_desc,
+};
+#endif /* CONFIG_USB_GADGET_OS_DESCRIPTORS */
+
 struct f_dfu {
 	struct usb_function		usb_function;
 
@@ -723,6 +744,21 @@ static int dfu_bind(struct usb_configuration *c, struct usb_function *f)
 	if (id < 0)
 		return id;
 	dfu_intf_runtime.bInterfaceNumber = id;
+
+#ifdef CONFIG_USB_GADGET_OS_DESCRIPTORS
+	/* Enable OS and Extended Properties Feature Descriptor */
+	c->cdev->use_os_string = 1;
+	f->os_desc_table = &fb_os_desc_table;
+	f->os_desc_n = 1;
+	f->os_desc_table->if_id = id;
+	INIT_LIST_HEAD(&fb_os_desc.ext_prop);
+	fb_ext_prop.name_len = strlen(fb_ext_prop.name) * 2 + 2;
+	fb_os_desc.ext_prop_len = 10 + fb_ext_prop.name_len;
+	fb_os_desc.ext_prop_count = 1;
+	fb_ext_prop.data_len = strlen(fb_ext_prop.data) * 2 + 2;
+	fb_os_desc.ext_prop_len += fb_ext_prop.data_len + 4;
+	list_add_tail(&fb_ext_prop.entry, &fb_os_desc.ext_prop);
+#endif
 
 	f_dfu->dfu_state = DFU_STATE_appIDLE;
 	f_dfu->dfu_status = DFU_STATUS_OK;
