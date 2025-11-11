@@ -375,6 +375,20 @@
 			};
 		};
 
+		edaf_bridge0: edaf-bridge@14c38000 {
+			compatible = "aspeed,ast2700-edaf-bridge0";
+			reg = <0x0 0x14c38000 0x0 0x200>;
+			aspeed,scu1 = <&syscon1>;
+			status = "disabled";
+		};
+
+		edaf_bridge1: edaf-bridge@14c38200 {
+			compatible = "aspeed,ast2700-edaf-bridge1";
+			reg = <0x0 0x14c38200 0x0 0x200>;
+			aspeed,scu1 = <&syscon1>;
+			status = "disabled";
+		};
+
 		spi0: flash-controller@14010000 {
 			reg = <0x0 0x14010000 0x0 0xc4>,
 			      <0x1 0x80000000 0x0 0x80000000>;
