@@ -14,6 +14,7 @@
 #include <asm/io.h>
 #include <stdlib.h>
 #include <asm/gpio.h>
+#include <linux/delay.h>
 
 // HPM power sequence gpio(s)
 #define HPM_RST_GPIO   19  // RST_L
@@ -65,6 +66,7 @@
 
 /* HPM Power-on Retry */
 #define HPM_STBY_EN_RETRY      (50)
+#define HPM_RDY_RTRY_INTRVL    (100000)
 /* LTPI */
 #define LTPI_TRAIN_RETRY       (50)
 // 100ms for LTPI spec 1.1
@@ -534,7 +536,7 @@ void power_on_hpm(int retry)
 		return;
 	}
 
-	gpio_direction_input(HPM_RST_GPIO);
+	gpio_direction_output(HPM_RST_GPIO, 0);
 	gpio_direction_output(HPM_EN_GPIO, 0);
 	gpio_direction_input(HPM_RDY_GPIO);
 
@@ -544,7 +546,7 @@ void power_on_hpm(int retry)
 	for (i = 0; i < retry; i++) {
 		if (gpio_get_value(HPM_RDY_GPIO) == 0) {
 			printf("HPM FPGA not ready, attempt %d/%d\n", i+1, retry);
-			udelay(ADVRT_TIMEOUT_US_1_1); // 100ms
+			udelay(HPM_RDY_RTRY_INTRVL); // 100ms
 		} else {
 			printf("HPM FPGA ready on attempt %d\n", i+1);
 			break;
@@ -591,7 +593,6 @@ void train_ltpi(int retry)
 }
 void update_por_env(void)
 {
-	const char *s;
 	u32 por_rst = readl(ASPEED_SYS_SCRATCH_7FC);
 
 	/* set reset reason env */
