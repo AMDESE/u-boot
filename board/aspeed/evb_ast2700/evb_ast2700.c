@@ -91,73 +91,81 @@ typedef enum {
 	AMD_SP8_SLT_2P = 0x08,
 } BoardType;
 
+enum {
+	ONE_LINK = 0,
+	TWO_LINK = 1
+};
+
 /* SP7 Board info */
 typedef struct {
 	const char *name;
 	int id;
 	BoardType type;
+	int ltpi_type;
 } BoardInfo;
 
 /* SP7 HPM boards (ordered by id)*/
+static u8 board_id = 0x80; // Default - Congo
+
 const BoardInfo boards[] = {
-	{"marley", 0x79, HCC_TYPE_2},
-	{"marley", 0x7A, HCC_TYPE_2},
-	{"marley", 0x7B, HCC_TYPE_2},
-	{"mojanda", 0x7C, HCC_TYPE_2},
-	{"mojanda", 0x7D, HCC_TYPE_2},
-	{"mojanda", 0x7E, HCC_TYPE_2},
-	{"congo", 0x80, HCC_TYPE_1},
-	{"congo", 0x81, HCC_TYPE_1},
-	{"morocco", 0x82, HCC_TYPE_2},
-	{"morocco", 0x83, HCC_TYPE_2},
-	{"kenya", 0x84, HCC_TYPE_1},
-	{"nigeria", 0x85, HCC_TYPE_2},
-	{"congo", 0x86, HCC_TYPE_1},
-	{"morocco", 0x87, HCC_TYPE_2},
-	{"senegal", 0x88, AMD_TYPE_SLT_1P},
-	{"sahara", 0x89, AMD_TYPE_SLT_1P},
-	{"malawi", 0x8A, AMD_TYPE_SLT_2P},
-	{"zambia", 0x8B, AMD_TYPE_SLT_1P},
-	{"zimbabwe", 0x8C, AMD_TYPE_SLT_1P},
-	{"zanzibar", 0x8D, AMD_TYPE_SLT_1P},
-	{"ghana", 0x8E, HCC_TYPE_2},
-	{"morocco", 0x8F, HCC_TYPE_2},
-	{"morocco", 0x90, HCC_TYPE_2},
-	{"nigeria", 0x91, HCC_TYPE_2},
-	{"nigeria", 0x92, HCC_TYPE_2},
-	{"ghana", 0x93, HCC_TYPE_2},
-	{"ghana", 0x94, HCC_TYPE_2},
-	{"malawi", 0x95, AMD_TYPE_SLT_2P},
-	{"malawi", 0x96, AMD_TYPE_SLT_2P},
-	{"nigeria", 0x97, HCC_TYPE_2},
-	{"nigeria", 0x98, HCC_TYPE_2},
-	{"nigeria", 0x99, HCC_TYPE_2},
-	{"morocco", 0x9A, HCC_TYPE_2},
-	{"morocco", 0x9B, HCC_TYPE_2},
-	{"morocco", 0x9C, HCC_TYPE_2},
-	{"morocco", 0x9D, HCC_TYPE_2},
-	{"zaire", 0x9E, AMD_TYPE_SLT_1P},
-	{"eagle", 0x9F, HCC_TYPE_1},
-	{"eagle", 0xA0, HCC_TYPE_1},
-	{"eagle", 0xA1, HCC_TYPE_1},
-	{"duck", 0xA2, AMD_SP8_SLT_2P},
-	{"duck", 0xA3, AMD_SP8_SLT_2P},
-	{"duck", 0xA4, AMD_SP8_SLT_2P},
-	{"hornbill", 0xA5, HCC_TYPE_2},
-	{"hornbill", 0xA6, HCC_TYPE_2},
-	{"hornbill", 0xA7, HCC_TYPE_2},
-	{"hornbill", 0xA8, HCC_TYPE_2},
-	{"hornbill", 0xA9, HCC_TYPE_2},
-	{"hornbill", 0xAA, HCC_TYPE_2},
-	{"hornbill", 0xAB, HCC_TYPE_2},
-	{"hornbill", 0xAC, HCC_TYPE_2},
-	{"hornbill", 0xAD, HCC_TYPE_2},
-	{"robin", 0xAE, AMD_SP8_SLT_1P},
-	{"sandpiper", 0xAF, AMD_SP8_SLT_1P},
-	{"marrakesh", 0xB0, AMD_TYPE_SLT_1P},
-	{"falcon", 0xB1, HCC_TYPE_1},
-	{"falcon", 0xB2, HCC_TYPE_1},
-	{"seagull", 0xB5, HCC_TYPE_2}
+	/*  Name        ID      Type                LTPI Type */
+	{ "marley",     0x79,   HCC_TYPE_2,         ONE_LINK },
+	{ "marley",     0x7A,   HCC_TYPE_2,         ONE_LINK },
+	{ "marley",     0x7B,   HCC_TYPE_2,         ONE_LINK },
+	{ "mojanda",    0x7C,   HCC_TYPE_2,         ONE_LINK },
+	{ "mojanda",    0x7D,   HCC_TYPE_2,         ONE_LINK },
+	{ "mojanda",    0x7E,   HCC_TYPE_2,         ONE_LINK },
+	{ "congo",      0x80,   HCC_TYPE_1,         ONE_LINK },
+	{ "congo",      0x81,   HCC_TYPE_1,         ONE_LINK },
+	{ "morocco",    0x82,   HCC_TYPE_2,         ONE_LINK },
+	{ "morocco",    0x83,   HCC_TYPE_2,         ONE_LINK },
+	{ "kenya",      0x84,   HCC_TYPE_1,         ONE_LINK },
+	{ "nigeria",    0x85,   HCC_TYPE_2,         ONE_LINK },
+	{ "congo",      0x86,   HCC_TYPE_1,         ONE_LINK },
+	{ "morocco",    0x87,   HCC_TYPE_2,         ONE_LINK },
+	{ "senegal",    0x88,   AMD_TYPE_SLT_1P,    ONE_LINK },
+	{ "sahara",     0x89,   AMD_TYPE_SLT_1P,    ONE_LINK },
+	{ "malawi",     0x8A,   AMD_TYPE_SLT_2P,    ONE_LINK },
+	{ "zambia",     0x8B,   AMD_TYPE_SLT_1P,    ONE_LINK },
+	{ "zimbabwe",   0x8C,   AMD_TYPE_SLT_1P,    ONE_LINK },
+	{ "zanzibar",   0x8D,   AMD_TYPE_SLT_1P,    ONE_LINK },
+	{ "ghana",      0x8E,   HCC_TYPE_2,         ONE_LINK },
+	{ "morocco",    0x8F,   HCC_TYPE_2,         ONE_LINK },
+	{ "morocco",    0x90,   HCC_TYPE_2,         ONE_LINK },
+	{ "nigeria",    0x91,   HCC_TYPE_2,         ONE_LINK },
+	{ "nigeria",    0x92,   HCC_TYPE_2,         ONE_LINK },
+	{ "ghana",      0x93,   HCC_TYPE_2,         ONE_LINK },
+	{ "ghana",      0x94,   HCC_TYPE_2,         ONE_LINK },
+	{ "malawi",     0x95,   AMD_TYPE_SLT_2P,    ONE_LINK },
+	{ "malawi",     0x96,   AMD_TYPE_SLT_2P,    ONE_LINK },
+	{ "nigeria",    0x97,   HCC_TYPE_2,         ONE_LINK },
+	{ "nigeria",    0x98,   HCC_TYPE_2,         ONE_LINK },
+	{ "nigeria",    0x99,   HCC_TYPE_2,         ONE_LINK },
+	{ "morocco",    0x9A,   HCC_TYPE_2,         ONE_LINK },
+	{ "morocco",    0x9B,   HCC_TYPE_2,         ONE_LINK },
+	{ "morocco",    0x9C,   HCC_TYPE_2,         ONE_LINK },
+	{ "morocco",    0x9D,   HCC_TYPE_2,         ONE_LINK },
+	{ "zaire",      0x9E,   AMD_TYPE_SLT_1P,    ONE_LINK },
+	{ "eagle",      0x9F,   HCC_TYPE_1,         ONE_LINK },
+	{ "eagle",      0xA0,   HCC_TYPE_1,         ONE_LINK },
+	{ "eagle",      0xA1,   HCC_TYPE_1,         ONE_LINK },
+	{ "duck",       0xA2,   AMD_SP8_SLT_2P,     ONE_LINK },
+	{ "duck",       0xA3,   AMD_SP8_SLT_2P,     ONE_LINK },
+	{ "duck",       0xA4,   AMD_SP8_SLT_2P,     ONE_LINK },
+	{ "hornbill",   0xA5,   HCC_TYPE_2,         ONE_LINK },
+	{ "hornbill",   0xA6,   HCC_TYPE_2,         ONE_LINK },
+	{ "hornbill",   0xA7,   HCC_TYPE_2,         ONE_LINK },
+	{ "hornbill",   0xA8,   HCC_TYPE_2,         ONE_LINK },
+	{ "hornbill",   0xA9,   HCC_TYPE_2,         ONE_LINK },
+	{ "hornbill",   0xAA,   HCC_TYPE_2,         ONE_LINK },
+	{ "hornbill",   0xAB,   HCC_TYPE_2,         ONE_LINK },
+	{ "hornbill",   0xAC,   HCC_TYPE_2,         ONE_LINK },
+	{ "hornbill",   0xAD,   HCC_TYPE_2,         ONE_LINK },
+	{ "robin",      0xAE,   AMD_SP8_SLT_1P,     ONE_LINK },
+	{ "sandpiper",  0xAF,   AMD_SP8_SLT_1P,     ONE_LINK },
+	{ "marrakesh",  0xB0,   AMD_TYPE_SLT_1P,    ONE_LINK },
+	{ "falcon",     0xB2,   HCC_TYPE_1,         ONE_LINK },
+	{ "seagull",    0xB5,   HCC_TYPE_2,         TWO_LINK }
 };
 
 // mach aspeed cpu info
@@ -390,7 +398,6 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 	char board_rev_str[STR_BUF_LEN] = {0};
 	char chassis_ser_num[STR_BUF_LEN] = {0};
 	char hpm_csn_uniq_str[STR_BUF_LEN] = {0};
-	u8 board_id = 0;
 	u8 board_rev = 0;
 	u8 hpm_mrc = 0;
 
@@ -562,19 +569,29 @@ void power_on_hpm(int retry)
 	printf("HPM devices out of reset\n");
 
 }
-void train_ltpi(int retry)
+
+void train_ltpi(int retry, int mode)
 {
 	int i=0;
 	char buf[8];
+	char mode_flag[8] = "";
+	char command[256];
 
+	/* Set mode flag based on link type */
+	if (mode == ONE_LINK) {
+		snprintf(mode_flag, sizeof(mode_flag), "-m 0 ");
+	} else if (mode == TWO_LINK) {
+		snprintf(mode_flag, sizeof(mode_flag), "-m 1 ");
+	}
 	/* start LTPI with operational and advertise timeouts */
-	if(run_command("ltpi -T " OP_TIMEOUT_US " -t " ADVRT_TIMEOUT_US_1_1 " -p 1 ", 0) != 0)
+	snprintf(command, sizeof(command), "ltpi -T " OP_TIMEOUT_US " -t " ADVRT_TIMEOUT_US_1_1 " -p 1 %s", mode_flag);
+	if(run_command(command, 0) != 0)
 	{
 		for (i=0; i<retry; i++)
 		{
-			if(run_command("ltpi -T " OP_TIMEOUT_US " -t "ADVRT_TIMEOUT_US_1_1 " -p 1 ",0) == 0)
+			if(run_command(command,0) == 0)
 			{
-				printf("LTPI link configured, proceeding to boot...\n");
+				printf("LTPI link %d configured, proceeding to boot...\n", mode);
 				break;
 			}
 			else
@@ -665,6 +682,7 @@ int read_eeprom_buffers(u8 *scm_eeprom_buf, u8 *hpm_eeprom_buf)
 int misc_init_r(void)
 {
 	int ret;
+	int i, ltpi_type = ONE_LINK;
 
 	/* Identify SoC of DC-SCM card */
 	env_soc_id();
@@ -720,7 +738,14 @@ int misc_init_r(void)
 	power_on_hpm(HPM_STBY_EN_RETRY);
 
 	/* enable ltpi strap and train link */
-	train_ltpi(LTPI_TRAIN_RETRY);
+	for (i = 0; i < ARRAY_SIZE(boards); i++) {
+		if (board_id == boards[i].id)  {
+			ltpi_type = boards[i].ltpi_type;
+			break;
+		}
+	}
+
+	train_ltpi(LTPI_TRAIN_RETRY, ltpi_type);
 
 	/* configure spi mux for edaf
            NOTE: do after running 'ltpi' as it reconfigures SCM GPIOs
