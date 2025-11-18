@@ -33,6 +33,9 @@
 #define   SCU1_HWSTRAP1_LTPI_IDX		BIT(2)
 #define   SCU1_HWSTRAP1_LTPI1_EN		BIT(1)
 #define   SCU1_HWSTRAP1_LTPI_MODE		BIT(0)
+#define SCU1_MISC				(SCU1_REG + 0x0C0)
+#define   SCU1_MISC_SIO_LTPI1_EN		BIT(4)
+#define   SCU1_MISC_SIO_LTPI0_EN		BIT(3)
 #define SCU1_RSTCTL2				(SCU1_REG + 0x220)
 #define   SCU1_RSTCTL2_LTPI1			BIT(22)
 #define   SCU1_RSTCTL2_LTPI0			BIT(20)
@@ -1133,7 +1136,7 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 	struct rom_context rc;
 	struct getopt_state gs;
 	struct bootstage_t sts;
-	uint32_t pin_strap;
+	uint32_t pin_strap, ltpi_sio_en;
 	int opt, speed = 0, mode = 0;
 	u8 skip_pinctrl = 0;
 	char *endp;
@@ -1240,6 +1243,7 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 			/* FIXME:  Disable the checker of data channel */
 			writel(0, (void *)ltpi_data[0].base + LTPI_DATA_CH_CFG0);
 		}
+		ltpi_sio_en = SCU1_MISC_SIO_LTPI0_EN;
 
 		writel(reg, (void *)ltpi_data[0].base + LTPI_AHB_CTRL0);
 		if (ltpi_get_link_partner(&ltpi_data[0]))
@@ -1257,7 +1261,11 @@ static int do_ltpi(struct cmd_tbl *cmdtp, int flag, int argc,
 			writel(reg, (void *)ltpi_data[1].base + LTPI_AHB_CTRL0);
 			if (ltpi_get_link_partner(&ltpi_data[1]))
 				ltpi_hpm_init_sgpiom(LTPI1_SGPIOM1_REG);
+			ltpi_sio_en |= SCU1_MISC_SIO_LTPI1_EN;
 		}
+		reg = readl((void *)SCU1_MISC);
+		reg |= ltpi_sio_en;
+		writel(reg, (void *)SCU1_MISC);
 
 		ltpi_show_status(&ltpi_data[0]);
 		ltpi_show_status(&ltpi_data[1]);
