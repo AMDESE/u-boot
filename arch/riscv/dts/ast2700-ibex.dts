@@ -5,6 +5,7 @@
 #include "ast2700.dtsi"
 
 #define DUAL_NODE 0	// 1: DUAL_NODE, 0: SINGLE_NODE
+#define EDAF_128MB 0	// 1: 128MB, 0: 64MB
 #define PCIE0_EP 1	// 1: EP, 0: RC
 #define PCIE1_EP 1	// 1: EP, 0: RC
 #define PCIE2_RC 1	// 1: RC, 0: SGMII
