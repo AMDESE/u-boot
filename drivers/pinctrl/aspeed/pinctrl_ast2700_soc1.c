@@ -3,6 +3,7 @@
  * Copyright (C) ASPEED Technology Inc.
  */
 
+#include "dt-bindings/gpio/aspeed-gpio.h"
 #include <common.h>
 #include <errno.h>
 #include <asm/arch/pinctrl.h>
@@ -11,6 +12,9 @@
 #include <dm/pinctrl.h>
 #include <linux/bitops.h>
 #include <linux/err.h>
+#include <linux/bitfield.h>
+
+#define SCU_MULTI_FUNC_SEL_BASE 0x400
 
 /*
  * This driver works with very simple configuration that has the same name
@@ -478,6 +482,26 @@ static int ast2700_soc1_pinctrl_group_set(struct udevice *dev,
 	return 0;
 }
 
+static int ast2700_soc1_pinctrl_gpio_request_enable(struct udevice *dev, unsigned int selector)
+{
+	struct aspeed_pinctrl_priv *priv = dev_get_priv(dev);
+	u32 offset = SCU_MULTI_FUNC_SEL_BASE;
+	u32 reg = offset + (selector / 8) * 4;
+	u32 shift = (selector % 8) * 4;
+	u32 mask = 0x7 << shift;
+	u32 val;
+
+	/* GPIO function is 0, Expect GPIOY and GPIOZ */
+	if (selector >= ASPEED_GPIO(Y, 0) && selector <= ASPEED_GPIO(Z, 7))
+		val = 1 << shift;
+	else
+		val = 0 << shift;
+
+	clrsetbits_le32(priv->base + reg, mask, val);
+
+	return 0;
+}
+
 static struct pinctrl_ops ast2700_soc1_pinctrl_ops = {
 	.set_state = pinctrl_generic_set_state,
 	.get_groups_count = ast2700_soc1_pinctrl_get_groups_count,
@@ -485,6 +509,7 @@ static struct pinctrl_ops ast2700_soc1_pinctrl_ops = {
 	.get_functions_count = ast2700_soc1_pinctrl_get_groups_count,
 	.get_function_name = ast2700_soc1_pinctrl_get_group_name,
 	.pinmux_group_set = ast2700_soc1_pinctrl_group_set,
+	.gpio_request_enable = ast2700_soc1_pinctrl_gpio_request_enable,
 };
 
 static const struct udevice_id ast2700_soc1_pinctrl_ids[] = {

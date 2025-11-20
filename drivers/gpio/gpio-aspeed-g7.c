@@ -11,6 +11,7 @@
 #include <common.h>
 #include <clk.h>
 #include <dm.h>
+#include <dm/pinctrl.h>
 #include <asm/io.h>
 #include <linux/bug.h>
 #include <linux/sizes.h>
@@ -119,6 +120,7 @@ static int aspeed_gpio_get_function(struct udevice *dev, unsigned int offset)
 }
 
 static const struct dm_gpio_ops aspeed_gpio_ops = {
+	.request = pinctrl_gpio_request,
 	.direction_input	= aspeed_gpio_direction_input,
 	.direction_output	= aspeed_gpio_direction_output,
 	.get_value		= aspeed_gpio_get_value,
