@@ -374,9 +374,8 @@ static void set_rgmii_delay(u32 tx, u32 rx, u32 index)
 	writel(reg, &scu->mac_delay);
 }
 
-#define SCU1_SCRATCH_RGMII_CALIB	BIT(0)
-#define SCU1_SCRATCH_DELAY_STEP_MASK	GENMASK(31, 16)
-#define SCU1_SCRATCH_DELAY_STEP(x)	FIELD_PREP(SCU1_SCRATCH_DELAY_STEP_MASK, (x))
+#define SCU1_SCRATCH_TX_DELAY_STEP(x)	FIELD_PREP(GENMASK(31, 16), (x))
+#define SCU1_SCRATCH_RX_DELAY_STEP(x)	FIELD_PREP(GENMASK(15, 0), (x))
 
 static void record_rgmii_delay(u32 index, u8 tx_edge, u8 tx_center, u8 rx_edge, u8 rx_center,
 			       u32 average_delay)
@@ -384,7 +383,8 @@ static void record_rgmii_delay(u32 index, u8 tx_edge, u8 tx_center, u8 rx_edge, 
 	struct ast2700_scu1 *scu = (struct ast2700_scu1 *)ASPEED_IO_SCU_BASE;
 	u32 scu0, scu1;
 
-	scu0 = SCU1_SCRATCH_RGMII_CALIB | SCU1_SCRATCH_DELAY_STEP(average_delay);
+	scu0 = SCU1_SCRATCH_TX_DELAY_STEP(average_delay) |
+	       SCU1_SCRATCH_RX_DELAY_STEP(average_delay);
 	scu1 = FIELD_PREP(GENMASK(7, 0), tx_edge) |
 	       FIELD_PREP(GENMASK(15, 8), tx_center) |
 	       FIELD_PREP(GENMASK(23, 16), rx_edge) |
