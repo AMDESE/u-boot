@@ -14,6 +14,7 @@
 #include <linux/iopoll.h>
 
 #define SLI_POLL_TIMEOUT_US	100
+#define SLIM_RETRY_COUNT	50
 
 #define SLIM_REG_OFFSET			0x000
 #define SLIH_REG_OFFSET			0x200
@@ -121,6 +122,18 @@ struct sli_data {
 #define SCU1_SCRATCH31_SLI_SKIP_CALI	BIT(1)	/* skip calibration */
 #define SCU0_SCRATCH31_SLI1_READY	BIT(0)
 #define AHBC_MAX_TIMEOUT		0x1ff
+
+static void trigger_reset(void)
+{
+	// Add SLI + DRAM reset
+	setbits_le32((void *)0x14c3701c, BIT(2) | BIT(1));
+	setbits_le32((void *)0x14c37028, BIT(3));
+
+	// trigger reset
+	writel(0x200, (void *)0x14c37004);
+	writel(0x4755, (void *)0x14c37008);
+	writel(0x13, (void *)0x14c3700c);
+}
 
 static void sli_clear_interrupt_status(uintptr_t base)
 {
@@ -342,16 +355,12 @@ static int sli_calibrate_mbus_pad_delay(struct sli_data *data, int index, int be
 	int d;
 	int d_first_pass = -1;
 	int d_last_pass = -1;
-	int d_def = 12;
+	int d_def = (begin + end) >> 1;
 	int count;
 	char *die_name = (is_k_rx) ? "IOD" : "CPUD";
 	uintptr_t kx = (is_k_rx) ? data->die1.slim : data->die0.slim;
 
-	if (data->die0.phy_clk_freq == SLI_PHYCLK_800M ||
-	    data->die0.phy_clk_freq == SLI_PHYCLK_788M)
-		d_def = 5;
-
-	for (count = 0; count < 50; count++) {
+	for (count = 0; count < SLIM_RETRY_COUNT; count++) {
 		for (d = begin; d < end; d++) {
 			sli_set_mbus_delay_single(kx, index, d, is_k_rx);
 
@@ -402,17 +411,13 @@ static void sli_calibrate_mbus_delay(struct sli_data *data, bool is_k_rx)
 
 	setbits_le32(data->die1.slim + SLI_CTRL_I, SLI_AUTO_SEND_TRN_OFF);
 
-	if (data->die0.phy_clk_freq == SLI_PHYCLK_800M ||
-	    data->die0.phy_clk_freq == SLI_PHYCLK_788M)
-		d_def = 5;
-
 	if (data->flags & SLI_FLAG_RX_LAH_NEG_IO_SLIM)
 		setbits_le32(kx + SLI_CTRL_I, SLI_RX_PHY_LAH_SEL_NEG);
 	else
 		clrbits_le32(kx + SLI_CTRL_I, SLI_RX_PHY_LAH_SEL_NEG);
 
 	/* Find coarse delay */
-	for (count = 0; count < 50; count++) {
+	for (count = 0; count < SLIM_RETRY_COUNT; count++) {
 		for (dc = SLIM_COARSE_D_BEGIN; dc < SLIM_COARSE_D_END; dc++) {
 			sli_set_mbus_delay(kx, dc, dc, dc, dc, is_k_rx);
 
@@ -450,6 +455,11 @@ static void sli_calibrate_mbus_delay(struct sli_data *data, bool is_k_rx)
 		if ((d_last_pass - d_first_pass) >= 3)
 			break;
 		debug("%s SLIM DS retry %d\n", die_name, count);
+	}
+
+	if (count == SLIM_RETRY_COUNT) {
+		debug("%s SLIM DS margin not enough! {%d, %d}\n", die_name, d_first_pass, d_last_pass);
+		trigger_reset();
 	}
 
 	dc = (d_first_pass + d_last_pass) >> 1;
