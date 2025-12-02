@@ -856,6 +856,17 @@ int ast2700_sli1_probe(struct udevice *dev)
 	return 0;
 }
 
+static void _mac_hotfix(struct sli_data *data)
+{
+	u32 val = readl((void *)data->die1.slim + 0xb8) & 0xe00;
+
+	if (!val)
+		return;
+
+	writel(val, (void *)data->die1.slim + 0x68);
+	setbits_le32(data->die1.slim + 0x60, BIT(5));
+}
+
 int ast2700_sli0_probe(struct udevice *dev)
 {
 	struct sli_data ast2700_sli_data[1];
@@ -915,6 +926,7 @@ int ast2700_sli0_probe(struct udevice *dev)
 
 	reg_val = readl((void *)&scu1->scratch[31]);
 	if (reg_val & SCU1_SCRATCH31_SLI_SKIP_CALI) {
+		_mac_hotfix(data);
 		printf("SLI0 has been initialized\n");
 		return 0;
 	}
