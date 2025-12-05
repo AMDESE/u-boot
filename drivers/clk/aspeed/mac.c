@@ -516,11 +516,29 @@ static u32 find_rx_center(u8 *data)
 	return max_start + (max_len - 1) / 2;
 }
 
+static bool check_calibration_delay(u32 index)
+{
+	struct ast2700_scu1 *scu = (struct ast2700_scu1 *)ASPEED_IO_SCU_BASE;
+
+	if (index) {
+		if ((readl(&scu->scratch[6]) & SCU1_SCRATCH_TX_DELAY_STEP(0xFFFF)) == 0)
+			return false;
+	} else {
+		if ((readl(&scu->scratch[4]) & SCU1_SCRATCH_TX_DELAY_STEP(0xFFFF)) == 0)
+			return false;
+	}
+
+	return true;
+}
+
 static void find_rgmii_delay(u32 index)
 {
 	u32 tx, rx, tx_edge, tx_center, rx_edge, rx_center, average_delay;
 	const char *phy_mode;
 	u8 result[32];
+
+	if (check_calibration_delay(index))
+		return;
 
 	phy_mode = get_mac_phy_mode(index);
 	if (!phy_mode)
