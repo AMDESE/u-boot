@@ -374,10 +374,10 @@ static void set_rgmii_delay(u32 tx, u32 rx, u32 index)
 	writel(reg, &scu->mac_delay);
 }
 
-#define SCU1_SCRATCH_TX_DELAY_STEP(x)	FIELD_PREP(GENMASK(31, 16), (x))
-#define SCU1_SCRATCH_RX_DELAY_STEP(x)	FIELD_PREP(GENMASK(15, 0), (x))
+#define SCU1_SCRATCH_TX_DELAY_STEP(x)	FIELD_PREP(GENMASK(15, 0), (x))
+#define SCU1_SCRATCH_RX_DELAY_STEP(x)	FIELD_PREP(GENMASK(31, 16), (x))
 
-static void record_rgmii_delay(u32 index, u8 tx_edge, u8 tx_center, u8 rx_edge, u8 rx_center,
+static void record_rgmii_delay(u32 index, u8 tx_dis, u8 tx_en, u8 rx_dis, u8 rx_en,
 			       u32 average_delay)
 {
 	struct ast2700_scu1 *scu = (struct ast2700_scu1 *)ASPEED_IO_SCU_BASE;
@@ -385,10 +385,10 @@ static void record_rgmii_delay(u32 index, u8 tx_edge, u8 tx_center, u8 rx_edge, 
 
 	scu0 = SCU1_SCRATCH_TX_DELAY_STEP(average_delay) |
 	       SCU1_SCRATCH_RX_DELAY_STEP(average_delay);
-	scu1 = FIELD_PREP(GENMASK(7, 0), tx_edge) |
-	       FIELD_PREP(GENMASK(15, 8), tx_center) |
-	       FIELD_PREP(GENMASK(23, 16), rx_edge) |
-	       FIELD_PREP(GENMASK(31, 24), rx_center);
+	scu1 = FIELD_PREP(GENMASK(7, 0), tx_dis) |
+	       FIELD_PREP(GENMASK(15, 8), tx_en) |
+	       FIELD_PREP(GENMASK(23, 16), rx_dis) |
+	       FIELD_PREP(GENMASK(31, 24), rx_en);
 	if (index) {
 		writel(scu0, &scu->scratch[6]);	/* SCU1_198 */
 		writel(scu1, &scu->scratch[7]);	/* SCU1_19c */
@@ -533,7 +533,7 @@ static bool check_calibration_delay(u32 index)
 
 static void find_rgmii_delay(u32 index)
 {
-	u32 tx, rx, tx_edge, tx_center, rx_edge, rx_center, average_delay;
+	u32 tx, rx, tx_en, tx_dis, rx_en, rx_dis, average_delay;
 	const char *phy_mode;
 	u8 result[32];
 
@@ -555,38 +555,38 @@ static void find_rgmii_delay(u32 index)
 	mac_txpkt_add(tx_pkt_buf);
 
 	/* Get TX center */
-	tx_center = 2000 / average_delay;
+	tx_en = 2000 / average_delay;
 	for (rx = 0; rx < 32; rx++) {
-		set_rgmii_delay(tx_center, rx, index);
+		set_rgmii_delay(tx_en, rx, index);
 		result[rx] = packet_check(index);
 	}
 
 	/* Get TX/RX edge/center */
-	tx_edge = 8000 / average_delay;
-	rx_edge = find_rx_center(result) + 1;
-	rx_center = rx_edge + 2000 / average_delay;
+	tx_dis = 0;
+	rx_dis = find_rx_center(result) + 1;
+	rx_en = rx_dis + 2000 / average_delay;
 
 	if (phy_mode) {
 		printf(" %d: %s ", index, phy_mode);
 		if (strcmp(phy_mode, "rgmii-rxid") == 0) {
-			tx = tx_center;
-			rx = rx_edge;
+			tx = tx_en;
+			rx = rx_dis;
 		} else if (strcmp(phy_mode, "rgmii-txid") == 0) {
-			tx = tx_edge;
-			rx = rx_center;
+			tx = tx_dis;
+			rx = rx_en;
 		} else if (strcmp(phy_mode, "rgmii") == 0) {
-			tx = tx_center;
-			rx = rx_center;
+			tx = tx_en;
+			rx = rx_en;
 		} else if (strcmp(phy_mode, "rmii") == 0) {
 			tx = 0;
 			rx = 0;
 		} else {
-			tx = tx_edge;
-			rx = rx_edge;
+			tx = tx_dis;
+			rx = rx_dis;
 		}
 	} else {
-		tx = tx_edge;
-		rx = rx_edge;
+		tx = tx_dis;
+		rx = rx_dis;
 	}
 
 	if (tx > 32 || rx > 32) {
@@ -601,7 +601,7 @@ static void find_rgmii_delay(u32 index)
 	mac_reset_assert(index);
 
 	/* Record in SCU1 */
-	record_rgmii_delay(index, tx_edge, tx_center, rx_edge, rx_center, average_delay);
+	record_rgmii_delay(index, tx_dis, tx_en, rx_dis, rx_en, average_delay);
 }
 
 /* Because clk driver will be called twice, bypass the first time */
