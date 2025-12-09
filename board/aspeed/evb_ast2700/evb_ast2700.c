@@ -155,6 +155,7 @@ const BoardInfo boards[] = {
 	{"robin", 0xAE, AMD_SP8_SLT_1P},
 	{"sandpiper", 0xAF, AMD_SP8_SLT_1P},
 	{"marrakesh", 0xB0, AMD_TYPE_SLT_1P},
+	{"falcon", 0xB1, HCC_TYPE_1},
 	{"falcon", 0xB2, HCC_TYPE_1},
 	{"seagull", 0xB5, HCC_TYPE_2}
 };
