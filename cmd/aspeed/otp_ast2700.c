@@ -60,10 +60,14 @@ enum otp_status {
 #define ID1_AST2750A1			0x06010003
 #define ID0_AST2700A1			0x06010103
 #define ID1_AST2700A1			0x06010103
+#define ID0_AST2720A1			0x06010203
+#define ID1_AST2720A1			0x06010203
 #define ID0_AST2750A2			0x06020003
 #define ID1_AST2750A2			0x06020003
 #define ID0_AST2700A2			0x06020103
 #define ID1_AST2700A2			0x06020103
+#define ID0_AST2720A2			0x06020203
+#define ID1_AST2720A2			0x06020203
 
 #define SOC_AST2700A0			8
 #define SOC_AST2700A1			9
@@ -260,11 +264,13 @@ static u32 chip_version(void)
 		/* AST2700-A0 */
 		return OTP_AST2700_A0;
 	} else if ((revid0 == ID0_AST2700A1 && revid1 == ID1_AST2700A1) ||
-		   (revid0 == ID0_AST2750A1 && revid1 == ID1_AST2750A1)) {
+		   (revid0 == ID0_AST2750A1 && revid1 == ID1_AST2750A1) ||
+		   (revid0 == ID0_AST2720A1 && revid1 == ID1_AST2720A1)) {
 		/* AST2700-A1 */
 		return OTP_AST2700_A1;
 	} else if ((revid0 == ID0_AST2700A2 || revid1 == ID1_AST2700A2) ||
-		   (revid0 == ID0_AST2750A2 || revid1 == ID1_AST2750A2)) {
+		   (revid0 == ID0_AST2750A2 || revid1 == ID1_AST2750A2) ||
+		   (revid0 == ID0_AST2720A2 || revid1 == ID1_AST2720A2)) {
 		/* AST2700-A2 */
 		return OTP_AST2700_A2;
 	}
