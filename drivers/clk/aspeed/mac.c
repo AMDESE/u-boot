@@ -69,13 +69,22 @@ DECLARE_GLOBAL_DATA_PTR;
 #define RX_DELAY_1 GENMASK(17, 12)
 #define RX_DELAY_2 GENMASK(23, 18)
 
+#define SCU_HW_REVISION_ID	GENMASK(23, 16)
 #define SCU_FREQ_RING_ENABLE	BIT(0)
 #define SCU_FREQ_OSC_ENABLE	BIT(1)
-#define SCU_FREQ_SELECT		FIELD_PREP(GENMASK(5, 2), 0x5)
+#define SCU_FREQ_SELECT_DLY32	FIELD_PREP(GENMASK(5, 2), 0x5)
+#define SCU_FREQ_SELECT_RGMII	FIELD_PREP(GENMASK(5, 2), 0xd)
 #define SCU_FREQ_DONE		BIT(6)
 #define SCU_FREQ_RING_STG(x)	FIELD_PREP(GENMASK(14, 9), x)
 #define SCU_FREQ_COUNTER_MASK	GENMASK(29, 16)
 #define SCU_FREQ_COUNTER(x)	FIELD_GET(SCU_FREQ_COUNTER_MASK, x)
+
+#define SCU_DBGSEL_RING_SEL_MASK	GENMASK(15, 8)
+#define SCU_DBGSEL_RING_SEL(x)		FIELD_PREP(SCU_DBGSEL_RING_SEL_MASK, x)
+#define   SCU_DBGSEL_RING_SEL_RGMII0_TX	44
+#define   SCU_DBGSEL_RING_SEL_RGMII1_TX	45
+#define   SCU_DBGSEL_RING_SEL_RGMII0_RX	46
+#define   SCU_DBGSEL_RING_SEL_RGMII1_RX	47
 
 #define SCU_MULTI_CTRL18	0x444	/* GPIO Group R */
 #define SCU_MULTI_CTRL19	0x448	/* GPIO Group S */
@@ -117,19 +126,26 @@ static u32 calculate_freq(u32 value)
 	return (u32)freq;
 }
 
-static u32 cal_delay32_ring(u8 tap)
+static u32 cal_delay32_ring(u8 revision, u8 rgmii_chain)
 {
 	struct ast2700_scu1 *scu = (struct ast2700_scu1 *)ASPEED_IO_SCU_BASE;
 	void *base = (void *)&scu->freq_counter_ctrl;
 	uint64_t time_ps;
-	u32 reg;
+	u32 reg, dbgsel;
 	int ret;
 
 	writel(0x1c, base);
 	ret = readl_poll_timeout(base, reg, ((reg & SCU_FREQ_COUNTER_MASK) == 0), 50);
 	if (ret < 0)
 		return 0;
-	reg = SCU_FREQ_RING_ENABLE | SCU_FREQ_SELECT | SCU_FREQ_RING_STG(tap);
+	reg = SCU_FREQ_RING_ENABLE |  SCU_FREQ_RING_STG(31);
+	if (revision == 1) {
+		reg |= SCU_FREQ_SELECT_DLY32;
+	} else {
+		reg |= SCU_FREQ_SELECT_RGMII;
+		dbgsel = SCU_DBGSEL_RING_SEL(rgmii_chain);
+		clrsetbits_le32(&scu->rsv_0xC4, SCU_DBGSEL_RING_SEL_MASK, dbgsel);
+	}
 	writel(reg, base);
 
 	mdelay(1);
@@ -145,7 +161,7 @@ static u32 cal_delay32_ring(u8 tap)
 
 	writel(0, base);
 
-	return (u32)time_ps;
+	return (u32)time_ps / 32;
 }
 
 static void mac_reset_assert(u32 index)
@@ -378,13 +394,13 @@ static void set_rgmii_delay(u32 tx, u32 rx, u32 index)
 #define SCU1_SCRATCH_RX_DELAY_STEP(x)	FIELD_PREP(GENMASK(31, 16), (x))
 
 static void record_rgmii_delay(u32 index, u8 tx_dis, u8 tx_en, u8 rx_dis, u8 rx_en,
-			       u32 average_delay)
+			       u32 tx_average_delay, u32 rx_average_delay)
 {
 	struct ast2700_scu1 *scu = (struct ast2700_scu1 *)ASPEED_IO_SCU_BASE;
 	u32 scu0, scu1;
 
-	scu0 = SCU1_SCRATCH_TX_DELAY_STEP(average_delay) |
-	       SCU1_SCRATCH_RX_DELAY_STEP(average_delay);
+	scu0 = SCU1_SCRATCH_TX_DELAY_STEP(tx_average_delay) |
+	       SCU1_SCRATCH_RX_DELAY_STEP(rx_average_delay);
 	scu1 = FIELD_PREP(GENMASK(7, 0), tx_dis) |
 	       FIELD_PREP(GENMASK(15, 8), tx_en) |
 	       FIELD_PREP(GENMASK(23, 16), rx_dis) |
@@ -531,10 +547,12 @@ static bool check_calibration_delay(u32 index)
 	return true;
 }
 
-static void find_rgmii_delay(u32 index)
+static void find_rgmii_delay(struct ast2700_scu1 *scu, u32 index)
 {
-	u32 tx, rx, tx_en, tx_dis, rx_en, rx_dis, average_delay;
+	u32 tx, rx, tx_en, tx_dis, rx_en, rx_dis, tx_average_delay, rx_average_delay;
+	u8 revision = FIELD_GET(SCU_HW_REVISION_ID, scu->chip_id1);
 	const char *phy_mode;
+	u8 rgmii_chain;
 	u8 result[32];
 
 	if (check_calibration_delay(index))
@@ -544,27 +562,41 @@ static void find_rgmii_delay(u32 index)
 	if (!phy_mode)
 		return;
 
-	average_delay = cal_delay32_ring(31);
-	if (average_delay == 0)
+	/* TX delay chain */
+	rgmii_chain = (index) ?
+		      SCU_DBGSEL_RING_SEL_RGMII0_TX :
+		      SCU_DBGSEL_RING_SEL_RGMII1_TX;
+	tx_average_delay = cal_delay32_ring(revision, rgmii_chain);
+	if (tx_average_delay == 0)
 		return;
-	average_delay = (average_delay * 10 / 7) / 32;
+
+	if (revision == 1) {
+		tx_average_delay = tx_average_delay * 10 / 7;
+		rx_average_delay = tx_average_delay;
+	} else {
+		/* RX delay chain */
+		rgmii_chain = (index) ?
+			      SCU_DBGSEL_RING_SEL_RGMII0_RX :
+			      SCU_DBGSEL_RING_SEL_RGMII1_RX;
+		rx_average_delay = cal_delay32_ring(revision, rgmii_chain);
+		if (rx_average_delay == 0)
+			return;
+	}
 
 	mac_init(index);
 	mac_set_loopback(index, true);
 	prepare_tx_packet(tx_pkt_buf);
 	mac_txpkt_add(tx_pkt_buf);
 
-	/* Get TX center */
-	tx_en = 2000 / average_delay;
+	tx_en = 2000 / tx_average_delay;
 	for (rx = 0; rx < 32; rx++) {
 		set_rgmii_delay(tx_en, rx, index);
 		result[rx] = packet_check(index);
 	}
 
-	/* Get TX/RX edge/center */
 	tx_dis = 0;
 	rx_dis = find_rx_center(result) + 1;
-	rx_en = rx_dis + 2000 / average_delay;
+	rx_en = rx_dis + 2000 / rx_average_delay;
 
 	if (phy_mode) {
 		printf(" %d: %s ", index, phy_mode);
@@ -601,18 +633,18 @@ static void find_rgmii_delay(u32 index)
 	mac_reset_assert(index);
 
 	/* Record in SCU1 */
-	record_rgmii_delay(index, tx_dis, tx_en, rx_dis, rx_en, average_delay);
+	record_rgmii_delay(index, tx_dis, tx_en, rx_dis, rx_en, tx_average_delay, rx_average_delay);
 }
 
 /* Because clk driver will be called twice, bypass the first time */
 static bool bypass_first = true;
 
-void aspeed_rgmii_init(void)
+void aspeed_rgmii_init(struct ast2700_scu1 *scu)
 {
 	if (!bypass_first) {
 		printf("MAC:  ");
-		find_rgmii_delay(0);
-		find_rgmii_delay(1);
+		find_rgmii_delay(scu, 0);
+		find_rgmii_delay(scu, 1);
 		printf("\n");
 	} else {
 		bypass_first = false;
