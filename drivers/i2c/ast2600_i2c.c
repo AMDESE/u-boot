@@ -431,7 +431,9 @@ static int ast2600_i2c_probe(struct udevice *dev)
 {
 	struct ast2600_i2c_priv *priv = dev_get_priv(dev);
 	struct reset_ctl reset_ctl;
-	int rc;
+	int rc, div_ctrl;
+	u32 div_val = AST2700_I2CCG_DIV_CTRL;
+	bool reset = false;
 
 	rc = reset_get_by_index(dev, 0, &reset_ctl);
 	if (rc) {
@@ -439,19 +441,28 @@ static int ast2600_i2c_probe(struct udevice *dev)
 		return rc;
 	}
 
-	if (reset_status(&reset_ctl) > 0) {
-		reset_assert(&reset_ctl);
-		mdelay(10);
-		reset_deassert(&reset_ctl);
-	}
+	/* read back the DIV ctrl */
+	div_ctrl = readl(&priv->global_regs->clk_divid);
 
-	writel(GLOBAL_INIT, &priv->global_regs->global_ctrl);
-
-	/* set device specified setting */
 	if (priv->version == AST2600)
-		writel(AST2600_I2CCG_DIV_CTRL, &priv->global_regs->clk_divid);
-	else
-		writel(AST2700_I2CCG_DIV_CTRL, &priv->global_regs->clk_divid);
+		div_val = AST2600_I2CCG_DIV_CTRL;
+
+	if (div_ctrl != div_val)
+		reset = true;
+
+	/* global reset */
+	if (reset) {
+		if (reset_status(&reset_ctl) > 0) {
+			reset_assert(&reset_ctl);
+			mdelay(10);
+			reset_deassert(&reset_ctl);
+		}
+
+		writel(GLOBAL_INIT, &priv->global_regs->global_ctrl);
+
+		/* set device specified setting */
+		writel(div_val, &priv->global_regs->clk_divid);
+	}
 
 	/* Reset device */
 	writel(0, &priv->regs->fun_ctrl);
