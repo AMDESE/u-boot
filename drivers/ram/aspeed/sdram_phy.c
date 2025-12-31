@@ -191,8 +191,6 @@ void dwc_ddrphy_phyinit_userCustom_J_enterMissionMode(struct sdramc *sdramc)
 	struct sdramc_regs *regs = sdramc->regs;
 	uint32_t val;
 
-	uint32_t rev_id = readl((void *)ASPEED_IO_REVISION_ID);
-
 	/*
 	 * 1. Set the PHY input clocks to the desired frequency.
 	 * 2. Initialize the PHY to mission mode by performing DFI Initialization.
@@ -204,16 +202,6 @@ void dwc_ddrphy_phyinit_userCustom_J_enterMissionMode(struct sdramc *sdramc)
 	writel(0xffffffff, (void *)&regs->intr_mask);
 
 	writel(0x0, (void *)&regs->dcfg); // [16] reset=0
-
-	if (!is_ddr4()) {
-		/* a0 SREF issue workaround */
-		if (!(rev_id & CHIP_AST2700A1_ID_MASK)) {
-			dwc_ddrphy_apb_wr(0xd0000, 0);		// DWC_DDRPHYA_APBONLY0_MicroContMuxSel
-			dwc_ddrphy_apb_wr(0x20240, 0x3900);	// DWC_DDRPHYA_MASTER0_base0_D5ACSMPtr0lat0
-			dwc_ddrphy_apb_wr(0x900da, 8);		// DWC_DDRPHYA_INITENG0_base0_SequenceReg0b59s0
-			dwc_ddrphy_apb_wr(0xd0000, 1);		// DWC_DDRPHYA_APBONLY0_MicroContMuxSel
-		}
-	}
 
 	/* phy init start */
 	val = readl((void *)&regs->mctl);
@@ -228,16 +216,6 @@ void dwc_ddrphy_phyinit_userCustom_J_enterMissionMode(struct sdramc *sdramc)
 
 	while (readl((void *)&regs->intr_status))
 		;
-
-	if (!is_ddr4()) {
-		/* a0 SREF issue workaround */
-		if (!(rev_id & CHIP_AST2700A1_ID_MASK)) {
-			dwc_ddrphy_apb_wr(0xd0000, 0);		// DWC_DDRPHYA_APBONLY0_MicroContMuxSel
-			dwc_ddrphy_apb_wr(0x20240, 0x4300);	// DWC_DDRPHYA_MASTER0_base0_D5ACSMPtr0lat0
-			dwc_ddrphy_apb_wr(0x900da, 0);		// DWC_DDRPHYA_INITENG0_base0_SequenceReg0b59s0
-			dwc_ddrphy_apb_wr(0xd0000, 1);		// DWC_DDRPHYA_APBONLY0_MicroContMuxSel
-		}
-	}
 }
 
 int dwc_ddrphy_phyinit_userCustom_D_loadIMEM(const int train2D)

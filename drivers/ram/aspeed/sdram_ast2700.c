@@ -1109,16 +1109,13 @@ static int sdram_init(struct udevice *dev)
 		return err;
 	}
 
-	/* a1 get size in the spl */
-	if ((readl((void *)ASPEED_IO_REVISION_ID) & CHIP_AST2700A1_ID_MASK)) {
-		sdramc_size_detect(sdramc);
+	sdramc_size_detect(sdramc);
 
-		sdramc_ecc_enable(sdramc);
-		sdramc_aes_enable(sdramc);
+	sdramc_ecc_enable(sdramc);
+	sdramc_aes_enable(sdramc);
 
-		if (IS_ENABLED(CONFIG_SPL_BUILD) && IS_ENABLED(CONFIG_ASPEED_MPU))
-			sdramc_mpu_init(sdramc);
-	}
+	if (IS_ENABLED(CONFIG_SPL_BUILD) && IS_ENABLED(CONFIG_ASPEED_MPU))
+		sdramc_mpu_init(sdramc);
 
 	sdramc_qos_init(sdramc);
 
@@ -1150,7 +1147,6 @@ static int ast2700_sdrammc_of_to_plat(struct udevice *dev)
 #ifndef CONFIG_RISCV
 static int ast2700_sdrammc_calc_size(struct sdramc *sdramc)
 {
-	struct ast2700_scu1 *scu;
 	struct sdramc_regs *regs = sdramc->regs;
 	struct ddr_capacity ram_size[] = {
 		{0x10000000,	{208, 256}}, // 256MB
@@ -1160,66 +1156,12 @@ static int ast2700_sdrammc_calc_size(struct sdramc *sdramc)
 		{0x100000000,	{656, 880}}, // 4GB
 		{0x200000000,	{880, 880}}, // 8GB
 		};
-	u32 test_pattern = 0xdeadbeef;
-	u32 val;
-	int sz, ddr4;
-	int nodeoffset;
-	ofnode node;
+	int sz;
 
-	/* a1 size already get in the spl */
-	if ((readl((void *)ASPEED_IO_REVISION_ID) & CHIP_AST2700A1_ID_MASK)) {
-		sz = (readl(&regs->mcfg) >> 2) & 0x7;
-		sdramc->info.base = CFG_SYS_SDRAM_BASE;
-		sdramc->info.size = ram_size[sz].size - ast2700_sdrammc_get_vga_mem_size(sdramc);
-		return 0;
-	}
-
-	/* find the offset of compatible node */
-	nodeoffset = fdt_node_offset_by_compatible(gd->fdt_blob, -1,
-						   "aspeed,ast2700-scu1");
-	if (nodeoffset < 0) {
-		printf("%s: failed to get aspeed,ast2700-scu1\n", __func__);
-		return -ENODEV;
-	}
-
-	/* get ast2700-scu0 node */
-	node = offset_to_ofnode(nodeoffset);
-
-	scu = (struct ast2700_scu1 *)ofnode_get_addr(node);
-
-	/* Configure ram size to max to enable whole area */
-	val = readl(&regs->mcfg);
-	val &= ~(0x7 << 2);
-	writel(val | (SDRAM_SIZE_8GB << 2), &regs->mcfg);
-
-	/* Clear basement. */
-	writel(0, (void *)CFG_SYS_SDRAM_BASE);
-
-	for (sz = SDRAM_SIZE_8GB - 1; sz > SDRAM_SIZE_256MB; sz--) {
-		test_pattern = (test_pattern << 4) + sz;
-		writel(test_pattern, (void *)CFG_SYS_SDRAM_BASE + ram_size[sz].size);
-
-		if (readl((void *)CFG_SYS_SDRAM_BASE) != test_pattern)
-			break;
-	}
-
-	/* re-configure ram size to dramc. */
-	val = readl(&regs->mcfg);
-	val &= ~(0x7 << 2);
-	writel(val | ((sz + 1) << 2), &regs->mcfg);
-
-	ddr4 = is_ddr4();
-
-	/* update rfc in ac_timing5 register. */
-	val = readl(&regs->actime5);
-	val &= ~(0x3ff);
-	val |= (ram_size[sz + 1].rfc[ddr4] >> 1);
-	writel(val, &regs->actime5);
-
-	/* report actual ram base and size to kernel */
+	/* size already get in the spl */
+	sz = (readl(&regs->mcfg) >> 2) & 0x7;
 	sdramc->info.base = CFG_SYS_SDRAM_BASE;
-	sdramc->info.size = ram_size[sz + 1].size - ast2700_sdrammc_get_vga_mem_size(sdramc);
-
+	sdramc->info.size = ram_size[sz].size - ast2700_sdrammc_get_vga_mem_size(sdramc);
 	return 0;
 }
 
