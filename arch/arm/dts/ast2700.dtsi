@@ -294,14 +294,14 @@
 			reg = <0x0 0x12c15800 0x0 0x800>;
 		};
 
-		pcie_device0: pcie-device@12c02a00 {
-			compatible = "syscon", "simple-mfd";
-			reg = <0 0x12c02a00 0 0x80>;
+		pcie_cfg0: syscon@12c02a00 {
+			compatible = "syscon";
+			reg = <0 0x12c02a00 0x0 0x80>;
 		};
 
-		pcie_device1: pcie-device@12c02a80 {
-			compatible = "syscon", "simple-mfd";
-			reg = <0 0x12c02a80 0 0x80>;
+		pcie_cfg1: syscon@12c02a80 {
+			compatible = "syscon";
+			reg = <0 0x12c02a80 0x0 0x80>;
 		};
 
 		pcie0: pcie@120e0000 {
@@ -319,7 +319,7 @@
 			reset-names = "h2x", "perst", "perst_oe";
 
 			pciephy = <&pcie_phy0>;
-			aspeed,device = <&pcie_device0>;
+			aspeed,pciecfg = <&pcie_cfg0>;
 
 			status = "disabled";
 		};
@@ -339,7 +339,7 @@
 			reset-names = "h2x", "perst", "perst_oe";
 
 			pciephy = <&pcie_phy1>;
-			aspeed,device = <&pcie_device1>;
+			aspeed,pciecfg = <&pcie_cfg1>;
 
 			status = "disabled";
 		};
@@ -984,13 +984,13 @@
 			status = "disabled";
 		};
 
-		pcie_device2: pcie-device@14c02a80 {
-			compatible = "syscon", "simple-mfd";
-			reg = <0 0x14c02a80 0 0x80>;
+		pcie_cfg2: syscon@14c02a80 {
+			compatible = "syscon";
+			reg = <0 0x14c02a80 0x0 0x80>;
 		};
 
-		pcie_perst2: pcie-perst@14c02908 {
-			compatible = "syscon", "simple-mfd";
+		pcie_perst2: pcie-syscon@14c02908 {
+			compatible = "syscon";
 			reg = <0 0x14c02908 0 0x04>;
 		};
 
@@ -1011,7 +1011,7 @@
 			pinctrl-names = "default";
 
 			pciephy = <&plda>;
-			aspeed,device = <&pcie_device2>;
+			aspeed,pciecfg = <&pcie_cfg2>;
 			perst = <&pcie_perst2>;
 
 			status = "disabled";
