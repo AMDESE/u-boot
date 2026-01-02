@@ -285,12 +285,12 @@
 		};
 
 		pcie_phy0: pcie-phy@12c15000 {
-			compatible = "syscon", "simple-mfd";
+			compatible = "syscon";
 			reg = <0x0 0x12c15000 0x0 0x800>;
 		};
 
 		pcie_phy1: pcie-phy@12c15800 {
-			compatible = "syscon", "simple-mfd";
+			compatible = "syscon";
 			reg = <0x0 0x12c15800 0x0 0x800>;
 		};
 
@@ -306,42 +306,42 @@
 
 		pcie0: pcie@120e0000 {
 			compatible = "aspeed,ast2700-pcie";
+			device_type = "pci";
+			reg = <0x0 0x120e0000 0x0 0x100>;
+			linux,pci-domain = <0>;
 			#address-cells = <3>;
 			#size-cells = <2>;
-			reg = <0x0 0x120e0000 0x0 0x100>;
-			ranges = <0x01000000 0 0x00000000 0x0 0x00000000 0x0 0x00008000>,
-				 <0x02000000 0 0x60000000 0x0 0x60000000 0x0 0x10000000>; /* memory */
-			device_type = "pci";
-			linux,pci-domain = <0>;
+
+			ranges = <0x02000000 0 0x60000000 0x0 0x60000000 0x0 0x10000000>;
+
+			status = "disabled";
 
 			resets = <&soc0_rst SCU0_RESET_H2X0>, <&soc0_rst SCU0_RESET_PCIE0RST>,
 				 <&soc0_rst SCU0_RESET_PCIE0RSTOE>;
 			reset-names = "h2x", "perst", "perst_oe";
 
-			pciephy = <&pcie_phy0>;
+			aspeed,pciephy = <&pcie_phy0>;
 			aspeed,pciecfg = <&pcie_cfg0>;
-
-			status = "disabled";
 		};
 
 		pcie1: pcie@120f0000 {
 			compatible = "aspeed,ast2700-pcie";
+			device_type = "pci";
+			reg = <0x0 0x120f0000 0x0 0x100>;
+			linux,pci-domain = <1>;
 			#address-cells = <3>;
 			#size-cells = <2>;
-			reg = <0x0 0x120f0000 0x0 0x100>;
-			ranges = <0x01000000 0 0x00000000 0x0 0x00000000 0x0 0x00008000>,
-				 <0x02000000 0 0x80000000 0x0 0x80000000 0x0 0x10000000>; /* memory */
-			device_type = "pci";
-			linux,pci-domain = <1>;
+
+			ranges = <0x02000000 0 0x80000000 0x0 0x80000000 0x0 0x10000000>;
+
+			status = "disabled";
 
 			resets = <&soc0_rst SCU0_RESET_H2X1>, <&soc0_rst SCU0_RESET_PCIE1RST>,
 				 <&soc0_rst SCU0_RESET_PCIE1RSTOE>;
 			reset-names = "h2x", "perst", "perst_oe";
 
-			pciephy = <&pcie_phy1>;
+			aspeed,pciephy = <&pcie_phy1>;
 			aspeed,pciecfg = <&pcie_cfg1>;
-
-			status = "disabled";
 		};
 		mbox0: mbox@12c1c200 {
 			compatible = "aspeed,ast2700-mailbox";
@@ -501,8 +501,8 @@
 			};
 		};
 
-		plda: plda@14C1C000 {
-			compatible = "aspeed,plda", "syscon", "simple-mfd";
+		pcie_phy2: pcie-phy@14c1c000 {
+			compatible = "syscon";
 			reg = <0x0 0x14c1c000 0x0 0x400>;
 		};
 
@@ -511,7 +511,7 @@
 			reg = <0x0 0x14c01000 0x0 0x40>;
 			#phy-cells = <0>;
 
-			aspeed,plda = <&plda>;
+			aspeed,plda = <&pcie_phy2>;
 
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_sgmii_default>;
@@ -996,13 +996,15 @@
 
 		pcie2: pcie@140d0000 {
 			compatible = "aspeed,ast2700-pcie";
+			device_type = "pci";
+			reg = <0x0 0x140d0000 0x0 0x100>;
+			linux,pci-domain = <2>;
 			#address-cells = <3>;
 			#size-cells = <2>;
-			reg = <0x0 0x140d0000 0x0 0x100>;
-			ranges = <0x01000000 0 0x00000000 0x0 0x00000000 0x0 0x00008000>,
-				 <0x02000000 0 0xa0000000 0x0 0xa0000000 0x0 0x10000000>; /* memory */
-			device_type = "pci";
-			linux,pci-domain = <2>;
+
+			ranges = <0x02000000 0 0xa0000000 0x0 0xa0000000 0x0 0x10000000>;
+
+			status = "disabled";
 
 			resets = <&soc1_rst SCU1_RESET_H2X>;
 			reset-names = "h2x";
@@ -1010,11 +1012,9 @@
 			pinctrl-0 = <&pinctrl_pcie2_perst_default>;
 			pinctrl-names = "default";
 
-			pciephy = <&plda>;
+			aspeed,pciephy = <&pcie_phy2>;
 			aspeed,pciecfg = <&pcie_cfg2>;
-			perst = <&pcie_perst2>;
-
-			status = "disabled";
+			aspeed,perst = <&pcie_perst2>;
 		};
 
 		mbox2: mbox@14c39200 {
