@@ -665,37 +665,31 @@ int pcie_ast2700_setup(struct udevice *dev)
 
 	ret = reset_get_by_name(dev, "h2x", &h2xrst);
 	if (ret) {
-		printf("%s(): Failed to get h2x reset\n", __func__);
+		pr_err("Failed to get h2x reset: %d\n", ret);
 		return ret;
 	}
 
 	if (pcie->domain == 2) {
-		/* SCU1 RC */
-		scu1_perst = syscon_regmap_lookup_by_phandle(dev, "perst");
-		if (IS_ERR(scu1_perst)) {
-			printf("can't allocate scu1 perst\n");
+		scu1_perst = syscon_regmap_lookup_by_phandle(dev, "aspeed,perst");
+		if (IS_ERR(scu1_perst))
 			return PTR_ERR(scu1_perst);
-		}
 	} else {
-		/* SCU0 RC */
 		ret = reset_get_by_name(dev, "perst", &perst);
 		if (ret) {
-			printf("%s(): Failed to get perst reset\n", __func__);
+			pr_err("Failed to get perst reset: %d\n", ret);
 			return ret;
 		}
 
 		ret = reset_get_by_name(dev, "perst_oe", &perst_oe);
 		if (ret) {
-			printf("%s(): Failed to get perst output enable\n", __func__);
+			pr_err("Failed to get perst output enable: %d\n", ret);
 			return ret;
 		}
 	}
 
-	pcie->pciephy = syscon_regmap_lookup_by_phandle(dev, "pciephy");
-	if (IS_ERR(pcie->pciephy)) {
-		printf("can't allocate pciephy\n");
+	pcie->pciephy = syscon_regmap_lookup_by_phandle(dev, "aspeed,pciephy");
+	if (IS_ERR(pcie->pciephy))
 		return PTR_ERR(pcie->pciephy);
-	}
 
 	pcie->cfg = syscon_regmap_lookup_by_phandle(dev, "aspeed,pciecfg");
 	if (IS_ERR(pcie->cfg))
@@ -704,7 +698,8 @@ int pcie_ast2700_setup(struct udevice *dev)
 	/* Set perst to output enable by reset function */
 	if (pcie->domain == 2) {
 		/* Set perst to output and assert perst */
-		regmap_write(scu1_perst, 0, 0x02);
+		regmap_write(scu1_perst, SCU1_PCIE3_CTRL,
+			     SCU1_PCIE3_PERST_OUTPUT | SCU1_PCIE3_PERST_ASSERT);
 	} else {
 		reset_assert(&perst_oe);
 		mdelay(10);
@@ -750,7 +745,8 @@ int pcie_ast2700_setup(struct udevice *dev)
 
 	if (pcie->domain == 2)
 		/* Set perst to output and deassert perst */
-		regmap_write(scu1_perst, 0, 0x03);
+		regmap_write(scu1_perst, SCU1_PCIE3_CTRL,
+			     SCU1_PCIE3_PERST_OUTPUT | SCU1_PCIE3_PERST_DEASSERT);
 	else
 		reset_deassert(&perst);
 	mdelay(1000);

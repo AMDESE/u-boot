@@ -73,6 +73,12 @@
 #define SCU_70			0x70
 #define SCU_78			0x78
 
+/* AST2700 SCU1 PERST */
+#define SCU1_PCIE3_CTRL		0x0
+#define   SCU1_PCIE3_PERST_OUTPUT	BIT(1)
+#define   SCU1_PCIE3_PERST_DEASSERT	BIT(0)
+#define   SCU1_PCIE3_PERST_ASSERT	0
+
 /* TLP configuration type 0 and type 1 */
 #define CRG_READ_FMTTYPE(type)		(0x04000000 | (type << 24))
 #define CRG_WRITE_FMTTYPE(type)		(0x44000000 | (type << 24))
