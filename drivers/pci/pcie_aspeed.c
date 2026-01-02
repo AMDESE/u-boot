@@ -38,7 +38,7 @@ struct pcie_aspeed {
 
 	int domain;
 	struct regmap *pciephy;
-	struct regmap *device;
+	struct regmap *cfg;
 	u8 tx_tag;
 
 	u32 root_bus;
@@ -697,11 +697,9 @@ int pcie_ast2700_setup(struct udevice *dev)
 		return PTR_ERR(pcie->pciephy);
 	}
 
-	pcie->device = syscon_regmap_lookup_by_phandle(dev, "aspeed,device");
-	if (IS_ERR(pcie->device)) {
-		printf("can't allocate scu device\n");
-		return PTR_ERR(pcie->device);
-	}
+	pcie->cfg = syscon_regmap_lookup_by_phandle(dev, "aspeed,pciecfg");
+	if (IS_ERR(pcie->cfg))
+		return PTR_ERR(pcie->cfg);
 
 	/* Set perst to output enable by reset function */
 	if (pcie->domain == 2) {
@@ -718,14 +716,14 @@ int pcie_ast2700_setup(struct udevice *dev)
 	regmap_write(pcie->pciephy, PEHR_MISC_78, 0x80030);
 	regmap_write(pcie->pciephy, PEHR_MISC_58, LOCAL_SCALE_SUP);
 
-	regmap_update_bits(pcie->device, SCU_60,
+	regmap_update_bits(pcie->cfg, SCU_60,
 			   RC_E2M_PATH_EN | RC_H2XS_PATH_EN | RC_H2XD_PATH_EN | RC_H2XX_PATH_EN |
 				   RC_UPSTREAM_MEM_EN,
 			   RC_E2M_PATH_EN | RC_H2XS_PATH_EN | RC_H2XD_PATH_EN | RC_H2XX_PATH_EN |
 				   RC_UPSTREAM_MEM_EN);
-	regmap_write(pcie->device, SCU_64, 0xff00ff00);
-	regmap_write(pcie->device, SCU_70, 0);
-	regmap_write(pcie->device, SCU_78, (pcie->domain == 1) ? BIT(31) : 0);
+	regmap_write(pcie->cfg, SCU_64, 0xff00ff00);
+	regmap_write(pcie->cfg, SCU_70, 0);
+	regmap_write(pcie->cfg, SCU_78, (pcie->domain == 1) ? BIT(31) : 0);
 
 	reset_assert(&h2xrst);
 	mdelay(10);
