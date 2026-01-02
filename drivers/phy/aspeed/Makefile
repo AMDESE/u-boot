@@ -1,1 +1,1 @@
-obj-$(CONFIG_PHY_ASPEED_SGMII) += aspeed-sgmii.o
+obj-$(CONFIG_PHY_ASPEED_SGMII) += phy-aspeed-sgmii.o
