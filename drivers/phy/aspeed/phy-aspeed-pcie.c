@@ -23,13 +23,17 @@
 #define PCIE_RC_DEVICE			BIT(30)
 /* reg60 */
 #define AST2700_PORT_TYPE_MASK		GENMASK(7, 4)
-#define PORT_TYPE_ROOT			BIT(6)
+#define PORT_TYPE_ROOT			0x4
 /* reg70 */
 #define POSTED_DATA_CREDITS(x)		FIELD_PREP(GENMASK(15, 0), x)
 #define POSTED_HEADER_CREDITS(x)	FIELD_PREP(GENMASK(27, 16), x)
 /* reg78 */
 #define COMPLETION_DATA_CREDITS(x)	FIELD_PREP(GENMASK(15, 0), x)
 #define COMPLETION_HEADER_CREDITS(x)	FIELD_PREP(GENMASK(27, 16), x)
+/* reg268 pehr_clk_freq */
+#define CLK_SEL_INTERNAL_25M		BIT(8)
+#define CLK_FREQ_MULTI_MASK		GENMASK(7, 0)
+#define CLK_FREQ_MULTI(x)		FIELD_PREP(CLK_FREQ_MULTI_MASK, (x))
 
 struct ast2600_pehr_reg {
 	u32 pehr_reserved0[12];		// 0x00 ~ 0x2c
@@ -47,6 +51,8 @@ struct ast2700_pehr_reg {
 	u32 pehr_misc_70;		// 0x70
 	u32 pehr_reserved2;		// 0x74
 	u32 pehr_misc_78;		// 0x78
+	u32 pehr_reserved3[123];	// 0x7c ~ 0x264
+	u32 pehr_clk_freq;		// 0x268
 };
 
 /*
@@ -90,20 +96,28 @@ static int aspeed_ast2700_init(struct phy *phy)
 	struct ast2700_pehr_reg *pehr_reg = pcie_phy->pehr_reg_27;
 	u32 cfg_val;
 
-	if (pcie_phy->type != PHY_TYPE_PCIE)
+	if (pcie_phy->type == PHY_TYPE_PCIE) {
+		writel(POSTED_DATA_CREDITS(0xc0) | POSTED_HEADER_CREDITS(0xa),
+		       &pehr_reg->pehr_misc_70);
+		writel(COMPLETION_DATA_CREDITS(0x30) | COMPLETION_HEADER_CREDITS(0x8),
+		       &pehr_reg->pehr_misc_78);
+		writel(LOCAL_SCALE_SUP, &pehr_reg->pehr_misc_58);
+		writel(PCIE_RC_DEVICE, &pehr_reg->pehr_misc_5c);
+		cfg_val = readl(&pehr_reg->pehr_misc_60);
+		cfg_val &= ~AST2700_PORT_TYPE_MASK;
+		cfg_val |= FIELD_PREP(AST2700_PORT_TYPE_MASK, PORT_TYPE_ROOT);
+		writel(cfg_val, &pehr_reg->pehr_misc_60);
+	} else if (pcie_phy->type == PHY_TYPE_SGMII) {
+		/*
+		 * The PLDA frequency multiplication is X xor 0x19.
+		 * (X xor 0x19) * clock source = data rate.
+		 * SGMII data rate is 1.25G, so (0x2b xor 0x19) * 25MHz is equal 1.25G.
+		 */
+		cfg_val = CLK_SEL_INTERNAL_25M | CLK_FREQ_MULTI(0x2b);
+		writel(cfg_val, &pehr_reg->pehr_clk_freq);
+	} else {
 		return -EINVAL;
-
-	writel(POSTED_DATA_CREDITS(0xc0) | POSTED_HEADER_CREDITS(0xa),
-	       &pehr_reg->pehr_misc_70);
-	writel(COMPLETION_DATA_CREDITS(0x30) | COMPLETION_HEADER_CREDITS(0x8),
-	       &pehr_reg->pehr_misc_78);
-	writel(LOCAL_SCALE_SUP, &pehr_reg->pehr_misc_58);
-
-	writel(PCIE_RC_DEVICE, &pehr_reg->pehr_misc_5c);
-	cfg_val = readl(&pehr_reg->pehr_misc_60);
-	cfg_val &= ~AST2700_PORT_TYPE_MASK;
-	cfg_val |= PORT_TYPE_ROOT;
-	writel(cfg_val, &pehr_reg->pehr_misc_60);
+	}
 
 	return 0;
 }
