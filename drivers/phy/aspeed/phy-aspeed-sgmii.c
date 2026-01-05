@@ -36,29 +36,22 @@
 #define SGMII_MODE_ENABLE		BIT(0)
 #define SGMII_MODE_USE_LOCAL_CONFIG	BIT(2)
 
-#define PLDA_CLK		0x268
-
-#define PLDA_CLK_SEL_INTERNAL_25M	BIT(8)
-#define PLDA_CLK_FREQ_MULTI		GENMASK(7, 0)
-
 struct aspeed_sgmii {
 	phys_addr_t regs;
 	struct regmap *plda_regmap;
+
+	struct phy pcie_phy;
 };
 
 static int aspeed_sgmii_phy_init(struct phy *phy)
 {
 	struct udevice *dev = phy->dev;
 	struct aspeed_sgmii *sgmii = dev_get_priv(dev);
-	u32 reg;
+	int ret;
 
-	/*
-	 * The PLDA frequency multiplication is X xor 0x19.
-	 * (X xor 0x19) * clock source = data rate.
-	 * SGMII data rate is 1.25G, so (0x2b xor 0x19) * 25MHz is equal 1.25G.
-	 */
-	reg = PLDA_CLK_SEL_INTERNAL_25M | FIELD_PREP(PLDA_CLK_FREQ_MULTI, 0x2b);
-	regmap_write(sgmii->plda_regmap, PLDA_CLK, reg);
+	ret = generic_phy_init(&sgmii->pcie_phy);
+	if (ret)
+		return ret;
 
 	writel(0, sgmii->regs + SGMII_MODE);
 	writel(0, sgmii->regs + SGMII_CFG);
@@ -80,9 +73,6 @@ int aspeed_sgmii_set_speed(struct phy *phy, int speed)
 	struct udevice *dev = phy->dev;
 	struct aspeed_sgmii *sgmii = dev_get_priv(dev);
 	u32 reg;
-
-	reg = PLDA_CLK_SEL_INTERNAL_25M | FIELD_PREP(PLDA_CLK_FREQ_MULTI, 0x2b);
-	regmap_write(sgmii->plda_regmap, PLDA_CLK, reg);
 
 	switch (speed) {
 	case 10:
@@ -122,16 +112,19 @@ struct phy_ops aspeed_sgmii_phy_ops = {
 int aspeed_sgmii_probe(struct udevice *dev)
 {
 	struct aspeed_sgmii *sgmii = dev_get_priv(dev);
+	int ret;
 
 	sgmii->regs = dev_read_addr(dev);
 	if (!sgmii->regs)
 		return -EINVAL;
 
-	sgmii->plda_regmap = syscon_regmap_lookup_by_phandle(dev, "aspeed,plda");
-	if (IS_ERR(sgmii->plda_regmap)) {
-		dev_err(dev, "Unable to find plda regmap (%ld)\n", PTR_ERR(sgmii->plda_regmap));
-		return PTR_ERR(sgmii->plda_regmap);
-	}
+	ret = generic_phy_get_by_index(dev, 0, &sgmii->pcie_phy);
+	if (ret)
+		return ret;
+
+	ret = generic_phy_init(&sgmii->pcie_phy);
+	if (ret)
+		return ret;
 
 	return 0;
 }
