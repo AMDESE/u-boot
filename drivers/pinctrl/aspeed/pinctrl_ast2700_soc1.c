@@ -125,7 +125,7 @@ static struct ast2700_soc1_sig_desc rmii1rclko_link[] = {
 };
 
 static struct ast2700_soc1_sig_desc sgmii_link[] = {
-	{0x7c, BIT(0), BIT(0)},
+	{0x47c, BIT(0), BIT(0)},
 };
 
 static struct ast2700_soc1_sig_desc spi0_link[] = {
