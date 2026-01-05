@@ -2,6 +2,7 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/gpio/aspeed-gpio.h>
 #include <dt-bindings/clock/ast2700-clock.h>
+#include <dt-bindings/phy/phy.h>
 #include <dt-bindings/reset/ast2700-reset.h>
 #include "skeleton.dtsi"
 
@@ -285,13 +286,15 @@
 		};
 
 		pcie_phy0: pcie-phy@12c15000 {
-			compatible = "syscon";
+			compatible = "aspeed,ast2700-pcie-phy";
 			reg = <0x0 0x12c15000 0x0 0x800>;
+			#phy-cells = <1>;
 		};
 
 		pcie_phy1: pcie-phy@12c15800 {
-			compatible = "syscon";
+			compatible = "aspeed,ast2700-pcie-phy";
 			reg = <0x0 0x12c15800 0x0 0x800>;
+			#phy-cells = <1>;
 		};
 
 		pcie_cfg0: syscon@12c02a00 {
@@ -311,17 +314,30 @@
 			linux,pci-domain = <0>;
 			#address-cells = <3>;
 			#size-cells = <2>;
+			bus-range = <0x00 0xff>;
 
 			ranges = <0x02000000 0 0x60000000 0x0 0x60000000 0x0 0x10000000>;
 
 			status = "disabled";
 
-			resets = <&soc0_rst SCU0_RESET_H2X0>, <&soc0_rst SCU0_RESET_PCIE0RST>,
-				 <&soc0_rst SCU0_RESET_PCIE0RSTOE>;
-			reset-names = "h2x", "perst", "perst_oe";
+			resets = <&soc0_rst SCU0_RESET_H2X0>;
+			reset-names = "h2x";
 
-			aspeed,pciephy = <&pcie_phy0>;
 			aspeed,pciecfg = <&pcie_cfg0>;
+
+			pcie@0,0 {
+				compatible = "pciclass,0604";
+				reg = <0 0 0 0 0>;
+				#address-cells = <3>;
+				#size-cells = <2>;
+				device_type = "pci";
+				resets = <&soc0_rst SCU0_RESET_PCIE0RST>,
+					 <&soc0_rst SCU0_RESET_PCIE0RSTOE>;
+				reset-names = "perst", "perst_oe";
+				clocks = <&soc0_clk SCU0_CLK_GATE_BCLK>;
+				phys = <&pcie_phy0 PHY_TYPE_PCIE>;
+				ranges;
+			};
 		};
 
 		pcie1: pcie@120f0000 {
@@ -331,17 +347,30 @@
 			linux,pci-domain = <1>;
 			#address-cells = <3>;
 			#size-cells = <2>;
+			bus-range = <0x00 0xff>;
 
 			ranges = <0x02000000 0 0x80000000 0x0 0x80000000 0x0 0x10000000>;
 
 			status = "disabled";
 
-			resets = <&soc0_rst SCU0_RESET_H2X1>, <&soc0_rst SCU0_RESET_PCIE1RST>,
-				 <&soc0_rst SCU0_RESET_PCIE1RSTOE>;
-			reset-names = "h2x", "perst", "perst_oe";
+			resets = <&soc0_rst SCU0_RESET_H2X1>;
+			reset-names = "h2x";
 
-			aspeed,pciephy = <&pcie_phy1>;
 			aspeed,pciecfg = <&pcie_cfg1>;
+
+			pcie@0,0 {
+				compatible = "pciclass,0604";
+				reg = <0 0 0 0 0>;
+				#address-cells = <3>;
+				#size-cells = <2>;
+				device_type = "pci";
+				resets = <&soc0_rst SCU0_RESET_PCIE1RST>,
+					 <&soc0_rst SCU0_RESET_PCIE1RSTOE>;
+				reset-names = "perst", "perst_oe";
+				clocks = <&soc0_clk SCU0_CLK_GATE_BCLK>;
+				phys = <&pcie_phy1 PHY_TYPE_PCIE>;
+				ranges;
+			};
 		};
 		mbox0: mbox@12c1c200 {
 			compatible = "aspeed,ast2700-mailbox";
@@ -502,8 +531,9 @@
 		};
 
 		pcie_phy2: pcie-phy@14c1c000 {
-			compatible = "syscon";
+			compatible = "aspeed,ast2700-pcie-phy";
 			reg = <0x0 0x14c1c000 0x0 0x400>;
+			#phy-cells = <1>;
 		};
 
 		sgmii: phy@14c01000 {
@@ -511,7 +541,7 @@
 			reg = <0x0 0x14c01000 0x0 0x40>;
 			#phy-cells = <0>;
 
-			aspeed,plda = <&pcie_phy2>;
+			phys = <&pcie_phy2 PHY_TYPE_SGMII>;
 
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_sgmii_default>;
@@ -539,6 +569,8 @@
 
 			phys = <&sgmii>;
 			phy-names = "sgmii";
+
+			phy-mode = "sgmii"; /* Only support sgmii mode */
 
 			clocks = <&soc1_clk SCU1_CLK_GATE_MAC2CLK>;
 			resets = <&soc1_rst SCU1_RESET_MAC2>;
@@ -1001,6 +1033,7 @@
 			linux,pci-domain = <2>;
 			#address-cells = <3>;
 			#size-cells = <2>;
+			bus-range = <0x00 0xff>;
 
 			ranges = <0x02000000 0 0xa0000000 0x0 0xa0000000 0x0 0x10000000>;
 
@@ -1009,12 +1042,21 @@
 			resets = <&soc1_rst SCU1_RESET_H2X>;
 			reset-names = "h2x";
 
-			pinctrl-0 = <&pinctrl_pcie2_perst_default>;
-			pinctrl-names = "default";
-
-			aspeed,pciephy = <&pcie_phy2>;
 			aspeed,pciecfg = <&pcie_cfg2>;
-			aspeed,perst = <&pcie_perst2>;
+
+			pcie@0,0 {
+				compatible = "pciclass,0604";
+				reg = <0 0 0 0 0>;
+				#address-cells = <3>;
+				#size-cells = <2>;
+				device_type = "pci";
+				clocks = <&soc1_clk SCU1_CLK_GATE_PCICLK>;
+				pinctrl-0 = <&pinctrl_pcie2_perst_default>;
+				pinctrl-names = "default";
+				phys = <&pcie_phy2 PHY_TYPE_PCIE>;
+				aspeed,perst = <&pcie_perst2>;
+				ranges;
+			};
 		};
 
 		mbox2: mbox@14c39200 {
