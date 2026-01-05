@@ -1110,6 +1110,13 @@ static ulong ast2600_enable_rsaclk(struct ast2600_scu *scu)
 	return 0;
 }
 
+static ulong ast2600_enable_bclk(struct ast2600_scu *scu)
+{
+	writel(BIT(ASPEED_CLK_GATE_BCLK), &scu->clkgate_clr1);
+
+	return 0;
+}
+
 static int ast2600_clk_enable(struct clk *clk)
 {
 	struct ast2600_clk_priv *priv = dev_get_priv(clk->dev);
@@ -1153,6 +1160,9 @@ static int ast2600_clk_enable(struct clk *clk)
 		break;
 	case ASPEED_CLK_GATE_RSACLK:
 		ast2600_enable_rsaclk(priv->scu);
+		break;
+	case ASPEED_CLK_GATE_BCLK:
+		ast2600_enable_bclk(priv->scu);
 		break;
 	default:
 		debug("%s: unknown clk %ld\n", __func__, clk->id);
