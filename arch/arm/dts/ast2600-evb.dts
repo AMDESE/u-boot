@@ -283,11 +283,7 @@
 	status = "okay";
 };
 
-&pcie_phy1 {
-	status = "okay";
-};
-
-&pcie_bridge {
+&pcie0 {
 	status = "okay";
 };
 

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 #include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/phy/phy.h>
 #include "skeleton.dtsi"
 
 / {
@@ -109,7 +110,7 @@
 		};
 
 		ahbc: ahbc@1e600000 {
-			compatible = "aspeed,aspeed-ahbc";
+			compatible = "aspeed,aspeed-ahbc", "syscon";
 			reg = < 0x1e600000 0x100>;
 		};
 
@@ -785,37 +786,46 @@
 				status = "disabled";
 			};
 
-			pcie_phy0: phy@1e6ed000 {
-				compatible = "aspeed,ast2600-pcie_phy";
-				reg = <0x1e6ed000 0x100>;
-				resets = <&rst ASPEED_RESET_PCIE_DEV_O>;
-				pinctrl-names = "default";
-				pinctrl-0 = <&pinctrl_pcie0rc_default>;
-				status = "disabled";
-			};
-
 			pcie_phy1: phy@1e6ed200 {
-				compatible = "aspeed,ast2600-pcie_phy";
+				compatible = "aspeed,ast2600-pcie-phy";
 				reg = <0x1e6ed200 0x100>;
-				resets = <&rst ASPEED_RESET_PCIE_RC_O>;
-				pinctrl-names = "default";
-				pinctrl-0 = <&pinctrl_pcie1rc_default>;
-				status = "disabled";
+				#phy-cells = <1>;
 			};
 
-			pcie_bridge: pcie@1e770000 {
+			pcie0: pcie@1e770000 {
 				compatible = "aspeed,ast2600-pcie";
+				device_type = "pci";
+				reg = <0x1e770000 0x100>;
+				linux,pci-domain = <0>;
 				#address-cells = <3>;
 				#size-cells = <2>;
-				reg = <0x1e770000 0x100>;
-				ranges = <0x81000000 0x0 0x0 0x0 0x0 0x10000   /* downstream I/O */
-					  0x82000000 0x0 0x60000000 0x60000000 0x0 0x20000000>; /* non-prefetchable memory */
-				device_type = "pci";
 				bus-range = <0x00 0xff>;
-				resets = <&rst ASPEED_RESET_H2X>, <&rst ASPEED_RESET_PCIE_DEV_O>, <&rst ASPEED_RESET_PCIE_RC_O>;
-				slot0-handle = <&pcie_phy0>;
-				slot1-handle = <&pcie_phy1>;
+
+				ranges = <0x02000000 0x0 0x60000000 0x60000000 0x0 0x20000000>;
+
 				status = "disabled";
+
+				resets = <&rst ASPEED_RESET_H2X>;
+				reset-names = "h2x";
+
+				pinctrl-0 = <&pinctrl_pcie1rc_default>;
+				pinctrl-names = "default";
+
+				aspeed,ahbc = <&ahbc>;
+
+				pcie@8,0 {
+					compatible = "pciclass,0604";
+					reg = <0x00004000 0 0 0 0>;
+					#address-cells = <3>;
+					#size-cells = <2>;
+					device_type = "pci";
+					resets = <&rst ASPEED_RESET_PCIE_RC_O>,
+						 <&rst ASPEED_RESET_PCIE_RC_OE>;
+					reset-names = "perst", "perst_oe";
+					clocks = <&scu ASPEED_CLK_GATE_BCLK>;
+					phys = <&pcie_phy1 PHY_TYPE_PCIE>;
+					ranges;
+				};
 			};
 		};
 
