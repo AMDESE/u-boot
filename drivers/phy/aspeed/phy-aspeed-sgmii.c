@@ -141,8 +141,8 @@ static const struct udevice_id aspeed_sgmii_ids[] = {
 	{ }
 };
 
-U_BOOT_DRIVER(aspeed_sgmii) = {
-	.name = "aspeed_sgmii",
+U_BOOT_DRIVER(phy_aspeed_sgmii) = {
+	.name = "phy_aspeed_sgmii",
 	.id = UCLASS_PHY,
 	.of_match = aspeed_sgmii_ids,
 	.probe = aspeed_sgmii_probe,
