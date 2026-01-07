@@ -164,8 +164,13 @@ const BoardInfo boards[] = {
 	{ "robin",      0xAE,   AMD_SP8_SLT_1P,     ONE_LINK },
 	{ "sandpiper",  0xAF,   AMD_SP8_SLT_1P,     ONE_LINK },
 	{ "marrakesh",  0xB0,   AMD_TYPE_SLT_1P,    ONE_LINK },
+	{ "falcon",     0xB1,   HCC_TYPE_1,         ONE_LINK },
 	{ "falcon",     0xB2,   HCC_TYPE_1,         ONE_LINK },
-	{ "seagull",    0xB5,   HCC_TYPE_2,         TWO_LINK }
+	{ "falcon",     0xB3,   HCC_TYPE_1,         TWO_LINK },
+	{ "falcon",     0xB4,   HCC_TYPE_1,         TWO_LINK },
+	{ "seagull",    0xB5,   HCC_TYPE_2,         TWO_LINK },
+	{ "seagull",    0xB6,   HCC_TYPE_2,         TWO_LINK },
+	{ "seagull",    0xB7,   HCC_TYPE_2,         TWO_LINK },
 };
 
 // mach aspeed cpu info
