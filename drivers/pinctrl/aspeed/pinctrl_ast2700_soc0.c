@@ -37,7 +37,7 @@ static int ast2700_soc0_pinctrl_probe(struct udevice *dev)
 {
 	struct aspeed_pinctrl_priv *priv = dev_get_priv(dev);
 
-	priv->base = dev_remap_addr(dev);
+	priv->base = dev_remap_addr(dev->parent);
 	if (!priv->base)
 		return -ENOMEM;
 
@@ -45,36 +45,36 @@ static int ast2700_soc0_pinctrl_probe(struct udevice *dev)
 }
 
 static struct aspeed_sig_desc emmc_link[] = {
-	{ 0x00, GENMASK(7, 0), 0 },
+	{ 0x400, GENMASK(7, 0), 0 },
 };
 
 static struct aspeed_sig_desc emmc_8bit_link[] = {
-	{ 0x00, GENMASK(11, 0), 0 },
+	{ 0x400, GENMASK(11, 0), 0 },
 };
 
 static struct aspeed_sig_desc dac_edid[] = {
-	{ 0x04, BIT(10), 0 },
-	{ 0x04, BIT(11), 0 },
+	{ 0x404, BIT(10), 0 },
+	{ 0x404, BIT(11), 0 },
 };
 
 static struct aspeed_sig_desc usb2ad_link[] = {
-	{ 0x10, BIT(24), 0 },
-	{ 0x10, BIT(25), 1 },
+	{ 0x410, BIT(24), 0 },
+	{ 0x410, BIT(25), 1 },
 };
 
 static struct aspeed_sig_desc usb2ah_link[] = {
-	{ 0x10, BIT(24), 1 },
-	{ 0x10, BIT(25), 0 },
+	{ 0x410, BIT(24), 1 },
+	{ 0x410, BIT(25), 0 },
 };
 
 static struct aspeed_sig_desc usb2bd_link[] = {
-	{ 0x10, BIT(28), 0 },
-	{ 0x10, BIT(29), 1 },
+	{ 0x410, BIT(28), 0 },
+	{ 0x410, BIT(29), 1 },
 };
 
 static struct aspeed_sig_desc usb2bh_link[] = {
-	{ 0x10, BIT(28), 1 },
-	{ 0x10, BIT(29), 0 },
+	{ 0x410, BIT(28), 1 },
+	{ 0x410, BIT(29), 0 },
 };
 
 static const struct aspeed_group_config ast2700_soc0_groups[] = {
