@@ -126,6 +126,36 @@ static int ast2700_soc0_pinctrl_group_set(struct udevice *dev, unsigned int sele
 	return 0;
 }
 
+static struct aspeed_sig_desc ast2700_soc0_gpio[12][3] = {
+	{{0x400, BIT(0), 1}, {0x404, BIT(0), 1}},
+	{{0x400, BIT(1), 1}, {0x404, BIT(1), 1}},
+	{{0x400, BIT(2), 1}, {0x404, BIT(2), 1}},
+	{{0x400, BIT(3), 1}, {0x404, BIT(3), 1}},
+	{{0x400, BIT(4), 1}, {0x404, BIT(4), 1}},
+	{{0x400, BIT(5), 1}, {0x404, BIT(5), 1}},
+	{{0x400, BIT(6), 1}, {0x10, BIT(17), 1}},
+	{{0x400, BIT(7), 1}, {0x10, BIT(17), 1}},
+	{{0x400, BIT(8), 1}, {0x10, BIT(9), 1}, {0x10, BIT(17), 1}},
+	{{0x400, BIT(9), 1}, {0x10, BIT(19), 1}, {0x10, BIT(17), 1}},
+	{{0x400, BIT(10), 1}, {0x404, BIT(10), 1}},
+	{{0x400, BIT(11), 1}, {0x404, BIT(11), 1}},
+};
+
+static int ast2700_soc0_pinctrl_gpio_request_enable(struct udevice *dev, unsigned int selector)
+{
+	struct aspeed_pinctrl_priv *priv = dev_get_priv(dev);
+	const struct aspeed_sig_desc *descs = ast2700_soc0_gpio[selector];
+	u32 i;
+
+	for (i = 0; i < ARRAY_SIZE(ast2700_soc0_gpio[selector]); i++) {
+		if (descs[i].clr)
+			clrbits_le32(priv->base + descs[i].offset, descs[i].reg_set);
+		else
+			setbits_le32(priv->base + descs[i].offset, descs[i].reg_set);
+	}
+	return 0;
+}
+
 static struct pinctrl_ops ast2700_soc0_pinctrl_ops = {
 	.set_state = pinctrl_generic_set_state,
 	.get_groups_count = ast2700_soc0_pinctrl_get_groups_count,
@@ -133,6 +163,7 @@ static struct pinctrl_ops ast2700_soc0_pinctrl_ops = {
 	.get_functions_count = ast2700_soc0_pinctrl_get_groups_count,
 	.get_function_name = ast2700_soc0_pinctrl_get_group_name,
 	.pinmux_group_set = ast2700_soc0_pinctrl_group_set,
+	.gpio_request_enable = ast2700_soc0_pinctrl_gpio_request_enable,
 };
 
 static const struct udevice_id ast2700_soc0_pinctrl_ids[] = {
