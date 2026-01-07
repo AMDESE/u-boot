@@ -468,7 +468,7 @@ static int aspeed_ast2700_child_config(const struct udevice *pbus,
 	}
 
 	ret = readl_poll_timeout(&h2x_reg->h2x_int_sts, status,
-				 (status & ASPEED_CFGE_RX_BUSY), 50);
+				 (status & ASPEED_CFGE_RX_BUSY), 50000);
 	if (ret) {
 		pr_err("%02x:%02x.%d CR rx timeout sts: 0x%08x\n",
 		       bus, dev, func, status);
