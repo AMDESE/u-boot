@@ -305,8 +305,8 @@ static int aspeed_ast2600_conf(const struct udevice *pbus, pci_dev_t bdf,
 	ret = readl_poll_timeout(&h2x_reg->h2x_sts, cfg_val,
 				 (cfg_val & ASPEED_PCIE_TX_IDLE), 50);
 	if (ret) {
-		pr_err("%02x:%02x.%d CR tx timeout sts: 0x%08x\n",
-		       bus, dev, func, cfg_val);
+		debug("%02x:%02x.%d CR tx timeout sts: 0x%08x\n",
+		      bus, dev, func, cfg_val);
 		goto out;
 	}
 
@@ -321,8 +321,8 @@ static int aspeed_ast2600_conf(const struct udevice *pbus, pci_dev_t bdf,
 					 (isr & ASPEED_PCIE_RC_RX_DONE_ISR),
 					 50);
 		if (ret) {
-			pr_err("%02x:%02x.%d CR rx timeout sts: 0x%08x\n",
-			       bus, dev, func, isr);
+			debug("%02x:%02x.%d CR rx timeout sts: 0x%08x\n",
+			      bus, dev, func, isr);
 			goto out;
 		}
 		if (!write) {
@@ -356,6 +356,8 @@ out:
 	cfg_val = readl(&h2x_reg->h2x_dev_sts);
 	writel(cfg_val, &h2x_reg->h2x_dev_sts);
 	pcie->tx_tag = (pcie->tx_tag + 1) % 0x8;
+	if (ret)
+		*val = pci_get_ff(size);
 	return ret;
 }
 
@@ -462,16 +464,16 @@ static int aspeed_ast2700_child_config(const struct udevice *pbus,
 	ret = readl_poll_timeout(&h2x_reg->h2x_int_sts, status,
 				 (status & ASPEED_CFGE_TX_IDLE), 50);
 	if (ret) {
-		pr_err("%02x:%02x.%d CR tx timeout sts: 0x%08x\n",
-		       bus, dev, func, status);
+		debug("%02x:%02x.%d CR tx timeout sts: 0x%08x\n",
+		      bus, dev, func, status);
 		goto out;
 	}
 
 	ret = readl_poll_timeout(&h2x_reg->h2x_int_sts, status,
 				 (status & ASPEED_CFGE_RX_BUSY), 50000);
 	if (ret) {
-		pr_err("%02x:%02x.%d CR rx timeout sts: 0x%08x\n",
-		       bus, dev, func, status);
+		debug("%02x:%02x.%d CR rx timeout sts: 0x%08x\n",
+		      bus, dev, func, status);
 		goto out;
 	}
 	*val = readl(&h2x_reg->h2x_cfge_data);
@@ -481,6 +483,8 @@ static int aspeed_ast2700_child_config(const struct udevice *pbus,
 out:
 	writel(status, &h2x_reg->h2x_int_sts);
 	pcie->tx_tag = (pcie->tx_tag + 1) % 0xf;
+	if (ret)
+		*val = pci_get_ff(size);
 	return ret;
 }
 
