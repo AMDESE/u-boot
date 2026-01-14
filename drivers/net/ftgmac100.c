@@ -108,6 +108,9 @@ struct ftgmac100_data {
 	u32 rxdes0_edorr_mask;
 	u32 txdes0_edotr_mask;
 
+	u32 rgmii_tx_delay;
+	u32 rgmii_rx_delay;
+
 	struct phy sgmii;
 };
 
@@ -631,6 +634,11 @@ static int ftgmac100_of_to_plat(struct udevice *dev)
 	}
 
 	priv->reset_ctl = devm_reset_control_get_optional(dev, NULL);
+
+	priv->rgmii_tx_delay = dev_read_u32_default(dev, "tx-internal-delay-ps",
+						    0);
+	priv->rgmii_rx_delay = dev_read_u32_default(dev, "rx-internal-delay-ps",
+						    0);
 
 	return clk_get_bulk(dev, &priv->clks);
 }
