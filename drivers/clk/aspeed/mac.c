@@ -139,7 +139,7 @@ static u32 cal_delay32_ring(u8 revision, u8 rgmii_chain)
 	if (ret < 0)
 		return 0;
 	reg = SCU_FREQ_RING_ENABLE |  SCU_FREQ_RING_STG(31);
-	if (revision == 1) {
+	if (revision == 1 || revision == 2) {
 		reg |= SCU_FREQ_SELECT_DLY32;
 	} else {
 		reg |= SCU_FREQ_SELECT_RGMII;
@@ -570,7 +570,7 @@ static void find_rgmii_delay(struct ast2700_scu1 *scu, u32 index)
 	if (tx_average_delay == 0)
 		return;
 
-	if (revision == 1) {
+	if (revision == 1 || revision == 2) {
 		tx_average_delay = tx_average_delay * 10 / 7;
 		rx_average_delay = tx_average_delay;
 	} else {
