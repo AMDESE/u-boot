@@ -550,6 +550,7 @@ static bool check_calibration_delay(u32 index)
 static void find_rgmii_delay(struct ast2700_scu1 *scu, u32 index)
 {
 	u32 tx, rx, tx_en, tx_dis, rx_en, rx_dis, tx_average_delay, rx_average_delay;
+	u32 mac_loopback_delay = 0;
 	u8 revision = FIELD_GET(SCU_HW_REVISION_ID, scu->chip_id1);
 	const char *phy_mode;
 	u8 rgmii_chain;
@@ -570,8 +571,17 @@ static void find_rgmii_delay(struct ast2700_scu1 *scu, u32 index)
 	if (tx_average_delay == 0)
 		return;
 
-	if (revision == 1 || revision == 2) {
+	if (revision == 1) {
 		tx_average_delay = tx_average_delay * 10 / 7;
+		rx_average_delay = tx_average_delay;
+	} else if (revision == 2) {
+		if (index) {
+			tx_average_delay = tx_average_delay * 16536 / 10000;
+			mac_loopback_delay = 400;
+		} else {
+			tx_average_delay = tx_average_delay * 17086 / 10000;
+			mac_loopback_delay = 700;
+		}
 		rx_average_delay = tx_average_delay;
 	} else {
 		/* RX delay chain */
@@ -588,16 +598,18 @@ static void find_rgmii_delay(struct ast2700_scu1 *scu, u32 index)
 	prepare_tx_packet(tx_pkt_buf);
 	mac_txpkt_add(tx_pkt_buf);
 
-	tx_en = 2000 / tx_average_delay;
+	if (revision == 2)
+		tx_en = (10000 - mac_loopback_delay) / tx_average_delay;
+	else
+		tx_en = 2000 / tx_average_delay;
 	for (rx = 0; rx < 32; rx++) {
 		set_rgmii_delay(tx_en, rx, index);
 		result[rx] = packet_check(index);
-	}
+	};
 
 	tx_dis = 0;
 	rx_dis = find_rx_center(result) + 1;
 	rx_en = rx_dis + 2000 / rx_average_delay;
-
 	if (phy_mode) {
 		printf(" %d: %s ", index, phy_mode);
 		if (strcmp(phy_mode, "rgmii-rxid") == 0) {
