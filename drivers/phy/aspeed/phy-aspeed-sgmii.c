@@ -16,6 +16,8 @@
 #include <linux/err.h>
 #include <linux/bitfield.h>
 
+#define SCU_HW_REVISION_ID	GENMASK(23, 16)
+
 #define SGMII_CFG			0x00
 #define   SGMII_CFG_FIFO_MODE			BIT(0)
 #define   SGMII_CFG_SPEED_SEL_MASK		GENMASK(5, 4)
@@ -35,11 +37,6 @@
 #define   SGMII_MODE_ENABLE			BIT(0)
 #define   SGMII_MODE_USE_LOCAL_CONFIG		BIT(2)
 
-#define PCIEPHY_CLK			0x268
-#define   PCIEPHY_CLK_FREQ_MULTI_MASK		GENMASK(7, 0)
-#define   PCIEPHY_CLK_FREQ_MULTI(x)		FIELD_PREP(PCIEPHY_CLK_FREQ_MULTI_MASK, (x))
-#define   PCIEPHY_CLK_SEL_INTERNAL_25M		BIT(8)
-
 #define SGMII_SPEED_10M		0x00
 #define SGMII_SPEED_100M	0x01
 #define SGMII_SPEED_1G		0x02
@@ -49,6 +46,7 @@ struct aspeed_sgmii {
 	struct regmap *plda_regmap;
 
 	struct phy pcie_phy;
+	u8 revision;
 };
 
 static int aspeed_sgmii_conf(struct phy *phy, bool nway, int speed)
@@ -62,7 +60,11 @@ static int aspeed_sgmii_conf(struct phy *phy, bool nway, int speed)
 	writel(0, sgmii->regs + SGMII_CFG);
 	writel(SGMII_CFG_SW_RESET | SGMII_CFG_PWR_DOWN, sgmii->regs + SGMII_CFG);
 	if (nway) {
-		writel(SGMII_CFG_AN_ENABLE, sgmii->regs + SGMII_CFG);
+		if (sgmii->revision == 1)
+			writel(SGMII_CFG_AN_ENABLE, sgmii->regs + SGMII_CFG);
+		else
+			writel(SGMII_CFG_AN_ENABLE | SGMII_CFG_FIFO_MODE,
+			       sgmii->regs + SGMII_CFG);
 	} else {
 		switch (speed) {
 		case 10:
@@ -78,7 +80,12 @@ static int aspeed_sgmii_conf(struct phy *phy, bool nway, int speed)
 			return -EINVAL;
 		}
 		writel(SGMII_PHY_SPEED(cfg), sgmii->regs + SGMII_PHY_CFG1);
-		writel(SGMII_CFG_SPEED_SEL(cfg), sgmii->regs + SGMII_CFG);
+		if (sgmii->revision == 1)
+			writel(SGMII_CFG_SPEED_SEL(cfg),
+			       sgmii->regs + SGMII_CFG);
+		else
+			writel(SGMII_CFG_SPEED_SEL(cfg) | SGMII_CFG_FIFO_MODE,
+			       sgmii->regs + SGMII_CFG);
 	}
 
 	writel(0x0c, sgmii->regs + SGMII_FIFO_DELAY_THREHOLD);
@@ -129,11 +136,22 @@ struct phy_ops aspeed_sgmii_phy_ops = {
 int aspeed_sgmii_probe(struct udevice *dev)
 {
 	struct aspeed_sgmii *sgmii = dev_get_priv(dev);
+	struct regmap *scu_regmap;
+	u32 reg;
 	int ret;
 
 	sgmii->regs = dev_read_addr(dev);
 	if (!sgmii->regs)
 		return -EINVAL;
+
+	scu_regmap = syscon_regmap_lookup_by_phandle(dev, "aspeed,scu");
+	if (IS_ERR(scu_regmap)) {
+		dev_err(dev, "Unable to find SCU regmap\n");
+		return PTR_ERR(scu_regmap);
+	}
+
+	regmap_read(scu_regmap, 0x00, &reg);
+	sgmii->revision = FIELD_GET(SCU_HW_REVISION_ID, reg);
 
 	ret = generic_phy_get_by_index(dev, 0, &sgmii->pcie_phy);
 	if (ret)
