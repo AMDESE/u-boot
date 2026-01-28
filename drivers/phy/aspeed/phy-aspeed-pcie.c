@@ -8,6 +8,11 @@
 #include <dt-bindings/phy/phy.h>
 #include <generic-phy.h>
 #include <linux/bitfield.h>
+#include <linux/err.h>
+#include <regmap.h>
+#include <syscon.h>
+
+#define SCU_HW_REVISION_ID	GENMASK(23, 16)
 
 /* AST2600 PCIe Host Controller Registers */
 /* reg30 pehr_global */
@@ -34,6 +39,8 @@
 #define CLK_SEL_INTERNAL_25M		BIT(8)
 #define CLK_FREQ_MULTI_MASK		GENMASK(7, 0)
 #define CLK_FREQ_MULTI(x)		FIELD_PREP(CLK_FREQ_MULTI_MASK, (x))
+/* reg280 */
+#define SGMII_INTERNAL_CLK_EN		BIT(26)
 
 struct ast2600_pehr_reg {
 	u32 pehr_reserved0[12];		// 0x00 ~ 0x2c
@@ -53,6 +60,8 @@ struct ast2700_pehr_reg {
 	u32 pehr_misc_78;		// 0x78
 	u32 pehr_reserved3[123];	// 0x7c ~ 0x264
 	u32 pehr_clk_freq;		// 0x268
+	u32 pehr_reserved4[5];		// 0x26c ~ 0x27c
+	u32 pehr_misc_280;		// 0x280
 };
 
 /*
@@ -70,6 +79,7 @@ struct aspeed_pcie_phy {
 	struct ast2700_pehr_reg *pehr_reg_27;
 
 	u32 type;
+	struct regmap *scu_regmap;
 };
 
 struct aspeed_pcie_phy_platform {
@@ -108,6 +118,10 @@ static int aspeed_ast2700_init(struct phy *phy)
 		cfg_val |= FIELD_PREP(AST2700_PORT_TYPE_MASK, PORT_TYPE_ROOT);
 		writel(cfg_val, &pehr_reg->pehr_misc_60);
 	} else if (pcie_phy->type == PHY_TYPE_SGMII) {
+		u32 reg;
+
+		regmap_read(pcie_phy->scu_regmap, 0x00, &reg);
+		reg = FIELD_GET(SCU_HW_REVISION_ID, reg);
 		/*
 		 * The PLDA frequency multiplication is X xor 0x19.
 		 * (X xor 0x19) * clock source = data rate.
@@ -115,6 +129,9 @@ static int aspeed_ast2700_init(struct phy *phy)
 		 */
 		cfg_val = CLK_SEL_INTERNAL_25M | CLK_FREQ_MULTI(0x2b);
 		writel(cfg_val, &pehr_reg->pehr_clk_freq);
+		if (reg > 1)
+			writel(readl(&pehr_reg->pehr_misc_280) | SGMII_INTERNAL_CLK_EN,
+			       &pehr_reg->pehr_misc_280);
 	} else {
 		return -EINVAL;
 	}
@@ -161,6 +178,11 @@ static int aspeed_pcie_phy_of_to_plat(struct udevice *dev)
 	case ASTEED_AST2700:
 		pcie_phy->pehr_reg_27 = (void *)devfdt_get_addr_index(dev, 0);
 		pcie_phy->platform = &pcie_phy_ast2700;
+		pcie_phy->scu_regmap = syscon_regmap_lookup_by_phandle(dev, "aspeed,scu");
+		if (IS_ERR(pcie_phy->scu_regmap)) {
+			pr_err("Unable to find SCU regmap\n");
+			return PTR_ERR(pcie_phy->scu_regmap);
+		}
 		break;
 	case ASTEED_AST2600:
 		pcie_phy->pehr_reg_26 = (void *)devfdt_get_addr_index(dev, 0);
