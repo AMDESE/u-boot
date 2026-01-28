@@ -543,6 +543,7 @@
 			compatible = "aspeed,ast2700-pcie-phy";
 			reg = <0x0 0x14c1c000 0x0 0x400>;
 			#phy-cells = <1>;
+			aspeed,scu = <&syscon1>;
 		};
 
 		sgmii: phy@14c01000 {
@@ -551,6 +552,7 @@
 			#phy-cells = <0>;
 
 			phys = <&pcie_phy2 PHY_TYPE_SGMII>;
+			aspeed,scu = <&syscon1>;
 
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_sgmii_default>;
