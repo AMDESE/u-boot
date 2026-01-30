@@ -102,8 +102,8 @@ static int aspeed_vbios_probe(struct udevice *dev)
 		/* single display */
 		is_pcie1_enable = 0;
 	} else if (efuse == EFUSE_AST2720) {
-		/* without display*/
-		return -1;
+		/* just return without display */
+		return 0;
 	}
 
 #ifdef CONFIG_RISCV
