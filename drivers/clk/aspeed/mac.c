@@ -139,7 +139,7 @@ static u32 cal_delay32_ring(u8 revision, u8 rgmii_chain)
 	if (ret < 0)
 		return 0;
 	reg = SCU_FREQ_RING_ENABLE |  SCU_FREQ_RING_STG(31);
-	if (revision == 1 || revision == 2) {
+	if (revision == 1) {
 		reg |= SCU_FREQ_SELECT_DLY32;
 	} else {
 		reg |= SCU_FREQ_SELECT_RGMII;
@@ -160,8 +160,9 @@ static u32 cal_delay32_ring(u8 revision, u8 rgmii_chain)
 	time_ps = 1000000000000ULL / reg;
 
 	writel(0, base);
+	clrsetbits_le32(&scu->rsv_0xC4, SCU_DBGSEL_RING_SEL_MASK, 0);
 
-	return (u32)time_ps / 32;
+	return (u32)time_ps;
 }
 
 static void mac_reset_assert(u32 index)
@@ -374,12 +375,13 @@ static void mac_init_tx_desc_only_desc0(void)
 	flush_dcache_range(des_start, des_end);
 }
 
-static void set_rgmii_delay(u32 tx, u32 rx, u32 index)
+static void set_rgmii_delay(u32 tx, u32 rx, u32 index, bool freq_set)
 {
 	struct ast2700_scu1 *scu = (struct ast2700_scu1 *)ASPEED_IO_SCU_BASE;
+	void *target_reg = (freq_set) ? &scu->mac_10m_delay : &scu->mac_delay;
 	u32 reg;
 
-	reg = readl(&scu->mac_delay);
+	reg = readl(target_reg);
 	if (index) {
 		reg &= ~(TX_DELAY_2 | RX_DELAY_2);
 		reg |= FIELD_PREP(TX_DELAY_2, tx) | FIELD_PREP(RX_DELAY_2, rx);
@@ -387,7 +389,7 @@ static void set_rgmii_delay(u32 tx, u32 rx, u32 index)
 		reg &= ~(TX_DELAY_1 | RX_DELAY_1);
 		reg |= FIELD_PREP(TX_DELAY_1, tx) | FIELD_PREP(RX_DELAY_1, rx);
 	}
-	writel(reg, &scu->mac_delay);
+	writel(reg, target_reg);
 }
 
 #define SCU1_SCRATCH_TX_DELAY_STEP(x)	FIELD_PREP(GENMASK(15, 0), (x))
@@ -563,34 +565,44 @@ static void find_rgmii_delay(struct ast2700_scu1 *scu, u32 index)
 	if (!phy_mode)
 		return;
 
-	/* TX delay chain */
-	rgmii_chain = (index) ?
-		      SCU_DBGSEL_RING_SEL_RGMII0_TX :
-		      SCU_DBGSEL_RING_SEL_RGMII1_TX;
-	tx_average_delay = cal_delay32_ring(revision, rgmii_chain);
-	if (tx_average_delay == 0)
-		return;
-
 	if (revision == 1) {
+		/* TX delay chain */
+		tx_average_delay = cal_delay32_ring(revision, 0);
+		tx_average_delay /= 32;
+		if (tx_average_delay == 0)
+			return;
 		tx_average_delay = tx_average_delay * 10 / 7;
 		rx_average_delay = tx_average_delay;
-	} else if (revision == 2) {
-		if (index) {
-			tx_average_delay = tx_average_delay * 16536 / 10000;
-			mac_loopback_delay = 400;
-		} else {
-			tx_average_delay = tx_average_delay * 17086 / 10000;
-			mac_loopback_delay = 700;
-		}
-		rx_average_delay = tx_average_delay;
 	} else {
+		u32 tx_start, tx_end, rx_start, rx_end;
+		/* TX delay chain */
+		rgmii_chain = (index) ?
+			SCU_DBGSEL_RING_SEL_RGMII1_TX :
+			SCU_DBGSEL_RING_SEL_RGMII0_TX;
+		set_rgmii_delay(0, 0, index, true);
+		tx_start = cal_delay32_ring(revision, rgmii_chain);
+		set_rgmii_delay(31, 0, index, true);
+		tx_end = cal_delay32_ring(revision, rgmii_chain);
+
+		tx_average_delay = (tx_end - tx_start) / 31;
+		tx_average_delay /= 2;
+		if (tx_average_delay == 0)
+			return;
 		/* RX delay chain */
 		rgmii_chain = (index) ?
-			      SCU_DBGSEL_RING_SEL_RGMII0_RX :
-			      SCU_DBGSEL_RING_SEL_RGMII1_RX;
-		rx_average_delay = cal_delay32_ring(revision, rgmii_chain);
+			      SCU_DBGSEL_RING_SEL_RGMII1_RX :
+			      SCU_DBGSEL_RING_SEL_RGMII0_RX;
+		set_rgmii_delay(0, 0, index, true);
+		rx_start = cal_delay32_ring(revision, rgmii_chain);
+		set_rgmii_delay(0, 31, index, true);
+		rx_end = cal_delay32_ring(revision, rgmii_chain);
+
+		rx_average_delay = (rx_end - rx_start) / 31;
+		rx_average_delay /= 2;
 		if (rx_average_delay == 0)
 			return;
+
+		mac_loopback_delay = (index) ? 400 : 700;
 	}
 
 	mac_init(index);
@@ -603,7 +615,7 @@ static void find_rgmii_delay(struct ast2700_scu1 *scu, u32 index)
 	else
 		tx_en = 2000 / tx_average_delay;
 	for (rx = 0; rx < 32; rx++) {
-		set_rgmii_delay(tx_en, rx, index);
+		set_rgmii_delay(tx_en, rx, index, false);
 		result[rx] = packet_check(index);
 	};
 
@@ -639,7 +651,7 @@ static void find_rgmii_delay(struct ast2700_scu1 *scu, u32 index)
 		rx = 0;
 	}
 
-	set_rgmii_delay(tx, rx, index);
+	set_rgmii_delay(tx, rx, index, false);
 	mac_set_loopback(index, false);
 	mac_clk_disable(index);
 	mac_reset_assert(index);
