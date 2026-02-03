@@ -188,14 +188,14 @@ void netdiag_init_parameter(struct parameter_s *parm)
 	parm->mac_index = 0;
 	parm->mdio_index = 0;
 	parm->speed = 1000;
-	parm->interface = PHY_INTERFACE_MODE_RGMII;
-	parm->control = NETDIAG_CTRL_LOOPBACK_EXT;
+	parm->interface = PHY_INTERFACE_MODE_RGMII_ID;
+	parm->control = NETDIAG_CTRL_LOOPBACK_PHY;
 
 	parm->checksum = NETDIAG_CKS_NONE;
 	parm->vlan = NETDIAG_VLAN_NONE;
 
 	parm->mode = MODE_MARGIN;
-	parm->margin = 2;
+	parm->margin = 1;
 
 	parm->loop = 100;
 	parm->packets = 4;
@@ -217,14 +217,14 @@ static const char help_string[] = "\nnetdiag: network diagnostic tool.\n"
 "                    |   1000\n"
 "                    |   100\n"
 "                    |   10\n"
-"    -l <loopback>   | loopback (optional, default ext)\n"
+"    -l <loopback>   | loopback (optional, default phy)\n"
 "                    |   ext        = PHY MDI (PHY external) loopback\n"
 "                    |   phy        = PHY PCS (PHY internal) loopback\n"
 "                    |   mii        = RMII/RGMII loopback\n"
 "                    |   mac        = MAC loopback\n"
 "                    |   tx         = TX only\n"
 "                    |   tx-nway    = TX only & enable Nway\n"
-"    -i <interface>  | interface (optional, default rgmii)\n"
+"    -i <interface>  | interface (optional, default rgmii-id)\n"
 "                    |   rmii       = set interface as RMII\n"
 "                    |   rgmii      = set interface as RGMII w/o PHY TX & RX delay\n"
 "                    |   rgmii-id   = set interface as RGMII w/  PHY TX & RX delay\n"
@@ -234,7 +234,7 @@ static const char help_string[] = "\nnetdiag: network diagnostic tool.\n"
 "    -m <mode>,<taps>| mode (optional, default margin)\n"
 "                    |   margin     = check margin of the current delay setting\n"
 "                    |   scan       = scan full delay taps\n"
-"                    | taps: (optional, default 2): number of the delay taps to be\n"
+"                    | taps: (optional, default 1): number of the delay taps to be\n"
 "                    |       checked in margin check mode\n"
 "    -k <count, pkt> | count: loop test count (optional, default 100)\n"
 "                    |   pkt: test packets per loop (optional, default 4)\n"

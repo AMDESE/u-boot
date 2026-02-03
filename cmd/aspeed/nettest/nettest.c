@@ -7,61 +7,6 @@
 #include "phy.h"
 #include "ncsi.h"
 
-char matrix[64][64] = { 0 };
-u8 visited[64][64] = { 0 };
-
-void dfs(int row, int col, int *count, int *row_sum, int *col_sum, int *min_row, int *max_row,
-	 int *min_col, int *max_col)
-{
-	if (row < 0 || row >= 64 || col < 0 || col >= 64 || matrix[row][col] != 'o' ||
-	    visited[row][col]) {
-		return;
-	}
-
-	visited[row][col] = 1;
-	(*count)++;
-	(*row_sum) += row;
-	(*col_sum) += col;
-
-	*min_row = min(*min_row, row);
-	*max_row = max(*max_row, row);
-	*min_col = min(*min_col, col);
-	*max_col = max(*max_col, col);
-
-	dfs(row - 1, col, count, row_sum, col_sum, min_row, max_row, min_col, max_col);
-	dfs(row + 1, col, count, row_sum, col_sum, min_row, max_row, min_col, max_col);
-	dfs(row, col - 1, count, row_sum, col_sum, min_row, max_row, min_col, max_col);
-	dfs(row, col + 1, count, row_sum, col_sum, min_row, max_row, min_col, max_col);
-}
-
-void find_all_block_center(void)
-{
-	int block_num = 0;
-	int row, col;
-
-	printf("\nFor reference only:");
-	for (row = 0; row < 64; ++row) {
-		for (col = 0; col < 64; ++col) {
-			if (matrix[row][col] == 'o' && visited[row][col] == 0) {
-				int count = 0, row_sum = 0, col_sum = 0;
-				int min_row = row, max_row = row, min_col = col, max_col = col;
-
-				dfs(row, col, &count, &row_sum, &col_sum, &min_row, &max_row,
-				    &min_col, &max_col);
-
-				printf("\nBlock %d:\n", block_num + 1);
-				printf("TX [0x%02X-0x%02X], RX [0x%02X-0x%02X]\n", min_row, max_row,
-				       min_col, max_col);
-				printf("Center of Block %d: TX = 0x%02X, RX = 0x%02X\n",
-				       block_num + 1, (min_row + max_row - 1) / 2,
-				       (min_col + max_col - 1) / 2);
-				printf("The 'o' number of Block %d: %d\n", block_num + 1, count);
-				block_num++;
-			}
-		}
-	}
-}
-
 void prepare_tx_packet(u8 *pkt, int length)
 {
 	int j;
@@ -318,9 +263,9 @@ int nettest_test(struct test_s *test_obj)
 		return 0;
 	}
 
-	if (parm->mode == MODE_SCAN && test_obj->mode == MAC_MODE) {
-		memset(matrix, 0, sizeof(char) * 64 * 64);
-		memset(visited, 0, sizeof(char) * 64 * 64);
+	if (test_obj->mode == NCSI_MODE) {
+		tx_s = tx_c;
+		tx_e = tx_c;
 	}
 
 	print_xticks(rx_s, rx_e, rx_c);
@@ -336,20 +281,17 @@ int nettest_test(struct test_s *test_obj)
 					printf("O");
 				else
 					printf("o");
-				matrix[i][j] = 'o';
 			} else if (status == FAIL_MAC_RX_ERROR) {
 				if (i == tx_c && j == rx_c)
 					printf("X");
 				else
 					printf("x");
-				matrix[i][j] = 'x';
 				has_error = status;
 			} else {
 				if (i == tx_c && j == rx_c)
 					printf("*");
 				else
 					printf(".");
-				matrix[i][j] = '.';
 				has_error = status;
 			}
 #if defined(U_BOOT)
@@ -379,7 +321,6 @@ out:
 		if (mac_obj->is_sgmii)
 			break;
 		if (parm->mode == MODE_SCAN) {
-			find_all_block_center();
 			has_error = SUCCESS;
 		}
 		break;
