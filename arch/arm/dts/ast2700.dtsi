@@ -563,6 +563,7 @@
 			reg = <0x0 0x14050000 0x0 0x200>;
 			clocks = <&soc1_clk SCU1_CLK_GATE_MAC0CLK>;
 			resets = <&soc1_rst SCU1_RESET_MAC0>;
+			aspeed,scu = <&syscon1>;
 			status = "disabled";
 		};
 
@@ -571,6 +572,7 @@
 			reg = <0x0 0x14060000 0x0 0x200>;
 			clocks = <&soc1_clk SCU1_CLK_GATE_MAC1CLK>;
 			resets = <&soc1_rst SCU1_RESET_MAC1>;
+			aspeed,scu = <&syscon1>;
 			status = "disabled";
 		};
 
