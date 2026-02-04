@@ -680,7 +680,7 @@ static void find_rgmii_delay(struct ast2700_scu1 *scu, u32 index)
 /* Because clk driver will be called twice, bypass the first time */
 static bool bypass_first = true;
 
-void aspeed_rgmii_init(struct ast2700_scu1 *scu)
+void ast2700_rgmii_init(struct ast2700_scu1 *scu)
 {
 	if (!bypass_first) {
 		printf("MAC:  ");

@@ -516,7 +516,7 @@ struct ast2700_scu1 {
 	uint32_t io_driving8;	/* 0x4e0 */
 };
 
-static inline void aspeed_rgmii_init(struct ast2700_scu1 *scu) {}
+static inline void ast2700_rgmii_init(struct ast2700_scu1 *scu) {}
 
 #endif
 #endif

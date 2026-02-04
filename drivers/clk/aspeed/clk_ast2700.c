@@ -24,38 +24,6 @@ DECLARE_GLOBAL_DATA_PTR;
  */
 #define RGMII_DEFAULT_CLK_SRC	SCU1_CLK_HPLL
 
-/* MAC Clock Delay settings */
-#define MAC01_DEF_DELAY_1G_A0		0x0002C02C
-#define MAC01_DEF_DELAY_1G_A1		0x005D6618
-#define MAC01_DEF_DELAY_100M		0x00410410
-#define MAC01_DEF_DELAY_10M		0x00410410
-
-/*
- * MAC Clock Delay settings
- */
-#define MAC_CLK_RMII1_50M_RCLK_O_CTRL		BIT(30)
-#define   MAC_CLK_RMII1_50M_RCLK_O_DIS		0
-#define   MAC_CLK_RMII1_50M_RCLK_O_EN		1
-#define MAC_CLK_RMII0_50M_RCLK_O_CTRL		BIT(29)
-#define   MAC_CLK_RMII0_5M_RCLK_O_DIS		0
-#define   MAC_CLK_RMII0_5M_RCLK_O_EN		1
-#define MAC_CLK_RMII_TXD_FALLING_2		BIT(27)
-#define MAC_CLK_RMII_TXD_FALLING_1		BIT(26)
-#define MAC_CLK_RXCLK_INV_2			BIT(25)
-#define MAC_CLK_RXCLK_INV_1			BIT(24)
-#define MAC_CLK_1G_INPUT_DELAY_2		GENMASK(23, 18)
-#define MAC_CLK_1G_INPUT_DELAY_1		GENMASK(17, 12)
-#define MAC_CLK_1G_OUTPUT_DELAY_2		GENMASK(11, 6)
-#define MAC_CLK_1G_OUTPUT_DELAY_1		GENMASK(5, 0)
-
-#define MAC_CLK_100M_10M_RESERVED		GENMASK(31, 26)
-#define MAC_CLK_100M_10M_RXCLK_INV_2		BIT(25)
-#define MAC_CLK_100M_10M_RXCLK_INV_1		BIT(24)
-#define MAC_CLK_100M_10M_INPUT_DELAY_2		GENMASK(23, 18)
-#define MAC_CLK_100M_10M_INPUT_DELAY_1		GENMASK(17, 12)
-#define MAC_CLK_100M_10M_OUTPUT_DELAY_2		GENMASK(11, 6)
-#define MAC_CLK_100M_10M_OUTPUT_DELAY_1		GENMASK(5, 0)
-
 struct mac_delay_config {
 	u32 tx_delay_1000;
 	u32 rx_delay_1000;
@@ -902,58 +870,8 @@ static int ast2700_clk1_init(struct udevice *dev)
 {
 	struct ast2700_clk_priv *priv = dev_get_priv(dev);
 	struct ast2700_scu1 *scu = (struct ast2700_scu1 *)priv->reg;
-	struct mac_delay_config mac1_cfg, mac2_cfg;
-	int ret = 0;
-	u32 reg[3];
 
-	if (scu->chip_id1 & SCU_HW_REVISION_ID) {
-		/* Run RGMII calibration */
-		aspeed_rgmii_init(scu);
-		reg[0] = readl(&scu->mac_delay) & GENMASK(25, 0);
-	}
-	reg[1] = MAC01_DEF_DELAY_100M;
-	reg[2] = MAC01_DEF_DELAY_10M;
-
-	ret = dev_read_u32_array(dev, "mac0-clk-delay", (u32 *)&mac1_cfg,
-				 sizeof(mac1_cfg) / sizeof(u32));
-	if (!ret) {
-		reg[0] &= ~(MAC_CLK_1G_INPUT_DELAY_1 | MAC_CLK_1G_OUTPUT_DELAY_1);
-		reg[0] |= FIELD_PREP(MAC_CLK_1G_INPUT_DELAY_1, mac1_cfg.rx_delay_1000) |
-			  FIELD_PREP(MAC_CLK_1G_OUTPUT_DELAY_1, mac1_cfg.tx_delay_1000);
-
-		reg[1] &= ~(MAC_CLK_100M_10M_INPUT_DELAY_1 | MAC_CLK_100M_10M_OUTPUT_DELAY_1);
-		reg[1] |= FIELD_PREP(MAC_CLK_100M_10M_INPUT_DELAY_1, mac1_cfg.rx_delay_100) |
-			  FIELD_PREP(MAC_CLK_100M_10M_OUTPUT_DELAY_1, mac1_cfg.tx_delay_100);
-
-		reg[2] &= ~(MAC_CLK_100M_10M_INPUT_DELAY_1 | MAC_CLK_100M_10M_OUTPUT_DELAY_1);
-		reg[2] |= FIELD_PREP(MAC_CLK_100M_10M_INPUT_DELAY_1, mac1_cfg.rx_delay_10) |
-			  FIELD_PREP(MAC_CLK_100M_10M_OUTPUT_DELAY_1, mac1_cfg.tx_delay_10);
-	}
-
-	ret = dev_read_u32_array(dev, "mac1-clk-delay", (u32 *)&mac2_cfg,
-				 sizeof(mac2_cfg) / sizeof(u32));
-	if (!ret) {
-		reg[0] &= ~(MAC_CLK_1G_INPUT_DELAY_2 | MAC_CLK_1G_OUTPUT_DELAY_2);
-		reg[0] |= FIELD_PREP(MAC_CLK_1G_INPUT_DELAY_2, mac2_cfg.rx_delay_1000) |
-			  FIELD_PREP(MAC_CLK_1G_OUTPUT_DELAY_2, mac2_cfg.tx_delay_1000);
-
-		reg[1] &= ~(MAC_CLK_100M_10M_INPUT_DELAY_2 | MAC_CLK_100M_10M_OUTPUT_DELAY_2);
-		reg[1] |= FIELD_PREP(MAC_CLK_100M_10M_INPUT_DELAY_2, mac2_cfg.rx_delay_100) |
-			  FIELD_PREP(MAC_CLK_100M_10M_OUTPUT_DELAY_2, mac2_cfg.tx_delay_100);
-
-		reg[2] &= ~(MAC_CLK_100M_10M_INPUT_DELAY_2 | MAC_CLK_100M_10M_OUTPUT_DELAY_2);
-		reg[2] |= FIELD_PREP(MAC_CLK_100M_10M_INPUT_DELAY_2, mac2_cfg.rx_delay_10) |
-			  FIELD_PREP(MAC_CLK_100M_10M_OUTPUT_DELAY_2, mac2_cfg.tx_delay_10);
-	}
-
-	if (!(scu->chip_id1 & SCU_HW_REVISION_ID))
-		reg[0] = MAC01_DEF_DELAY_1G_A0;
-
-	reg[0] |= (readl(&scu->mac_delay) & ~GENMASK(25, 0));
-	writel(reg[0], &scu->mac_delay);
-	writel(reg[1], &scu->mac_100m_delay);
-	writel(reg[2], &scu->mac_10m_delay);
-
+	ast2700_rgmii_init(scu);
 	ast2700_init_spi(scu);
 	ast2700_init_mac_clk(scu);
 	ast2700_init_rgmii_clk(scu);
