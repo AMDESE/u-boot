@@ -166,10 +166,10 @@ const BoardInfo boards[] = {
 	{ "marrakesh",  0xB0,   AMD_TYPE_SLT_1P,    ONE_LINK },
 	{ "falcon",     0xB1,   HCC_TYPE_1,         ONE_LINK },
 	{ "falcon",     0xB2,   HCC_TYPE_1,         ONE_LINK },
-	{ "falcon",     0xB3,   HCC_TYPE_1,         TWO_LINK },
+	{ "falcon",     0xB3,   HCC_TYPE_1,         ONE_LINK },
 	{ "falcon",     0xB4,   HCC_TYPE_1,         TWO_LINK },
-	{ "seagull",    0xB5,   HCC_TYPE_2,         TWO_LINK },
-	{ "seagull",    0xB6,   HCC_TYPE_2,         TWO_LINK },
+	{ "seagull",    0xB5,   HCC_TYPE_2,         ONE_LINK },
+	{ "seagull",    0xB6,   HCC_TYPE_2,         ONE_LINK },
 	{ "seagull",    0xB7,   HCC_TYPE_2,         TWO_LINK },
 };
 
