@@ -122,6 +122,18 @@ struct sli_data {
 #define SCU0_SCRATCH31_SLI1_READY	BIT(0)
 #define AHBC_MAX_TIMEOUT		0x1ff
 
+static void ast2700_set_ahbc_timeouts(uintptr_t base, u32 value, u8 count)
+{
+	static const u32 offsets[] = {
+		0x034, 0x074, 0x0b4, 0x0f4,
+		0x134, 0x174, 0x1b4, 0x1f4,
+	};
+	int i;
+
+	for (i = 0; i < count; i++)
+		writel(value, (void *)base + offsets[i]);
+}
+
 static void sli_clear_interrupt_status(uintptr_t base)
 {
 	writel(0xfffff, (void *)base + SLI_INTR_STATUS);
@@ -640,6 +652,7 @@ static void __maybe_unused sli_switch_video_dir(struct sli_data *data, bool is_D
 	sli_wait_suspend(rx);
 }
 
+#if SUPPORT_A0
 /* To be deprecated */
 static void sli_set_cpu_die_hpll(void)
 {
@@ -661,6 +674,7 @@ static void sli_set_cpu_die_hpll(void)
 		value = readl((void *)ASPEED_CPU_HPLL2);
 	} while ((value & SCU_CPU_HPLL2_LOCK) == 0);
 }
+#endif
 
 static int get_phandle_dev_regs(ofnode node, const char *propname, uint32_t *regs)
 {
@@ -751,6 +765,7 @@ int ast2700_sli1_probe(struct udevice *dev)
 	data->flags = 0;
 
 	data->scu1 = (struct ast2700_scu1 *)scu1_regs;
+#if SUPPORT_A0
 	reg_val = readl((void *)&data->scu1->chip_id1);
 	if (FIELD_GET(SCU_CPU_REVISION_ID_HW, reg_val) == 0)
 		data->flags |= SLI_FLAG_AST2700A0;
@@ -781,6 +796,9 @@ int ast2700_sli1_probe(struct udevice *dev)
 		    data->die0.phy_clk_freq == SLI_PHYCLK_788M)
 			data->flags |= SLI_FLAG_RX_LAH_NEG_IO_SLIM;
 	} else {
+#else
+	{
+#endif
 		/* Return if SLI had been calibrated */
 		reg_val = readl((void *)&data->scu1->scratch[31]);
 		if (reg_val & SCU1_SCRATCH31_SLI_SKIP_CALI) {
@@ -795,18 +813,8 @@ int ast2700_sli1_probe(struct udevice *dev)
 
 	if (!(data->flags & SLI_FLAG_AST2700A0)) {
 		/* Disable AHBC timeout before calibration */
-		writel(0, (void *)ASPEED_AHBC1_BASE + 0x034);
-		writel(0, (void *)ASPEED_AHBC1_BASE + 0x074);
-		writel(0, (void *)ASPEED_AHBC1_BASE + 0x0b4);
-		writel(0, (void *)ASPEED_AHBC1_BASE + 0x0f4);
-		writel(0, (void *)ASPEED_AHBC1_BASE + 0x134);
-		writel(0, (void *)ASPEED_AHBC1_BASE + 0x174);
-		writel(0, (void *)ASPEED_AHBC1_BASE + 0x1b4);
-		writel(0, (void *)ASPEED_AHBC1_BASE + 0x1f4);
-		writel(0, (void *)ASPEED_AHBC0_BASE + 0x034);
-		writel(0, (void *)ASPEED_AHBC0_BASE + 0x074);
-		writel(0, (void *)ASPEED_AHBC0_BASE + 0x0b4);
-		writel(0, (void *)ASPEED_AHBC0_BASE + 0x0f4);
+		ast2700_set_ahbc_timeouts((uintptr_t)ASPEED_AHBC1_BASE, 0, 8);
+		ast2700_set_ahbc_timeouts((uintptr_t)ASPEED_AHBC0_BASE, 0, 4);
 	}
 
 	/* Speed up engine clock before adjusting PHY TX clock and delay */
@@ -934,22 +942,14 @@ int ast2700_sli0_probe(struct udevice *dev)
 	if (sli0_ready) {
 		sli_clear(sli1_regs + SLIH_REG_OFFSET,
 			  SLI_CLEAR_RX | SLI_CLEAR_BUS);
-		writel(AHBC_MAX_TIMEOUT, (void *)ASPEED_AHBC1_BASE + 0x034);
-		writel(AHBC_MAX_TIMEOUT, (void *)ASPEED_AHBC1_BASE + 0x074);
-		writel(AHBC_MAX_TIMEOUT, (void *)ASPEED_AHBC1_BASE + 0x0b4);
-		writel(AHBC_MAX_TIMEOUT, (void *)ASPEED_AHBC1_BASE + 0x0f4);
-		writel(AHBC_MAX_TIMEOUT, (void *)ASPEED_AHBC1_BASE + 0x134);
-		writel(AHBC_MAX_TIMEOUT, (void *)ASPEED_AHBC1_BASE + 0x174);
-		writel(AHBC_MAX_TIMEOUT, (void *)ASPEED_AHBC1_BASE + 0x1b4);
-		writel(AHBC_MAX_TIMEOUT, (void *)ASPEED_AHBC1_BASE + 0x1f4);
+		ast2700_set_ahbc_timeouts((uintptr_t)ASPEED_AHBC1_BASE,
+					  AHBC_MAX_TIMEOUT, 8);
 		udelay(200);
 		setbits_le32((void *)&scu0->cpu_scratch[31],
 			     SCU0_SCRATCH31_SLI1_READY);
 		udelay(100);
-		writel(AHBC_MAX_TIMEOUT, (void *)ASPEED_AHBC0_BASE + 0x034);
-		writel(AHBC_MAX_TIMEOUT, (void *)ASPEED_AHBC0_BASE + 0x074);
-		writel(AHBC_MAX_TIMEOUT, (void *)ASPEED_AHBC0_BASE + 0x0b4);
-		writel(AHBC_MAX_TIMEOUT, (void *)ASPEED_AHBC0_BASE + 0x0f4);
+		ast2700_set_ahbc_timeouts((uintptr_t)ASPEED_AHBC0_BASE,
+					  AHBC_MAX_TIMEOUT, 4);
 		debug("SLI0 calibration completed\n");
 
 		setbits_le32((void *)&scu1->scratch[31],
