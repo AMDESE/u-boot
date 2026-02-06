@@ -47,32 +47,68 @@ static u32 _ast_get_e2m_addr(struct sdramc_regs *ram, u8 node)
 }
 
 static void _ast_update_e2m(struct ast_vga_priv *priv, bool is_64vram,
-			    bool is_pcie0_enable, bool is_pcie1_enable)
+			    const u8 nodes[2])
 {
-	u32 val, vram_size;
-	u8 vram_size_cfg;
+	u32 val, addr, vram_size;
+	const u32 offsets[2] = { E2M0_VGA_RAM, E2M1_VGA_RAM };
+	void __iomem * const bases[2] = { priv->e2m0_base, priv->e2m1_base };
+	void __iomem * const misc[2] = { &priv->scu->pci0_misc[3],
+					 &priv->scu->pci1_misc[3] };
+	u8 vram_size_cfg = is_64vram ? 0xf : 0xe;
+	int node;
 
-	vram_size_cfg = is_64vram ? 0xf : 0xe;
 	vram_size = 2 << (vram_size_cfg + 10);
 	debug("%s: VRAM size(%x) cfg(%x)\n", __func__, vram_size, vram_size_cfg);
 
-	if (is_pcie0_enable) {
-		debug("pcie0 e2m addr(%x)\n", _ast_get_e2m_addr(priv->ram, 0));
-		val = _ast_get_e2m_addr(priv->ram, 0)
-		    | FIELD_PREP(SCU_CPU_PCI_MISC0C_FB_SIZE, vram_size_cfg);
-		debug("pcie0 debug reg(%x)\n", val);
-		writel(val, priv->e2m0_base + E2M0_VGA_RAM);
-		writel(val, &priv->scu->pci0_misc[3]);
+	for (node = 0; node < 2; node++) {
+		if (!nodes[node])
+			continue;
+
+		addr = _ast_get_e2m_addr(priv->ram, node);
+		val = addr | FIELD_PREP(SCU_CPU_PCI_MISC0C_FB_SIZE, vram_size_cfg);
+		debug("pcie%d e2m addr(%x) val(%x)\n", node, addr, val);
+		writel(val, bases[node] + offsets[node]);
+		writel(val, misc[node]);
+	}
+}
+
+u32 ast_vga_get_gfm_ctrl(u8 node)
+{
+	if (node == 1)
+		return (BIT(19) | BIT(28));
+	return (BIT(10) | BIT(27));
+}
+
+static int ast_vga_enable_nodes(struct udevice *dev,
+				struct ast_vga_priv *priv,
+				const u8 nodes[2])
+{
+	struct clk * const vga_clks[2] = { &priv->vga0_clk, &priv->vga1_clk };
+	void __iomem * const scratch_regs[2] = {
+		&priv->scu->vga0_scratch1[0],
+		&priv->scu->vga1_scratch1[0],
+	};
+	void __iomem * const gfm_regs[2] = {
+		&priv->ram->gfm0ctl,
+		&priv->ram->gfm1ctl,
+	};
+	int node, ret;
+
+	for (node = 0; node < 2; node++) {
+		if (!nodes[node])
+			continue;
+
+		ret = clk_enable(vga_clks[node]);
+		if (ret) {
+			dev_err(dev, "Failed to enable vga%d clk\n", node);
+			return ret;
+		}
+
+		setbits_le32(scratch_regs[node], BIT(7) | BIT(12));
+		writel(ast_vga_get_gfm_ctrl(node), gfm_regs[node]);
 	}
 
-	if (is_pcie1_enable) {
-		debug("pcie1 e2m addr(%x)\n", _ast_get_e2m_addr(priv->ram, 1));
-		val = _ast_get_e2m_addr(priv->ram, 1)
-		    | FIELD_PREP(SCU_CPU_PCI_MISC0C_FB_SIZE, vram_size_cfg);
-		debug("pcie1 debug reg(%x)\n", val);
-		writel(val, priv->e2m1_base + E2M1_VGA_RAM);
-		writel(val, &priv->scu->pci1_misc[3]);
-	}
+	return 0;
 }
 
 int ast_vga_get_nodes(u8 *is_pcie0_enable, u8 *is_pcie1_enable)
@@ -105,18 +141,12 @@ int ast_vga_get_nodes(u8 *is_pcie0_enable, u8 *is_pcie1_enable)
 	return node0 + node1;
 }
 
-u32 ast_vga_get_gfm_ctrl(u8 node)
-{
-	if (node == 1)
-		return (BIT(19) | BIT(28));
-	return (BIT(10) | BIT(27));
-}
-
 static int ast_vga_probe(struct udevice *dev)
 {
 	struct ast_vga_priv *priv = dev_get_priv(dev);
 	u32 val;
 	u8 is_pcie0_enable, is_pcie1_enable;
+	u8 nodes[2];
 	bool is_64vram = priv->ram->gfmcfg & BIT(0);
 	u8 dac_src = priv->scu->hwstrap1 & BIT(28);
 	u8 dp_src = priv->scu->hwstrap1 & BIT(29);
@@ -134,6 +164,8 @@ static int ast_vga_probe(struct udevice *dev)
 	default:
 		break;
 	}
+	nodes[0] = is_pcie0_enable;
+	nodes[1] = is_pcie1_enable;
 
 	debug("%s: ENABLE 0(%d) 1(%d)\n", __func__, is_pcie0_enable, is_pcie1_enable);
 	debug("%s: dac_src(%d) dp_src(%d)\n", __func__, dac_src, dp_src);
@@ -143,7 +175,7 @@ static int ast_vga_probe(struct udevice *dev)
 		return 0;
 	}
 
-	_ast_update_e2m(priv, is_64vram, is_pcie0_enable, is_pcie1_enable);
+	_ast_update_e2m(priv, is_64vram, nodes);
 
 	/* scratch for VGA CRAA[1:0] : 10b: 32Mbytes, 11b: 64Mbytes */
 	setbits_le32(&priv->scu->hwstrap1, BIT(11));
@@ -152,37 +184,11 @@ static int ast_vga_probe(struct udevice *dev)
 	else
 		setbits_le32(&priv->scu->hwstrap1_clr, BIT(10));
 
-	if (is_pcie0_enable) {
-		ret = clk_enable(&priv->vga0_clk);
-		if (ret) {
-			dev_err(dev, "%s(): Failed to enable vga0 clk\n", __func__);
-			return ret;
-		}
+	ret = ast_vga_enable_nodes(dev, priv, nodes);
+	if (ret)
+		return ret;
 
-		// scratch for VGA CRD0[12]: Disable P2A
-		setbits_le32(&priv->scu->vga0_scratch1[0], BIT(7));
-		setbits_le32(&priv->scu->vga0_scratch1[0], BIT(12));
-
-		// Enable VRAM address offset: cursor, 2d
-		writel(ast_vga_get_gfm_ctrl(0), &priv->ram->gfm0ctl);
-	}
-
-	if (is_pcie1_enable) {
-		ret = clk_enable(&priv->vga1_clk);
-		if (ret) {
-			dev_err(dev, "%s(): Failed to enable vga1 clk\n", __func__);
-			return ret;
-		}
-
-		// scratch for VGA CRD0[12]: Disable P2A
-		setbits_le32(&priv->scu->vga1_scratch1[0], BIT(7));
-		setbits_le32(&priv->scu->vga1_scratch1[0], BIT(12));
-
-		// Enable VRAM address offset: cursor, 2d
-		writel(ast_vga_get_gfm_ctrl(1), &priv->ram->gfm1ctl);
-	}
-
-	if ((is_pcie0_enable || is_pcie1_enable)) {
+	if (nodes[0] || nodes[1]) {
 		ret = clk_enable(&priv->dac_clk);
 		if (ret) {
 			dev_err(dev, "%s(): Failed to enable dac clk\n", __func__);
@@ -191,14 +197,13 @@ static int ast_vga_probe(struct udevice *dev)
 
 		reset_deassert(&priv->vgal_reset_ctl);
 
-		val = priv->scu->vga_func_ctrl;
-		val &= ~(SCU_CPU_VGA_FUNC_DAC_OUTPUT
-			| SCU_CPU_VGA_FUNC_DP_OUTPUT
-			| SCU_CPU_VGA_FUNC_DAC_DISABLE);
-		val |= FIELD_PREP(SCU_CPU_VGA_FUNC_DAC_OUTPUT, dac_src)
-		     | FIELD_PREP(SCU_CPU_VGA_FUNC_DP_OUTPUT, dp_src)
-		     | FIELD_PREP(SCU_CPU_VGA_FUNC_DAC_DISABLE, 0);
-		writel(val, &priv->scu->vga_func_ctrl);
+		val = FIELD_PREP(SCU_CPU_VGA_FUNC_DAC_OUTPUT, dac_src)
+		    | FIELD_PREP(SCU_CPU_VGA_FUNC_DP_OUTPUT, dp_src);
+		clrsetbits_le32(&priv->scu->vga_func_ctrl,
+				SCU_CPU_VGA_FUNC_DAC_OUTPUT
+				| SCU_CPU_VGA_FUNC_DP_OUTPUT
+				| SCU_CPU_VGA_FUNC_DAC_DISABLE,
+				val);
 
 		// vga link init
 		writel(0x00030009, priv->vgal_cpu_base + 0x10);
