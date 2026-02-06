@@ -135,24 +135,60 @@ static int dp_init(void)
 	return err;
 }
 
-static int pci_init(void)
+static void pci_check_prop(int node, void *reg, const char *prop, int bit)
+{
+	const char *val;
+	int len;
+
+	val = fdt_getprop(gd->fdt_blob, node, prop, &len);
+	if (!val) {
+		clrbits_le32(reg, BIT(bit) | BIT(bit + 8) | BIT(bit + 16) | BIT(bit + 24));
+		return;
+	}
+
+	if (!strcmp(val, "MSI"))
+		setbits_le32(reg, BIT(bit) | BIT(bit + 8) | BIT(bit + 16) | BIT(bit + 24));
+	else
+		setbits_le32(reg, BIT(bit) | BIT(bit + 8) | BIT(bit + 16));
+}
+
+static void pci_config_ep(void *msi_cap, const char *name)
 {
 	int nodeoffset;
 	ofnode node;
-	struct ast2700_scu0 *scu;
+	const char *str;
 
-	/* find the offset of compatible node */
 	nodeoffset = fdt_node_offset_by_compatible(gd->fdt_blob, -1,
-						   "aspeed,ast2700-scu0");
-	if (nodeoffset < 0)
-		printf("%s: failed to get aspeed,ast2700-scu0\n", __func__);
+						   "aspeed,ast27xx-pcie");
+	if (nodeoffset < 0) {
+		printf("%s: failed to get aspeed,ast27xx-pcie\n", __func__);
+		return;
+	}
 
-	/* get ast2700-scu0 node */
-	node = offset_to_ofnode(nodeoffset);
+	while (nodeoffset >= 0) {
+		node = offset_to_ofnode(nodeoffset);
+		str = ofnode_get_name(node);
+		if (str && !strcmp(str, name))
+			break;
 
-	scu = (struct ast2700_scu0 *)ofnode_get_addr(node);
-	if (IS_ERR_OR_NULL(scu))
-		printf("%s: cannot get SYSCON address pointer\n", __func__);
+		nodeoffset = fdt_node_offset_by_compatible(gd->fdt_blob, nodeoffset,
+							   "aspeed,ast27xx-pcie");
+	}
+
+	if (nodeoffset < 0) {
+		printf("%s: failed to get %s\n", __func__, name);
+		return;
+	}
+
+	pci_check_prop(nodeoffset, msi_cap, "vga", 0);
+	pci_check_prop(nodeoffset, msi_cap, "bmc-device", 1);
+	pci_check_prop(nodeoffset, msi_cap, "ehci", 2);
+	pci_check_prop(nodeoffset, msi_cap, "xhci", 3);
+}
+
+static int pci_init(void)
+{
+	struct ast2700_scu0 *scu = (struct ast2700_scu0 *)ASPEED_CPU_SCU_BASE;
 
 	// leave works to u-boot
 	if (FIELD_GET(SCU_CPU_REVISION_ID_HW, scu->chip_id1) == 0) {
@@ -170,6 +206,8 @@ static int pci_init(void)
 	// Set Bridge2 INTA
 	clrsetbits_le32((void *)ASPEED_PLDA2_MSI_CAP, GENMASK(2, 0), 0x1);
 
+	pci_config_ep(&scu->pci1_misc[28], "pcie@12c15800");
+
 	// clk/reset for e2m
 	setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_E2M1);
 	mdelay(10);
@@ -184,6 +222,8 @@ static int pci_init(void)
 	clrbits_le32((void *)ASPEED_PLDA1_MSI_CAP, BIT(3));
 	// Set Bridge1 INTA
 	clrsetbits_le32((void *)ASPEED_PLDA1_MSI_CAP, GENMASK(2, 0), 0x1);
+
+	pci_config_ep(&scu->pci0_misc[28], "pcie@12c15000");
 
 	// clk/reset for e2m
 	setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_E2M0);

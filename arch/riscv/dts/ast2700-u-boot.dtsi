@@ -101,6 +101,14 @@
 		vga: vga@12c14000 {
 			bootph-all;
 		};
+
+		pcie0: pcie@12c15000 {
+			bootph-all;
+		};
+
+		pcie1: pcie@12c15800 {
+			bootph-all;
+		};
 	};
 
 	soc1: soc@14000000 {

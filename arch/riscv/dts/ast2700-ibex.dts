@@ -304,6 +304,18 @@
 	status = "okay";
 };
 
+&pcie0 {
+	/delete-property/ bmc-device;
+	/delete-property/ ehci;
+	/delete-property/ xhci;
+};
+
+&pcie1 {
+	/delete-property/ bmc-device;
+	/delete-property/ ehci;
+	/delete-property/ xhci;
+};
+
 #if BINMAN_SYMS_OK
 &binman {
 	bootph-all;

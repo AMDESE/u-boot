@@ -226,6 +226,24 @@
 			aspeed,scu = <&syscon0>;
 			status = "disabled";
 		};
+
+		pcie0: pcie@12c15000 {
+			compatible = "aspeed,ast27xx-pcie";
+			vga = "MSI";
+			bmc-device = "MSI";
+			ehci = "INTx";
+			xhci = "INTx";
+			status = "okay";
+		};
+
+		pcie1: pcie@12c15800 {
+			compatible = "aspeed,ast27xx-pcie";
+			vga = "MSI";
+			bmc-device = "MSI";
+			ehci = "INTx";
+			xhci = "INTx";
+			status = "okay";
+		};
 	};
 
 	soc1: soc@14000000 {
