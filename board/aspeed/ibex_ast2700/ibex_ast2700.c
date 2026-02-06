@@ -104,22 +104,7 @@ static int dp_init(void)
 {
 	struct udevice *dev;
 	int err;
-	int nodeoffset;
-	ofnode node;
-	struct ast2700_scu0 *scu;
-
-	/* find the offset of compatible node */
-	nodeoffset = fdt_node_offset_by_compatible(gd->fdt_blob, -1,
-						   "aspeed,ast2700-scu0");
-	if (nodeoffset < 0)
-		printf("%s: failed to get aspeed,ast2700-scu0\n", __func__);
-
-	/* get ast2700-scu0 node */
-	node = offset_to_ofnode(nodeoffset);
-
-	scu = (struct ast2700_scu0 *)ofnode_get_addr(node);
-	if (IS_ERR_OR_NULL(scu))
-		printf("%s: cannot get SYSCON address pointer\n", __func__);
+	struct ast2700_scu0 *scu = (struct ast2700_scu0 *)ASPEED_CPU_SCU_BASE;
 
 	// leave works to u-boot
 	if (FIELD_GET(SCU_CPU_REVISION_ID_HW, scu->chip_id1) == 0) {
@@ -152,7 +137,7 @@ static void pci_check_prop(int node, void *reg, const char *prop, int bit)
 		setbits_le32(reg, BIT(bit) | BIT(bit + 8) | BIT(bit + 16));
 }
 
-static void pci_config_ep(void *msi_cap, const char *name)
+static void pci_config_ep(void *msi_cap, const char *name, bool alt_pcie_node)
 {
 	int nodeoffset;
 	ofnode node;
@@ -184,6 +169,13 @@ static void pci_config_ep(void *msi_cap, const char *name)
 	pci_check_prop(nodeoffset, msi_cap, "bmc-device", 1);
 	pci_check_prop(nodeoffset, msi_cap, "ehci", 2);
 	pci_check_prop(nodeoffset, msi_cap, "xhci", 3);
+
+	if (alt_pcie_node &&
+	    fdt_getprop(gd->fdt_blob, nodeoffset, "alt-pcie-node", NULL)) {
+		// disable vga & bmc-dev if alt_pcie_node is set
+		clrbits_le32(msi_cap, 0x03030303);
+		clrbits_le32(msi_cap + 8, BIT(31));
+	}
 }
 
 static int pci_init(void)
@@ -206,7 +198,7 @@ static int pci_init(void)
 	// Set Bridge2 INTA
 	clrsetbits_le32((void *)ASPEED_PLDA2_MSI_CAP, GENMASK(2, 0), 0x1);
 
-	pci_config_ep(&scu->pci1_misc[28], "pcie@12c15800");
+	pci_config_ep(&scu->pci1_misc[28], "pcie@12c15800", true);
 
 	// clk/reset for e2m
 	setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_E2M1);
@@ -223,7 +215,7 @@ static int pci_init(void)
 	// Set Bridge1 INTA
 	clrsetbits_le32((void *)ASPEED_PLDA1_MSI_CAP, GENMASK(2, 0), 0x1);
 
-	pci_config_ep(&scu->pci0_misc[28], "pcie@12c15000");
+	pci_config_ep(&scu->pci0_misc[28], "pcie@12c15000", false);
 
 	// clk/reset for e2m
 	setbits_le32(&scu->clkgate_clr, SCU_CPU_CLKGATE1_E2M0);
