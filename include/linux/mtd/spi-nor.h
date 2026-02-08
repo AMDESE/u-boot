@@ -131,6 +131,7 @@
 #define SPINOR_REG_MXIC_CR2_DC		0x00000300	/* For setting dummy cycles */
 #define SPINOR_REG_MXIC_DC_20		0x0		/* Setting dummy cycles to 20 */
 #define MXIC_MAX_DC			20		/* Maximum value of dummy cycles */
+#define SPINOR_OP_WINBOND_WRSR2		0x31
 
 /* Used for Spansion flashes only. */
 #define SPINOR_OP_BRWR		0x17	/* Bank register write */
