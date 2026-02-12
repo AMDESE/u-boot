@@ -653,7 +653,8 @@ static void ast2700_vga_clk_init(struct ast2700_scu0 *scu)
 		return;
 
 	// Use d0clk/d1clk which generated from hpll for vga0/1 after A0
-	setbits_le32(&scu->clk_sel3, BIT(13) | BIT(12));
+	// Use CRT1clk as soc display source
+	setbits_le32(&scu->clk_sel3, BIT(14) | BIT(13) | BIT(12));
 }
 
 static u32 ast2700_soc0_get_uartclk_rate(struct ast2700_scu0 *scu)
