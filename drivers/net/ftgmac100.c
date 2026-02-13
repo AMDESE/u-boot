@@ -792,6 +792,9 @@ static int ftgmac100_set_internal_delay(struct udevice *dev)
 {
 	ulong data = dev_get_driver_data(dev);
 
+	if (dev_read_bool(dev, "use-ncsi"))
+		return 0;
+
 	if (data == FTGMAC100_MODEL_AST2600)
 		return ftgmac100_set_ast2600_rgmii_delay(dev);
 	else if (data == FTGMAC100_MODEL_AST2700)
