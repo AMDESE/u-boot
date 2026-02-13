@@ -650,7 +650,7 @@ static void find_rgmii_delay(struct ast2700_scu1 *scu, u32 index)
 		} else if (strcmp(phy_mode, "rgmii") == 0) {
 			tx = tx_en;
 			rx = rx_en;
-		} else if (strcmp(phy_mode, "rmii") == 0) {
+		} else if (strcmp(phy_mode, "rmii") == 0 || strcmp(phy_mode, "NC-SI") == 0) {
 			tx = 0;
 			rx = 0;
 		} else {
