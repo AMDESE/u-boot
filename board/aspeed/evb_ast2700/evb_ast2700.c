@@ -171,6 +171,9 @@ const BoardInfo boards[] = {
 	{ "seagull",    0xB5,   HCC_TYPE_2,         ONE_LINK },
 	{ "seagull",    0xB6,   HCC_TYPE_2,         ONE_LINK },
 	{ "seagull",    0xB7,   HCC_TYPE_2,         TWO_LINK },
+	{ "peacock",    0xB8,   AMD_SP8_SLT_1P,     ONE_LINK },
+	{ "pelican",    0xB9,   AMD_SP8_SLT_1P,     ONE_LINK },
+	{ "penguin",    0xBA,   AMD_SP8_SLT_1P,     ONE_LINK },
 };
 
 // mach aspeed cpu info
