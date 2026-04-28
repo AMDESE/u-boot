@@ -79,6 +79,8 @@
 /* SoC mapping Table */
 #define SOC_ID(str, rev) { .name = str, .rev_id = rev, }
 
+// Hornbill versions
+#define HORNBILL_MPS_REV (0x4A)
 /* SP7 Circuit Type */
 typedef enum {
 	HCC_TYPE_1 = 0x01,
@@ -281,7 +283,7 @@ int set_mac_addresses(const u8 *eeprom_buf)
 	return 0;
 }
 
-int get_platform_name( const u8 board_id, char* platname, char* dtsname, size_t buf_len)
+int get_platform_name( const u8 board_id, const u8 board_rev, char* platname, char* dtsname, size_t buf_len)
 {
 	int ret = -1;
 	int i = 0;
@@ -304,9 +306,18 @@ int get_platform_name( const u8 board_id, char* platname, char* dtsname, size_t 
 			} else if (boards[i].type == AMD_SP8_SLT_1P) {
 				strlcpy(dtsname, "eagle", buf_len);
 			} else if (boards[i].type == AMD_SP8_SLT_2P) {
-				strlcpy(dtsname, "hornbill", buf_len);
+				if (board_rev == HORNBILL_MPS_REV)
+					strlcpy(dtsname, "hornbill-mps", buf_len);
+				else
+					strlcpy(dtsname, "hornbill", buf_len);
 			} else {
-				strlcpy(dtsname, boards[i].name, buf_len);
+				if (strcmp(boards[i].name, "hornbill") == 0) {
+					if (board_rev == HORNBILL_MPS_REV)
+						strlcpy(dtsname, "hornbill-mps", buf_len);
+					else
+						strlcpy(dtsname, "hornbill", buf_len);
+				} else
+					strlcpy(dtsname, boards[i].name, buf_len);
 			}
 			ret = 0;
 			break;
@@ -415,7 +426,7 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 	board_rev = *(hpm_eeprom_buf + hpm_mrc + HPM_BRD_REV_OFFSET);
 
 	/* HPM board name */
-	if (get_platform_name(board_id, plat_name, dts_name, sizeof(dts_name)) == 0) {
+	if (get_platform_name(board_id, board_rev, plat_name, dts_name, sizeof(dts_name)) == 0) {
 		/* HPM board FDT config */
 		if(!env_get(ENV_BOARD_FIT_CONF)) {
 			snprintf(board_conf_name, sizeof(board_conf_name),"#conf-aspeed-bmc-amd-%s.dtb", dts_name);
