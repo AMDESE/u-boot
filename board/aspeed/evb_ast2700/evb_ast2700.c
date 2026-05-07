@@ -13,8 +13,14 @@
 #include <errno.h>
 #include <asm/io.h>
 #include <stdlib.h>
+#include <string.h>
 #include <asm/gpio.h>
 #include <linux/delay.h>
+#include <linux/kconfig.h>
+
+#include "sp7_syslog.h"
+
+DECLARE_GLOBAL_DATA_PTR;
 
 // HPM power sequence gpio(s)
 #define HPM_RST_GPIO   19  // RST_L
@@ -505,12 +511,15 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 void configure_edaf_spi(const u8 *eeprom_buf)
 {
 	char *edaf_flag = NULL;
+	bool is_espi;
 
 	// Reconfigure pin from SCM_GPO to GPIO mode.
 	// pin mode changes to SCM_GPO on power-on/reset of BMC.
 	run_command("mw 14c02404 55000055", 0);
 
-	if ( *(eeprom_buf + SCM_BOM_VARIANT_OFF) & ESPI_VARIANT_BIT) {
+	is_espi = (*(eeprom_buf + SCM_BOM_VARIANT_OFF) & ESPI_VARIANT_BIT) != 0;
+
+	if (is_espi) {
 		printf("eSPI variant SCM board detected\n");
 
 		printf("configuring for eDAF ...\n");
@@ -535,6 +544,11 @@ void configure_edaf_spi(const u8 *eeprom_buf)
 		run_command("gpio clear 10", 0); //eSPI0
 		run_command("gpio clear 11", 0); //eSPI1
 	}
+
+	edaf_flag = env_get("edaf");
+	printf("scm status: variant=%s edaf=%s\n",
+	       is_espi ? "eSPI" : "QSPI",
+	       (edaf_flag && *edaf_flag) ? edaf_flag : "unset");
 }
 
 void power_on_hpm(int retry)
@@ -702,6 +716,13 @@ int misc_init_r(void)
 {
 	int ret;
 	int i, ltpi_type = ONE_LINK;
+
+	/*
+	 * Turn on console recording so bmc_syslog (sp7_syslog.c) can replay
+	 * the full post-reloc boot log. Everything printed from this point 
+	 * forward is captured.
+	 */
+	sp7_syslog_enable_console_record();
 
 	/* Identify SoC of DC-SCM card */
 	env_soc_id();
