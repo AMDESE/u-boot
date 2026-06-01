@@ -180,7 +180,7 @@ const BoardInfo boards[] = {
 	{ "hornbill",   0xAD,   HCC_TYPE_2,         ONE_LINK },
 	{ "robin",      0xAE,   AMD_SP8_SLT_1P,     ONE_LINK },
 	{ "sandpiper",  0xAF,   AMD_SP8_SLT_1P,     ONE_LINK },
-	{ "marrakesh",  0xB0,   AMD_TYPE_SLT_1P,    ONE_LINK },
+	{ "marrakesh",  0xB0,   AMD_TYPE_SLT_2P,    ONE_LINK },
 	{ "falcon",     0xB1,   HCC_TYPE_1,         ONE_LINK },
 	{ "falcon",     0xB2,   HCC_TYPE_1,         ONE_LINK },
 	{ "falcon",     0xB3,   HCC_TYPE_1,         ONE_LINK },
