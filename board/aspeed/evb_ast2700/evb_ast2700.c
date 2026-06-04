@@ -89,6 +89,7 @@ typedef enum {
 	AMD_TYPE_2x1_P1 = 0x06,
 	AMD_SP8_SLT_1P = 0x07,
 	AMD_SP8_SLT_2P = 0x08,
+	AMD_SB1_SLT_1P = 0x09,
 } BoardType;
 
 enum {
@@ -174,6 +175,12 @@ const BoardInfo boards[] = {
 	{ "peacock",    0xB8,   AMD_SP8_SLT_1P,     ONE_LINK },
 	{ "pelican",    0xB9,   AMD_SP8_SLT_1P,     ONE_LINK },
 	{ "penguin",    0xBA,   AMD_SP8_SLT_1P,     ONE_LINK },
+	{ "arthur",     0xBB,   HCC_TYPE_1,         ONE_LINK },
+	{ "lancelot",   0xBC,   AMD_SB1_SLT_1P,     ONE_LINK },
+	{ "galhad",     0xBD,   AMD_SB1_SLT_1P,     ONE_LINK },
+	{ "merlin",     0xBE,   AMD_SB1_SLT_1P,     ONE_LINK },
+	{ "mordred",    0xBF,   AMD_SB1_SLT_1P,     ONE_LINK },
+	{ "sb1charz",   0xC0,   AMD_SB1_SLT_1P,     ONE_LINK },
 };
 
 // mach aspeed cpu info
@@ -305,6 +312,8 @@ int get_platform_name( const u8 board_id, char* platname, char* dtsname, size_t 
 				strlcpy(dtsname, "eagle", buf_len);
 			} else if (boards[i].type == AMD_SP8_SLT_2P) {
 				strlcpy(dtsname, "hornbill", buf_len);
+			} else if (boards[i].type == AMD_SB1_SLT_1P) {
+				strlcpy(dtsname, "arthur", buf_len);
 			} else {
 				strlcpy(dtsname, boards[i].name, buf_len);
 			}
