@@ -714,6 +714,9 @@ int misc_init_r(void)
 	ret = read_eeprom_buffers(scm_eeprom_buf, hpm_eeprom_buf);
 	if (ret) {
 		printf("EEPROM read failed!\n");
+		/* If SCM EEPROM was read, set and persist MACs immediately. */
+		if (scm_eeprom_buf[0] != 0xFF && set_mac_addresses(scm_eeprom_buf) == 0)
+			env_save();
 		goto err;
 	}
 
@@ -726,6 +729,7 @@ int misc_init_r(void)
 	/* set MAC addresses from SCM EEPROM */
 	if (set_mac_addresses(scm_eeprom_buf) == 0)
 	{
+		env_save();
 		if (eth_env_get_enetaddr(ENV_ETH_ADDR, enetaddr)) {
 			printf("SCM MAC0 : %pM\n", enetaddr);
 		}
