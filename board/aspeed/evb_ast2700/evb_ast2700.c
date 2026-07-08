@@ -17,9 +17,16 @@
 #include <linux/delay.h>
 
 // HPM power sequence gpio(s)
-#define HPM_RST_GPIO   19  // RST_L
-#define HPM_EN_GPIO    20  // EN
-#define HPM_RDY_GPIO   21  // RDY
+#define HPM_RST_GPIO_REV_A   19  // RST_L
+#define HPM_EN_GPIO_REV_A    20  // EN
+#define HPM_RDY_GPIO_REV_A   21  // RDY
+/* Rev B sequencing gpios */
+#define HPM_RST_GPIO_REV_B   32  // RST_L
+#define HPM_EN_GPIO_REV_B    33  // EN
+#define HPM_RDY_GPIO_REV_B   34  // RDY
+/* SCM board-rev strap pins (Port Z6/Z7) */
+#define SCM_REV_GPIO_Z6      206
+#define SCM_REV_GPIO_Z7      207
 
 #define SCM_EEPROM_I2C_BUS    (7)
 #define HPM_EEPROM_I2C_BUS    (8)
@@ -103,6 +110,7 @@ typedef struct {
 	int id;
 	BoardType type;
 	int ltpi_type;
+	int en_hpm_pwr_seq;
 } BoardInfo;
 
 /* SP7 HPM boards (ordered by id)*/
@@ -175,12 +183,12 @@ const BoardInfo boards[] = {
 	{ "peacock",    0xB8,   AMD_SP8_SLT_1P,     ONE_LINK },
 	{ "pelican",    0xB9,   AMD_SP8_SLT_1P,     ONE_LINK },
 	{ "penguin",    0xBA,   AMD_SP8_SLT_1P,     ONE_LINK },
-	{ "arthur",     0xBB,   HCC_TYPE_1,         ONE_LINK },
-	{ "lancelot",   0xBC,   AMD_SB1_SLT_1P,     ONE_LINK },
-	{ "galhad",     0xBD,   AMD_SB1_SLT_1P,     ONE_LINK },
-	{ "merlin",     0xBE,   AMD_SB1_SLT_1P,     ONE_LINK },
-	{ "mordred",    0xBF,   AMD_SB1_SLT_1P,     ONE_LINK },
-	{ "sb1charz",   0xC0,   AMD_SB1_SLT_1P,     ONE_LINK },
+	{ "arthur",     0xBB,   HCC_TYPE_1,         ONE_LINK, 1 },
+	{ "lancelot",   0xBC,   AMD_SB1_SLT_1P,     ONE_LINK, 1 },
+	{ "galhad",     0xBD,   AMD_SB1_SLT_1P,     ONE_LINK, 1 },
+	{ "merlin",     0xBE,   AMD_SB1_SLT_1P,     ONE_LINK, 1 },
+	{ "mordred",    0xBF,   AMD_SB1_SLT_1P,     ONE_LINK, 1 },
+	{ "sb1charz",   0xC0,   AMD_SB1_SLT_1P,     ONE_LINK, 1 },
 };
 
 // mach aspeed cpu info
@@ -535,41 +543,91 @@ void configure_edaf_spi(const u8 *eeprom_buf)
 	}
 }
 
+static bool is_scm_rev_b(void)
+{
+	int z6, z7;
+	bool rev_b = false;
+
+	if (gpio_request(SCM_REV_GPIO_Z6, "SCM_REV_Z6")) {
+		printf("[WARN] Failed to request SCM Rev GPIO Z6 (%d)\n", SCM_REV_GPIO_Z6);
+		return false;
+	}
+	if (gpio_request(SCM_REV_GPIO_Z7, "SCM_REV_Z7")) {
+		printf("[WARN] Failed to request SCM Rev GPIO Z7 (%d)\n", SCM_REV_GPIO_Z7);
+		gpio_free(SCM_REV_GPIO_Z6);
+		return false;
+	}
+
+	gpio_direction_input(SCM_REV_GPIO_Z6);
+	gpio_direction_input(SCM_REV_GPIO_Z7);
+	z6 = gpio_get_value(SCM_REV_GPIO_Z6);
+	z7 = gpio_get_value(SCM_REV_GPIO_Z7);
+	/* mapping: Z6=0, Z7=1 => Rev B */
+	rev_b = (z6 == 0 && z7 == 1);
+
+	gpio_free(SCM_REV_GPIO_Z6);
+	gpio_free(SCM_REV_GPIO_Z7);
+	return rev_b;
+}
+
 void power_on_hpm(int retry)
 {
 	int i;
-	// TODO: Enable by default on RevB SCM boards
+	int en_hpm_pwr_seq = 0;
+	int hpm_rst_gpio = HPM_RST_GPIO_REV_A;
+	int hpm_en_gpio = HPM_EN_GPIO_REV_A;
+	int hpm_rdy_gpio = HPM_RDY_GPIO_REV_A;
 	const char *env_val = env_get("EN_HPM_PWR_SEQ");
-	if (!env_val) {
-		printf("EN_HPM_PWR_SEQ is not set. Skipping...\n");
-		return;
+	bool env_enabled = (env_val && !strcmp(env_val, "1"));
+	bool rev_b = is_scm_rev_b();
+
+	if (rev_b) {
+		hpm_rst_gpio = HPM_RST_GPIO_REV_B;
+		hpm_en_gpio = HPM_EN_GPIO_REV_B;
+		hpm_rdy_gpio = HPM_RDY_GPIO_REV_B;
 	}
-	// Init GPIO
-	if (gpio_request(HPM_RST_GPIO, "HPM_RST_GPIO")) {
-		printf("[ERR] Failed to request RST_L GPIO (%d)\n", HPM_RST_GPIO);
-		return;
+
+	for (i = 0; i < ARRAY_SIZE(boards); i++) {
+		if (board_id == boards[i].id) {
+			en_hpm_pwr_seq = boards[i].en_hpm_pwr_seq;
+			break;
+		}
 	}
-	if (gpio_request(HPM_EN_GPIO, "HPM_EN_GPIO")) {
-		printf("[ERR] Failed to request EN GPIO (%d)\n", HPM_EN_GPIO);
-		gpio_free(HPM_RST_GPIO);
-		return;
-	}
-	if (gpio_request(HPM_RDY_GPIO, "HPM_RDY_GPIO")) {
-		printf("[ERR] Failed to request RDY GPIO (%d)\n", HPM_RDY_GPIO);
-		gpio_free(HPM_RST_GPIO);
-		gpio_free(HPM_EN_GPIO);
+
+	if (!env_enabled && en_hpm_pwr_seq != 1) {
+		printf("Skipping HPM power sequence for board_id=0x%02x\n", board_id);
 		return;
 	}
 
-	gpio_direction_output(HPM_RST_GPIO, 0);
-	gpio_direction_output(HPM_EN_GPIO, 0);
-	gpio_direction_input(HPM_RDY_GPIO);
+	printf("Using HPM sequencing gpios (RST=%d EN=%d RDY=%d)\n",
+	       hpm_rst_gpio, hpm_en_gpio, hpm_rdy_gpio);
+
+	// Init GPIO
+	if (gpio_request(hpm_rst_gpio, "HPM_RST_GPIO")) {
+		printf("[ERR] Failed to request RST_L GPIO (%d)\n", hpm_rst_gpio);
+		return;
+	}
+	if (gpio_request(hpm_en_gpio, "HPM_EN_GPIO")) {
+		printf("[ERR] Failed to request EN GPIO (%d)\n", hpm_en_gpio);
+		gpio_free(hpm_rst_gpio);
+		return;
+	}
+	if (gpio_request(hpm_rdy_gpio, "HPM_RDY_GPIO")) {
+		printf("[ERR] Failed to request RDY GPIO (%d)\n", hpm_rdy_gpio);
+		gpio_free(hpm_rst_gpio);
+		gpio_free(hpm_en_gpio);
+		return;
+	}
+
+	gpio_direction_output(hpm_rst_gpio, 0);
+	gpio_direction_output(hpm_en_gpio, 0);
+	gpio_direction_input(hpm_rdy_gpio);
 
 	// HPM STBY EN
-	gpio_set_value(HPM_EN_GPIO, 1);
+	gpio_set_value(hpm_en_gpio, 1);
 
 	for (i = 0; i < retry; i++) {
-		if (gpio_get_value(HPM_RDY_GPIO) == 0) {
+		if (gpio_get_value(hpm_rdy_gpio) == 0) {
 			printf("HPM FPGA not ready, attempt %d/%d\n", i+1, retry);
 			udelay(HPM_RDY_RTRY_INTRVL); // 100ms
 		} else {
@@ -582,7 +640,7 @@ void power_on_hpm(int retry)
 
 
 	// RST_L
-	gpio_set_value(HPM_RST_GPIO, 1);
+	gpio_set_value(hpm_rst_gpio, 1);
 	printf("HPM devices out of reset\n");
 
 }
