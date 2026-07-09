@@ -21,12 +21,12 @@
 #define HPM_EN_GPIO_REV_A    20  // EN
 #define HPM_RDY_GPIO_REV_A   21  // RDY
 /* Rev B sequencing gpios */
-#define HPM_RST_GPIO_REV_B   32  // RST_L
-#define HPM_EN_GPIO_REV_B    33  // EN
-#define HPM_RDY_GPIO_REV_B   34  // RDY
+#define HPM_RST_GPIO_REV_B   44  // RST_L
+#define HPM_EN_GPIO_REV_B    45  // EN
+#define HPM_RDY_GPIO_REV_B   46  // RDY
 /* SCM board-rev strap pins (Port Z6/Z7) */
-#define SCM_REV_GPIO_Z6      206
-#define SCM_REV_GPIO_Z7      207
+#define SCM_REV_GPIO_Z6      218
+#define SCM_REV_GPIO_Z7      219
 
 #define SCM_EEPROM_I2C_BUS    (7)
 #define HPM_EEPROM_I2C_BUS    (8)
@@ -627,6 +627,8 @@ void power_on_hpm(int retry)
 	gpio_set_value(hpm_en_gpio, 1);
 
 	for (i = 0; i < retry; i++) {
+		/* Keep EN asserted during cold-boot bring-up windows. */
+		gpio_set_value(hpm_en_gpio, 1);
 		if (gpio_get_value(hpm_rdy_gpio) == 0) {
 			printf("HPM FPGA not ready, attempt %d/%d\n", i+1, retry);
 			udelay(HPM_RDY_RTRY_INTRVL); // 100ms
