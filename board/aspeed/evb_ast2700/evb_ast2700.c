@@ -347,9 +347,9 @@ int get_platform_name( const u8 board_id, const u8 board_rev, char* platname, ch
 		}
 	}
 	if (ret == -1)
-	{	/* Default device tree */
-		strlcpy(platname, "sp7", sizeof(platname));
-		strlcpy(dtsname, "congo", buf_len);
+	{	/* Default device tree is unknown*/
+		strlcpy(platname, "unknown", sizeof(platname));
+		strlcpy(dtsname, "unknown", buf_len);
 	}
 	return ret;
 }
@@ -460,7 +460,7 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 		else
 			printf("HPM EEPROM not programmed\nLoading first DTB config\n");
 
-		/* Export dt name, defaults to congo */
+		/* Export dt name, defaults to unknown */
 		if(!env_get(ENV_DT_NAME)) {
 			env_set(ENV_DT_NAME, dts_name);
 			printf("Saving DT name: %s\n", dts_name);
