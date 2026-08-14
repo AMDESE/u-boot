@@ -508,6 +508,26 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 	return 0;
 }
 
+/*
+ * Ghana / Nigeria (incl. Nigerias3) HPM boards need eSPI strap GPIOs driven low
+ * for eDAF (eSPI variant); other platforms use high for IO/Alert pin mode.
+ */
+static bool board_edaf_espi_dedicated_alert_pin_mode(void)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(boards); i++) {
+		if (board_id != boards[i].id)
+			continue;
+		if (!strcmp(boards[i].name, "ghana"))
+			return true;
+		if (!strcmp(boards[i].name, "nigeria"))
+			return true;
+		return false;
+	}
+	return false;
+}
+
 void configure_edaf_spi(const u8 *eeprom_buf)
 {
 	char *edaf_flag = NULL;
@@ -529,9 +549,14 @@ void configure_edaf_spi(const u8 *eeprom_buf)
 			run_command("setenv edaf true", 0);
 			run_command("saveenv", 0);
 		}
-		/* Set eSPI strap to high for IO/Alert pin mode */
-		run_command("gpio set 10", 0); //eSPI0
-		run_command("gpio set 11", 0); //eSPI1
+		/* Set eSPI strap: high for IO/Alert pin mode; Ghana/Nigeria use low */
+		if (board_edaf_espi_dedicated_alert_pin_mode()) {
+			run_command("gpio clear 10", 0); //eSPI0
+			run_command("gpio clear 11", 0); //eSPI1
+		} else { // IO/Alert pin mode
+			run_command("gpio set 10", 0); //eSPI0
+			run_command("gpio set 11", 0); //eSPI1
+		}
 		/* Set Erase block size - underlying SPI uses 4K blocks */
 		run_command("mw 14c05028 401", 0); // eSPI0
 		run_command("mw 14c06028 401", 0); // eSPI1
