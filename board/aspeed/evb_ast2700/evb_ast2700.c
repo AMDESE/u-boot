@@ -628,8 +628,16 @@ void power_on_hpm(int retry)
 	int hpm_en_gpio = HPM_EN_GPIO_REV_A;
 	int hpm_rdy_gpio = HPM_RDY_GPIO_REV_A;
 	const char *env_val = env_get("EN_HPM_PWR_SEQ");
+	const char *por_rst_env = env_get("por_rst");
 	bool env_enabled = (env_val && !strcmp(env_val, "1"));
 	bool rev_b = is_scm_rev_b();
+	bool ac_cycle_boot = (por_rst_env && !strcmp(por_rst_env, "true"));
+
+	if (!ac_cycle_boot) {
+		printf("Skipping HPM power sequence: non-AC-cycle boot (por_rst=%s)\n",
+		       por_rst_env ? por_rst_env : "unset");
+		return;
+	}
 
 	if (rev_b) {
 		hpm_rst_gpio = HPM_RST_GPIO_REV_B;
