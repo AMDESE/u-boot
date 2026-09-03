@@ -33,6 +33,9 @@ DECLARE_GLOBAL_DATA_PTR;
 /* SCM board-rev strap pins (Port Z6/Z7) */
 #define SCM_REV_GPIO_Z6      218
 #define SCM_REV_GPIO_Z7      219
+/* eSPI alert pin mode strap GPIOs */
+#define ESPI_ALERT_PIN_MODE_STRAP_GPIO0 22
+#define ESPI_ALERT_PIN_MODE_STRAP_GPIO1 23
 
 #define SCM_EEPROM_I2C_BUS    (7)
 #define HPM_EEPROM_I2C_BUS    (8)
@@ -545,6 +548,31 @@ static bool board_edaf_espi_dedicated_alert_pin_mode(void)
 	return false;
 }
 
+static void set_gpio_level(int gpio, bool high)
+{
+	char cmd[24];
+
+	snprintf(cmd, sizeof(cmd), "gpio %s %d", high ? "set" : "clear", gpio);
+	run_command(cmd, 0);
+}
+
+/*
+ * Strap mapping for eSPI alert pin configuration:
+ * high => multiplexed IO1/Alert pin mode (eDAF variant)
+ * low  => dedicated Alert pin mode (normal variant)
+ */
+static void set_espi_alert_mode_strap_for_muxed_io1_alert(void)
+{
+	set_gpio_level(ESPI_ALERT_PIN_MODE_STRAP_GPIO0, true);  //eSPI0
+	set_gpio_level(ESPI_ALERT_PIN_MODE_STRAP_GPIO1, true);  //eSPI1
+}
+
+static void set_espi_alert_mode_strap_for_dedicated_alert(void)
+{
+	set_gpio_level(ESPI_ALERT_PIN_MODE_STRAP_GPIO0, false); //eSPI0
+	set_gpio_level(ESPI_ALERT_PIN_MODE_STRAP_GPIO1, false); //eSPI1
+}
+
 void configure_edaf_spi(const u8 *eeprom_buf)
 {
 	char *edaf_flag = NULL;
@@ -566,13 +594,11 @@ void configure_edaf_spi(const u8 *eeprom_buf)
 			run_command("setenv edaf true", 0);
 			run_command("saveenv", 0);
 		}
-		/* Set eSPI strap: high for IO/Alert pin mode; Ghana/Nigeria use low */
+		/* Default eDAF path is muxed IO1/Alert; Ghana/Nigeria use dedicated alert. */
 		if (board_edaf_espi_dedicated_alert_pin_mode()) {
-			run_command("gpio clear 10", 0); //eSPI0
-			run_command("gpio clear 11", 0); //eSPI1
-		} else { // IO/Alert pin mode
-			run_command("gpio set 10", 0); //eSPI0
-			run_command("gpio set 11", 0); //eSPI1
+			set_espi_alert_mode_strap_for_dedicated_alert();
+		} else {
+			set_espi_alert_mode_strap_for_muxed_io1_alert();
 		}
 		/* Set Erase block size - underlying SPI uses 4K blocks */
 		run_command("mw 14c05028 401", 0); // eSPI0
@@ -582,9 +608,8 @@ void configure_edaf_spi(const u8 *eeprom_buf)
 	else {
 		printf("QSPI variant SCM board detected\n");
 
-		// set espi GPIO strap to low for dedicated alert pin mode
-		run_command("gpio clear 10", 0); //eSPI0
-		run_command("gpio clear 11", 0); //eSPI1
+		/* Normal (non-eSPI) variant uses dedicated alert mode. */
+		set_espi_alert_mode_strap_for_dedicated_alert();
 	}
 
 	edaf_flag = env_get("edaf");
