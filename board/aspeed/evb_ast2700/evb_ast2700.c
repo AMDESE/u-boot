@@ -478,7 +478,8 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 			env_save();
 		}
 		else
-			printf("HPM EEPROM not programmed\nLoading first DTB config\n");
+			printf("Using saved Board FDT config: %s\n",
+			       env_get(ENV_BOARD_FIT_CONF));
 
 		/* Export dt name, defaults to unknown */
 		if(!env_get(ENV_DT_NAME)) {
