@@ -92,6 +92,24 @@ DECLARE_GLOBAL_DATA_PTR;
 // 3x advt timeout for FPGA to move to LDFA state
 #define OP_TIMEOUT_US          "300000"
 
+/* LTPI1 (second link): PHY prot-key then LVDS RX ctrl. Manual mw.l of these
+ * addresses drops RX bias so LTPI1 cannot link and steal I2C8/UART14.
+ */
+#define LTPI1_PHY_PROT_KEY     0x14c35234
+#define LTPI1_LVDS_RX_CTRL     0x14c35804
+#define LTPI1_LINK_MNG_ST      0x14c35108
+#define LTPI_PROT_KEY_UNLOCK   0x1728aacc
+#define LTPI_LVDS_RX1_BIAS_EN  BIT(18)
+#define LTPI_LVDS_RX0_BIAS_EN  BIT(2)
+#define LTPI_LINK_MNG_STATE    GENMASK(3, 0)
+#define LTPI_LINK_MNG_OP       0x7
+#define SCU1_RSTCTL2           0x14c02220
+#define SCU1_RSTCTL2_LTPI1     BIT(22)
+#define SCU1_CLKGATE2          0x14c02260
+#define SCU1_CLKGATE2_LTPI1_TX BIT(19)
+#define SCU1_CLKGATE2_CLR      0x14c02264
+#define SCU1_CLKGATE2_LTPI_AHB BIT(10)
+
 /* SoC mapping Table */
 #define SOC_ID(str, rev) { .name = str, .rev_id = rev, }
 
@@ -240,17 +258,16 @@ void disable_fru_bus_muxes(void)
 		return;
 	}
 
-	// Write 0x00 to register 0x00 of each target address
+	/*
+	 * Write 0x00 to register 0x00 of each target address. Muxes behind
+	 * uninstalled PCIe cards NACK, so failures here are expected and
+	 * are not reported.
+	 */
 	for (i = 0; i < ARRAY_SIZE(addrs); i++) {
 		ret = i2c_get_chip(bus, addrs[i], 1, &dev);
-		if (ret) {
-			printf("INFO: Failed to get device at 0x%02x\n", addrs[i]);
+		if (ret)
 			continue;
-		}
-		ret = dm_i2c_write(dev, 0x00, &zero, 1);
-		if (ret) {
-			printf("INFO: Write to 0x%02x failed (err=%d)\n", addrs[i], ret);
-		}
+		dm_i2c_write(dev, 0x00, &zero, 1);
 	}
 }
 
@@ -730,6 +747,41 @@ void power_on_hpm(int retry)
 
 }
 
+/* Reset the unused second link so it cannot claim I2C8/UART14. */
+static void disable_ltpi1_second_link(void)
+{
+	int i;
+
+	/* LTPI registers need the AHB clock; ungating it is always safe. */
+	writel(SCU1_CLKGATE2_LTPI_AHB, (void *)SCU1_CLKGATE2_CLR);
+	writel(LTPI_PROT_KEY_UNLOCK, (void *)LTPI1_PHY_PROT_KEY);
+	clrbits_le32((void *)LTPI1_LVDS_RX_CTRL,
+		     LTPI_LVDS_RX1_BIAS_EN | LTPI_LVDS_RX0_BIAS_EN);
+	writel(SCU1_RSTCTL2_LTPI1, (void *)SCU1_RSTCTL2);
+	writel(SCU1_CLKGATE2_LTPI1_TX, (void *)SCU1_CLKGATE2);
+
+	for (i = 0; i < 1000; i++) {
+		if ((readl((void *)LTPI1_LINK_MNG_ST) &
+		     LTPI_LINK_MNG_STATE) != LTPI_LINK_MNG_OP)
+			return;
+		udelay(10);
+	}
+
+	printf("[WARN] LTPI1 remained operational after reset\n");
+}
+
+static int get_ltpi_type(u8 id)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(boards); i++) {
+		if (boards[i].id == id)
+			return boards[i].ltpi_type;
+	}
+
+	return ONE_LINK;
+}
+
 void train_ltpi(int retry, int mode)
 {
 	int i=0;
@@ -743,31 +795,47 @@ void train_ltpi(int retry, int mode)
 	} else if (mode == TWO_LINK) {
 		snprintf(mode_flag, sizeof(mode_flag), "-m 1 ");
 	}
+
+	/*
+	 * On ONE_LINK boards LTPI1 can claim I2C8/UART14 while LTPI0 is
+	 * trained. The ltpi command can turn the RX bias back on, so clear it
+	 * again after each attempt, including a failed train.
+	 */
+	if (mode == ONE_LINK)
+		disable_ltpi1_second_link();
+
 	/* start LTPI with operational and advertise timeouts */
 	snprintf(command, sizeof(command), "ltpi -T " OP_TIMEOUT_US " -t " ADVRT_TIMEOUT_US_1_1 " -p 1 %s", mode_flag);
-	if(run_command(command, 0) != 0)
-	{
-		for (i=0; i<retry; i++)
-		{
-			if(run_command(command,0) == 0)
-			{
-				printf("LTPI link %d configured, proceeding to boot...\n", mode);
-				break;
-			}
-			else
-			{
-				printf("Retrying Link training...(%d)\n",i);
-				snprintf(buf, sizeof(buf), "%d", i);
-				env_set("ltpi_rt_cnt", buf);
-				env_save();
-			}
-		}
-		if (i >= retry)
-			{
-				printf("LTPI failed to train, collect register dump!!!\n");
-			}
-
+	if (run_command(command, 0) == 0) {
+		if (mode == ONE_LINK)
+			disable_ltpi1_second_link();
+		return;
 	}
+	for (i=0; i<retry; i++)
+	{
+		if(run_command(command,0) == 0)
+		{
+			printf("LTPI link %d configured, proceeding to boot...\n", mode);
+			if (mode == ONE_LINK)
+				disable_ltpi1_second_link();
+			break;
+		}
+		else
+		{
+			if (mode == ONE_LINK)
+				disable_ltpi1_second_link();
+			printf("Retrying Link training...(%d)\n",i);
+			snprintf(buf, sizeof(buf), "%d", i);
+			env_set("ltpi_rt_cnt", buf);
+			env_save();
+		}
+	}
+	if (i >= retry)
+		{
+			printf("LTPI failed to train, collect register dump!!!\n");
+			if (mode == ONE_LINK)
+				disable_ltpi1_second_link();
+		}
 }
 void update_por_env(void)
 {
@@ -842,7 +910,6 @@ int read_eeprom_buffers(u8 *scm_eeprom_buf, u8 *hpm_eeprom_buf)
 int misc_init_r(void)
 {
 	int ret;
-	int i, ltpi_type = ONE_LINK;
 
 	/*
 	 * Turn on console recording so bmc_syslog (sp7_syslog.c) can replay
@@ -859,6 +926,17 @@ int misc_init_r(void)
 	u8 hpm_eeprom_buf [EEPROM_BUF_LEN] = {0};
 
 	uchar enetaddr[MAC_ADDR_LEN] = {0};
+	const char *saved_board_id = env_get(ENV_BOARD_ID);
+
+	/*
+	 * HPM EEPROM is on I2C bus 8. train_ltpi() is skipped when that read
+	 * fails, which is the first boot after AC. Disable LTPI1 first so it
+	 * cannot claim the bus. The board ID is not known until the EEPROM is
+	 * read, so use the one saved on the last boot to skip TWO_LINK boards.
+	 */
+	if (!saved_board_id ||
+	    get_ltpi_type(hextoul(saved_board_id, NULL)) == ONE_LINK)
+		disable_ltpi1_second_link();
 
 	/* Read the SCM and HPM EEPROMs */
 	ret = read_eeprom_buffers(scm_eeprom_buf, hpm_eeprom_buf);
@@ -909,14 +987,7 @@ int misc_init_r(void)
 	power_on_hpm(HPM_STBY_EN_RETRY);
 
 	/* enable ltpi strap and train link */
-	for (i = 0; i < ARRAY_SIZE(boards); i++) {
-		if (board_id == boards[i].id)  {
-			ltpi_type = boards[i].ltpi_type;
-			break;
-		}
-	}
-
-	train_ltpi(LTPI_TRAIN_RETRY, ltpi_type);
+	train_ltpi(LTPI_TRAIN_RETRY, get_ltpi_type(board_id));
 
 	/* configure spi mux for edaf
            NOTE: do after running 'ltpi' as it reconfigures SCM GPIOs
