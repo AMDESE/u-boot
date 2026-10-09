@@ -324,6 +324,26 @@ int set_mac_addresses(const u8 *eeprom_buf)
 	return 0;
 }
 
+/*
+ * ipmid looks up its FRU/sensor tables by the BoardInfo name in dtname.
+ * A board variant DTS named "<name>-<variant>" maps back to that name;
+ * any other DTS name is returned unchanged.
+ */
+static const char *ipmi_dt_name(const char *plat_name, const char *dts_name)
+{
+	size_t len;
+
+	if (!plat_name || !plat_name[0] || !dts_name)
+		return dts_name;
+
+	len = strlen(plat_name);
+	if (!strncmp(dts_name, plat_name, len) &&
+	    (dts_name[len] == '\0' || dts_name[len] == '-'))
+		return plat_name;
+
+	return dts_name;
+}
+
 int get_platform_name( const u8 board_id, const u8 board_rev, char* platname, char* dtsname, size_t buf_len)
 {
 	int ret = -1;
@@ -480,11 +500,20 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 		else
 			printf("HPM EEPROM not programmed\nLoading first DTB config\n");
 
-		/* Export dt name, defaults to unknown */
-		if(!env_get(ENV_DT_NAME)) {
-			env_set(ENV_DT_NAME, dts_name);
-			printf("Saving DT name: %s\n", dts_name);
-			env_save();
+		/* FIT config above keeps dts_name. dtname follows the
+		 * BoardInfo name only for a "<name>-<variant>" dts.
+		 */
+		{
+			const char *cur = env_get(ENV_DT_NAME);
+			const char *ipmi_name = ipmi_dt_name(plat_name, dts_name);
+
+			if (!cur || !strcmp(cur, dts_name)) {
+				if (!cur || strcmp(cur, ipmi_name)) {
+					env_set(ENV_DT_NAME, ipmi_name);
+					printf("Saving DT name: %s\n", ipmi_name);
+					env_save();
+				}
+			}
 		}
 	}
 
