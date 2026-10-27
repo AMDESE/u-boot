@@ -214,7 +214,7 @@ const BoardInfo boards[] = {
 	{ "penguin",    0xBA,   AMD_SP8_SLT_1P,     ONE_LINK },
 	{ "arthur",     0xBB,   HCC_TYPE_1,         ONE_LINK, 1 },
 	{ "lancelot",   0xBC,   AMD_SB1_SLT_1P,     ONE_LINK, 1 },
-	{ "galhad",     0xBD,   AMD_SB1_SLT_1P,     ONE_LINK, 1 },
+	{ "galahad",    0xBD,   AMD_SB1_SLT_1P,     ONE_LINK, 1 },
 	{ "merlin",     0xBE,   AMD_SB1_SLT_1P,     ONE_LINK, 1 },
 	{ "mordred",    0xBF,   AMD_SB1_SLT_1P,     ONE_LINK, 1 },
 	{ "sb1charz",   0xC0,   AMD_SB1_SLT_1P,     ONE_LINK, 1 },
@@ -352,7 +352,15 @@ int get_platform_name( const u8 board_id, const u8 board_rev, char* platname, ch
 				else
 					strlcpy(dtsname, "hornbill", buf_len);
 			} else if (boards[i].type == AMD_SB1_SLT_1P) {
-				strlcpy(dtsname, "arthur", buf_len);
+				/*
+				 * Lancelot and Galahad share Arthur's device tree.
+				 * Merlin and Mordred share one device tree.
+				 */
+				if (!strcmp(boards[i].name, "merlin") ||
+				    !strcmp(boards[i].name, "mordred"))
+					strlcpy(dtsname, "merlin-mordred", buf_len);
+				else
+					strlcpy(dtsname, "arthur", buf_len);
 			} else {
 				if (strcmp(boards[i].name, "hornbill") == 0) {
 					if (board_rev == HORNBILL_MPS_REV)
