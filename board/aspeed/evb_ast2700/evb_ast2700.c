@@ -613,7 +613,8 @@ static bool board_edaf_espi_dedicated_alert_pin_mode(void)
 			continue;
 		if (!strcmp(boards[i].name, "ghana"))
 			return true;
-		if (!strcmp(boards[i].name, "nigeria"))
+		if (!strcmp(boards[i].name, "nigeria") ||
+		    !strcmp(boards[i].name, "nigerias3"))
 			return true;
 		return false;
 	}
