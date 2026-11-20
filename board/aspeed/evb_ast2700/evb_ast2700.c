@@ -62,6 +62,8 @@ DECLARE_GLOBAL_DATA_PTR;
 #define CIA_HDR_SIZE            3
 #define FRU_FIELD_TYPE_LEN_SIZE 1
 #define FRU_FIELD_TYPE_LEN_MASK 0x3F
+#define FRU_END_OF_FIELDS       0xC1
+#define CIA_CHASSIS_CONF_TL     0x01 // binary type, 1 byte
 #define MIN_CSN_UNIQ_STR_LEN    4
 #define HYPHEN_DELIM_SIZE       1
 #define HYPHEN_DELIM            '-'
@@ -70,6 +72,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define ENV_BOARD_FIT_CONF   "board_conf"
 #define ENV_BOARD_ID           "board_id"
 #define ENV_BOARD_REV         "board_rev"
+#define ENV_CHASSIS_CONF   "chassis_conf"
 #define ENV_DT_NAME              "dtname"
 #define ENV_ETH_ADDR            "ethaddr"
 #define ENV_ETH1_ADDR          "eth1addr"
@@ -405,6 +408,36 @@ int get_cia_ser_num(const uint8_t* fru_buf, char* chassis_ser_num)
 	return csn_len;
 }
 
+/*
+ * extract optional 1-byte binary OEM chassis config following the chassis
+ * serial number. Returns the config value, or -1 if absent or malformed.
+ */
+int get_cia_chassis_conf(const uint8_t* fru_buf)
+{
+	size_t cia_start_offset, cia_end_offset, cpn_start_offset, csn_start_offset;
+	size_t conf_start_offset;
+	int cpn_len = 0;
+	int csn_len = 0;
+
+	cia_start_offset = fru_buf[CIA_START_OFFSET] * FRU_HDR_OFF_MULTIPLIER;
+	if (cia_start_offset == 0)
+		return -1;
+	cpn_start_offset = cia_start_offset + CIA_HDR_SIZE;
+	cpn_len = (fru_buf[cpn_start_offset] & FRU_FIELD_TYPE_LEN_MASK);
+	csn_start_offset = cpn_start_offset + FRU_FIELD_TYPE_LEN_SIZE + cpn_len;
+	csn_len = (fru_buf[csn_start_offset] & FRU_FIELD_TYPE_LEN_MASK);
+	conf_start_offset = csn_start_offset + FRU_FIELD_TYPE_LEN_SIZE + csn_len;
+
+	if (fru_buf[conf_start_offset] == FRU_END_OF_FIELDS)
+		return -1;
+
+	if (fru_buf[conf_start_offset] != CIA_CHASSIS_CONF_TL) {
+		printf("invalid chassis config type/length 0x%02x\n", fru_buf[conf_start_offset]);
+		return -1;
+	}
+	return fru_buf[conf_start_offset + FRU_FIELD_TYPE_LEN_SIZE];
+}
+
 
 int get_csn_last4(const char* str, char* buf, size_t buf_len)
 {
@@ -467,6 +500,9 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 	char board_id_str[STR_BUF_LEN] = {0};
 	char board_rev_str[STR_BUF_LEN] = {0};
 	char chassis_ser_num[STR_BUF_LEN] = {0};
+	char chassis_conf_str[STR_BUF_LEN] = {0};
+	int chassis_conf = -1;
+	char *old_chassis_conf = NULL;
 	char hpm_csn_uniq_str[STR_BUF_LEN] = {0};
 	u8 board_rev = 0;
 	u8 hpm_mrc = 0;
@@ -517,6 +553,17 @@ int set_board_info(const u8* scm_eeprom_buf, const u8* hpm_eeprom_buf)
 		}
 		else
 			printf("Invalid board_rev in HPM EEPROM\n");
+	}
+	/* chassis config may be reprogrammed, so re-read it every boot */
+	chassis_conf = get_cia_chassis_conf(hpm_eeprom_buf);
+	if (chassis_conf >= 0) {
+		snprintf(chassis_conf_str, sizeof(chassis_conf_str), "%02X", chassis_conf);
+		old_chassis_conf = env_get(ENV_CHASSIS_CONF);
+		if (!old_chassis_conf || strcmp(old_chassis_conf, chassis_conf_str)) {
+			env_set(ENV_CHASSIS_CONF, chassis_conf_str);
+			printf("Saving chassis_conf: %s\n", chassis_conf_str);
+			env_save();
+		}
 	}
 
 	/* check if scm has valid data */
